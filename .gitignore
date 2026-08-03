@@ -1,0 +1,10 @@
+# ==========================
+# .NET / C# Project
+# ==========================
+
+# Build output directories
+bin/
+obj/
+publish/
+out/
+artifacts/

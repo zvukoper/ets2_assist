@@ -275,51 +275,42 @@ namespace ETS2_Assist_GUI
             await StartSystemAsync();
         }
 
-        private async Task StartSystemAsync()
-        {
-            if (procManager.IsRunning) return;
-            AppendLog("Starting system...");
+private async Task StartSystemAsync()
+{
+    if (procManager.IsRunning) return;
 
-            if (!CheckPlugins())
-            {
-                AppendLog("Plugins check failed. System start aborted.");
-                return;
-            }
+    AppendLog("Starting system...");
 
-            if (!StartTelemetryServer())
-            {
-                AppendLog("Telemetry server start failed. System start aborted.");
-                return;
-            }
+    if (!CheckPlugins())
+    {
+        AppendLog("Plugins check failed. System start aborted.");
+        return;
+    }
 
-            if (!StartPythonServer())
-            {
-                AppendLog("Web server start failed. System start aborted.");
-                return;
-            }
+    if (!StartTelemetryServer())
+    {
+        AppendLog("Telemetry server start failed. System start aborted.");
+        return;
+    }
 
-            await procManager.StartAsync();
+    if (!StartPythonServer())
+    {
+        AppendLog("Web server start failed. System start aborted.");
+        return;
+    }
 
-            bool dataReceived = false;
-            for (int i = 0; i < 45; i++)
-            {
-                if (IsGameDataAvailable())
-                {
-                    dataReceived = true;
-                    break;
-                }
-                await Task.Delay(1000);
-            }
+    await procManager.StartAsync();
 
-            if (!dataReceived)
-            {
-                AppendLog("Game data not received within 45 seconds. Overlay not started.");
-                return;
-            }
+    // Запускаем оверлей сразу, без ожидания данных
+    StartWebOverlay();
 
-            StartWebOverlay();
-            AppendLog("System started successfully.");
-        }
+    AppendLog("System started successfully.");
+
+    // 👇 ОБНОВЛЯЕМ КНОПКУ
+    UpdateStartButton();
+}
+
+
 
         private bool CheckPlugins()
         {
@@ -610,58 +601,86 @@ namespace ETS2_Assist_GUI
             StartWebOverlay();
         }
 
-        private async void CheckUpdates()
-        {
-            AppendLog("Checking for updates...");
-            try
-            {
-                var latestVersion = await Updater.CheckLatestVersion(AppSettings.GitHubRepoUrl);
-                if (latestVersion == null)
-                {
-                    MessageBox.Show(
-                        lang.Get("update_check_error") ?? "Failed to check for updates.",
-                        lang.Get("update_check_title") ?? "Check Updates",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning
-                    );
-                    return;
-                }
+private async void CheckUpdates()
+{
+    AppendLog("=== CheckUpdates started ===");
+    try
+    {
+        // 1. Получаем URL из настроек
+        string apiUrl = AppSettings.GitHubRepoUrl;
+        AppendLog($"GitHub API URL: {apiUrl}");
 
-                var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-                if (currentVersion == null || latestVersion > currentVersion)
-                {
-                    DialogResult result = MessageBox.Show(
-                        string.Format(lang.Get("update_available") ?? "New version {0} is available. Current version: {1}. Open download page?", latestVersion, currentVersion ?? new Version(0, 0, 0)),
-                        lang.Get("update_check_title") ?? "Check Updates",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Information
-                    );
-                    if (result == DialogResult.Yes)
-                    {
-                        Process.Start("https://github.com/zvukoper/ets2_assist/releases");
-                    }
-                }
-                else
-                {
-                    MessageBox.Show(
-                        string.Format(lang.Get("update_no_updates") ?? "You have the latest version ({0}).", currentVersion ?? new Version(0, 0, 0)),
-                        lang.Get("update_check_title") ?? "Check Updates",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information
-                    );
-                }
-            }
-            catch (Exception ex)
+        // 2. Запрашиваем версию с сервера
+        Version latestVersion = await Updater.CheckLatestVersion(apiUrl);
+        AppendLog($"Latest version from server: {latestVersion}");
+
+        // 3. Получаем текущую версию приложения
+        Version currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        AppendLog($"Current application version: {currentVersion}");
+
+        // 4. Сравниваем версии
+        if (currentVersion == null)
+        {
+            AppendLog("WARNING: currentVersion is null, treating as 0.0.0");
+            currentVersion = new Version(0, 0, 0);
+        }
+
+        if (latestVersion > currentVersion)
+        {
+            AppendLog($"New version available: {latestVersion} > {currentVersion}");
+            DialogResult result = MessageBox.Show(
+                string.Format(lang.Get("update_available") ?? "New version {0} is available. Current version: {1}. Open download page?", latestVersion, currentVersion),
+                lang.Get("update_check_title") ?? "Check Updates",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information
+            );
+            if (result == DialogResult.Yes)
             {
-                AppendLog($"Update check error: {ex.Message}");
-                MessageBox.Show(
-                    lang.Get("update_check_error") ?? $"Failed to check for updates: {ex.Message}",
-                    lang.Get("update_check_title") ?? "Check Updates",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error
-                );
+                Process.Start("https://github.com/zvukoper/ets2_assist/releases");
+                AppendLog("User opened download page.");
+            }
+            else
+            {
+                AppendLog("User declined update.");
             }
         }
+        else
+        {
+            AppendLog($"No updates: latest {latestVersion} <= current {currentVersion}");
+            MessageBox.Show(
+                string.Format(lang.Get("update_no_updates") ?? "You have the latest version ({0}).", currentVersion),
+                lang.Get("update_check_title") ?? "Check Updates",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            );
+        }
+    }
+    catch (Exception ex)
+    {
+        // Логируем все детали ошибки
+        AppendLog($"EXCEPTION in CheckUpdates: {ex.Message}");
+        AppendLog($"Stack trace: {ex.StackTrace}");
+        if (ex.InnerException != null)
+        {
+            AppendLog($"Inner exception: {ex.InnerException.Message}");
+            AppendLog($"Inner stack: {ex.InnerException.StackTrace}");
+        }
+
+        // Показываем пользователю понятное сообщение с причиной
+        string userMessage = lang.Get("update_check_error") ?? $"Failed to check for updates: {ex.Message}";
+        MessageBox.Show(
+            userMessage,
+            lang.Get("update_check_title") ?? "Check Updates",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Error
+        );
+    }
+    finally
+    {
+        AppendLog("=== CheckUpdates finished ===");
+    }
+}
+
 
         private void OpenSettings()
         {
@@ -729,51 +748,125 @@ namespace ETS2_Assist_GUI
             }
         }
 
-        private void UpdateIndicators()
-        {
-            bool arduino = !string.IsNullOrEmpty(GetArduinoPort());
-            bool plugins = ArePluginsInstalled();
-            bool python = Process.GetProcessesByName("python").Length > 0 || Process.GetProcessesByName("pythonw").Length > 0;
-            bool webOverlay = Process.GetProcessesByName("WebOverlay").Length > 0 || Process.GetProcessesByName("pano").Length > 0;
-            bool mainScript = procManager.IsRunning;
-            bool gameRunning = IsGameRunning();
-            bool dataAvailable = IsGameDataAvailable() && gameRunning;
-            int speed = GetCurrentSpeed();
 
-            // ETS2 Assist (Main Script)
-            SetStatusText(indicatorEts2Assist, "ETS2 Assist", mainScript ? lang.Get("status_on") ?? "ON" : lang.Get("status_off") ?? "OFF", mainScript);
+private bool IsTelemetryConnected()
+{
+    try
+    {
+        string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+        if (!File.Exists(jsonPath)) return false;
+        var json = File.ReadAllText(jsonPath);
+        var obj = JObject.Parse(json);
+        return obj["game"]?["connected"]?.Value<bool>() ?? false;
+    }
+    catch
+    {
+        return false;
+    }
+}
 
-            // ETS2
-            SetStatusText(indicatorEts2, "ETS2", gameRunning ? lang.Get("status_running") ?? "RUNNING" : lang.Get("status_not_running") ?? "NOT RUNNING", gameRunning);
 
-            // ETS2 Plugins
-            SetStatusText(indicatorEts2Plugins, "ETS2 Plugins", plugins ? lang.Get("status_installed") ?? "INSTALLED" : lang.Get("status_not_installed") ?? "NOT INSTALLED", plugins);
+private bool IsTelemetryDataFresh()
+{
+    try
+    {
+        string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+        if (!File.Exists(jsonPath)) return false;
 
-            // TruckTel
-            if (gameRunning)
-            {
-                if (dataAvailable && speed >= 0)
-                    SetStatusText(indicatorTruckTel, "TruckTel", $"{speed} km/h", true);
-                else
-                    SetStatusText(indicatorTruckTel, "TruckTel", lang.Get("status_no_data") ?? "NO DATA", false);
-            }
-            else
-            {
-                SetStatusText(indicatorTruckTel, "TruckTel", lang.Get("status_no_data") ?? "NO DATA", false);
-            }
+        var lastWrite = File.GetLastWriteTime(jsonPath);
+        return (DateTime.Now - lastWrite).TotalSeconds < 5;
+    }
+    catch
+    {
+        return false;
+    }
+}
 
-            // ETS2 Telemetry
-            SetStatusText(indicatorEts2Telemetry, "ETS2 Telemetry", dataAvailable ? lang.Get("status_receiving") ?? "RECEIVING" : lang.Get("status_no_data") ?? "NO DATA", dataAvailable);
+private void UpdateStartButton()
+{
+    if (procManager.IsRunning)
+    {
+        btnStart.Text = lang.Get("btn_stop") ?? "Stop";
+        btnStart.BackColor = System.Drawing.Color.LightCoral;
+    }
+    else
+    {
+        btnStart.Text = lang.Get("btn_start") ?? "Start";
+        btnStart.BackColor = System.Drawing.Color.LightGreen;
+    }
+}
+private void UpdateIndicators()
+{
+    bool arduino = !string.IsNullOrEmpty(GetArduinoPort());
+    bool plugins = ArePluginsInstalled();
+    bool python = Process.GetProcessesByName("python").Length > 0 ||
+                  Process.GetProcessesByName("pythonw").Length > 0;
+    bool webOverlay = Process.GetProcessesByName("WebOverlay").Length > 0 ||
+                      Process.GetProcessesByName("pano").Length > 0;
+    bool mainScript = procManager.IsRunning;
+    bool gameRunning = IsEts2ProcessRunning();
+    bool dataFresh = IsTelemetryDataFresh() && gameRunning; // ← проверяем свежесть файла
+    int speed = GetCurrentSpeed();
 
-            // Web Server
-            SetStatusText(indicatorWebServer, "Web Server", python ? lang.Get("status_on") ?? "ON" : lang.Get("status_off") ?? "OFF", python);
+    // ETS2 Assist (Main Script)
+    SetStatusText(indicatorEts2Assist, "ETS2 Assist",
+        mainScript ? lang.Get("status_on") ?? "ON" : lang.Get("status_off") ?? "OFF",
+        mainScript);
 
-            // Web Overlay
-            SetStatusText(indicatorWebOverlay, "Web Overlay", webOverlay ? lang.Get("status_on") ?? "ON" : lang.Get("status_off") ?? "OFF", webOverlay);
+    // ETS2
+    SetStatusText(indicatorEts2, "ETS2",
+        gameRunning ? lang.Get("status_running") ?? "RUNNING" : lang.Get("status_not_running") ?? "NOT RUNNING",
+        gameRunning);
 
-            // Arduino
-            SetStatusText(indicatorArduino, "Arduino", arduino ? lang.Get("status_connected") ?? "CONNECTED" : lang.Get("status_none") ?? "NONE", arduino);
-        }
+    // ETS2 Plugins
+    SetStatusText(indicatorEts2Plugins, "ETS2 Plugins",
+        plugins ? lang.Get("status_installed") ?? "INSTALLED" : lang.Get("status_not_installed") ?? "NOT INSTALLED",
+        plugins);
+
+    // TruckTel
+    if (gameRunning && dataFresh)
+    {
+        int currentSpeed = GetCurrentSpeed();
+        string speedText = currentSpeed >= 0 ? $"{currentSpeed} km/h" : "0 km/h";
+        SetStatusText(indicatorTruckTel, "TruckTel", speedText, true);
+    }
+    else
+    {
+        SetStatusText(indicatorTruckTel, "TruckTel", lang.Get("status_no_data") ?? "NO DATA", false);
+    }
+
+    // ETS2 Telemetry
+    SetStatusText(indicatorEts2Telemetry, "ETS2 Telemetry",
+        dataFresh ? lang.Get("status_receiving") ?? "RECEIVING" : lang.Get("status_no_data") ?? "NO DATA",
+        dataFresh);
+
+    // Web Server
+    SetStatusText(indicatorWebServer, "Web Server",
+        python ? lang.Get("status_on") ?? "ON" : lang.Get("status_off") ?? "OFF",
+        python);
+
+    // Web Overlay
+    SetStatusText(indicatorWebOverlay, "Web Overlay",
+        webOverlay ? lang.Get("status_on") ?? "ON" : lang.Get("status_off") ?? "OFF",
+        webOverlay);
+
+    // Arduino
+    SetStatusText(indicatorArduino, "Arduino",
+        arduino ? lang.Get("status_connected") ?? "CONNECTED" : lang.Get("status_none") ?? "NONE",
+        arduino);
+}
+
+private bool IsEts2ProcessRunning()
+{
+    try
+    {
+        return Process.GetProcessesByName("eurotrucks2").Length > 0;
+    }
+    catch
+    {
+        return false;
+    }
+}
 
         private void SetStatusText(Label lbl, string baseText, string statusText, bool isActive)
         {

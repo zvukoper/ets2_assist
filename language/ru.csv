@@ -1,0 +1,65 @@
+key,text
+# Common
+app_title,ETS2 Assist
+language,Язык
+
+# UI
+ui_file,Файл
+ui_start,Запустить ETS2 Assist
+ui_stop,Остановить
+ui_starting,Запускается...
+ui_settings,Настройки
+ui_exit,Выход
+ui_check_updates,Проверить обновления
+ui_help,Справка
+ui_minimize,Свернуть
+ui_restart_overlay,Рестарт оверлея
+
+# Tray
+tray_start,Запустить систему
+tray_stop,Остановить систему
+tray_check_updates,Проверить обновления
+tray_exit,Выход
+tray_minimized,Свёрнуто в трей
+
+# Exit
+exit_confirm,Вы уверены, что хотите выйти?
+exit_title,Подтверждение выхода
+
+# Settings
+settings_title,Настройки
+settings_language,Язык
+settings_debug,Режим отладки (показывать окно скрипта)
+settings_autostart,Автоматически запускать систему при старте
+settings_startminimized,Запускать свёрнутым в трей
+settings_checkupdates,Проверять обновления при запуске
+settings_save,Сохранить
+settings_cancel,Отмена
+settings_saved,Настройки сохранены. Некоторые изменения вступят в силу после перезапуска.
+
+# Help
+help_title,Справка
+help_error,Не удалось открыть справку.
+
+# Update
+update_check_title,Проверка обновлений
+update_check_error,Не удалось проверить обновления
+update_available,Доступна новая версия {0}. Текущая версия: {1}. Открыть страницу загрузки?
+update_no_updates,У вас установлена последняя версия ({0}).
+
+# Plugins
+plugins_missing_title,Отсутствуют плагины
+plugins_missing_prompt,Некоторые плагины отсутствуют. Установить их сейчас?
+
+# Statuses
+status_on,ВКЛ
+status_off,ВЫКЛ
+status_running,ЗАПУЩЕНА
+status_not_running,НЕ ЗАПУЩЕНА
+status_installed,ЕСТЬ
+status_not_installed,НЕТ
+status_no_data,НЕТ ДАННЫХ
+status_receiving,ПРИЁМ
+status_connected,ПОДКЛЮЧЁН
+status_none,НЕТ
+btn_stop,Запущено

@@ -1,0 +1,40 @@
+{
+    "language": "en",
+    "web": {
+        "port": 8082,
+        "auto_start": true,
+        "overlay": {
+            "enabled": true,
+            "executable": "data\\bin\\WebOverlay.exe"
+        }
+    },
+    "visual": {
+        "speed_zone": {
+            "enabled": true,
+            "min_speed": 100,
+            "max_speed": 120,
+            "bg_color": "#cc0000"
+        },
+        "progress_bars": {
+            "fuel": {
+                "critical_threshold": 10,
+                "warning_threshold": 15,
+                "blink": true
+            },
+            "rest": {
+                "critical_threshold": 1,
+                "warning_threshold": 2,
+                "blink": true
+            },
+            "job": {
+                "critical_threshold": 1,
+                "warning_threshold": 2,
+                "blink": true
+            }
+        }
+    },
+    "arduino": {
+        "enabled": true,
+        "baud_rate": 9600
+    }
+}

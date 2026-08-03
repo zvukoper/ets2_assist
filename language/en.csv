@@ -1,0 +1,65 @@
+﻿key,text
+# Common
+app_title,ETS2 Assist
+language,Language
+
+# UI
+ui_file,File
+ui_start,Start ETS2 Assist
+ui_stop,Stop
+ui_starting,Starting...
+ui_settings,Settings
+ui_exit,Exit
+ui_check_updates,Check Updates
+ui_help,Help
+ui_minimize,Minimize
+ui_restart_overlay,Restart Overlay
+
+# Tray
+tray_start,Start System
+tray_stop,Stop System
+tray_check_updates,Check Updates
+tray_exit,Exit
+tray_minimized,Minimized to tray
+
+# Exit
+exit_confirm,Are you sure you want to exit?
+exit_title,Exit confirmation
+
+# Settings
+settings_title,Settings
+settings_language,Language
+settings_debug,Debug Mode (show script window)
+settings_autostart,Auto start system on launch
+settings_startminimized,Start minimized to tray
+settings_checkupdates,Check updates on start
+settings_save,Save
+settings_cancel,Cancel
+settings_saved,Settings saved. Some changes may take effect after restart.
+
+# Help
+help_title,Help
+help_error,Failed to open help.
+
+# Update
+update_check_title,Check Updates
+update_check_error,Failed to check for updates
+update_available,New version {0} is available. Current version: {1}. Open download page?
+update_no_updates,You have the latest version ({0}).
+
+# Plugins
+plugins_missing_title,Plugins Missing
+plugins_missing_prompt,Some plugins are missing. Install them now?
+
+# Statuses
+status_on,ON
+status_off,OFF
+status_running,RUNNING
+status_not_running,NOT RUNNING
+status_installed,INSTALLED
+status_not_installed,NOT INSTALLED
+status_no_data,NO DATA
+status_receiving,RECEIVING
+status_connected,CONNECTED
+status_none,NONE
+btn_stop,Started

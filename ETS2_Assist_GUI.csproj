@@ -1,10 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
+<PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
-  </PropertyGroup>
+
+    <!-- Настройки публикации в один EXE -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- Обрезку НЕ включаем! -->
+    <!-- <PublishTrimmed>false</PublishTrimmed> (по умолчанию false) -->
+    <!-- Можно ускорить запуск (опционально) -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <Version>1.0.1</Version>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
+</PropertyGroup>
 
   <!-- Удалён PackageReference на System.Configuration.ConfigurationManager -->
 
