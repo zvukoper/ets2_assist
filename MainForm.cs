@@ -8,6 +8,7 @@ using System.Management;
 using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using System.Reflection;
 
 namespace ETS2_Assist_GUI
 {
@@ -50,7 +51,15 @@ namespace ETS2_Assist_GUI
 
         public MainForm()
         {
-            this.Text = "ETS2 Assist";
+      try
+    {
+        var version = Application.ProductVersion ?? "0.0.0";
+        this.Text = $"ETS2 Assist v{version}";
+    }
+    catch
+    {
+        this.Text = "ETS2 Assist";
+    }
             this.Size = new Size(980, 650);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormClosing += (s, e) => { if (e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; this.Hide(); } };
@@ -258,6 +267,10 @@ private void SaveLanguageToConfig(string lang)
         private void ApplyLanguage()
         {
             this.Text = lang.Get("app_title") ?? "ETS2 Assist";
+
+        var version = Application.ProductVersion ?? "0.0.0";
+        this.Text = $"ETS2 Assist v{version}";
+
             btnStart.Text = lang.Get("ui_start") ?? "Start";
             btnStop.Text = lang.Get("ui_stop") ?? "Stop";
             btnRestartOverlay.Text = lang.Get("ui_restart_overlay") ?? "Restart Overlay";
