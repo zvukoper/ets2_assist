@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Management;
 using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 
 namespace ETS2_Assist_GUI
 {
@@ -195,6 +196,37 @@ namespace ETS2_Assist_GUI
             trayIcon.MouseDoubleClick += (s, e) => { this.Show(); this.WindowState = FormWindowState.Normal; };
         }
 
+private void SaveLanguageToConfig(string lang)
+{
+    try
+    {
+        string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "config.json");
+        JObject config;
+
+        if (File.Exists(configPath))
+        {
+            string json = File.ReadAllText(configPath);
+            config = JObject.Parse(json);
+        }
+        else
+        {
+            config = new JObject();
+            // Создаём папку data, если её нет
+            string dir = Path.GetDirectoryName(configPath);
+            if (!Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+        }
+
+        config["language"] = lang;
+        File.WriteAllText(configPath, config.ToString(Formatting.Indented));
+        AppendLog($"Language saved to config.json: {lang}");
+    }
+    catch (Exception ex)
+    {
+        AppendLog($"Failed to save language to config.json: {ex.Message}");
+    }
+}
+
         private void InitializeLanguage()
         {
             lang = LanguageManager.Instance;
@@ -202,6 +234,7 @@ namespace ETS2_Assist_GUI
             string currentLang = AppSettings.Language;
             if (!string.IsNullOrEmpty(currentLang))
                 lang.LoadLanguage(currentLang);
+                 SaveLanguageToConfig(currentLang);
         }
 
         private void InitializeProcessManager()
