@@ -9,6 +9,7 @@ using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.Reflection;
+using System.Collections.Generic;
 
 namespace ETS2_Assist_GUI
 {
@@ -48,6 +49,15 @@ namespace ETS2_Assist_GUI
         private ProcessManager procManager = null!;
         private Logger logger = null!;
         private LanguageManager lang = null!;
+
+private Dictionary<string, JobInitialData> _jobData = new();
+
+private class JobInitialData
+{
+    public double InitialDistance { get; set; }
+    public double InitialJobRemaining { get; set; } // оставшееся время до дедлайна в часах
+    public string JobId { get; set; }
+}
 
         public MainForm()
         {

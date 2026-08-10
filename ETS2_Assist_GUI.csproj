@@ -13,7 +13,7 @@
     <!-- <PublishTrimmed>false</PublishTrimmed> (по умолчанию false) -->
     <!-- Можно ускорить запуск (опционально) -->
     <PublishReadyToRun>true</PublishReadyToRun>
-    <VersionPrefix>1.0.11</VersionPrefix>
+    <VersionPrefix>1.0.12</VersionPrefix>
 <VersionSuffix>$([System.String]::Format("{0}{1}{2}{3}", $([System.DateTime]::Now.Month), $([System.DateTime]::Now.Day), $([System.DateTime]::Now.Hour), $([System.DateTime]::Now.Minute)))</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
