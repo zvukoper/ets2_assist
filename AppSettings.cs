@@ -15,6 +15,14 @@ namespace ETS2_Assist_GUI
         public static bool CheckUpdatesOnStart { get; set; } = true;
         public static string GitHubRepoUrl { get; set; } = "https://api.github.com/repos/zvukoper/ets2_assist/releases/latest";
 
+        // ===== НОВЫЕ НАСТРОЙКИ ЗАПИСИ =====
+        public static string RecordMode { get; set; } = "Auto";      // Off, Auto, Manual, TrailOnly
+        public static int RecordDurationMinutes { get; set; } = 60;
+        public static bool AutoSaveEnabled { get; set; } = true;
+        public static string SaveFormat { get; set; } = "ThreeFiles"; // OneFile, TwoFiles, ThreeFiles
+        public static string DefaultSuffix { get; set; } = "";
+        public static string DefaultDescription { get; set; } = "";
+
         static AppSettings() => Load();
 
         public static void Load()
@@ -32,6 +40,12 @@ namespace ETS2_Assist_GUI
                     StartMinimized = settings.StartMinimized;
                     CheckUpdatesOnStart = settings.CheckUpdatesOnStart;
                     GitHubRepoUrl = settings.GitHubRepoUrl ?? "https://api.github.com/repos/zvukoper/ets2_assist/releases/latest";
+                    RecordMode = settings.RecordMode ?? "Auto";
+                    RecordDurationMinutes = settings.RecordDurationMinutes;
+                    AutoSaveEnabled = settings.AutoSaveEnabled;
+                    SaveFormat = settings.SaveFormat ?? "ThreeFiles";
+                    DefaultSuffix = settings.DefaultSuffix ?? "";
+                    DefaultDescription = settings.DefaultDescription ?? "";
                 }
             }
             catch { /* ignore errors */ }
@@ -48,7 +62,13 @@ namespace ETS2_Assist_GUI
                     AutoStartSystem = AutoStartSystem,
                     StartMinimized = StartMinimized,
                     CheckUpdatesOnStart = CheckUpdatesOnStart,
-                    GitHubRepoUrl = GitHubRepoUrl
+                    GitHubRepoUrl = GitHubRepoUrl,
+                    RecordMode = RecordMode,
+                    RecordDurationMinutes = RecordDurationMinutes,
+                    AutoSaveEnabled = AutoSaveEnabled,
+                    SaveFormat = SaveFormat,
+                    DefaultSuffix = DefaultSuffix,
+                    DefaultDescription = DefaultDescription
                 };
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(SettingsFile, json);
@@ -64,6 +84,12 @@ namespace ETS2_Assist_GUI
             public bool StartMinimized { get; set; }
             public bool CheckUpdatesOnStart { get; set; }
             public string GitHubRepoUrl { get; set; } = string.Empty;
+            public string RecordMode { get; set; } = "Auto";
+            public int RecordDurationMinutes { get; set; } = 60;
+            public bool AutoSaveEnabled { get; set; } = true;
+            public string SaveFormat { get; set; } = "ThreeFiles";
+            public string DefaultSuffix { get; set; } = string.Empty;
+            public string DefaultDescription { get; set; } = string.Empty;
         }
     }
 }
