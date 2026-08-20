@@ -21,17 +21,11 @@ namespace ETS2_Assist_GUI
         public void Error(string msg) => Write("ERROR", msg);
         public void Debug(string msg) => Write("DEBUG", msg);
 
-        public void Log(string msg) => Info(msg);
-
         private void Write(string level, string msg)
         {
             if (string.IsNullOrEmpty(msg)) return;
             string line = $"{DateTime.Now:HH:mm:ss.fff} [{level}] {msg}";
-            try
-            {
-                File.AppendAllText(currentLogFile, line + Environment.NewLine);
-            }
-            catch { /* подавляем ошибки записи */ }
+            File.AppendAllText(currentLogFile, line + Environment.NewLine);
             OnLogMessage?.Invoke(line);
         }
     }
