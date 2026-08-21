@@ -4,6 +4,9 @@
     <Compile Update="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Quests\QuestsManager.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Recording\TrailSaver.cs">
       <SubType>Form</SubType>
     </Compile>

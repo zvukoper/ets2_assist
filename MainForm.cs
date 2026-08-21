@@ -35,7 +35,6 @@ namespace ETS2_Assist_GUI
         private ToolStripMenuItem checkUpdatesMenu = null!;
         private ToolStripMenuItem exitMenu = null!;
 
-
         private List<CityData> _cities = new();
         private List<RoadSegment> _roads = new();
 
@@ -45,6 +44,7 @@ namespace ETS2_Assist_GUI
         private Button btnMinimize = null!;
         private Button btnExit = null!;
         private Button btnRefreshTracks = null!;
+        private Button btnRandomTarget = null!;  // Кнопка "Случайная цель" (привязка в InitializeComponents)
 
         private RichTextBox logConsole = null!;
         private Panel indicatorsPanel = null!;
@@ -79,7 +79,7 @@ namespace ETS2_Assist_GUI
         private const int HOTKEY_START_REC = 9001;
         private const int HOTKEY_STOP_REC = 9002;
         private const int HOTKEY_MARKER = 9003;
-        private const int HOTKEY_TEST = 9004; // для Shift+Ctrl+T
+        private const int HOTKEY_TEST = 9004;
 
         private bool hotKeyRegistered = false;
 
@@ -102,13 +102,13 @@ namespace ETS2_Assist_GUI
         private Thread? _triggerListenerThread;
         private bool _triggerListenerRunning = false;
 
-        // ========== НАСТРОЙКИ ЗАПИСИ (будут загружаться из Settings) ==========
-        private string _recordingMode = "auto"; // "auto", "manual", "off", "trail_only"
-        private int _maxRecordingDuration = 0; // в минутах, 0 = без ограничения
+        // ========== НАСТРОЙКИ ЗАПИСИ ==========
+        private string _recordingMode = "auto";
+        private int _maxRecordingDuration = 0;
         private bool _autoSave = false;
         private string _titleSuffix = "";
         private string _description = "";
-        private int _saveFormat = 1; // 1=всё в HTML, 2=трек+плеер + карта, 3=всё отдельно
+        private int _saveFormat = 1;
 
         // ==========================================
 
@@ -135,7 +135,6 @@ namespace ETS2_Assist_GUI
             ApplyLanguage();
             RefreshUI();
 
-            // Регистрация горячих клавиш
             try
             {
                 RegisterHotKey(this.Handle, HOTKEY_SAVE, MOD_CONTROL | MOD_SHIFT, (uint)Keys.S.GetHashCode());
@@ -167,8 +166,6 @@ namespace ETS2_Assist_GUI
 
         private void LoadRecordingSettings()
         {
-            // Загружаем настройки из AppSettings (реализовать позже)
-            // Пока заглушки
             _recordingMode = "auto";
             _maxRecordingDuration = 0;
             _autoSave = false;
@@ -214,6 +211,10 @@ namespace ETS2_Assist_GUI
 
             btnRefreshTracks = new Button { Text = "Обновить список", Location = new Point(leftX, topY + 210), Size = new Size(120, 30) };
             btnRefreshTracks.Click += (s, e) => RefreshTrackList();
+
+            // Кнопка "Случайная цель"
+            btnRandomTarget = new Button { Text = "Случайная цель", Location = new Point(leftX, topY + 260), Size = new Size(120, 30) };
+            btnRandomTarget.Click += BtnRandomTarget_Click; // метод определен в QuestsManager.cs
 
             int consoleLeft = leftX + 140;
             int consoleWidth = 400;
@@ -277,7 +278,7 @@ namespace ETS2_Assist_GUI
             });
 
             this.Controls.AddRange(new Control[] {
-                btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks,
+                btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
                 logConsole, listTracks, indicatorsPanel, mainMenu
             });
         }
@@ -385,6 +386,7 @@ namespace ETS2_Assist_GUI
             btnMinimize.Text = lang.Get("ui_minimize") ?? "Minimize";
             btnExit.Text = lang.Get("ui_exit") ?? "Exit";
             btnRefreshTracks.Text = "Обновить список";
+            btnRandomTarget.Text = "Случайная цель";
             fileMenu.Text = lang.Get("ui_file") ?? "File";
             settingsMenu.Text = lang.Get("ui_settings") ?? "Settings";
             helpMenu.Text = lang.Get("ui_help") ?? "Help";
@@ -546,6 +548,7 @@ namespace ETS2_Assist_GUI
                     string file = request.QueryString["file"] ?? "save_trail.trigger";
                     string triggerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", file);
                     bool exists = File.Exists(triggerPath);
+                    AppendLog($"[HTTP] /check_trigger: file={file}, exists={exists}");
                     string json = JsonConvert.SerializeObject(new { exists = exists });
                     byte[] buffer = Encoding.UTF8.GetBytes(json);
                     response.ContentType = "application/json";
@@ -599,6 +602,32 @@ namespace ETS2_Assist_GUI
                     }
                     response.OutputStream.Close();
                 }
+                else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/update_targets")
+                {
+                    using var reader = new StreamReader(request.InputStream);
+                    var body = reader.ReadToEnd();
+                    try
+                    {
+                        var targets = JArray.Parse(body);
+                        string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "custom_targets.json");
+                        var json = new JObject { ["customTargets"] = targets };
+                        File.WriteAllText(filePath, json.ToString(Formatting.Indented));
+                        AppendLog("[HTTP] custom_targets.json обновлён.");
+                        response.StatusCode = 200;
+                        byte[] buffer = Encoding.UTF8.GetBytes("{\"success\":true}");
+                        response.ContentLength64 = buffer.Length;
+                        response.OutputStream.Write(buffer, 0, buffer.Length);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"[HTTP] Ошибка обновления custom_targets.json: {ex.Message}");
+                        response.StatusCode = 500;
+                        byte[] buffer = Encoding.UTF8.GetBytes($"{{\"error\":\"{ex.Message}\"}}");
+                        response.ContentLength64 = buffer.Length;
+                        response.OutputStream.Write(buffer, 0, buffer.Length);
+                    }
+                    response.OutputStream.Close();
+                }
                 else
                 {
                     response.StatusCode = 404;
@@ -620,21 +649,25 @@ namespace ETS2_Assist_GUI
             private static Action<string>? _log;
             private static Action<JObject>? _onTrail;
             private static Action<string>? _playSoundAction;
+            private static Action<JObject>? _onCommand;
 
             public static void SetLog(Action<string> log) => _log = log;
             public static void SetOnTrail(Action<JObject> action) => _onTrail = action;
             public static void SetPlaySoundAction(Action<string> action) => _playSoundAction = action;
+            public static void SetOnCommand(Action<JObject> action) => _onCommand = action;
 
             protected override void OnOpen()
             {
                 _log?.Invoke("[WebSocket] Клиент карты подключился");
             }
 
+
             protected override void OnMessage(MessageEventArgs e)
             {
                 try
                 {
                     var json = e.Data;
+                    _log?.Invoke($"[WebSocket] Получено сообщение: {json.Substring(0, Math.Min(json.Length, 200))}...");
                     var data = JObject.Parse(json);
 
                     if (data["command"]?.Value<string>() == "play_sound")
@@ -645,9 +678,17 @@ namespace ETS2_Assist_GUI
                         return;
                     }
 
+                    if (data["command"] != null)
+                    {
+                        _log?.Invoke($"[WebSocket] Команда от клиента: {data["command"]}");
+                        _onCommand?.Invoke(data);
+                        return;
+                    }
+
                     _log?.Invoke($"[WebSocket] Получен трек ({json.Length} байт)");
                     _onTrail?.Invoke(data);
                     Send(JsonConvert.SerializeObject(new { status = "ok", message = "Трек получен" }));
+                    _log?.Invoke("[WebSocket] Ответ отправлен клиенту");
                 }
                 catch (Exception ex)
                 {
@@ -675,6 +716,7 @@ namespace ETS2_Assist_GUI
                 TrailBehavior.SetLog(msg => AppendLog(msg));
                 TrailBehavior.SetOnTrail(data => SaveTrailFromWebSocket(data));
                 TrailBehavior.SetPlaySoundAction(PlaySound);
+                TrailBehavior.SetOnCommand(data => OnClientCommand(data)); // метод в QuestsManager
 
                 _wsSaveServer = new WebSocketSharp.Server.WebSocketServer($"ws://localhost:8084");
                 _wsSaveServer.AddWebSocketService<TrailBehavior>("/");
@@ -727,6 +769,9 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        // Метод OnClientCommand объявлен в QuestsManager.cs (partial class)
+        // В этом файле мы оставляем его объявление, но не реализацию, т.к. partial class позволяет.
+
         // ================================================================
         // СОХРАНЕНИЕ ТРЕКА (новый компактный формат)
 
@@ -745,6 +790,9 @@ namespace ETS2_Assist_GUI
                 if (mapData == null) mapData = new JObject();
                 if (mapData["cities"] == null) mapData["cities"] = new JArray();
                 if (mapData["roads"] == null) mapData["roads"] = new JArray();
+                // Добавляем customTargets из полезной нагрузки
+                if (data["customTargets"] != null)
+                    mapData["customTargets"] = data["customTargets"];
 
                 // Определяем имя файла (как было)
                 string baseName;
@@ -1174,7 +1222,7 @@ namespace ETS2_Assist_GUI
             settingsForm.ShowDialog(this);
             ApplyLanguage();
             UpdateIndicators();
-            LoadRecordingSettings(); // перезагружаем настройки
+            LoadRecordingSettings();
         }
 
         private void ShowHelp()
@@ -1388,16 +1436,21 @@ namespace ETS2_Assist_GUI
                 int id = m.WParam.ToInt32();
                 switch (id)
                 {
+                    /*
                     case HOTKEY_SAVE:
-                        if (IsGamePaused())
-                            TriggerTrailSave();
-                        else
-                            AppendLog("Hotkey save ignored: game is not paused.");
+                    
+                    if (IsGamePaused())
+                        TriggerTrailSave();
+                    else
+                        AppendLog("Hotkey save ignored: game is not paused.");
+                    break;*/
+                    case HOTKEY_SAVE:
+                        AppendLog("Hotkey save (Shift+Ctrl+S) pressed. Triggering save regardless of pause.");
+                        TriggerTrailSave();
                         break;
                     case HOTKEY_START_REC:
                         AppendLog("Hotkey start recording (Shift+Ctrl+R)");
-                        // Отправим команду на карту через WebSocket
-                        SendCommandToMap("start_recording");
+                        SendCommandToMap("start_recording"); // метод в QuestsManager
                         break;
                     case HOTKEY_STOP_REC:
                         AppendLog("Hotkey stop recording (Shift+Ctrl+X)");
@@ -1422,21 +1475,6 @@ namespace ETS2_Assist_GUI
                 return;
             }
             base.WndProc(ref m);
-        }
-
-        private void SendCommandToMap(string command)
-        {
-            if (_wsSaveRunning && _wsSaveServer != null)
-            {
-                // Отправляем команду всем подключённым клиентам
-                var msg = JsonConvert.SerializeObject(new { command = command });
-                _wsSaveServer.WebSocketServices.Broadcast(msg);
-                AppendLog($"Command '{command}' sent to map.");
-            }
-            else
-            {
-                AppendLog("Cannot send command: WebSocket save server is not running.");
-            }
         }
 
         private bool IsGamePaused()
@@ -1468,7 +1506,7 @@ namespace ETS2_Assist_GUI
             {
                 string triggerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "save_trail.trigger");
                 File.WriteAllText(triggerPath, "trigger");
-                AppendLog("Trail save triggered.");
+                AppendLog($"Trail save triggered. File created: {triggerPath}");
                 trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Сохранение трека инициировано.", ToolTipIcon.Info);
             }
             catch (Exception ex)
