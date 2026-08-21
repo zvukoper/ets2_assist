@@ -13,7 +13,6 @@ namespace ETS2_Assist_GUI
         // ГЕНЕРАЦИЯ HTML-ПЛЕЕРА ДЛЯ КОМПАКТНОГО ТРЕКА
         // ================================================================
 
-
         private string GenerateTrailHtml(string compactData, JObject? meta, JObject? mapData)
         {
             string escapedData = JsonConvert.ToString(compactData);
@@ -53,6 +52,8 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        #prIndicator .pr-bar { width:60px; height:6px; background:#2a3545; border-radius:3px; overflow:hidden; }");
             sb.AppendLine("        #prIndicator .pr-fill { height:100%; border-radius:3px; transition:width 0.05s; }");
             sb.AppendLine("        #prIndicator .pr-label { color:#8fa0b9; font-size:10px; min-width:30px; text-align:right; }");
+            sb.AppendLine("        /* Debug log */");
+            sb.AppendLine("        #debugLog { position:absolute; bottom:200px; right:20px; background:rgba(0,0,0,0.8); padding:4px 10px; border-radius:4px; font-size:9px; color:#88ff88; font-family:monospace; pointer-events:none; z-index:100; border:1px solid #4a5a6a; max-height:100px; overflow-y:auto; }");
             sb.AppendLine("    </style>");
             sb.AppendLine("</head>");
             sb.AppendLine("<body>");
@@ -73,6 +74,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        <span class=\"pr-label\" id=\"rollLabel\">0</span>");
             sb.AppendLine("    </div>");
             sb.AppendLine("</div>");
+            sb.AppendLine("<div id=\"debugLog\">Debug</div>");
             sb.AppendLine("<canvas id=\"mapCanvas\"></canvas>");
             sb.AppendLine("<div id=\"controls\">");
             sb.AppendLine("    <div id=\"controlsTop\">");
@@ -102,6 +104,11 @@ namespace ETS2_Assist_GUI
             sb.AppendLine($"const metaData = {metaJson};");
             sb.AppendLine($"const mapData = {mapJson};");
             sb.AppendLine("");
+
+            // Добавляем константу для NEARBY_CITIES_COUNT
+            sb.AppendLine("const NEARBY_CITIES_COUNT = 4;");
+            sb.AppendLine("");
+
             sb.AppendLine("// ================================================================");
             sb.AppendLine("// ПАРСЕР КОМПАКТНОГО ТРЕКА");
             sb.AppendLine("// ================================================================");
@@ -115,12 +122,24 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("    const events = [];");
             sb.AppendLine("    const eventTypes = meta.eventTypes || {};");
             sb.AppendLine("    const typeNames = Object.fromEntries(Object.entries(eventTypes).map(([k,v]) => [v,k]));");
+            sb.AppendLine("    const debugLines = [];");
             sb.AppendLine("    for (let i=1; i<lines.length; i++) {");
             sb.AppendLine("        const parts = lines[i].split(';');");
             sb.AppendLine("        if (parts.length === 0) continue;");
             sb.AppendLine("        const type = parts[0];");
             sb.AppendLine("        if (type === 'D') {");
-            sb.AppendLine("            dataPoints.push({ t: parseFloat(parts[1]), x: parseFloat(parts[2]), z: parseFloat(parts[3]), heading: parseFloat(parts[4]), fuel: parseFloat(parts[5]), damage: parseFloat(parts[6]), pitch: parseFloat(parts[7] || 0), roll: parseFloat(parts[8] || 0) });");
+            sb.AppendLine("            const dp = {");
+            sb.AppendLine("                t: parseFloat(parts[1]),");
+            sb.AppendLine("                x: parseFloat(parts[2]),");
+            sb.AppendLine("                z: parseFloat(parts[3]),");
+            sb.AppendLine("                heading: parseFloat(parts[4]),");
+            sb.AppendLine("                fuel: parseFloat(parts[5]),");
+            sb.AppendLine("                damage: parseFloat(parts[6]),");
+            sb.AppendLine("                pitch: parseFloat(parts[7] || 0),");
+            sb.AppendLine("                roll: parseFloat(parts[8] || 0)");
+            sb.AppendLine("            };");
+            sb.AppendLine("            dataPoints.push(dp);");
+            sb.AppendLine("            debugLines.push(`[DEBUG] D: t=${dp.t}, pitch=${dp.pitch}, roll=${dp.roll}`);");
             sb.AppendLine("        } else if (type === 'E') {");
             sb.AppendLine("            const eType = typeNames[parseInt(parts[4])] || 'unknown';");
             sb.AppendLine("            events.push({ t: parseFloat(parts[1]), x: parseFloat(parts[2]), z: parseFloat(parts[3]), type: eType, label: parts[5], color: parts[6], subtext: parts[7] });");
@@ -128,37 +147,59 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("            trail.push({ t: parseFloat(parts[0]), x: parseFloat(parts[1]), z: parseFloat(parts[2]), heading: parseFloat(parts[3]), speed: parseFloat(parts[4]) });");
             sb.AppendLine("        }");
             sb.AppendLine("    }");
+            sb.AppendLine("    // Выводим отладку в консоль");
+            sb.AppendLine("    console.log('[DEBUG] Parsed trail points:', trail.length);");
+            sb.AppendLine("    console.log('[DEBUG] Parsed data points:', dataPoints.length);");
+            sb.AppendLine("    console.log('[DEBUG] Parsed events:', events.length);");
+            sb.AppendLine("    if (dataPoints.length > 0) {");
+            sb.AppendLine("        console.log('[DEBUG] First data point:', dataPoints[0]);");
+            sb.AppendLine("    }");
+            sb.AppendLine("    // Выводим в debugLog на странице");
+            sb.AppendLine("    const logDiv = document.getElementById('debugLog');");
+            sb.AppendLine("    if (logDiv) {");
+            sb.AppendLine("        logDiv.innerHTML = 'Data points: ' + dataPoints.length + ' | Trail: ' + trail.length + '<br>' + debugLines.slice(0,5).join('<br>');");
+            sb.AppendLine("    }");
             sb.AppendLine("    return { meta, trail, dataPoints, events };");
             sb.AppendLine("}");
             sb.AppendLine("");
+
             sb.AppendLine("const parsed = parseTrail(compactData);");
             sb.AppendLine("const trailPoints = parsed.trail;");
             sb.AppendLine("const dataPoints = parsed.dataPoints;");
             sb.AppendLine("const events = parsed.events;");
             sb.AppendLine("const meta = parsed.meta;");
             sb.AppendLine("");
-            sb.AppendLine("// Данные карты (города, дороги)");
+
+            sb.AppendLine("// Данные карты (города, дороги, цели)");
             sb.AppendLine("const cities = mapData?.cities || [];");
             sb.AppendLine("const roads = mapData?.roads || [];");
+            sb.AppendLine("const customTargets = mapData?.customTargets || [];");
+            sb.AppendLine("console.log('[DEBUG] Cities:', cities.length, 'Roads:', roads.length, 'Targets:', customTargets.length);");
             sb.AppendLine("");
+
             sb.AppendLine("// Времена точек");
             sb.AppendLine("const times = trailPoints.map(p => p.t);");
             sb.AppendLine("const totalDuration = times.length > 0 ? times[times.length-1] : 0;");
             sb.AppendLine("");
+
             sb.AppendLine("// Заголовок");
             sb.AppendLine("const title = meta.title || '';");
             sb.AppendLine("const desc = meta.description || '';");
             sb.AppendLine("document.getElementById('titlePanel').innerHTML = title + (desc ? '<br><span style=\"font-size:10px;color:#888;\">'+desc+'</span>' : '');");
             sb.AppendLine("");
+
             sb.AppendLine("const canvas = document.getElementById('mapCanvas');");
             sb.AppendLine("const ctx = canvas.getContext('2d');");
             sb.AppendLine("let W, H;");
             sb.AppendLine("function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight - 150; drawMap(); }");
             sb.AppendLine("window.addEventListener('resize', resize);");
             sb.AppendLine("");
+
             sb.AppendLine("let centerX = 0, centerZ = 0, scale = 1;");
             sb.AppendLine("let dragStartX = 0, dragStartY = 0, dragStartCX = 0, dragStartCZ = 0, isDragging = false;");
+            sb.AppendLine("let targetCenterX = 0, targetCenterZ = 0; // для плавного слежения");
             sb.AppendLine("");
+
             sb.AppendLine("function fitMap() {");
             sb.AppendLine("    if (trailPoints.length < 2) return;");
             sb.AppendLine("    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;");
@@ -168,16 +209,20 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("    }");
             sb.AppendLine("    centerX = (minX + maxX) / 2;");
             sb.AppendLine("    centerZ = (minZ + maxZ) / 2;");
+            sb.AppendLine("    targetCenterX = centerX;");
+            sb.AppendLine("    targetCenterZ = centerZ;");
             sb.AppendLine("    const range = Math.max(maxX - minX, maxZ - minZ, 1);");
             sb.AppendLine("    scale = (Math.min(W, H) * 0.85) / (range * 1.15);");
             sb.AppendLine("}");
             sb.AppendLine("");
+
             sb.AppendLine("function worldToScreen(wx, wz) {");
             sb.AppendLine("    const dx = (wx - centerX) * scale;");
             sb.AppendLine("    const dz = (wz - centerZ) * scale;");
             sb.AppendLine("    return { x: W/2 + dx, y: H/2 - dz };");
             sb.AppendLine("}");
             sb.AppendLine("");
+
             sb.AppendLine("function getTrailColor(speed) {");
             sb.AppendLine("    const minS = meta.minSpeed || 0;");
             sb.AppendLine("    const maxS = meta.maxSpeed || 125;");
@@ -192,6 +237,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;");
             sb.AppendLine("}");
             sb.AppendLine("");
+
             sb.AppendLine("// ================================================================");
             sb.AppendLine("// ОТРИСОВКА КАРТЫ");
             sb.AppendLine("// ================================================================");
@@ -212,7 +258,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        ctx.strokeStyle = '#5a7a8a'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.6; ctx.stroke();");
             sb.AppendLine("    }");
             sb.AppendLine("    ctx.globalAlpha = 1;");
-            sb.AppendLine("    // Города");
+            sb.AppendLine("    // Города (видимые)");
             sb.AppendLine("    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';");
             sb.AppendLine("    for (const c of cities) {");
             sb.AppendLine("        const p = worldToScreen(c.x, c.z);");
@@ -220,6 +266,68 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, 2*Math.PI);");
             sb.AppendLine("        ctx.fillStyle = '#ffdd88'; ctx.shadowColor = '#ffdd8844'; ctx.shadowBlur = 6; ctx.fill(); ctx.shadowBlur = 0;");
             sb.AppendLine("        ctx.font = '10px \"Segoe UI\"'; ctx.fillStyle = '#c8ddee'; ctx.fillText(c.name, p.x, p.y-6);");
+            sb.AppendLine("    }");
+            sb.AppendLine("    // Цели (видимые)");
+            sb.AppendLine("    for (const t of customTargets) {");
+            sb.AppendLine("        const p = worldToScreen(t.x, t.z);");
+            sb.AppendLine("        if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;");
+            sb.AppendLine("        ctx.beginPath(); ctx.arc(p.x, p.y, t.active ? 6 : 4, 0, 2*Math.PI);");
+            sb.AppendLine("        ctx.fillStyle = t.active ? (t.color || '#ffc857') : (t.color || '#88aadd');");
+            sb.AppendLine("        ctx.shadowColor = t.active ? '#ffc85788' : '#88aadd88';");
+            sb.AppendLine("        ctx.shadowBlur = t.active ? 16 : 8;");
+            sb.AppendLine("        ctx.fill(); ctx.shadowBlur = 0;");
+            sb.AppendLine("        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = t.active ? 1.5 : 0.5; ctx.stroke();");
+            sb.AppendLine("        ctx.font = t.active ? 'bold 10px \"Segoe UI\"' : '9px \"Segoe UI\"';");
+            sb.AppendLine("        ctx.fillStyle = '#fff'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4;");
+            sb.AppendLine("        ctx.fillText(t.name, p.x, p.y - (t.active ? 14 : 10));");
+            sb.AppendLine("        ctx.shadowBlur=0;");
+            sb.AppendLine("    }");
+            sb.AppendLine("    // Ближайшие города и цели за пределами экрана");
+            sb.AppendLine("    const cx = W/2, cy = H/2;");
+            sb.AppendLine("    const radius = Math.min(W, H) * 0.42;");
+            sb.AppendLine("    const currentPos = currentIndex < trailPoints.length ? trailPoints[currentIndex] : { x:0, z:0 };");
+            sb.AppendLine("    // Ближайшие города");
+            sb.AppendLine("    const cityDist = cities.map(c => ({ ...c, dist: Math.hypot(c.x - currentPos.x, c.z - currentPos.z) }));");
+            sb.AppendLine("    cityDist.sort((a,b) => a.dist - b.dist);");
+            sb.AppendLine("    const nearCities = cityDist.slice(0, NEARBY_CITIES_COUNT);");
+            sb.AppendLine("    for (const c of nearCities) {");
+            sb.AppendLine("        const p = worldToScreen(c.x, c.z);");
+            sb.AppendLine("        if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) continue;");
+            sb.AppendLine("        const dx = p.x - cx, dy = p.y - cy; const len = Math.hypot(dx, dy); if (len < 0.01) continue;");
+            sb.AppendLine("        const nx = dx/len, ny = dy/len;");
+            sb.AppendLine("        const arrowX = cx + nx * radius, arrowY = cy + ny * radius;");
+            sb.AppendLine("        const angle = Math.atan2(ny, nx);");
+            sb.AppendLine("        ctx.save(); ctx.translate(arrowX, arrowY); ctx.rotate(angle);");
+            sb.AppendLine("        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath();");
+            sb.AppendLine("        ctx.fillStyle = '#aabbcc'; ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=4; ctx.fill();");
+            sb.AppendLine("        ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0; ctx.restore();");
+            sb.AppendLine("        let lx = arrowX, ly = (ny>0) ? arrowY-16 : arrowY+22;");
+            sb.AppendLine("        if (lx < 50) lx = 50; if (lx > W-50) lx = W-50; if (ly < 20) ly = 20; if (ly > H-20) ly = H-20;");
+            sb.AppendLine("        ctx.font = '10px \"Segoe UI\"'; ctx.fillStyle = '#c8ddee'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4;");
+            sb.AppendLine("        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';");
+            sb.AppendLine("        ctx.fillText(`${c.name} (${formatDistance(c.dist)})`, lx, ly);");
+            sb.AppendLine("        ctx.shadowBlur = 0;");
+            sb.AppendLine("    }");
+            sb.AppendLine("    // Цели за пределами экрана");
+            sb.AppendLine("    for (const t of customTargets) {");
+            sb.AppendLine("        const p = worldToScreen(t.x, t.z);");
+            sb.AppendLine("        if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) continue;");
+            sb.AppendLine("        const dx = p.x - cx, dy = p.y - cy; const len = Math.hypot(dx, dy); if (len < 0.01) continue;");
+            sb.AppendLine("        const nx = dx/len, ny = dy/len;");
+            sb.AppendLine("        const arrowX = cx + nx * radius, arrowY = cy + ny * radius;");
+            sb.AppendLine("        const angle = Math.atan2(ny, nx);");
+            sb.AppendLine("        const color = t.active ? (t.color || '#ffc857') : (t.color || '#88aadd');");
+            sb.AppendLine("        ctx.save(); ctx.translate(arrowX, arrowY); ctx.rotate(angle);");
+            sb.AppendLine("        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath();");
+            sb.AppendLine("        ctx.fillStyle = color; ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=4; ctx.fill();");
+            sb.AppendLine("        ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); ctx.shadowBlur=0; ctx.restore();");
+            sb.AppendLine("        let lx = arrowX, ly = (ny>0) ? arrowY-16 : arrowY+22;");
+            sb.AppendLine("        if (lx < 50) lx = 50; if (lx > W-50) lx = W-50; if (ly < 20) ly = 20; if (ly > H-20) ly = H-20;");
+            sb.AppendLine("        ctx.font = t.active ? 'bold 10px \"Segoe UI\"' : '9px \"Segoe UI\"';");
+            sb.AppendLine("        ctx.fillStyle = '#fff'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4;");
+            sb.AppendLine("        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';");
+            sb.AppendLine("        ctx.fillText(`${t.name} (${formatDistance(t.dist || 0)})`, lx, ly);");
+            sb.AppendLine("        ctx.shadowBlur = 0;");
             sb.AppendLine("    }");
             sb.AppendLine("    // Шлейф");
             sb.AppendLine("    if (trailPoints.length > 1) {");
@@ -255,7 +363,6 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("            const clampedProgress = Math.max(0, Math.min(1, progress));");
             sb.AppendLine("            currentPos.x = p1.x + (p2.x - p1.x) * clampedProgress;");
             sb.AppendLine("            currentPos.z = p1.z + (p2.z - p1.z) * clampedProgress;");
-            sb.AppendLine("            // Интерполяция heading с учётом перехода через 2π");
             sb.AppendLine("            let h1 = p1.heading || 0;");
             sb.AppendLine("            let h2 = p2.heading || 0;");
             sb.AppendLine("            let diff = h2 - h1;");
@@ -273,10 +380,20 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        ctx.restore();");
             sb.AppendLine("        // Скорость под грузовиком");
             sb.AppendLine("        ctx.save(); ctx.translate(sp.x, sp.y+22); ctx.font='10px \"Segoe UI\"'; ctx.fillStyle='#fff'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(`${currentPos.speed.toFixed(0)} km/h`,0,0); ctx.restore();");
+            sb.AppendLine("        // Обновление целевого центра для плавного слежения (интерполяция камеры)");
+            sb.AppendLine("        if (follow) {");
+            sb.AppendLine("            targetCenterX = currentPos.x;");
+            sb.AppendLine("            targetCenterZ = currentPos.z;");
+            sb.AppendLine("        }");
+            sb.AppendLine("        // Плавное движение камеры");
+            sb.AppendLine("        const camSmooth = 0.15;");
+            sb.AppendLine("        centerX += (targetCenterX - centerX) * camSmooth;");
+            sb.AppendLine("        centerZ += (targetCenterZ - centerZ) * camSmooth;");
             sb.AppendLine("    }");
-            sb.AppendLine("    // Данные (топливо, повреждения)");
+            sb.AppendLine("    // Данные (топливо, повреждения, pitch/roll)");
+            sb.AppendLine("    let closest = null;");
             sb.AppendLine("    if (dataPoints.length > 0 && currentIndex < trailPoints.length) {");
-            sb.AppendLine("        let closest = null; let minDist = Infinity;");
+            sb.AppendLine("        let minDist = Infinity;");
             sb.AppendLine("        const curP = trailPoints[currentIndex];");
             sb.AppendLine("        for (const dp of dataPoints) {");
             sb.AppendLine("            const d = Math.hypot(dp.x - curP.x, dp.z - curP.z);");
@@ -284,19 +401,29 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        }");
             sb.AppendLine("        if (closest) {");
             sb.AppendLine("            document.getElementById('dataPanel').innerHTML = `⛽ ${closest.fuel.toFixed(1) || '--'} л &nbsp;|&nbsp; 🛠️ ${closest.damage.toFixed(1) || '--'}%`;");
+            sb.AppendLine("            // Обновляем индикатор pitch/roll (умножаем на 1000 для наглядности)");
+            sb.AppendLine("            const pitchVal = closest.pitch || 0;");
+            sb.AppendLine("            const rollVal = closest.roll || 0;");
+            sb.AppendLine("            const pitchDisplay = pitchVal * 1000;");
+            sb.AppendLine("            const rollDisplay = rollVal * 1000;");
+            sb.AppendLine("            document.getElementById('pitchFill').style.width = Math.min(100, Math.max(0, 50 + pitchDisplay * 0.5)) + '%';");
+            sb.AppendLine("            document.getElementById('rollFill').style.width = Math.min(100, Math.max(0, 50 + rollDisplay * 0.5)) + '%';");
+            sb.AppendLine("            document.getElementById('pitchLabel').textContent = pitchDisplay.toFixed(0);");
+            sb.AppendLine("            document.getElementById('rollLabel').textContent = rollDisplay.toFixed(0);");
+            sb.AppendLine("            console.log(`[DEBUG] closest pitch=${closest.pitch}, roll=${closest.roll}, display: ${pitchDisplay}, ${rollDisplay}`);");
+            sb.AppendLine("        } else {");
+            sb.AppendLine("            console.log('[DEBUG] closest is null');");
             sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("    // Обновляем индикатор pitch/roll (умножаем на 1000 для наглядности)");
-            sb.AppendLine("    if (closest && closest.pitch !== undefined && closest.roll !== undefined) {");
-            sb.AppendLine("        const pitchVal = closest.pitch * 1000;");
-            sb.AppendLine("        const rollVal = closest.roll * 1000;");
-            sb.AppendLine("        document.getElementById('pitchFill').style.width = Math.min(100, Math.max(0, 50 + pitchVal * 5)) + '%';");
-            sb.AppendLine("        document.getElementById('rollFill').style.width = Math.min(100, Math.max(0, 50 + rollVal * 5)) + '%';");
-            sb.AppendLine("        document.getElementById('pitchLabel').textContent = pitchVal.toFixed(0);");
-            sb.AppendLine("        document.getElementById('rollLabel').textContent = rollVal.toFixed(0);");
+            sb.AppendLine("    } else {");
+            sb.AppendLine("        console.log('[DEBUG] No dataPoints or currentIndex out of range');");
             sb.AppendLine("    }");
             sb.AppendLine("}");
             sb.AppendLine("");
+
+            sb.AppendLine("// formatDistance для подписей");
+            sb.AppendLine("function formatDistance(d) { if (d < 1000) return Math.round(d)+'м'; return (Math.round(d/1000))+'км'; }");
+            sb.AppendLine("");
+
             sb.AppendLine("// ================================================================");
             sb.AppendLine("// УПРАВЛЕНИЕ КАРТОЙ");
             sb.AppendLine("// ================================================================");
@@ -306,6 +433,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("    scale *= delta; if (scale < 0.001) scale = 0.001; if (scale > 1000) scale = 1000; drawMap();");
             sb.AppendLine("}, { passive: false });");
             sb.AppendLine("");
+
             sb.AppendLine("canvas.addEventListener('mousedown', (e) => {");
             sb.AppendLine("    if (e.button === 0) {");
             sb.AppendLine("        isDragging = true;");
@@ -320,6 +448,8 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        const dy = (dragStartY - e.clientY) / scale;");
             sb.AppendLine("        centerX = dragStartCX - dx;");
             sb.AppendLine("        centerZ = dragStartCZ - dy;");
+            sb.AppendLine("        targetCenterX = centerX;");
+            sb.AppendLine("        targetCenterZ = centerZ;");
             sb.AppendLine("        drawMap();");
             sb.AppendLine("    }");
             sb.AppendLine("    // Координаты под курсором");
@@ -334,6 +464,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("});");
             sb.AppendLine("window.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; canvas.style.cursor = 'grab'; } });");
             sb.AppendLine("");
+
             sb.AppendLine("// Клик для копирования координат и заметок");
             sb.AppendLine("let notes = [];");
             sb.AppendLine("canvas.addEventListener('click', (e) => {");
@@ -349,6 +480,12 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("    for (const c of cities) {");
             sb.AppendLine("        const dx = c.x - wx; const dz = c.z - wz;");
             sb.AppendLine("        if (dx*dx + dz*dz < 100) { objName = c.name; break; }");
+            sb.AppendLine("    }");
+            sb.AppendLine("    if (!objName) {");
+            sb.AppendLine("        for (const t of customTargets) {");
+            sb.AppendLine("            const dx = t.x - wx; const dz = t.z - wz;");
+            sb.AppendLine("            if (dx*dx + dz*dz < 100) { objName = t.name; break; }");
+            sb.AppendLine("        }");
             sb.AppendLine("    }");
             sb.AppendLine("    if (!objName) {");
             sb.AppendLine("        for (const e of events) {");
@@ -367,6 +504,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("    setTimeout(() => toast.remove(), 2000);");
             sb.AppendLine("});");
             sb.AppendLine("");
+
             sb.AppendLine("// Измерение расстояния (двойной клик)");
             sb.AppendLine("let measureMode = false; let measureStart = null;");
             sb.AppendLine("canvas.addEventListener('dblclick', (e) => {");
@@ -390,6 +528,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("    setTimeout(() => document.getElementById('measureTool').classList.remove('active'), 5000);");
             sb.AppendLine("});");
             sb.AppendLine("");
+
             sb.AppendLine("// ================================================================");
             sb.AppendLine("// ТАЙМЛАЙН И ВОСПРОИЗВЕДЕНИЕ");
             sb.AppendLine("// ================================================================");
@@ -402,6 +541,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("let playStartElapsed = 0;");
             sb.AppendLine("let currentTime = 0;");
             sb.AppendLine("");
+
             sb.AppendLine("const playBtn = document.getElementById('playBtn');");
             sb.AppendLine("const speedLabel = document.getElementById('speedLabel');");
             sb.AppendLine("const timeSlider = document.getElementById('timeSlider');");
@@ -416,6 +556,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("const prevEventBtn = document.getElementById('prevEventBtn');");
             sb.AppendLine("const nextEventBtn = document.getElementById('nextEventBtn');");
             sb.AppendLine("");
+
             sb.AppendLine("function formatTime(seconds) {");
             sb.AppendLine("    const h = Math.floor(seconds / 3600);");
             sb.AppendLine("    const m = Math.floor((seconds % 3600) / 60);");
@@ -424,6 +565,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;");
             sb.AppendLine("}");
             sb.AppendLine("");
+
             sb.AppendLine("function updateTimeDisplay() {");
             sb.AppendLine("    const percent = totalDuration > 0 ? currentTime / totalDuration : 0;");
             sb.AppendLine("    timeSlider.value = percent * 1000;");
@@ -431,6 +573,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("    drawMap();");
             sb.AppendLine("}");
             sb.AppendLine("");
+
             sb.AppendLine("function setTimeByValue(value) {");
             sb.AppendLine("    const target = value * totalDuration;");
             sb.AppendLine("    currentTime = Math.min(target, totalDuration);");
@@ -440,10 +583,11 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        if (times[i] <= currentTime) idx = i; else break;");
             sb.AppendLine("    }");
             sb.AppendLine("    currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("    if (follow) { const p = trailPoints[currentIndex]; centerX = p.x; centerZ = p.z; }");
+            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
             sb.AppendLine("    updateTimeDisplay();");
             sb.AppendLine("}");
             sb.AppendLine("");
+
             sb.AppendLine("function playStep() {");
             sb.AppendLine("    if (!playing) return;");
             sb.AppendLine("    const now = performance.now() / 1000;");
@@ -456,7 +600,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        if (times[i] <= currentTime) idx = i; else break;");
             sb.AppendLine("    }");
             sb.AppendLine("    currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("    if (follow) { const p = trailPoints[currentIndex]; centerX = p.x; centerZ = p.z; }");
+            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
             sb.AppendLine("    updateTimeDisplay();");
             sb.AppendLine("    if (currentTime >= totalDuration) {");
             sb.AppendLine("        playing = false;");
@@ -466,32 +610,36 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("    requestAnimationFrame(playStep);");
             sb.AppendLine("}");
             sb.AppendLine("");
+
             sb.AppendLine("// Управление");
             sb.AppendLine("playBtn.addEventListener('click', () => {");
             sb.AppendLine("    playing = !playing;");
             sb.AppendLine("    playBtn.textContent = playing ? '⏸' : '▶';");
             sb.AppendLine("    if (playing) {");
-            sb.AppendLine("        if (currentTime >= totalDuration) { currentTime = 0; currentIndex = 0; if (follow) { const p = trailPoints[0]; centerX=p.x; centerZ=p.z; } }");
+            sb.AppendLine("        if (currentTime >= totalDuration) { currentTime = 0; currentIndex = 0; if (follow) { targetCenterX = trailPoints[0].x; targetCenterZ = trailPoints[0].z; } }");
             sb.AppendLine("        playStartTime = performance.now() / 1000;");
             sb.AppendLine("        playStartElapsed = currentTime;");
             sb.AppendLine("        playStep();");
             sb.AppendLine("    }");
             sb.AppendLine("});");
             sb.AppendLine("");
+
             sb.AppendLine("beginBtn.addEventListener('click', () => {");
             sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
             sb.AppendLine("    currentTime = 0; currentIndex = 0;");
-            sb.AppendLine("    if (follow) { const p = trailPoints[0]; centerX = p.x; centerZ = p.z; }");
+            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[0].x; targetCenterZ = trailPoints[0].z; }");
             sb.AppendLine("    updateTimeDisplay();");
             sb.AppendLine("});");
             sb.AppendLine("");
+
             sb.AppendLine("endBtn.addEventListener('click', () => {");
             sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
             sb.AppendLine("    currentTime = totalDuration; currentIndex = trailPoints.length-1;");
-            sb.AppendLine("    if (follow) { const p = trailPoints[currentIndex]; centerX = p.x; centerZ = p.z; }");
+            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
             sb.AppendLine("    updateTimeDisplay();");
             sb.AppendLine("});");
             sb.AppendLine("");
+
             sb.AppendLine("stepBackBtn.addEventListener('click', () => {");
             sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
             sb.AppendLine("    const step = parseFloat(stepInput.value) || 1;");
@@ -503,10 +651,11 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        if (times[i] <= currentTime) idx = i; else break;");
             sb.AppendLine("    }");
             sb.AppendLine("    currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("    if (follow) { const p = trailPoints[currentIndex]; centerX = p.x; centerZ = p.z; }");
+            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
             sb.AppendLine("    updateTimeDisplay();");
             sb.AppendLine("});");
             sb.AppendLine("");
+
             sb.AppendLine("stepForwardBtn.addEventListener('click', () => {");
             sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
             sb.AppendLine("    const step = parseFloat(stepInput.value) || 1;");
@@ -518,10 +667,11 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        if (times[i] <= currentTime) idx = i; else break;");
             sb.AppendLine("    }");
             sb.AppendLine("    currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("    if (follow) { const p = trailPoints[currentIndex]; centerX = p.x; centerZ = p.z; }");
+            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
             sb.AppendLine("    updateTimeDisplay();");
             sb.AppendLine("});");
             sb.AppendLine("");
+
             sb.AppendLine("prevEventBtn.addEventListener('click', () => {");
             sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
             sb.AppendLine("    const currentT = currentTime;");
@@ -536,11 +686,12 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("            if (times[i] <= currentTime) idx = i; else break;");
             sb.AppendLine("        }");
             sb.AppendLine("        currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("        if (follow) { const p = trailPoints[currentIndex]; centerX = p.x; centerZ = p.z; }");
+            sb.AppendLine("        if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
             sb.AppendLine("        updateTimeDisplay();");
             sb.AppendLine("    }");
             sb.AppendLine("});");
             sb.AppendLine("");
+
             sb.AppendLine("nextEventBtn.addEventListener('click', () => {");
             sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
             sb.AppendLine("    const currentT = currentTime;");
@@ -555,26 +706,37 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("            if (times[i] <= currentTime) idx = i; else break;");
             sb.AppendLine("        }");
             sb.AppendLine("        currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("        if (follow) { const p = trailPoints[currentIndex]; centerX = p.x; centerZ = p.z; }");
+            sb.AppendLine("        if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
             sb.AppendLine("        updateTimeDisplay();");
             sb.AppendLine("    }");
             sb.AppendLine("});");
             sb.AppendLine("");
+
             sb.AppendLine("speedDownBtn.addEventListener('click', () => { speedFactor = Math.max(0.5, speedFactor/1.5); speedLabel.textContent = speedFactor.toFixed(1)+'×'; });");
             sb.AppendLine("speedUpBtn.addEventListener('click', () => { speedFactor = Math.min(5, speedFactor*1.5); speedLabel.textContent = speedFactor.toFixed(1)+'×'; });");
             sb.AppendLine("");
+
             sb.AppendLine("timeSlider.addEventListener('input', () => {");
             sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
             sb.AppendLine("    const val = parseFloat(timeSlider.value) / 1000;");
             sb.AppendLine("    setTimeByValue(val);");
             sb.AppendLine("});");
             sb.AppendLine("");
-            sb.AppendLine("followCheck.addEventListener('change', () => { follow = followCheck.checked; if (follow && currentIndex < trailPoints.length) { const p = trailPoints[currentIndex]; centerX=p.x; centerZ=p.z; drawMap(); } });");
+
+            sb.AppendLine("followCheck.addEventListener('change', () => {");
+            sb.AppendLine("    follow = followCheck.checked;");
+            sb.AppendLine("    if (follow && currentIndex < trailPoints.length) {");
+            sb.AppendLine("        targetCenterX = trailPoints[currentIndex].x;");
+            sb.AppendLine("        targetCenterZ = trailPoints[currentIndex].z;");
+            sb.AppendLine("        drawMap();");
+            sb.AppendLine("    }");
+            sb.AppendLine("});");
             sb.AppendLine("interpolateCheck.addEventListener('change', () => { interpolate = interpolateCheck.checked; drawMap(); });");
             sb.AppendLine("");
+
             sb.AppendLine("// Инициализация");
             sb.AppendLine("resize(); fitMap();");
-            sb.AppendLine("if (trailPoints.length > 0) { currentTime = 0; currentIndex = 0; const p = trailPoints[0]; centerX=p.x; centerZ=p.z; }");
+            sb.AppendLine("if (trailPoints.length > 0) { currentTime = 0; currentIndex = 0; targetCenterX = trailPoints[0].x; targetCenterZ = trailPoints[0].z; centerX = targetCenterX; centerZ = targetCenterZ; }");
             sb.AppendLine("drawMap(); updateTimeDisplay();");
             sb.AppendLine("window.addEventListener('resize', () => { resize(); fitMap(); drawMap(); });");
             sb.AppendLine("</script>");
