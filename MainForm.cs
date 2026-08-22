@@ -110,6 +110,10 @@ namespace ETS2_Assist_GUI
         private string _description = "";
         private int _saveFormat = 1;
 
+        // ========== УПРАВЛЕНИЕ ПОЯВЛЕНИЕМ UI ==========
+        private bool _uiShown = false;
+        private System.Windows.Forms.Timer _pauseCheckTimer;
+
         // ==========================================
 
         public MainForm()
@@ -463,6 +467,9 @@ namespace ETS2_Assist_GUI
 
             StartWebOverlay();
 
+            // Запускаем проверку паузы для показа UI
+            StartPauseCheck();
+
             AppendLog("System started successfully.");
 
             UpdateStartButton();
@@ -768,9 +775,6 @@ namespace ETS2_Assist_GUI
                 AppendLog($"[Sound] Ошибка воспроизведения: {ex.Message}");
             }
         }
-
-        // Метод OnClientCommand объявлен в QuestsManager.cs (partial class)
-        // В этом файле мы оставляем его объявление, но не реализацию, т.к. partial class позволяет.
 
         // ================================================================
         // СОХРАНЕНИЕ ТРЕКА (новый компактный формат)
@@ -1436,14 +1440,6 @@ namespace ETS2_Assist_GUI
                 int id = m.WParam.ToInt32();
                 switch (id)
                 {
-                    /*
-                    case HOTKEY_SAVE:
-                    
-                    if (IsGamePaused())
-                        TriggerTrailSave();
-                    else
-                        AppendLog("Hotkey save ignored: game is not paused.");
-                    break;*/
                     case HOTKEY_SAVE:
                         AppendLog("Hotkey save (Shift+Ctrl+S) pressed. Triggering save regardless of pause.");
                         TriggerTrailSave();
@@ -1549,6 +1545,57 @@ namespace ETS2_Assist_GUI
             testForm.Controls.Add(btnClose);
             testForm.Controls.Add(lblInfo);
             testForm.ShowDialog(this);
+        }
+
+        // ================================================================
+        // УПРАВЛЕНИЕ ПОЯВЛЕНИЕМ UI ПОСЛЕ ВЫХОДА ИЗ ПАУЗЫ
+        // ================================================================
+        private void StartPauseCheck()
+        {
+            _pauseCheckTimer = new System.Windows.Forms.Timer();
+            _pauseCheckTimer.Interval = 1000;
+            _pauseCheckTimer.Tick += (s, e) => CheckPauseAndShowUI();
+            _pauseCheckTimer.Start();
+            AppendLog("Pause check timer started.");
+        }
+
+        private async void CheckPauseAndShowUI()
+        {
+            if (_uiShown) return;
+            bool paused = await IsGamePausedAsync();
+            if (paused)
+            {
+                // Игра на паузе – ждём
+                return;
+            }
+            // Игра вышла из паузы – показываем UI
+            _uiShown = true;
+            _pauseCheckTimer?.Stop();
+            SendCommandToMap("show_ui");
+            AppendLog("[UI] Отправлена команда show_ui на веб-страницы");
+        }
+
+        private async Task<bool> IsGamePausedAsync()
+        {
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromSeconds(1);
+                    var response = await client.GetAsync("http://localhost:25555/api/ets2/telemetry");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var json = await response.Content.ReadAsStringAsync();
+                        var obj = JObject.Parse(json);
+                        return obj["game"]?["paused"]?.Value<bool>() ?? false;
+                    }
+                }
+            }
+            catch
+            {
+                // Если не удалось получить, считаем не на паузе (чтобы не блокировать показ)
+            }
+            return false;
         }
 
         // ================================================================

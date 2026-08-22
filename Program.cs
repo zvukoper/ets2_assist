@@ -30,6 +30,12 @@ namespace ETS2_Assist_GUI
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            // Показываем сплеш-экран с логотипом
+            using (var splash = new SplashForm())
+            {
+                splash.ShowDialog();
+            }
+
             try
             {
                 Application.Run(new MainForm());
