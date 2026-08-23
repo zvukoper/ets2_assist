@@ -25,6 +25,11 @@ namespace ETS2_Assist_GUI
 {
     public partial class MainForm : Form
     {
+
+        private bool _uiShown = false;
+        private bool _lastPauseState = false;
+        private System.Windows.Forms.Timer _pauseCheckTimer = null!;
+
         // UI Components
         private NotifyIcon trayIcon = null!;
         private ContextMenuStrip trayMenu = null!;
@@ -44,7 +49,7 @@ namespace ETS2_Assist_GUI
         private Button btnMinimize = null!;
         private Button btnExit = null!;
         private Button btnRefreshTracks = null!;
-        private Button btnRandomTarget = null!;  // Кнопка "Случайная цель" (привязка в InitializeComponents)
+        private Button btnRandomTarget = null!;
 
         private RichTextBox logConsole = null!;
         private Panel indicatorsPanel = null!;
@@ -109,10 +114,6 @@ namespace ETS2_Assist_GUI
         private string _titleSuffix = "";
         private string _description = "";
         private int _saveFormat = 1;
-
-        // ========== УПРАВЛЕНИЕ ПОЯВЛЕНИЕМ UI ==========
-        private bool _uiShown = false;
-        private System.Windows.Forms.Timer _pauseCheckTimer;
 
         // ==========================================
 
@@ -218,7 +219,20 @@ namespace ETS2_Assist_GUI
 
             // Кнопка "Случайная цель"
             btnRandomTarget = new Button { Text = "Случайная цель", Location = new Point(leftX, topY + 260), Size = new Size(120, 30) };
-            btnRandomTarget.Click += BtnRandomTarget_Click; // метод определен в QuestsManager.cs
+            btnRandomTarget.Click += BtnRandomTarget_Click;
+
+            // Кнопки для отладки
+            Button btnShowMap = new Button { Text = "Показать карту", Location = new Point(leftX, topY + 310), Size = new Size(120, 30) };
+            btnShowMap.Click += (s, e) => {
+                AppendLog("Debug: Show map button clicked");
+                SendCommandToMap("show_ui");
+            };
+
+            Button btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 350), Size = new Size(120, 30) };
+            btnShowHybrid.Click += (s, e) => {
+                AppendLog("Debug: Show hybrid button clicked");
+                SendCommandToMap("show_ui");
+            };
 
             int consoleLeft = leftX + 140;
             int consoleWidth = 400;
@@ -283,6 +297,7 @@ namespace ETS2_Assist_GUI
 
             this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
+                btnShowMap, btnShowHybrid,
                 logConsole, listTracks, indicatorsPanel, mainMenu
             });
         }
@@ -555,7 +570,7 @@ namespace ETS2_Assist_GUI
                     string file = request.QueryString["file"] ?? "save_trail.trigger";
                     string triggerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", file);
                     bool exists = File.Exists(triggerPath);
-                    AppendLog($"[HTTP] /check_trigger: file={file}, exists={exists}");
+                    // Лог убран по просьбе
                     string json = JsonConvert.SerializeObject(new { exists = exists });
                     byte[] buffer = Encoding.UTF8.GetBytes(json);
                     response.ContentType = "application/json";
@@ -723,7 +738,7 @@ namespace ETS2_Assist_GUI
                 TrailBehavior.SetLog(msg => AppendLog(msg));
                 TrailBehavior.SetOnTrail(data => SaveTrailFromWebSocket(data));
                 TrailBehavior.SetPlaySoundAction(PlaySound);
-                TrailBehavior.SetOnCommand(data => OnClientCommand(data)); // метод в QuestsManager
+                TrailBehavior.SetOnCommand(data => OnClientCommand(data));
 
                 _wsSaveServer = new WebSocketSharp.Server.WebSocketServer($"ws://localhost:8084");
                 _wsSaveServer.AddWebSocketService<TrailBehavior>("/");
@@ -777,8 +792,31 @@ namespace ETS2_Assist_GUI
         }
 
         // ================================================================
-        // СОХРАНЕНИЕ ТРЕКА (новый компактный формат)
+        // ОТПРАВКА КОМАНД НА ВСЕ ПОДКЛЮЧЁННЫЕ КЛИЕНТЫ (ВЕБ-СТРАНИЦЫ)
+        // ================================================================
+        private void SendCommandToMap(string command, JObject? extra = null)
+        {
+            if (_wsSaveRunning && _wsSaveServer != null)
+            {
+                var msg = new JObject();
+                msg["command"] = command;
+                if (extra != null)
+                {
+                    foreach (var prop in extra.Properties())
+                        msg[prop.Name] = prop.Value;
+                }
+                _wsSaveServer.WebSocketServices.Broadcast(msg.ToString(Formatting.None));
+                AppendLog($"Command '{command}' sent to map.");
+            }
+            else
+            {
+                AppendLog($"Cannot send command '{command}': WebSocket save server is not running.");
+            }
+        }
 
+        // ================================================================
+        // СОХРАНЕНИЕ ТРЕКА
+        // ================================================================
         private void SaveTrailFromWebSocket(JObject data)
         {
             try
@@ -794,11 +832,9 @@ namespace ETS2_Assist_GUI
                 if (mapData == null) mapData = new JObject();
                 if (mapData["cities"] == null) mapData["cities"] = new JArray();
                 if (mapData["roads"] == null) mapData["roads"] = new JArray();
-                // Добавляем customTargets из полезной нагрузки
                 if (data["customTargets"] != null)
                     mapData["customTargets"] = data["customTargets"];
 
-                // Определяем имя файла (как было)
                 string baseName;
                 if (meta != null && meta["title"] != null)
                 {
@@ -812,10 +848,8 @@ namespace ETS2_Assist_GUI
                             var parts = lines[1].Split(';');
                             if (parts.Length >= 3)
                             {
-                                if (float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
-                                    System.Globalization.CultureInfo.InvariantCulture, out float x) &&
-                                    float.TryParse(parts[2], System.Globalization.NumberStyles.Float,
-                                    System.Globalization.CultureInfo.InvariantCulture, out float z))
+                                if (float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float x) &&
+                                    float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float z))
                                 {
                                     startPos = $"{Math.Round(x)}_{Math.Round(z)}";
                                 }
@@ -830,7 +864,6 @@ namespace ETS2_Assist_GUI
                     baseName = $"track_{DateTime.Now:yyyyMMdd_HHmmss}";
                 }
 
-                // Сохраняем файлы
                 string trackFile = Path.Combine(tracksDir, baseName + ".track");
                 File.WriteAllText(trackFile, compactData);
 
@@ -1446,7 +1479,7 @@ namespace ETS2_Assist_GUI
                         break;
                     case HOTKEY_START_REC:
                         AppendLog("Hotkey start recording (Shift+Ctrl+R)");
-                        SendCommandToMap("start_recording"); // метод в QuestsManager
+                        SendCommandToMap("start_recording");
                         break;
                     case HOTKEY_STOP_REC:
                         AppendLog("Hotkey stop recording (Shift+Ctrl+X)");
@@ -1511,7 +1544,6 @@ namespace ETS2_Assist_GUI
             }
         }
 
-        // Тестовое окно (Shift+Ctrl+T)
         private void ShowTestWindow()
         {
             Form testForm = new Form
@@ -1545,57 +1577,6 @@ namespace ETS2_Assist_GUI
             testForm.Controls.Add(btnClose);
             testForm.Controls.Add(lblInfo);
             testForm.ShowDialog(this);
-        }
-
-        // ================================================================
-        // УПРАВЛЕНИЕ ПОЯВЛЕНИЕМ UI ПОСЛЕ ВЫХОДА ИЗ ПАУЗЫ
-        // ================================================================
-        private void StartPauseCheck()
-        {
-            _pauseCheckTimer = new System.Windows.Forms.Timer();
-            _pauseCheckTimer.Interval = 1000;
-            _pauseCheckTimer.Tick += (s, e) => CheckPauseAndShowUI();
-            _pauseCheckTimer.Start();
-            AppendLog("Pause check timer started.");
-        }
-
-        private async void CheckPauseAndShowUI()
-        {
-            if (_uiShown) return;
-            bool paused = await IsGamePausedAsync();
-            if (paused)
-            {
-                // Игра на паузе – ждём
-                return;
-            }
-            // Игра вышла из паузы – показываем UI
-            _uiShown = true;
-            _pauseCheckTimer?.Stop();
-            SendCommandToMap("show_ui");
-            AppendLog("[UI] Отправлена команда show_ui на веб-страницы");
-        }
-
-        private async Task<bool> IsGamePausedAsync()
-        {
-            try
-            {
-                using (var client = new HttpClient())
-                {
-                    client.Timeout = TimeSpan.FromSeconds(1);
-                    var response = await client.GetAsync("http://localhost:25555/api/ets2/telemetry");
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var json = await response.Content.ReadAsStringAsync();
-                        var obj = JObject.Parse(json);
-                        return obj["game"]?["paused"]?.Value<bool>() ?? false;
-                    }
-                }
-            }
-            catch
-            {
-                // Если не удалось получить, считаем не на паузе (чтобы не блокировать показ)
-            }
-            return false;
         }
 
         // ================================================================

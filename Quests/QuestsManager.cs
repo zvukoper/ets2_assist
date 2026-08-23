@@ -144,27 +144,6 @@ namespace ETS2_Assist_GUI
             });
         }
 
-        // Отправка команды на все подключенные клиенты (карту)
-        private void SendCommandToMap(string command, JObject? extra = null)
-        {
-            if (_wsSaveRunning && _wsSaveServer != null)
-            {
-                var msg = new JObject();
-                msg["command"] = command;
-                if (extra != null)
-                {
-                    foreach (var prop in extra.Properties())
-                        msg[prop.Name] = prop.Value;
-                }
-                _wsSaveServer.WebSocketServices.Broadcast(msg.ToString(Formatting.None));
-                AppendLog($"Command '{command}' sent to map.");
-            }
-            else
-            {
-                AppendLog($"Cannot send command '{command}': WebSocket save server is not running.");
-            }
-        }
-
         // Постановка игры на паузу через TruckTel API
         private async Task PauseGame()
         {

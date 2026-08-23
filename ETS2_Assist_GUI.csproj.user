@@ -16,5 +16,8 @@
     <Compile Update="SplashForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="UI\WebUIManager.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

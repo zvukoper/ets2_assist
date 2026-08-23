@@ -18,13 +18,19 @@ namespace ETS2_Assist_GUI
         {
             // Настройка формы – прозрачный фон, без перекрытия панели задач
             this.FormBorderStyle = FormBorderStyle.None;
-            this.WindowState = FormWindowState.Normal;
+            this.WindowState = FormWindowState.Normal; // Не Maximized!
             this.BackColor = Color.White;
             this.TransparencyKey = Color.White; // белый фон становится прозрачным
             this.TopMost = false; // не перекрываем панель задач
             this.ShowInTaskbar = false;
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.Bounds = Screen.PrimaryScreen.Bounds; // занимаем весь экран, но не в полноэкранном режиме
+
+            // Явно задаём размер меньше экрана, чтобы панель задач оставалась видимой
+            var screen = Screen.PrimaryScreen.Bounds;
+            int width = screen.Width - 20; // небольшой отступ
+            int height = screen.Height - 20;
+            this.Size = new Size(width, height);
+            this.Location = new Point((screen.Width - width) / 2, (screen.Height - height) / 2);
             this.Opacity = 0; // начинаем с прозрачности
 
             pictureBox = new PictureBox();
@@ -75,9 +81,7 @@ namespace ETS2_Assist_GUI
                     newOpacity = 1.0;
                     phase = 1;
                     stepCounter = 0;
-                    // Пауза 3 секунды – меняем интервал таймера для паузы
-                    animationTimer.Interval = 3000;
-                    // При следующем тике перейдём к fade-out
+                    animationTimer.Interval = 3000; // пауза 3 секунды
                 }
                 this.Opacity = newOpacity;
             }
