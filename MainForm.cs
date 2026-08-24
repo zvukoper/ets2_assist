@@ -25,11 +25,6 @@ namespace ETS2_Assist_GUI
 {
     public partial class MainForm : Form
     {
-
-        private bool _uiShown = false;
-        private bool _lastPauseState = false;
-        private System.Windows.Forms.Timer _pauseCheckTimer = null!;
-
         // UI Components
         private NotifyIcon trayIcon = null!;
         private ContextMenuStrip trayMenu = null!;
@@ -50,6 +45,9 @@ namespace ETS2_Assist_GUI
         private Button btnExit = null!;
         private Button btnRefreshTracks = null!;
         private Button btnRandomTarget = null!;
+        private Button btnTestPause = null!;
+        private Button btnShowMap = null!;
+        private Button btnShowHybrid = null!;
 
         private RichTextBox logConsole = null!;
         private Panel indicatorsPanel = null!;
@@ -97,6 +95,11 @@ namespace ETS2_Assist_GUI
         private const uint MOD_CONTROL = 0x0002;
         private const uint MOD_SHIFT = 0x0004;
         private const uint MOD_ALT = 0x0001;
+
+        // ========== УПРАВЛЕНИЕ UI И ПАУЗОЙ (поля, используемые в partial-файлах) ==========
+        private bool _uiShown = false;
+        private bool _lastPauseState = false;
+        private System.Windows.Forms.Timer _pauseCheckTimer = null!;
 
         // ========== WEBSOCKET-СЕРВЕР ДЛЯ СОХРАНЕНИЯ ТРЕКОВ (порт 8084) ==========
         private WebSocketSharp.Server.WebSocketServer? _wsSaveServer;
@@ -217,21 +220,27 @@ namespace ETS2_Assist_GUI
             btnRefreshTracks = new Button { Text = "Обновить список", Location = new Point(leftX, topY + 210), Size = new Size(120, 30) };
             btnRefreshTracks.Click += (s, e) => RefreshTrackList();
 
-            // Кнопка "Случайная цель"
             btnRandomTarget = new Button { Text = "Случайная цель", Location = new Point(leftX, topY + 260), Size = new Size(120, 30) };
             btnRandomTarget.Click += BtnRandomTarget_Click;
 
-            // Кнопки для отладки
-            Button btnShowMap = new Button { Text = "Показать карту", Location = new Point(leftX, topY + 310), Size = new Size(120, 30) };
+            btnShowMap = new Button { Text = "Показать карту", Location = new Point(leftX, topY + 310), Size = new Size(120, 30) };
             btnShowMap.Click += (s, e) => {
                 AppendLog("Debug: Show map button clicked");
                 SendCommandToMap("show_ui");
             };
 
-            Button btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 350), Size = new Size(120, 30) };
+            btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 350), Size = new Size(120, 30) };
             btnShowHybrid.Click += (s, e) => {
                 AppendLog("Debug: Show hybrid button clicked");
                 SendCommandToMap("show_ui");
+            };
+
+            btnTestPause = new Button { Text = "Тест паузы", Location = new Point(leftX, topY + 400), Size = new Size(120, 30) };
+            btnTestPause.Click += (s, e) => {
+                AppendLog("=== ТЕСТ ПАУЗЫ ===");
+                // Метод SendPauseKey определён в QuestsManager.cs (partial)
+                SendF1Key();
+                AppendLog("=== ТЕСТ ПАУЗЫ ЗАВЕРШЁН ===");
             };
 
             int consoleLeft = leftX + 140;
@@ -297,7 +306,7 @@ namespace ETS2_Assist_GUI
 
             this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
-                btnShowMap, btnShowHybrid,
+                btnShowMap, btnShowHybrid, btnTestPause,
                 logConsole, listTracks, indicatorsPanel, mainMenu
             });
         }
@@ -482,7 +491,7 @@ namespace ETS2_Assist_GUI
 
             StartWebOverlay();
 
-            // Запускаем проверку паузы для показа UI
+            // Запускаем проверку паузы (метод определён в WebUIManager.cs)
             StartPauseCheck();
 
             AppendLog("System started successfully.");
@@ -570,7 +579,6 @@ namespace ETS2_Assist_GUI
                     string file = request.QueryString["file"] ?? "save_trail.trigger";
                     string triggerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", file);
                     bool exists = File.Exists(triggerPath);
-                    // Лог убран по просьбе
                     string json = JsonConvert.SerializeObject(new { exists = exists });
                     byte[] buffer = Encoding.UTF8.GetBytes(json);
                     response.ContentType = "application/json";

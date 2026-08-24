@@ -14,6 +14,9 @@ namespace ETS2_Assist_GUI
         // ================================================================
         private string GenerateTrailHtml(string compactData, JObject? meta, JObject? mapData)
         {
+
+            
+
             string escapedData = JsonConvert.ToString(compactData);
             string metaJson = meta != null ? meta.ToString(Formatting.None) : "{}";
             string mapJson = mapData != null ? mapData.ToString(Formatting.None) : "{}";
@@ -300,6 +303,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("// ОТРИСОВКА КАРТЫ (с целями и индикаторами pitch/roll)");
             sb.AppendLine("// ================================================================");
             sb.AppendLine("function drawMap() {");
+            sb.AppendLine("    let closest = null;");
             sb.AppendLine("    ctx.clearRect(0, 0, W, H);");
             sb.AppendLine("    ctx.fillStyle = '#0f1217'; ctx.fillRect(0, 0, W, H);");
             sb.AppendLine("    // Сетка");
@@ -458,7 +462,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        centerZ += (targetCenterZ - centerZ) * camSmooth;");
             sb.AppendLine("    }");
             sb.AppendLine("    // Данные (топливо, повреждения, pitch/roll)");
-            sb.AppendLine("    let closest = null;");
+            //sb.AppendLine("    let closest = null;");
             sb.AppendLine("    if (dataPoints.length > 0 && currentIndex < trailPoints.length) {");
             sb.AppendLine("        let minDist = Infinity;");
             sb.AppendLine("        const curP = trailPoints[currentIndex];");
@@ -1138,7 +1142,7 @@ document.getElementById('titlePanel').innerHTML = title + (desc ? '<br><span sty
             sb.AppendLine("    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;");
             sb.AppendLine("}");
             sb.AppendLine("function formatDistance(d) { if (d < 1000) return Math.round(d)+'м'; return (Math.round(d/1000))+'км'; }");
-            sb.AppendLine("let closest = null;");
+            //sb.AppendLine("let closest = null;");
             sb.AppendLine("function drawMap() {");
             sb.AppendLine("    ctx.clearRect(0, 0, W, H);");
             // --- Фон в зависимости от времени суток ---

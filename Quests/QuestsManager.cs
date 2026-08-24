@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json;
@@ -12,6 +13,16 @@ namespace ETS2_Assist_GUI
 {
     public partial class MainForm
     {
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        private const byte VK_F1 = 0x70;
+        private const uint KEYEVENTF_KEYDOWN = 0x0000;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
+
         // Состояние случайной цели (серверная часть)
         private bool _randomTargetActive = false;
         private bool _randomTargetReached = false;
@@ -19,7 +30,6 @@ namespace ETS2_Assist_GUI
         private double _randomTargetZ = 0;
         private string _randomTargetName = "Случайная цель";
 
-        // Обработчик кнопки "Случайная цель"
         private void BtnRandomTarget_Click(object sender, EventArgs e)
         {
             if (!_wsSaveRunning || _wsSaveServer == null)
@@ -36,7 +46,6 @@ namespace ETS2_Assist_GUI
             trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Случайная цель создана.", ToolTipIcon.Info);
         }
 
-        // Обработка команд от клиента (через WebSocket)
         private void OnClientCommand(JObject data)
         {
             var command = data["command"]?.Value<string>();
@@ -74,7 +83,6 @@ namespace ETS2_Assist_GUI
 
         private void HandleTargetReached(JObject data)
         {
-            // Проверяем, активна ли цель и не обработана ли уже
             if (!_randomTargetActive || _randomTargetReached)
             {
                 AppendLog("[WS] Цель не активна или уже обработана. Игнорируем.");
@@ -83,39 +91,61 @@ namespace ETS2_Assist_GUI
 
             _randomTargetReached = true;
 
-            // Ставим игру на паузу (если возможно)
-            Task.Run(() => PauseGame());
+            // Пауза через F1
+            try
+            {
+                SendF1Key();
+                AppendLog("[DEBUG] Отправлена клавиша F1 для паузы.");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Ошибка паузы: {ex.Message}");
+            }
 
-            // Показываем диалог с принудительным фокусом
             this.Invoke((System.Windows.Forms.MethodInvoker)delegate
             {
-                // Сохраняем текущее состояние TopMost
-                bool wasTopMost = this.TopMost;
-                this.TopMost = true;
-                this.Activate();
+                // Владелец-форма для MessageBox
+                Form ownerForm = new Form();
+                ownerForm.FormBorderStyle = FormBorderStyle.None;
+                ownerForm.WindowState = FormWindowState.Maximized;
+                ownerForm.BackColor = Color.Black;
+                ownerForm.Opacity = 0.01;
+                ownerForm.TopMost = true;
+                ownerForm.ShowInTaskbar = false;
+                ownerForm.Show(this);
+                ownerForm.Activate();
 
-                var result = MessageBox.Show(
-                    this,
+                DialogResult result = MessageBox.Show(
+                    ownerForm,
                     "Вы достигли случайной цели. Завершить задание?",
                     "Достижение цели",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question,
-                    MessageBoxDefaultButton.Button1,
-                    MessageBoxOptions.DefaultDesktopOnly);
+                    MessageBoxDefaultButton.Button1);
 
-                this.TopMost = wasTopMost;
+                ownerForm.Close();
+                ReturnFocusToGame();
 
                 if (result == DialogResult.Yes)
                 {
-                    // Начисляем деньги и опыт
                     string ets2cPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "ets2c.exe");
                     if (File.Exists(ets2cPath))
                     {
                         try
                         {
-                            Process.Start(ets2cPath, "-moneygive 3000");
-                            Process.Start(ets2cPath, "-xpgive 150");
-                            AppendLog("Начислено 3000 денег и 150 опыта.");
+                            var startInfo = new ProcessStartInfo
+                            {
+                                FileName = ets2cPath,
+                                Arguments = "-moneygive 3000",
+                                UseShellExecute = false,
+                                CreateNoWindow = true,
+                                WindowStyle = ProcessWindowStyle.Hidden
+                            };
+                            Process.Start(startInfo);
+
+                            startInfo.Arguments = "-xpgive 150";
+                            Process.Start(startInfo);
+                            AppendLog("Начислено 3000 денег и 150 опыта (скрыто).");
                         }
                         catch (Exception ex)
                         {
@@ -127,48 +157,59 @@ namespace ETS2_Assist_GUI
                         AppendLog("ets2c.exe не найден. Начисление не выполнено.");
                     }
 
-                    // Удаляем случайную цель
                     SendCommandToMap("remove_random_target");
                     _randomTargetActive = false;
                     _randomTargetReached = false;
 
-                    MessageBox.Show(this, "Задание выполнено!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Задание выполнено!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
-                    // Пользователь отклонил
                     _randomTargetReached = false;
                     SendCommandToMap("reset_target_reached");
-                    AppendLog("Пользователь отклонил завершение задания. Ожидаем повторного приближения.");
+                    AppendLog("Пользователь отклонил завершение задания.");
                 }
             });
         }
 
-        // Постановка игры на паузу через TruckTel API
-        private async Task PauseGame()
+        private void SendF1Key()
         {
             try
             {
-                using (var client = new HttpClient())
+                keybd_event(VK_F1, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero);
+                System.Threading.Thread.Sleep(50);
+                keybd_event(VK_F1, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                AppendLog("[DEBUG] Клавиша F1 отправлена.");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[DEBUG] Ошибка отправки F1: {ex.Message}");
+            }
+        }
+
+        private void ReturnFocusToGame()
+        {
+            try
+            {
+                IntPtr gameHandle = IntPtr.Zero;
+                var procs = Process.GetProcessesByName("eurotrucks2");
+                if (procs.Length > 0 && procs[0].MainWindowHandle != IntPtr.Zero)
                 {
-                    client.Timeout = TimeSpan.FromSeconds(2);
-                    // Попытка отправить нажатие клавиши Pause
-                    var response = await client.PostAsync("http://localhost:8080/api/rest/input/press/pause", null);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        AppendLog("Игра поставлена на паузу через TruckTel.");
-                    }
-                    else
-                    {
-                        // Попробуем альтернативный способ: эмуляция клавиши Escape или Pause
-                        await client.PostAsync("http://localhost:8080/api/rest/input/press/escape", null);
-                        AppendLog("Попытка паузы через Escape.");
-                    }
+                    gameHandle = procs[0].MainWindowHandle;
+                }
+                if (gameHandle != IntPtr.Zero)
+                {
+                    SetForegroundWindow(gameHandle);
+                    AppendLog("Фокус возвращён в игру.");
+                }
+                else
+                {
+                    AppendLog("Не удалось найти окно игры для возврата фокуса.");
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"Ошибка при постановке игры на паузу: {ex.Message}");
+                AppendLog($"Ошибка возврата фокуса: {ex.Message}");
             }
         }
     }
