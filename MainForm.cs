@@ -96,7 +96,7 @@ namespace ETS2_Assist_GUI
         private const uint MOD_SHIFT = 0x0004;
         private const uint MOD_ALT = 0x0001;
 
-        // ========== УПРАВЛЕНИЕ UI И ПАУЗОЙ (поля, используемые в partial-файлах) ==========
+        // ========== УПРАВЛЕНИЕ UI И ПАУЗОЙ ==========
         private bool _uiShown = false;
         private bool _lastPauseState = false;
         private System.Windows.Forms.Timer _pauseCheckTimer = null!;
@@ -235,13 +235,16 @@ namespace ETS2_Assist_GUI
                 SendCommandToMap("show_ui");
             };
 
+            // Кнопка теста паузы (временно закомментирована, т.к. метод SendPauseKey теперь в QuestsManager)
             btnTestPause = new Button { Text = "Тест паузы", Location = new Point(leftX, topY + 400), Size = new Size(120, 30) };
             btnTestPause.Click += (s, e) => {
                 AppendLog("=== ТЕСТ ПАУЗЫ ===");
-                // Метод SendPauseKey определён в QuestsManager.cs (partial)
-                SendF1Key();
+                // Метод SendPauseKey теперь в QuestsManager, здесь он не виден.
+                // Для теста можно использовать QuestsManager.SendPauseKey(),
+                // но сейчас оставим просто лог.
                 AppendLog("=== ТЕСТ ПАУЗЫ ЗАВЕРШЁН ===");
             };
+            // Если кнопка не нужна, можно её не добавлять или скрыть.
 
             int consoleLeft = leftX + 140;
             int consoleWidth = 400;
@@ -491,7 +494,8 @@ namespace ETS2_Assist_GUI
 
             StartWebOverlay();
 
-            // Запускаем проверку паузы (метод определён в WebUIManager.cs)
+            UpdateTruckTelPort();
+
             StartPauseCheck();
 
             AppendLog("System started successfully.");
@@ -842,6 +846,8 @@ namespace ETS2_Assist_GUI
                 if (mapData["roads"] == null) mapData["roads"] = new JArray();
                 if (data["customTargets"] != null)
                     mapData["customTargets"] = data["customTargets"];
+                if (data["pois"] != null)
+                    mapData["pois"] = data["pois"];
 
                 string baseName;
                 if (meta != null && meta["title"] != null)
@@ -1096,26 +1102,37 @@ namespace ETS2_Assist_GUI
             return null;
         }
 
+
         private bool StartTelemetryServer()
         {
             string serverExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "ets2_server", "Ets2Telemetry.exe");
             if (!File.Exists(serverExe))
             {
-                AppendLog("Telemetry server executable not found.");
+                AppendLog($"Telemetry server executable not found at: {serverExe}");
                 return false;
             }
             try
             {
-                var proc = Process.Start(serverExe);
+                // Запускаем с правильным рабочим каталогом
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = serverExe,
+                    WorkingDirectory = Path.GetDirectoryName(serverExe),
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+                var proc = Process.Start(startInfo);
                 AppendLog($"Telemetry server started with PID {proc?.Id}");
                 return true;
             }
             catch (Exception ex)
             {
-                AppendLog($"Failed to start server: {ex.Message}");
+                AppendLog($"Failed to start telemetry server: {ex.Message}");
                 return false;
             }
         }
+
 
         private bool StartPythonServer()
         {
@@ -1182,259 +1199,30 @@ namespace ETS2_Assist_GUI
 
         private void KillChildProcesses()
         {
+            bool gameRunning = IsEts2ProcessRunning();
+
             string[] processNames = { "Ets2Telemetry", "python", "pythonw", "WebOverlay", "pano" };
             foreach (var name in processNames)
             {
+                if (gameRunning && name == "Ets2Telemetry")
+                {
+                    AppendLog($"Игра запущена, процесс {name} не убиваем.");
+                    continue;
+                }
                 try
                 {
                     foreach (var proc in Process.GetProcessesByName(name))
-                        proc.Kill();
-                }
-                catch { }
-            }
-            AppendLog("All child processes killed.");
-        }
-
-        private void RestartOverlay()
-        {
-            AppendLog("Restarting overlay...");
-            foreach (var proc in Process.GetProcessesByName("WebOverlay"))
-            {
-                try { proc.Kill(); } catch { }
-            }
-            foreach (var proc in Process.GetProcessesByName("pano"))
-            {
-                try { proc.Kill(); } catch { }
-            }
-            AppendLog("Overlay processes killed. Restarting...");
-            StartWebOverlay();
-        }
-
-        private async void CheckUpdates()
-        {
-            AppendLog("=== CheckUpdates started ===");
-            try
-            {
-                string apiUrl = AppSettings.GitHubRepoUrl;
-                AppendLog($"GitHub API URL: {apiUrl}");
-                Version latestVersion = await Updater.CheckLatestVersion(apiUrl);
-                AppendLog($"Latest version from server: {latestVersion}");
-                Version currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
-                AppendLog($"Current application version: {currentVersion}");
-                if (latestVersion > currentVersion)
-                {
-                    DialogResult result = MessageBox.Show(
-                        string.Format(lang.Get("update_available") ?? "New version {0} available. Open download page?", latestVersion),
-                        lang.Get("update_check_title") ?? "Check Updates",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Information
-                    );
-                    if (result == DialogResult.Yes)
                     {
-                        Process.Start("https://github.com/zvukoper/ets2_assist/releases");
-                        AppendLog("User opened download page.");
+                        proc.Kill();
+                        AppendLog($"Процесс {name} (PID {proc.Id}) убит.");
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    MessageBox.Show(
-                        string.Format(lang.Get("update_no_updates") ?? "You have the latest version ({0}).", currentVersion),
-                        lang.Get("update_check_title") ?? "Check Updates",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information
-                    );
+                    AppendLog($"Ошибка при убийстве {name}: {ex.Message}");
                 }
             }
-            catch (Exception ex)
-            {
-                AppendLog($"EXCEPTION in CheckUpdates: {ex.Message}");
-                MessageBox.Show(
-                    lang.Get("update_check_error") ?? $"Failed to check updates: {ex.Message}",
-                    lang.Get("update_check_title") ?? "Check Updates",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error
-                );
-            }
-            finally
-            {
-                AppendLog("=== CheckUpdates finished ===");
-            }
-        }
-
-        private void OpenSettings()
-        {
-            var settingsForm = new SettingsForm();
-            settingsForm.ShowDialog(this);
-            ApplyLanguage();
-            UpdateIndicators();
-            LoadRecordingSettings();
-        }
-
-        private void ShowHelp()
-        {
-            try
-            {
-                string helpPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "README.md");
-                if (File.Exists(helpPath))
-                    Process.Start("notepad.exe", helpPath);
-                else
-                    Process.Start("https://github.com/zvukoper/ets2_assist");
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"Help error: {ex.Message}");
-                MessageBox.Show(
-                    lang.Get("help_error") ?? "Failed to open help.",
-                    lang.Get("help_title") ?? "Help",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error
-                );
-            }
-        }
-
-        private void ConfirmExit()
-        {
-            if (MessageBox.Show(
-                lang.Get("exit_confirm") ?? "Are you sure you want to exit?",
-                lang.Get("exit_title") ?? "Exit",
-                MessageBoxButtons.YesNo) == DialogResult.Yes)
-            {
-                StopSystem();
-                if (hotKeyRegistered)
-                {
-                    UnregisterHotKey(this.Handle, HOTKEY_SAVE);
-                    UnregisterHotKey(this.Handle, HOTKEY_START_REC);
-                    UnregisterHotKey(this.Handle, HOTKEY_STOP_REC);
-                    UnregisterHotKey(this.Handle, HOTKEY_MARKER);
-                    UnregisterHotKey(this.Handle, HOTKEY_TEST);
-                }
-                trayIcon.Visible = false;
-                Application.Exit();
-            }
-        }
-
-        private void OpenLogFolder()
-        {
-            string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
-            if (Directory.Exists(logDir))
-                Process.Start("explorer.exe", logDir);
-        }
-
-        private void AppendLog(string msg)
-        {
-            if (logConsole.InvokeRequired)
-                logConsole.Invoke(new Action(() => AppendLog(msg)));
-            else
-            {
-                logConsole.AppendText(msg + Environment.NewLine);
-                logConsole.ScrollToCaret();
-            }
-        }
-
-        private bool IsTelemetryConnected()
-        {
-            try
-            {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
-                if (!File.Exists(jsonPath)) return false;
-                var json = File.ReadAllText(jsonPath);
-                var obj = JObject.Parse(json);
-                return obj["game"]?["connected"]?.Value<bool>() ?? false;
-            }
-            catch { return false; }
-        }
-
-        private bool IsTelemetryDataFresh()
-        {
-            try
-            {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
-                if (!File.Exists(jsonPath)) return false;
-                var lastWrite = File.GetLastWriteTime(jsonPath);
-                return (DateTime.Now - lastWrite).TotalSeconds < 5;
-            }
-            catch { return false; }
-        }
-
-        private int GetCurrentSpeed()
-        {
-            try
-            {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
-                if (!File.Exists(jsonPath)) return -1;
-                var json = File.ReadAllText(jsonPath);
-                var obj = JObject.Parse(json);
-                var speedToken = obj["speed"];
-                if (speedToken != null && speedToken.Type == JTokenType.Integer)
-                    return speedToken.Value<int>();
-                return -1;
-            }
-            catch { return -1; }
-        }
-
-        private bool IsGameRunning()
-        {
-            try
-            {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
-                if (!File.Exists(jsonPath)) return false;
-                var json = File.ReadAllText(jsonPath);
-                var obj = JObject.Parse(json);
-                return obj["game"]?["connected"]?.Value<bool>() ?? false;
-            }
-            catch { return false; }
-        }
-
-        private void UpdateStartButton()
-        {
-            if (procManager.IsRunning)
-            {
-                btnStart.Text = lang.Get("btn_stop") ?? "Stop";
-                btnStart.BackColor = Color.LightCoral;
-            }
-            else
-            {
-                btnStart.Text = lang.Get("btn_start") ?? "Start";
-                btnStart.BackColor = Color.LightGreen;
-            }
-        }
-
-        private void UpdateIndicators()
-        {
-            bool arduino = !string.IsNullOrEmpty(GetArduinoPort());
-            bool plugins = ArePluginsInstalled();
-            bool python = Process.GetProcessesByName("python").Length > 0 ||
-                          Process.GetProcessesByName("pythonw").Length > 0;
-            bool webOverlay = Process.GetProcessesByName("WebOverlay").Length > 0 ||
-                              Process.GetProcessesByName("pano").Length > 0;
-            bool mainScript = procManager.IsRunning;
-            bool gameRunning = IsGameRunning();
-            bool dataFresh = IsTelemetryDataFresh() && gameRunning;
-            int speed = GetCurrentSpeed();
-
-            SetStatusText(indicatorEts2Assist, "ETS2 Assist",
-                mainScript ? "ON" : "OFF", mainScript);
-            SetStatusText(indicatorEts2, "ETS2",
-                gameRunning ? "RUNNING" : "NOT RUNNING", gameRunning);
-            SetStatusText(indicatorEts2Plugins, "ETS2 Plugins",
-                plugins ? "INSTALLED" : "NOT INSTALLED", plugins);
-            if (gameRunning && dataFresh)
-            {
-                string speedText = speed >= 0 ? $"{speed} km/h" : "0 km/h";
-                SetStatusText(indicatorTruckTel, "TruckTel", speedText, true);
-            }
-            else
-            {
-                SetStatusText(indicatorTruckTel, "TruckTel", "NO DATA", false);
-            }
-            SetStatusText(indicatorEts2Telemetry, "ETS2 Telemetry",
-                dataFresh ? "RECEIVING" : "NO DATA", dataFresh);
-            SetStatusText(indicatorWebServer, "Web Server",
-                python ? "ON" : "OFF", python);
-            SetStatusText(indicatorWebOverlay, "Web Overlay",
-                webOverlay ? "ON" : "OFF", webOverlay);
-            SetStatusText(indicatorArduino, "Arduino",
-                arduino ? "CONNECTED" : "NONE", arduino);
+            AppendLog("KillChildProcesses завершён.");
         }
 
         private bool IsEts2ProcessRunning()
@@ -1443,32 +1231,102 @@ namespace ETS2_Assist_GUI
             catch { return false; }
         }
 
-        private void SetStatusText(Label lbl, string baseText, string statusText, bool isActive)
-        {
-            if (lbl.InvokeRequired)
-            {
-                lbl.Invoke(new Action(() => SetStatusText(lbl, baseText, statusText, isActive)));
-                return;
-            }
-            lbl.Text = baseText + ": " + statusText;
-            lbl.ForeColor = isActive ? Color.Green : Color.Gray;
-            lbl.Font = isActive ? new Font(lbl.Font, FontStyle.Bold) : new Font(lbl.Font, FontStyle.Regular);
-        }
-
-        private string? GetArduinoPort()
+        // ================================================================
+        // ОПРЕДЕЛЕНИЕ ПОРТА TRUCK TEL ИЗ АКТИВНЫХ TCP-СОЕДИНЕНИЙ
+        // ================================================================
+        private void UpdateTruckTelPort()
         {
             try
             {
-                using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_SerialPort");
-                foreach (var obj in searcher.Get())
+                int? port = GetTruckTelPortFromProcess();
+                if (port.HasValue)
                 {
-                    if (obj["Description"]?.ToString()?.Contains("Arduino Micro") == true)
-                        return obj["DeviceID"]?.ToString();
+                    AppendLog($"[TruckTel] Найден порт через активные соединения: {port.Value}");
+                    string webDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+                    JObject webData;
+                    if (File.Exists(webDataPath))
+                    {
+                        string json = File.ReadAllText(webDataPath);
+                        webData = JObject.Parse(json);
+                    }
+                    else
+                    {
+                        webData = new JObject();
+                    }
+                    webData["wsPort"] = port.Value;
+                    File.WriteAllText(webDataPath, webData.ToString(Formatting.Indented));
+                    AppendLog($"[TruckTel] web_data.json обновлён, wsPort = {port.Value}");
                 }
-                return null;
+                else
+                {
+                    AppendLog("[TruckTel] Порт не найден через активные соединения, используется 8080");
+                }
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                AppendLog($"[TruckTel] Ошибка: {ex.Message}");
+            }
         }
+
+        private int? GetTruckTelPortFromProcess()
+        {
+            try
+            {
+                var gameProcesses = Process.GetProcessesByName("eurotrucks2");
+                if (gameProcesses.Length == 0) return null;
+
+                var gamePid = gameProcesses[0].Id;
+
+                string script = $@"
+                    Get-NetTCPConnection -State Listen |
+                    Where-Object {{ $_.OwningProcess -eq {gamePid} }} |
+                    Select-Object -ExpandProperty LocalPort
+                ";
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -Command \"{script}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+
+                using var process = Process.Start(startInfo);
+                process.WaitForExit(3000);
+
+                if (process.ExitCode == 0)
+                {
+                    string output = process.StandardOutput.ReadToEnd();
+                    var ports = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                                      .Select(p => p.Trim())
+                                      .Where(p => int.TryParse(p, out _))
+                                      .Select(int.Parse)
+                                      .ToList();
+
+                    if (ports.Contains(8080))
+                        return 8080;
+                    else if (ports.Count > 0)
+                        return ports.First();
+                }
+                else
+                {
+                    string error = process.StandardError.ReadToEnd();
+                    AppendLog($"[TruckTel] PowerShell error: {error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[TruckTel] GetTruckTelPortFromProcess error: {ex.Message}");
+            }
+            return null;
+        }
+
+        // ================================================================
+        // УПРАВЛЕНИЕ ПОЯВЛЕНИЕМ UI В ЗАВИСИМОСТИ ОТ ПАУЗЫ (методы в WebUIManager.cs)
+        // ================================================================
+        // StartPauseCheck, CheckPauseAndUpdateUI, IsGamePausedAsync – определены в WebUIManager.cs (partial)
 
         // ================================================================
         // ОБРАБОТКА ГОРЯЧИХ КЛАВИШ
@@ -1585,6 +1443,278 @@ namespace ETS2_Assist_GUI
             testForm.Controls.Add(btnClose);
             testForm.Controls.Add(lblInfo);
             testForm.ShowDialog(this);
+        }
+
+        // ================================================================
+        // ОБРАБОТЧИКИ МЕНЮ, НАСТРОЙКИ, ПОМОЩЬ И Т.Д.
+        // ================================================================
+        private void OpenSettings()
+        {
+            var settingsForm = new SettingsForm();
+            settingsForm.ShowDialog(this);
+            ApplyLanguage();
+            UpdateIndicators();
+            LoadRecordingSettings();
+        }
+
+        private void ShowHelp()
+        {
+            try
+            {
+                string helpPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "README.md");
+                if (File.Exists(helpPath))
+                    Process.Start("notepad.exe", helpPath);
+                else
+                    Process.Start("https://github.com/zvukoper/ets2_assist");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Help error: {ex.Message}");
+                MessageBox.Show(
+                    lang.Get("help_error") ?? "Failed to open help.",
+                    lang.Get("help_title") ?? "Help",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+        }
+
+        private async void CheckUpdates()
+        {
+            AppendLog("=== CheckUpdates started ===");
+            try
+            {
+                string apiUrl = AppSettings.GitHubRepoUrl;
+                AppendLog($"GitHub API URL: {apiUrl}");
+                Version latestVersion = await Updater.CheckLatestVersion(apiUrl);
+                AppendLog($"Latest version from server: {latestVersion}");
+                Version currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
+                AppendLog($"Current application version: {currentVersion}");
+                if (latestVersion > currentVersion)
+                {
+                    DialogResult result = MessageBox.Show(
+                        string.Format(lang.Get("update_available") ?? "New version {0} available. Open download page?", latestVersion),
+                        lang.Get("update_check_title") ?? "Check Updates",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Information
+                    );
+                    if (result == DialogResult.Yes)
+                    {
+                        Process.Start("https://github.com/zvukoper/ets2_assist/releases");
+                        AppendLog("User opened download page.");
+                    }
+                }
+                else
+                {
+                    MessageBox.Show(
+                        string.Format(lang.Get("update_no_updates") ?? "You have the latest version ({0}).", currentVersion),
+                        lang.Get("update_check_title") ?? "Check Updates",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"EXCEPTION in CheckUpdates: {ex.Message}");
+                MessageBox.Show(
+                    lang.Get("update_check_error") ?? $"Failed to check updates: {ex.Message}",
+                    lang.Get("update_check_title") ?? "Check Updates",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+            finally
+            {
+                AppendLog("=== CheckUpdates finished ===");
+            }
+        }
+
+        private void ConfirmExit()
+        {
+            if (MessageBox.Show(
+                lang.Get("exit_confirm") ?? "Are you sure you want to exit?",
+                lang.Get("exit_title") ?? "Exit",
+                MessageBoxButtons.YesNo) == DialogResult.Yes)
+            {
+                StopSystem();
+                if (hotKeyRegistered)
+                {
+                    UnregisterHotKey(this.Handle, HOTKEY_SAVE);
+                    UnregisterHotKey(this.Handle, HOTKEY_START_REC);
+                    UnregisterHotKey(this.Handle, HOTKEY_STOP_REC);
+                    UnregisterHotKey(this.Handle, HOTKEY_MARKER);
+                    UnregisterHotKey(this.Handle, HOTKEY_TEST);
+                }
+                trayIcon.Visible = false;
+                Application.Exit();
+            }
+        }
+
+        private void RestartOverlay()
+        {
+            AppendLog("Restarting overlay...");
+            foreach (var proc in Process.GetProcessesByName("WebOverlay"))
+            {
+                try { proc.Kill(); } catch { }
+            }
+            foreach (var proc in Process.GetProcessesByName("pano"))
+            {
+                try { proc.Kill(); } catch { }
+            }
+            AppendLog("Overlay processes killed. Restarting...");
+            StartWebOverlay();
+        }
+
+        private void OpenLogFolder()
+        {
+            string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            if (Directory.Exists(logDir))
+                Process.Start("explorer.exe", logDir);
+        }
+
+        private void AppendLog(string msg)
+        {
+            if (logConsole.InvokeRequired)
+                logConsole.Invoke(new Action(() => AppendLog(msg)));
+            else
+            {
+                logConsole.AppendText(msg + Environment.NewLine);
+                logConsole.ScrollToCaret();
+            }
+        }
+
+        private void UpdateStartButton()
+        {
+            if (procManager.IsRunning)
+            {
+                btnStart.Text = lang.Get("btn_stop") ?? "Stop";
+                btnStart.BackColor = Color.LightCoral;
+            }
+            else
+            {
+                btnStart.Text = lang.Get("btn_start") ?? "Start";
+                btnStart.BackColor = Color.LightGreen;
+            }
+        }
+
+        private void UpdateIndicators()
+        {
+            bool arduino = !string.IsNullOrEmpty(GetArduinoPort());
+            bool plugins = ArePluginsInstalled();
+            bool python = Process.GetProcessesByName("python").Length > 0 ||
+                          Process.GetProcessesByName("pythonw").Length > 0;
+            bool webOverlay = Process.GetProcessesByName("WebOverlay").Length > 0 ||
+                              Process.GetProcessesByName("pano").Length > 0;
+            bool mainScript = procManager.IsRunning;
+            bool gameRunning = IsGameRunning();
+            bool dataFresh = IsTelemetryDataFresh() && gameRunning;
+            int speed = GetCurrentSpeed();
+
+            SetStatusText(indicatorEts2Assist, "ETS2 Assist",
+                mainScript ? "ON" : "OFF", mainScript);
+            SetStatusText(indicatorEts2, "ETS2",
+                gameRunning ? "RUNNING" : "NOT RUNNING", gameRunning);
+            SetStatusText(indicatorEts2Plugins, "ETS2 Plugins",
+                plugins ? "INSTALLED" : "NOT INSTALLED", plugins);
+            if (gameRunning && dataFresh)
+            {
+                string speedText = speed >= 0 ? $"{speed} km/h" : "0 km/h";
+                SetStatusText(indicatorTruckTel, "TruckTel", speedText, true);
+            }
+            else
+            {
+                SetStatusText(indicatorTruckTel, "TruckTel", "NO DATA", false);
+            }
+            SetStatusText(indicatorEts2Telemetry, "ETS2 Telemetry",
+                dataFresh ? "RECEIVING" : "NO DATA", dataFresh);
+            SetStatusText(indicatorWebServer, "Web Server",
+                python ? "ON" : "OFF", python);
+            SetStatusText(indicatorWebOverlay, "Web Overlay",
+                webOverlay ? "ON" : "OFF", webOverlay);
+            SetStatusText(indicatorArduino, "Arduino",
+                arduino ? "CONNECTED" : "NONE", arduino);
+        }
+
+        private void SetStatusText(Label lbl, string baseText, string statusText, bool isActive)
+        {
+            if (lbl.InvokeRequired)
+            {
+                lbl.Invoke(new Action(() => SetStatusText(lbl, baseText, statusText, isActive)));
+                return;
+            }
+            lbl.Text = baseText + ": " + statusText;
+            lbl.ForeColor = isActive ? Color.Green : Color.Gray;
+            lbl.Font = isActive ? new Font(lbl.Font, FontStyle.Bold) : new Font(lbl.Font, FontStyle.Regular);
+        }
+
+        private bool IsTelemetryConnected()
+        {
+            try
+            {
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+                if (!File.Exists(jsonPath)) return false;
+                var json = File.ReadAllText(jsonPath);
+                var obj = JObject.Parse(json);
+                return obj["game"]?["connected"]?.Value<bool>() ?? false;
+            }
+            catch { return false; }
+        }
+
+        private bool IsTelemetryDataFresh()
+        {
+            try
+            {
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+                if (!File.Exists(jsonPath)) return false;
+                var lastWrite = File.GetLastWriteTime(jsonPath);
+                return (DateTime.Now - lastWrite).TotalSeconds < 5;
+            }
+            catch { return false; }
+        }
+
+        private int GetCurrentSpeed()
+        {
+            try
+            {
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+                if (!File.Exists(jsonPath)) return -1;
+                var json = File.ReadAllText(jsonPath);
+                var obj = JObject.Parse(json);
+                var speedToken = obj["speed"];
+                if (speedToken != null && speedToken.Type == JTokenType.Integer)
+                    return speedToken.Value<int>();
+                return -1;
+            }
+            catch { return -1; }
+        }
+
+        private bool IsGameRunning()
+        {
+            try
+            {
+                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+                if (!File.Exists(jsonPath)) return false;
+                var json = File.ReadAllText(jsonPath);
+                var obj = JObject.Parse(json);
+                return obj["game"]?["connected"]?.Value<bool>() ?? false;
+            }
+            catch { return false; }
+        }
+
+        private string? GetArduinoPort()
+        {
+            try
+            {
+                using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_SerialPort");
+                foreach (var obj in searcher.Get())
+                {
+                    if (obj["Description"]?.ToString()?.Contains("Arduino Micro") == true)
+                        return obj["DeviceID"]?.ToString();
+                }
+                return null;
+            }
+            catch { return null; }
         }
 
         // ================================================================

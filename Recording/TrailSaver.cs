@@ -14,9 +14,6 @@ namespace ETS2_Assist_GUI
         // ================================================================
         private string GenerateTrailHtml(string compactData, JObject? meta, JObject? mapData)
         {
-
-            
-
             string escapedData = JsonConvert.ToString(compactData);
             string metaJson = meta != null ? meta.ToString(Formatting.None) : "{}";
             string mapJson = mapData != null ? mapData.ToString(Formatting.None) : "{}";
@@ -48,13 +45,11 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        #measureTool.active { display:block; }");
             sb.AppendLine("        .note-btn { background:#2a3545; border:1px solid #4a5a6a; color:#d0def0; border-radius:4px; padding:2px 6px; font-size:11px; cursor:pointer; }");
             sb.AppendLine("        .note-btn:hover { background:#3a4a5a; }");
-            sb.AppendLine("        /* Индикатор pitch/roll */");
             sb.AppendLine("        #prIndicator { position:absolute; bottom:160px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); padding:4px 12px; border-radius:6px; font-size:11px; color:#aabbcc; border:1px solid #444; backdrop-filter:blur(4px); display:flex; gap:16px; pointer-events:none; }");
             sb.AppendLine("        #prIndicator .pr-item { display:flex; align-items:center; gap:6px; }");
             sb.AppendLine("        #prIndicator .pr-bar { width:60px; height:6px; background:#2a3545; border-radius:3px; overflow:hidden; }");
             sb.AppendLine("        #prIndicator .pr-fill { height:100%; border-radius:3px; transition:width 0.05s; }");
             sb.AppendLine("        #prIndicator .pr-label { color:#8fa0b9; font-size:10px; min-width:30px; text-align:right; }");
-            sb.AppendLine("        /* 3D-индикатор грузовика */");
             sb.AppendLine("        #prPanel { position:absolute; top:50px; left:10px; background:rgba(0,0,0,0.85); padding:10px 14px; border-radius:8px; border:1px solid #444; backdrop-filter:blur(4px); pointer-events:none; z-index:30; min-width:200px; }");
             sb.AppendLine("        #truck3d { width:80px; height:80px; perspective:400px; display:inline-block; margin-right:12px; }");
             sb.AppendLine("        #truck3d .truck-body { width:100%; height:100%; transform-style:preserve-3d; transition:transform 0.05s; position:relative; }");
@@ -65,7 +60,6 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        #prPanel .pr-value { font-size:13px; font-weight:bold; }");
             sb.AppendLine("        #prPanel .pr-extremes { display:flex; justify-content:space-between; gap:8px; font-size:10px; color:#6a7b94; margin-top:2px; flex-wrap:wrap; }");
             sb.AppendLine("        #prPanel .pr-reset-btn { background:#2a3545; border:1px solid #4a5a6a; color:#d0def0; border-radius:4px; padding:1px 8px; font-size:9px; cursor:pointer; pointer-events:auto; }");
-            sb.AppendLine("        /* Debug log */");
             sb.AppendLine("        #debugLog { position:absolute; bottom:200px; right:20px; background:rgba(0,0,0,0.8); padding:4px 10px; border-radius:4px; font-size:9px; color:#88ff88; font-family:monospace; pointer-events:none; z-index:100; border:1px solid #4a5a6a; max-height:100px; overflow-y:auto; }");
             sb.AppendLine("    </style>");
             sb.AppendLine("</head>");
@@ -152,873 +146,23 @@ namespace ETS2_Assist_GUI
             sb.AppendLine($"const metaData = {metaJson};");
             sb.AppendLine($"const mapData = {mapJson};");
 
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("// КОНСТАНТЫ (как в миникарте)");
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("const NEARBY_CITIES_COUNT = 4;");
-            sb.AppendLine("const RAW_TO_DEGREES = 360 / 283; // ≈1.272");
-            sb.AppendLine("const ROLL_CALIBRATION_FACTOR = 0.5;");
-            sb.AppendLine("const PITCH_CALIBRATION_FACTOR = 1.0;");
-            sb.AppendLine("");
-
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("// НОРМАЛИЗАЦИЯ УГЛА (возвращает значение, умноженное на 10, как в миникарте)");
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("function normalizeAngle(deg) {");
-            sb.AppendLine("    while (deg > 180) deg -= 360;");
-            sb.AppendLine("    while (deg < -180) deg += 360;");
-            sb.AppendLine("    return deg * 10;");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("// ПАРСЕР КОМПАКТНОГО ТРЕКА");
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("function parseTrail(data) {");
-            sb.AppendLine("    const lines = data.split('\\n').filter(l => l.trim() !== '');");
-            sb.AppendLine("    if (lines.length === 0) return { meta: {}, trail: [], dataPoints: [], events: [] };");
-            sb.AppendLine("    let meta = {};");
-            sb.AppendLine("    try { meta = JSON.parse(lines[0]); } catch(e) { meta = {}; }");
-            sb.AppendLine("    const trail = [];");
-            sb.AppendLine("    const dataPoints = [];");
-            sb.AppendLine("    const events = [];");
-            sb.AppendLine("    const eventTypes = meta.eventTypes || {};");
-            sb.AppendLine("    const typeNames = Object.fromEntries(Object.entries(eventTypes).map(([k,v]) => [v,k]));");
-            sb.AppendLine("    const debugLines = [];");
-            sb.AppendLine("    for (let i=1; i<lines.length; i++) {");
-            sb.AppendLine("        const parts = lines[i].split(';');");
-            sb.AppendLine("        if (parts.length === 0) continue;");
-            sb.AppendLine("        const type = parts[0];");
-            sb.AppendLine("        if (type === 'D') {");
-            sb.AppendLine("            const dp = {");
-            sb.AppendLine("                t: parseFloat(parts[1]),");
-            sb.AppendLine("                x: parseFloat(parts[2]),");
-            sb.AppendLine("                z: parseFloat(parts[3]),");
-            sb.AppendLine("                heading: parseFloat(parts[4]),");
-            sb.AppendLine("                fuel: parseFloat(parts[5]),");
-            sb.AppendLine("                damage: parseFloat(parts[6]),");
-            sb.AppendLine("                pitch: parseFloat(parts[7] || 0),");
-            sb.AppendLine("                roll: parseFloat(parts[8] || 0)");
-            sb.AppendLine("            };");
-            sb.AppendLine("            dataPoints.push(dp);");
-            sb.AppendLine("            debugLines.push(`[DEBUG] D: t=${dp.t}, pitch=${dp.pitch}, roll=${dp.roll}`);");
-            sb.AppendLine("        } else if (type === 'E') {");
-            sb.AppendLine("            const eType = typeNames[parseInt(parts[4])] || 'unknown';");
-            sb.AppendLine("            events.push({ t: parseFloat(parts[1]), x: parseFloat(parts[2]), z: parseFloat(parts[3]), type: eType, label: parts[5], color: parts[6], subtext: parts[7] });");
-            sb.AppendLine("        } else {");
-            sb.AppendLine("            trail.push({ t: parseFloat(parts[0]), x: parseFloat(parts[1]), z: parseFloat(parts[2]), heading: parseFloat(parts[3]), speed: parseFloat(parts[4]) });");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("    console.log('[DEBUG] Parsed trail points:', trail.length);");
-            sb.AppendLine("    console.log('[DEBUG] Parsed data points:', dataPoints.length);");
-            sb.AppendLine("    console.log('[DEBUG] Parsed events:', events.length);");
-            sb.AppendLine("    if (dataPoints.length > 0) {");
-            sb.AppendLine("        console.log('[DEBUG] First data point:', dataPoints[0]);");
-            sb.AppendLine("    }");
-            sb.AppendLine("    const logDiv = document.getElementById('debugLog');");
-            sb.AppendLine("    if (logDiv) {");
-            sb.AppendLine("        logDiv.innerHTML = 'Data points: ' + dataPoints.length + ' | Trail: ' + trail.length + '<br>' + debugLines.slice(0,5).join('<br>');");
-            sb.AppendLine("    }");
-            sb.AppendLine("    return { meta, trail, dataPoints, events };");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            sb.AppendLine("const parsed = parseTrail(compactData);");
-            sb.AppendLine("const trailPoints = parsed.trail;");
-            sb.AppendLine("const dataPoints = parsed.dataPoints;");
-            sb.AppendLine("const events = parsed.events;");
-            sb.AppendLine("const meta = parsed.meta;");
-            sb.AppendLine("");
-
-            sb.AppendLine("// Данные карты (города, дороги, цели)");
-            sb.AppendLine("const cities = mapData?.cities || [];");
-            sb.AppendLine("const roads = mapData?.roads || [];");
-            sb.AppendLine("const customTargets = mapData?.customTargets || [];");
-            sb.AppendLine("console.log('[DEBUG] Cities:', cities.length, 'Roads:', roads.length, 'Targets:', customTargets.length);");
-            sb.AppendLine("");
-
-            sb.AppendLine("// Времена точек");
-            sb.AppendLine("const times = trailPoints.map(p => p.t);");
-            sb.AppendLine("const totalDuration = times.length > 0 ? times[times.length-1] : 0;");
-            sb.AppendLine("");
-
-            sb.AppendLine("// Заголовок");
-            sb.AppendLine("const title = meta.title || '';");
-            sb.AppendLine("const desc = meta.description || '';");
-            sb.AppendLine("document.getElementById('titlePanel').innerHTML = title + (desc ? '<br><span style=\"font-size:10px; color:#888;\">'+desc+'</span>' : '');");
-            sb.AppendLine("");
-
-            sb.AppendLine("const canvas = document.getElementById('mapCanvas');");
-            sb.AppendLine("const ctx = canvas.getContext('2d');");
-            sb.AppendLine("let W, H;");
-            sb.AppendLine("function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight - 150; drawMap(); }");
-            sb.AppendLine("window.addEventListener('resize', resize);");
-            sb.AppendLine("");
-
-            sb.AppendLine("let centerX = 0, centerZ = 0, scale = 1;");
-            sb.AppendLine("let dragStartX = 0, dragStartY = 0, dragStartCX = 0, dragStartCZ = 0, isDragging = false;");
-            sb.AppendLine("let targetCenterX = 0, targetCenterZ = 0; // для плавного слежения");
-            sb.AppendLine("");
-
-            sb.AppendLine("function fitMap() {");
-            sb.AppendLine("    if (trailPoints.length < 2) return;");
-            sb.AppendLine("    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;");
-            sb.AppendLine("    for (const p of trailPoints) {");
-            sb.AppendLine("        if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;");
-            sb.AppendLine("        if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    centerX = (minX + maxX) / 2;");
-            sb.AppendLine("    centerZ = (minZ + maxZ) / 2;");
-            sb.AppendLine("    targetCenterX = centerX;");
-            sb.AppendLine("    targetCenterZ = centerZ;");
-            sb.AppendLine("    const range = Math.max(maxX - minX, maxZ - minZ, 1);");
-            sb.AppendLine("    scale = (Math.min(W, H) * 0.85) / (range * 1.15);");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            sb.AppendLine("function worldToScreen(wx, wz) {");
-            sb.AppendLine("    const dx = (wx - centerX) * scale;");
-            sb.AppendLine("    const dz = (wz - centerZ) * scale;");
-            sb.AppendLine("    return { x: W/2 + dx, y: H/2 - dz };");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            sb.AppendLine("function getTrailColor(speed) {");
-            sb.AppendLine("    const minS = meta.minSpeed || 0;");
-            sb.AppendLine("    const maxS = meta.maxSpeed || 125;");
-            sb.AppendLine("    const s = Math.max(minS, Math.min(maxS, speed));");
-            sb.AppendLine("    const t = (s - minS) / (maxS - minS);");
-            sb.AppendLine("    let r,g,b;");
-            sb.AppendLine("    if (t <= 0.2) { const u = t/0.2; r=0; g=u*255; b=255; }");
-            sb.AppendLine("    else if (t <= 0.4) { const u=(t-0.2)/0.2; r=0; g=255; b=255-u*255; }");
-            sb.AppendLine("    else if (t <= 0.6) { const u=(t-0.4)/0.2; r=u*255; g=255; b=0; }");
-            sb.AppendLine("    else if (t <= 0.8) { const u=(t-0.6)/0.2; r=255; g=255-u*(255-165); b=0; }");
-            sb.AppendLine("    else { const u=(t-0.8)/0.2; r=255-u*(255-128); g=165-u*165; b=u*255; }");
-            sb.AppendLine("    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            // Вся отрисовка карты
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("// ОТРИСОВКА КАРТЫ (с целями и индикаторами pitch/roll)");
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("function drawMap() {");
-            sb.AppendLine("    let closest = null;");
-            sb.AppendLine("    ctx.clearRect(0, 0, W, H);");
-            sb.AppendLine("    ctx.fillStyle = '#0f1217'; ctx.fillRect(0, 0, W, H);");
-            sb.AppendLine("    // Сетка");
-            sb.AppendLine("    const gridStep = 200 / scale;");
-            sb.AppendLine("    ctx.strokeStyle = '#2a3545'; ctx.lineWidth = 0.5; ctx.setLineDash([4,6]);");
-            sb.AppendLine("    for (let x = -W/2; x < W/2; x += gridStep) { const p = worldToScreen(centerX+x, centerZ); ctx.beginPath(); ctx.moveTo(p.x,0); ctx.lineTo(p.x,H); ctx.stroke(); }");
-            sb.AppendLine("    for (let z = -H/2; z < H/2; z += gridStep) { const p = worldToScreen(centerX, centerZ+z); ctx.beginPath(); ctx.moveTo(0,p.y); ctx.lineTo(W,p.y); ctx.stroke(); }");
-            sb.AppendLine("    ctx.setLineDash([]);");
-            sb.AppendLine("    // Дороги");
-            sb.AppendLine("    for (const r of roads) {");
-            sb.AppendLine("        const p1 = worldToScreen(r.x1, r.z1);");
-            sb.AppendLine("        const p2 = worldToScreen(r.x2, r.z2);");
-            sb.AppendLine("        ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);");
-            sb.AppendLine("        ctx.strokeStyle = '#5a7a8a'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.6; ctx.stroke();");
-            sb.AppendLine("    }");
-            sb.AppendLine("    ctx.globalAlpha = 1;");
-            sb.AppendLine("    // Города (видимые)");
-            sb.AppendLine("    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';");
-            sb.AppendLine("    for (const c of cities) {");
-            sb.AppendLine("        const p = worldToScreen(c.x, c.z);");
-            sb.AppendLine("        if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;");
-            sb.AppendLine("        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, 2*Math.PI);");
-            sb.AppendLine("        ctx.fillStyle = '#ffdd88'; ctx.shadowColor = '#ffdd8844'; ctx.shadowBlur = 6; ctx.fill(); ctx.shadowBlur = 0;");
-            sb.AppendLine("        ctx.font = '10px \"\"Segoe UI\"\"'; ctx.fillStyle = '#c8ddee'; ctx.fillText(c.name, p.x, p.y-6);");
-            sb.AppendLine("    }");
-            sb.AppendLine("    // Цели (customTargets)");
-            sb.AppendLine("    for (const t of customTargets) {");
-            sb.AppendLine("        const p = worldToScreen(t.x, t.z);");
-            sb.AppendLine("        if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;");
-            sb.AppendLine("        ctx.beginPath(); ctx.arc(p.x, p.y, t.active ? 6 : 4, 0, 2*Math.PI);");
-            sb.AppendLine("        ctx.fillStyle = t.active ? (t.color || '#ffc857') : (t.color || '#88aadd');");
-            sb.AppendLine("        ctx.shadowColor = t.active ? '#ffc85788' : '#88aadd88';");
-            sb.AppendLine("        ctx.shadowBlur = t.active ? 16 : 8;");
-            sb.AppendLine("        ctx.fill(); ctx.shadowBlur = 0;");
-            sb.AppendLine("        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = t.active ? 1.5 : 0.5; ctx.stroke();");
-            sb.AppendLine("        ctx.font = t.active ? 'bold 10px \"\"Segoe UI\"\"' : '9px \"\"Segoe UI\"\"';");
-            sb.AppendLine("        ctx.fillStyle = '#fff'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4;");
-            sb.AppendLine("        ctx.fillText(t.name, p.x, p.y - (t.active ? 14 : 10));");
-            sb.AppendLine("        ctx.shadowBlur=0;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    // Ближайшие города и цели за пределами экрана");
-            sb.AppendLine("    const cx = W/2, cy = H/2;");
-            sb.AppendLine("    const radius = Math.min(W, H) * 0.42;");
-            sb.AppendLine("    const currentPos = currentIndex < trailPoints.length ? trailPoints[currentIndex] : { x:0, z:0 };");
-            sb.AppendLine("    // Ближайшие города");
-            sb.AppendLine("    const cityDist = cities.map(c => ({ ...c, dist: Math.hypot(c.x - currentPos.x, c.z - currentPos.z) }));");
-            sb.AppendLine("    cityDist.sort((a,b) => a.dist - b.dist);");
-            sb.AppendLine("    const nearCities = cityDist.slice(0, NEARBY_CITIES_COUNT);");
-            sb.AppendLine("    for (const c of nearCities) {");
-            sb.AppendLine("        const p = worldToScreen(c.x, c.z);");
-            sb.AppendLine("        if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) continue;");
-            sb.AppendLine("        const dx = p.x - cx, dy = p.y - cy; const len = Math.hypot(dx, dy); if (len < 0.01) continue;");
-            sb.AppendLine("        const nx = dx/len, ny = dy/len;");
-            sb.AppendLine("        const arrowX = cx + nx * radius, arrowY = cy + ny * radius;");
-            sb.AppendLine("        const angle = Math.atan2(ny, nx);");
-            sb.AppendLine("        ctx.save(); ctx.translate(arrowX, arrowY); ctx.rotate(angle);");
-            sb.AppendLine("        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath();");
-            sb.AppendLine("        ctx.fillStyle = '#aabbcc'; ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=4; ctx.fill();");
-            sb.AppendLine("        ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0; ctx.restore();");
-            sb.AppendLine("        let lx = arrowX, ly = (ny>0) ? arrowY-16 : arrowY+22;");
-            sb.AppendLine("        if (lx < 50) lx = 50; if (lx > W-50) lx = W-50; if (ly < 20) ly = 20; if (ly > H-20) ly = H-20;");
-            sb.AppendLine("        ctx.font = '10px \"\"Segoe UI\"\"'; ctx.fillStyle = '#c8ddee'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4;");
-            sb.AppendLine("        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';");
-            sb.AppendLine("        ctx.fillText(`${c.name} (${formatDistance(c.dist)})`, lx, ly);");
-            sb.AppendLine("        ctx.shadowBlur = 0;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    // Цели за пределами экрана");
-            sb.AppendLine("    for (const t of customTargets) {");
-            sb.AppendLine("        const p = worldToScreen(t.x, t.z);");
-            sb.AppendLine("        if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) continue;");
-            sb.AppendLine("        const dx = p.x - cx, dy = p.y - cy; const len = Math.hypot(dx, dy); if (len < 0.01) continue;");
-            sb.AppendLine("        const nx = dx/len, ny = dy/len;");
-            sb.AppendLine("        const arrowX = cx + nx * radius, arrowY = cy + ny * radius;");
-            sb.AppendLine("        const angle = Math.atan2(ny, nx);");
-            sb.AppendLine("        const color = t.active ? (t.color || '#ffc857') : (t.color || '#88aadd');");
-            sb.AppendLine("        ctx.save(); ctx.translate(arrowX, arrowY); ctx.rotate(angle);");
-            sb.AppendLine("        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath();");
-            sb.AppendLine("        ctx.fillStyle = color; ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=4; ctx.fill();");
-            sb.AppendLine("        ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); ctx.shadowBlur=0; ctx.restore();");
-            sb.AppendLine("        let lx = arrowX, ly = (ny>0) ? arrowY-16 : arrowY+22;");
-            sb.AppendLine("        if (lx < 50) lx = 50; if (lx > W-50) lx = W-50; if (ly < 20) ly = 20; if (ly > H-20) ly = H-20;");
-            sb.AppendLine("        ctx.font = t.active ? 'bold 10px \"\"Segoe UI\"\"' : '9px \"\"Segoe UI\"\"';");
-            sb.AppendLine("        ctx.fillStyle = '#fff'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4;");
-            sb.AppendLine("        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';");
-            sb.AppendLine("        ctx.fillText(`${t.name} (${formatDistance(t.dist || 0)})`, lx, ly);");
-            sb.AppendLine("        ctx.shadowBlur = 0;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    // Шлейф");
-            sb.AppendLine("    if (trailPoints.length > 1) {");
-            sb.AppendLine("        for (let i=1; i<trailPoints.length; i++) {");
-            sb.AppendLine("            const p1 = trailPoints[i-1]; const p2 = trailPoints[i];");
-            sb.AppendLine("            const s1 = worldToScreen(p1.x, p1.z);");
-            sb.AppendLine("            const s2 = worldToScreen(p2.x, p2.z);");
-            sb.AppendLine("            const speed = p2.speed || 0;");
-            sb.AppendLine("            ctx.beginPath(); ctx.moveTo(s1.x,s1.y); ctx.lineTo(s2.x,s2.y);");
-            sb.AppendLine("            ctx.strokeStyle = getTrailColor(speed); ctx.lineWidth = 2.5; ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=4; ctx.stroke(); ctx.shadowBlur=0;");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("    // События");
-            sb.AppendLine("    for (const e of events) {");
-            sb.AppendLine("        const p = worldToScreen(e.x, e.z); if (p.x<0||p.x>W||p.y<0||p.y>H) continue;");
-            sb.AppendLine("        const size=10; ctx.save(); ctx.translate(p.x,p.y); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=6;");
-            sb.AppendLine("        ctx.beginPath(); ctx.arc(0,0,size,0,2*Math.PI); ctx.fillStyle=e.color||'#ffffff'; ctx.fill(); ctx.shadowBlur=0; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();");
-            sb.AppendLine("        ctx.fillStyle='#fff'; ctx.font='bold 10px \"\"Segoe UI\"\"'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(e.label||'?',0,-1);");
-            sb.AppendLine("        if (e.subtext) { ctx.fillStyle='#fff'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=3; ctx.font='7px \"\"Segoe UI\"\"'; ctx.textBaseline='top'; ctx.fillText(e.subtext,0,size+2); ctx.shadowBlur=0; }");
-            sb.AppendLine("        ctx.restore();");
-            sb.AppendLine("    }");
-            sb.AppendLine("    // Текущая позиция (с интерполяцией)");
-            sb.AppendLine("    if (trailPoints.length > 0) {");
-            sb.AppendLine("        let idx = currentIndex;");
-            sb.AppendLine("        let nextIdx = Math.min(idx + 1, trailPoints.length - 1);");
-            sb.AppendLine("        let p1 = trailPoints[idx];");
-            sb.AppendLine("        let p2 = trailPoints[nextIdx];");
-            sb.AppendLine("        let t1 = p1.t;");
-            sb.AppendLine("        let t2 = p2.t;");
-            sb.AppendLine("        let currentPos = { x: p1.x, z: p1.z, heading: p1.heading || 0, speed: p1.speed || 0 };");
-            sb.AppendLine("        if (interpolate && idx < trailPoints.length - 1 && t2 > t1) {");
-            sb.AppendLine("            const progress = (currentTime - t1) / (t2 - t1);");
-            sb.AppendLine("            const clampedProgress = Math.max(0, Math.min(1, progress));");
-            sb.AppendLine("            currentPos.x = p1.x + (p2.x - p1.x) * clampedProgress;");
-            sb.AppendLine("            currentPos.z = p1.z + (p2.z - p1.z) * clampedProgress;");
-            sb.AppendLine("            let h1 = p1.heading || 0;");
-            sb.AppendLine("            let h2 = p2.heading || 0;");
-            sb.AppendLine("            let diff = h2 - h1;");
-            sb.AppendLine("            while (diff > Math.PI) diff -= 2 * Math.PI;");
-            sb.AppendLine("            while (diff < -Math.PI) diff += 2 * Math.PI;");
-            sb.AppendLine("            currentPos.heading = h1 + diff * clampedProgress;");
-            sb.AppendLine("            currentPos.speed = p1.speed + (p2.speed - p1.speed) * clampedProgress;");
-            sb.AppendLine("        }");
-            sb.AppendLine("        const sp = worldToScreen(currentPos.x, currentPos.z);");
-            sb.AppendLine("        const heading = currentPos.heading || 0;");
-            sb.AppendLine("        // Получаем pitch и roll из closest (если есть)");
-            sb.AppendLine("        let pitchDeg = 0, rollDeg = 0;");
-            sb.AppendLine("        if (closest) {");
-            sb.AppendLine("            const pitchRaw = closest.pitch || 0;");
-            sb.AppendLine("            const rollRaw = closest.roll || 0;");
-            sb.AppendLine("            pitchDeg = normalizeAngle((pitchRaw * RAW_TO_DEGREES) * PITCH_CALIBRATION_FACTOR);");
-            sb.AppendLine("            rollDeg = normalizeAngle((rollRaw * RAW_TO_DEGREES) * ROLL_CALIBRATION_FACTOR);");
-            sb.AppendLine("        }");
-            sb.AppendLine("        // Обновляем 3D-маркер");
-            sb.AppendLine("        const body = document.getElementById('truck3dBody');");
-            sb.AppendLine("        if (body) {");
-            sb.AppendLine("            const headingDeg = heading * 180 / Math.PI;");
-            sb.AppendLine("            body.style.transform = `rotate(${headingDeg}deg) rotateX(${pitchDeg}deg) rotateZ(${-rollDeg}deg)`;");
-            sb.AppendLine("        }");
-            sb.AppendLine("        // Скорость под грузовиком (текст на canvas)");
-            sb.AppendLine("        ctx.save(); ctx.translate(sp.x, sp.y+22); ctx.font='10px \"\"Segoe UI\"\"'; ctx.fillStyle='#fff'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(`${currentPos.speed.toFixed(0)} km/h`,0,0); ctx.restore();");
-            sb.AppendLine("        // Обновление целевого центра для плавного слежения");
-            sb.AppendLine("        if (follow) {");
-            sb.AppendLine("            targetCenterX = currentPos.x;");
-            sb.AppendLine("            targetCenterZ = currentPos.z;");
-            sb.AppendLine("        }");
-            sb.AppendLine("        // Плавное движение камеры");
-            sb.AppendLine("        const camSmooth = 0.15;");
-            sb.AppendLine("        centerX += (targetCenterX - centerX) * camSmooth;");
-            sb.AppendLine("        centerZ += (targetCenterZ - centerZ) * camSmooth;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    // Данные (топливо, повреждения, pitch/roll)");
-            //sb.AppendLine("    let closest = null;");
-            sb.AppendLine("    if (dataPoints.length > 0 && currentIndex < trailPoints.length) {");
-            sb.AppendLine("        let minDist = Infinity;");
-            sb.AppendLine("        const curP = trailPoints[currentIndex];");
-            sb.AppendLine("        for (const dp of dataPoints) {");
-            sb.AppendLine("            const d = Math.hypot(dp.x - curP.x, dp.z - curP.z);");
-            sb.AppendLine("            if (d < minDist) { minDist = d; closest = dp; }");
-            sb.AppendLine("        }");
-            sb.AppendLine("        if (closest) {");
-            sb.AppendLine("            document.getElementById('dataPanel').innerHTML = `⛽ ${closest.fuel.toFixed(1) || '--'} л &nbsp;|&nbsp; 🛠️ ${closest.damage.toFixed(1) || '--'}%`;");
-            sb.AppendLine("            // Обновляем индикатор pitch/roll (с калибровкой)");
-            sb.AppendLine("            const pitchRaw = closest.pitch || 0;");
-            sb.AppendLine("            const rollRaw = closest.roll || 0;");
-            sb.AppendLine("            let pitchDeg = (pitchRaw * RAW_TO_DEGREES) * PITCH_CALIBRATION_FACTOR;");
-            sb.AppendLine("            let rollDeg = (rollRaw * RAW_TO_DEGREES) * ROLL_CALIBRATION_FACTOR;");
-            sb.AppendLine("            pitchDeg = normalizeAngle(pitchDeg);");
-            sb.AppendLine("            rollDeg = normalizeAngle(rollDeg);");
-            sb.AppendLine("            // Сохраняем в state для индикаторов");
-            sb.AppendLine("            if (typeof currentPitchRoll === 'undefined') { window.currentPitchRoll = {}; }");
-            sb.AppendLine("            window.currentPitchRoll.pitch = pitchDeg;");
-            sb.AppendLine("            window.currentPitchRoll.roll = rollDeg;");
-            sb.AppendLine("            // Обновляем старые индикаторы (полоски)");
-            sb.AppendLine("            document.getElementById('pitchFill').style.width = Math.min(100, Math.max(0, 50 + pitchDeg * 0.5)) + '%';");
-            sb.AppendLine("            document.getElementById('rollFill').style.width = Math.min(100, Math.max(0, 50 + rollDeg * 0.5)) + '%';");
-            sb.AppendLine("            document.getElementById('pitchLabel').textContent = pitchDeg.toFixed(0);");
-            sb.AppendLine("            document.getElementById('rollLabel').textContent = rollDeg.toFixed(0);");
-            sb.AppendLine("            // Обновляем панель с 3D-индикатором");
-            sb.AppendLine("            updatePitchRollPanel(pitchDeg, rollDeg);");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("// ПАНЕЛЬ PITCH/ROLL С 3D-ИНДИКАТОРОМ ГРУЗОВИКА");
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("let pitchRollState = { pitchMax: -Infinity, pitchMin: Infinity, rollMax: -Infinity, rollMin: Infinity };");
-            sb.AppendLine("function updatePitchRollPanel(pitchDeg, rollDeg) {");
-            sb.AppendLine("    if (pitchDeg > pitchRollState.pitchMax) pitchRollState.pitchMax = pitchDeg;");
-            sb.AppendLine("    if (pitchDeg < pitchRollState.pitchMin) pitchRollState.pitchMin = pitchDeg;");
-            sb.AppendLine("    if (rollDeg > pitchRollState.rollMax) pitchRollState.rollMax = rollDeg;");
-            sb.AppendLine("    if (rollDeg < pitchRollState.rollMin) pitchRollState.rollMin = rollDeg;");
-            sb.AppendLine("    document.getElementById('pitchValue3d').textContent = pitchDeg.toFixed(1) + '°';");
-            sb.AppendLine("    document.getElementById('rollValue3d').textContent = rollDeg.toFixed(1) + '°';");
-            sb.AppendLine("    document.getElementById('pitchMin3d').textContent = pitchRollState.pitchMin.toFixed(1);");
-            sb.AppendLine("    document.getElementById('pitchMax3d').textContent = pitchRollState.pitchMax.toFixed(1);");
-            sb.AppendLine("    document.getElementById('rollMin3d').textContent = pitchRollState.rollMin.toFixed(1);");
-            sb.AppendLine("    document.getElementById('rollMax3d').textContent = pitchRollState.rollMax.toFixed(1);");
-            sb.AppendLine("    const resetBtn = document.getElementById('resetPitchRollBtn');");
-            sb.AppendLine("    if (resetBtn) {");
-            sb.AppendLine("        resetBtn.onclick = function() {");
-            sb.AppendLine("            pitchRollState.pitchMax = -Infinity;");
-            sb.AppendLine("            pitchRollState.pitchMin = Infinity;");
-            sb.AppendLine("            pitchRollState.rollMax = -Infinity;");
-            sb.AppendLine("            pitchRollState.rollMin = Infinity;");
-            sb.AppendLine("            if (window.currentPitchRoll) {");
-            sb.AppendLine("                updatePitchRollPanel(window.currentPitchRoll.pitch, window.currentPitchRoll.roll);");
-            sb.AppendLine("            }");
-            sb.AppendLine("        };");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            sb.AppendLine("// formatDistance для подписей");
-            sb.AppendLine("function formatDistance(d) { if (d < 1000) return Math.round(d)+'м'; return (Math.round(d/1000))+'км'; }");
-            sb.AppendLine("");
-
-            // Управление картой (wheel, drag, click)
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("// УПРАВЛЕНИЕ КАРТОЙ");
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("canvas.addEventListener('wheel', (e) => {");
-            sb.AppendLine("    e.preventDefault();");
-            sb.AppendLine("    const delta = e.deltaY > 0 ? 0.9 : 1.1;");
-            sb.AppendLine("    scale *= delta; if (scale < 0.001) scale = 0.001; if (scale > 1000) scale = 1000; drawMap();");
-            sb.AppendLine("}, { passive: false });");
-            sb.AppendLine("");
-
-            sb.AppendLine("canvas.addEventListener('mousedown', (e) => {");
-            sb.AppendLine("    if (e.button === 0) {");
-            sb.AppendLine("        isDragging = true;");
-            sb.AppendLine("        dragStartX = e.clientX; dragStartY = e.clientY;");
-            sb.AppendLine("        dragStartCX = centerX; dragStartCZ = centerZ;");
-            sb.AppendLine("        canvas.style.cursor = 'grabbing';");
-            sb.AppendLine("    }");
-            sb.AppendLine("});");
-            sb.AppendLine("window.addEventListener('mousemove', (e) => {");
-            sb.AppendLine("    if (isDragging) {");
-            sb.AppendLine("        const dx = (e.clientX - dragStartX) / scale;");
-            sb.AppendLine("        const dy = (dragStartY - e.clientY) / scale;");
-            sb.AppendLine("        centerX = dragStartCX - dx;");
-            sb.AppendLine("        centerZ = dragStartCZ - dy;");
-            sb.AppendLine("        targetCenterX = centerX;");
-            sb.AppendLine("        targetCenterZ = centerZ;");
-            sb.AppendLine("        drawMap();");
-            sb.AppendLine("    }");
-            sb.AppendLine("    // Координаты под курсором");
-            sb.AppendLine("    const rect = canvas.getBoundingClientRect();");
-            sb.AppendLine("    const mx = e.clientX - rect.left;");
-            sb.AppendLine("    const my = e.clientY - rect.top;");
-            sb.AppendLine("    if (mx >= 0 && mx <= W && my >= 0 && my <= H) {");
-            sb.AppendLine("        const wx = centerX + (mx - W/2) / scale;");
-            sb.AppendLine("        const wz = centerZ - (my - H/2) / scale;");
-            sb.AppendLine("        document.getElementById('cursorCoords').textContent = `📍 ${wx.toFixed(1)}, ${wz.toFixed(1)}`;");
-            sb.AppendLine("    }");
-            sb.AppendLine("});");
-            sb.AppendLine("window.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; canvas.style.cursor = 'grab'; } });");
-            sb.AppendLine("");
-
-            sb.AppendLine("// Клик для копирования координат и заметок");
-            sb.AppendLine("let notes = [];");
-            sb.AppendLine("canvas.addEventListener('click', (e) => {");
-            sb.AppendLine("    const rect = canvas.getBoundingClientRect();");
-            sb.AppendLine("    const mx = e.clientX - rect.left;");
-            sb.AppendLine("    const my = e.clientY - rect.top;");
-            sb.AppendLine("    if (mx < 0 || mx > W || my < 0 || my > H) return;");
-            sb.AppendLine("    const wx = centerX + (mx - W/2) / scale;");
-            sb.AppendLine("    const wz = centerZ - (my - H/2) / scale;");
-            sb.AppendLine("    const coordStr = `${wx.toFixed(2)}, ${wz.toFixed(2)}`;");
-            sb.AppendLine("    // Проверяем попадание в объекты");
-            sb.AppendLine("    let objName = '';");
-            sb.AppendLine("    for (const c of cities) {");
-            sb.AppendLine("        const dx = c.x - wx; const dz = c.z - wz;");
-            sb.AppendLine("        if (dx*dx + dz*dz < 100) { objName = c.name; break; }");
-            sb.AppendLine("    }");
-            sb.AppendLine("    if (!objName) {");
-            sb.AppendLine("        for (const t of customTargets) {");
-            sb.AppendLine("            const dx = t.x - wx; const dz = t.z - wz;");
-            sb.AppendLine("            if (dx*dx + dz*dz < 100) { objName = t.name; break; }");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("    if (!objName) {");
-            sb.AppendLine("        for (const e of events) {");
-            sb.AppendLine("            const dx = e.x - wx; const dz = e.z - wz;");
-            sb.AppendLine("            if (dx*dx + dz*dz < 100) { objName = e.label || ''; break; }");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("    const note = objName ? `${coordStr} – ${objName}` : coordStr;");
-            sb.AppendLine("    notes.push(note);");
-            sb.AppendLine("    navigator.clipboard?.writeText(coordStr);");
-            sb.AppendLine("    // Показываем уведомление");
-            sb.AppendLine("    const toast = document.createElement('div');");
-            sb.AppendLine("    toast.style.cssText = 'position:fixed;bottom:170px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;z-index:999;pointer-events:none;'");
-            sb.AppendLine("    toast.textContent = `Скопировано: ${coordStr}`;");
-            sb.AppendLine("    document.body.appendChild(toast);");
-            sb.AppendLine("    setTimeout(() => toast.remove(), 2000);");
-            sb.AppendLine("});");
-            sb.AppendLine("");
-
-            sb.AppendLine("// Измерение расстояния (двойной клик)");
-            sb.AppendLine("let measureMode = false; let measureStart = null;");
-            sb.AppendLine("canvas.addEventListener('dblclick', (e) => {");
-            sb.AppendLine("    const rect = canvas.getBoundingClientRect();");
-            sb.AppendLine("    const mx = e.clientX - rect.left;");
-            sb.AppendLine("    const my = e.clientY - rect.top;");
-            sb.AppendLine("    if (mx < 0 || mx > W || my < 0 || my > H) return;");
-            sb.AppendLine("    const wx = centerX + (mx - W/2) / scale;");
-            sb.AppendLine("    const wz = centerZ - (my - H/2) / scale;");
-            sb.AppendLine("    if (!measureMode) {");
-            sb.AppendLine("        measureMode = true;");
-            sb.AppendLine("        measureStart = { x: wx, z: wz };");
-            sb.AppendLine("        document.getElementById('measureTool').classList.add('active');");
-            sb.AppendLine("        document.getElementById('measureDist').textContent = '0.0';");
-            sb.AppendLine("        return;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    const dx = wx - measureStart.x; const dz = wz - measureStart.z;");
-            sb.AppendLine("    const dist = Math.sqrt(dx*dx + dz*dz);");
-            sb.AppendLine("    document.getElementById('measureDist').textContent = dist.toFixed(1);");
-            sb.AppendLine("    measureMode = false; measureStart = null;");
-            sb.AppendLine("    setTimeout(() => document.getElementById('measureTool').classList.remove('active'), 5000);");
-            sb.AppendLine("});");
-            sb.AppendLine("");
-
-            // Таймлайн
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("// ТАЙМЛАЙН И ВОСПРОИЗВЕДЕНИЕ");
-            sb.AppendLine("// ================================================================");
-            sb.AppendLine("let playing = false;");
-            sb.AppendLine("let speedFactor = 1;");
-            sb.AppendLine("let currentIndex = 0;");
-            sb.AppendLine("let follow = true;");
-            sb.AppendLine("let interpolate = true;");
-            sb.AppendLine("let playStartTime = 0;");
-            sb.AppendLine("let playStartElapsed = 0;");
-            sb.AppendLine("let currentTime = 0;");
-            sb.AppendLine("");
-
-            sb.AppendLine("const playBtn = document.getElementById('playBtn');");
-            sb.AppendLine("const speedLabel = document.getElementById('speedLabel');");
-            sb.AppendLine("const timeSlider = document.getElementById('timeSlider');");
-            sb.AppendLine("const timeDisplay = document.getElementById('timeDisplay');");
-            sb.AppendLine("const followCheck = document.getElementById('followCheck');");
-            sb.AppendLine("const interpolateCheck = document.getElementById('interpolateCheck');");
-            sb.AppendLine("const stepInput = document.getElementById('stepInput');");
-            sb.AppendLine("const beginBtn = document.getElementById('beginBtn');");
-            sb.AppendLine("const endBtn = document.getElementById('endBtn');");
-            sb.AppendLine("const stepBackBtn = document.getElementById('stepBackBtn');");
-            sb.AppendLine("const stepForwardBtn = document.getElementById('stepForwardBtn');");
-            sb.AppendLine("const prevEventBtn = document.getElementById('prevEventBtn');");
-            sb.AppendLine("const nextEventBtn = document.getElementById('nextEventBtn');");
-            sb.AppendLine("");
-
-            sb.AppendLine("function formatTime(seconds) {");
-            sb.AppendLine("    const h = Math.floor(seconds / 3600);");
-            sb.AppendLine("    const m = Math.floor((seconds % 3600) / 60);");
-            sb.AppendLine("    const s = Math.floor(seconds % 60);");
-            sb.AppendLine("    const ms = Math.floor((seconds - Math.floor(seconds)) * 1000);");
-            sb.AppendLine("    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            sb.AppendLine("function updateTimeDisplay() {");
-            sb.AppendLine("    const percent = totalDuration > 0 ? currentTime / totalDuration : 0;");
-            sb.AppendLine("    timeSlider.value = percent * 1000;");
-            sb.AppendLine("    timeDisplay.textContent = formatTime(currentTime);");
-            sb.AppendLine("    drawMap();");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            sb.AppendLine("function setTimeByValue(value) {");
-            sb.AppendLine("    const target = value * totalDuration;");
-            sb.AppendLine("    currentTime = Math.min(target, totalDuration);");
-            sb.AppendLine("    // Находим индекс точки, ближайшей по времени");
-            sb.AppendLine("    let idx = 0;");
-            sb.AppendLine("    for (let i=0; i<times.length; i++) {");
-            sb.AppendLine("        if (times[i] <= currentTime) idx = i; else break;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
-            sb.AppendLine("    updateTimeDisplay();");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            sb.AppendLine("function playStep() {");
-            sb.AppendLine("    if (!playing) return;");
-            sb.AppendLine("    const now = performance.now() / 1000;");
-            sb.AppendLine("    const elapsed = (now - playStartTime) * speedFactor + playStartElapsed;");
-            sb.AppendLine("    const progress = Math.min(elapsed / totalDuration, 1);");
-            sb.AppendLine("    currentTime = Math.min(elapsed, totalDuration);");
-            sb.AppendLine("    // Находим индекс точки, ближайшей по времени");
-            sb.AppendLine("    let idx = 0;");
-            sb.AppendLine("    for (let i=0; i<times.length; i++) {");
-            sb.AppendLine("        if (times[i] <= currentTime) idx = i; else break;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
-            sb.AppendLine("    updateTimeDisplay();");
-            sb.AppendLine("    if (currentTime >= totalDuration) {");
-            sb.AppendLine("        playing = false;");
-            sb.AppendLine("        playBtn.textContent = '▶';");
-            sb.AppendLine("        return;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    requestAnimationFrame(playStep);");
-            sb.AppendLine("}");
-            sb.AppendLine("");
-
-            // Управление
-            sb.AppendLine("// Управление");
-            sb.AppendLine("playBtn.addEventListener('click', () => {");
-            sb.AppendLine("    playing = !playing;");
-            sb.AppendLine("    playBtn.textContent = playing ? '⏸' : '▶';");
-            sb.AppendLine("    if (playing) {");
-            sb.AppendLine("        if (currentTime >= totalDuration) { currentTime = 0; currentIndex = 0; if (follow) { targetCenterX = trailPoints[0].x; targetCenterZ = trailPoints[0].z; } }");
-            sb.AppendLine("        playStartTime = performance.now() / 1000;");
-            sb.AppendLine("        playStartElapsed = currentTime;");
-            sb.AppendLine("        playStep();");
-            sb.AppendLine("    }");
-            sb.AppendLine("});");
-            sb.AppendLine("");
-
-            sb.AppendLine("beginBtn.addEventListener('click', () => {");
-            sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
-            sb.AppendLine("    currentTime = 0; currentIndex = 0;");
-            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[0].x; targetCenterZ = trailPoints[0].z; }");
-            sb.AppendLine("    updateTimeDisplay();");
-            sb.AppendLine("});");
-            sb.AppendLine("");
-
-            sb.AppendLine("endBtn.addEventListener('click', () => {");
-            sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
-            sb.AppendLine("    currentTime = totalDuration; currentIndex = trailPoints.length-1;");
-            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
-            sb.AppendLine("    updateTimeDisplay();");
-            sb.AppendLine("});");
-            sb.AppendLine("");
-
-            sb.AppendLine("stepBackBtn.addEventListener('click', () => {");
-            sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
-            sb.AppendLine("    const step = parseFloat(stepInput.value) || 1;");
-            sb.AppendLine("    let targetTime = currentTime - step;");
-            sb.AppendLine("    if (targetTime < 0) targetTime = 0;");
-            sb.AppendLine("    currentTime = targetTime;");
-            sb.AppendLine("    let idx = 0;");
-            sb.AppendLine("    for (let i=0; i<times.length; i++) {");
-            sb.AppendLine("        if (times[i] <= currentTime) idx = i; else break;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
-            sb.AppendLine("    updateTimeDisplay();");
-            sb.AppendLine("});");
-            sb.AppendLine("");
-
-            sb.AppendLine("stepForwardBtn.addEventListener('click', () => {");
-            sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
-            sb.AppendLine("    const step = parseFloat(stepInput.value) || 1;");
-            sb.AppendLine("    let targetTime = currentTime + step;");
-            sb.AppendLine("    if (targetTime > totalDuration) targetTime = totalDuration;");
-            sb.AppendLine("    currentTime = targetTime;");
-            sb.AppendLine("    let idx = 0;");
-            sb.AppendLine("    for (let i=0; i<times.length; i++) {");
-            sb.AppendLine("        if (times[i] <= currentTime) idx = i; else break;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
-            sb.AppendLine("    updateTimeDisplay();");
-            sb.AppendLine("});");
-            sb.AppendLine("");
-
-            sb.AppendLine("prevEventBtn.addEventListener('click', () => {");
-            sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
-            sb.AppendLine("    const currentT = currentTime;");
-            sb.AppendLine("    let prevEvent = null;");
-            sb.AppendLine("    for (const e of events) {");
-            sb.AppendLine("        if (e.t < currentT) { prevEvent = e; } else break;");
-            sb.AppendLine("    }");
-            sb.AppendLine("    if (prevEvent) {");
-            sb.AppendLine("        currentTime = prevEvent.t;");
-            sb.AppendLine("        let idx = 0;");
-            sb.AppendLine("        for (let i=0; i<times.length; i++) {");
-            sb.AppendLine("            if (times[i] <= currentTime) idx = i; else break;");
-            sb.AppendLine("        }");
-            sb.AppendLine("        currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("        if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
-            sb.AppendLine("        updateTimeDisplay();");
-            sb.AppendLine("    }");
-            sb.AppendLine("});");
-            sb.AppendLine("");
-
-            sb.AppendLine("nextEventBtn.addEventListener('click', () => {");
-            sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
-            sb.AppendLine("    const currentT = currentTime;");
-            sb.AppendLine("    let nextEvent = null;");
-            sb.AppendLine("    for (const e of events) {");
-            sb.AppendLine("        if (e.t > currentT) { nextEvent = e; break; }");
-            sb.AppendLine("    }");
-            sb.AppendLine("    if (nextEvent) {");
-            sb.AppendLine("        currentTime = nextEvent.t;");
-            sb.AppendLine("        let idx = 0;");
-            sb.AppendLine("        for (let i=0; i<times.length; i++) {");
-            sb.AppendLine("            if (times[i] <= currentTime) idx = i; else break;");
-            sb.AppendLine("        }");
-            sb.AppendLine("        currentIndex = Math.min(idx, trailPoints.length-1);");
-            sb.AppendLine("        if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }");
-            sb.AppendLine("        updateTimeDisplay();");
-            sb.AppendLine("    }");
-            sb.AppendLine("});");
-            sb.AppendLine("");
-
-            sb.AppendLine("speedDownBtn.addEventListener('click', () => { speedFactor = Math.max(0.5, speedFactor/1.5); speedLabel.textContent = speedFactor.toFixed(1)+'×'; });");
-            sb.AppendLine("speedUpBtn.addEventListener('click', () => { speedFactor = Math.min(5, speedFactor*1.5); speedLabel.textContent = speedFactor.toFixed(1)+'×'; });");
-            sb.AppendLine("");
-
-            sb.AppendLine("timeSlider.addEventListener('input', () => {");
-            sb.AppendLine("    if (playing) { playing = false; playBtn.textContent = '▶'; }");
-            sb.AppendLine("    const val = parseFloat(timeSlider.value) / 1000;");
-            sb.AppendLine("    setTimeByValue(val);");
-            sb.AppendLine("});");
-            sb.AppendLine("");
-
-            sb.AppendLine("followCheck.addEventListener('change', () => {");
-            sb.AppendLine("    follow = followCheck.checked;");
-            sb.AppendLine("    if (follow && currentIndex < trailPoints.length) {");
-            sb.AppendLine("        targetCenterX = trailPoints[currentIndex].x;");
-            sb.AppendLine("        targetCenterZ = trailPoints[currentIndex].z;");
-            sb.AppendLine("        drawMap();");
-            sb.AppendLine("    }");
-            sb.AppendLine("});");
-            sb.AppendLine("interpolateCheck.addEventListener('change', () => { interpolate = interpolateCheck.checked; drawMap(); });");
-            sb.AppendLine("");
-
-            sb.AppendLine("// Инициализация");
-            sb.AppendLine("resize(); fitMap();");
-            sb.AppendLine("if (trailPoints.length > 0) { currentTime = 0; currentIndex = 0; targetCenterX = trailPoints[0].x; targetCenterZ = trailPoints[0].z; centerX = targetCenterX; centerZ = targetCenterZ; }");
-            sb.AppendLine("drawMap(); updateTimeDisplay();");
-            sb.AppendLine("window.addEventListener('resize', () => { resize(); fitMap(); drawMap(); });");
-
-            sb.AppendLine("</script>");
-            sb.AppendLine("</body>");
-            sb.AppendLine("</html>");
-            return sb.ToString();
-        }
-        // ================================================================
-        // ГОЛОВА HTML
-        // ================================================================
-        private string GenerateHeadSection()
-        {
-            return @"<head>
-    <meta charset='utf-8'/>
-    <title>ETS2 Trail Viewer</title>
-</head>";
-        }
-
-        // ================================================================
-        // СТИЛИ
-        // ================================================================
-        private string GenerateStyleSection()
-        {
-            return @"<style>
-    body { margin:0; background:#0a0c10; color:#e0e0e0; font-family:'Segoe UI',sans-serif; overflow:hidden; }
-    #mapCanvas { display:block; width:100vw; height:calc(100vh - 150px); background:#111; cursor:grab; position:absolute; top:0; left:0; }
-    #controls { position:fixed; bottom:0; left:0; right:0; background:#1a1f26; padding:8px 15px; border-top:1px solid #333; display:flex; flex-direction:column; gap:6px; z-index:10; }
-    #controlsTop { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    #controlsBottom { display:flex; align-items:center; gap:10px; }
-    #controls button, #controls input { background:#2a3545; border:1px solid #4a5a6a; color:#d0def0; border-radius:4px; padding:4px 10px; font-size:13px; cursor:pointer; }
-    #controls button:hover { background:#3a4a5a; }
-    #timeSlider { flex:1; min-width:200px; }
-    #speedLabel { font-size:13px; color:#8fa0b9; }
-    #checkboxFollow { margin-left:8px; }
-    #timeDisplay { font-size:13px; color:#aabbcc; min-width:120px; font-family:monospace; }
-    #stepInput { width:60px; background:#0c1016; border:1px solid #2f3845; border-radius:4px; padding:3px 6px; color:#e0e9f5; font-size:13px; font-family:monospace; }
-    #info { position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.7); padding:6px 12px; border-radius:6px; font-size:12px; color:#ccc; z-index:5; pointer-events:none; }
-    #dataPanel { position:absolute; bottom:160px; left:20px; background:rgba(0,0,0,0.7); padding:8px 14px; border-radius:6px; font-size:11px; color:#aabbcc; border:1px solid #333; backdrop-filter:blur(4px); pointer-events:none; z-index:5; }
-    #titlePanel { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:6px 14px; border-radius:6px; font-size:12px; color:#e0e0e0; border:1px solid #444; backdrop-filter:blur(4px); pointer-events:none; z-index:5; }
-    #cursorCoords { position:absolute; bottom:160px; right:20px; background:rgba(0,0,0,0.7); padding:2px 8px; border-radius:4px; font-size:10px; color:#8fa0b9; pointer-events:none; z-index:5; }
-    #measureTool { position:absolute; top:60px; left:10px; background:rgba(0,0,0,0.7); padding:4px 10px; border-radius:4px; font-size:11px; color:#ffc857; border:1px solid #ffc85744; display:none; pointer-events:none; z-index:5; }
-    #measureTool.active { display:block; }
-    .note-btn { background:#2a3545; border:1px solid #4a5a6a; color:#d0def0; border-radius:4px; padding:2px 6px; font-size:11px; cursor:pointer; }
-    .note-btn:hover { background:#3a4a5a; }
-    /* 3D контейнер */
-    #threeContainer { position:absolute; top:0; left:0; width:100%; height:calc(100vh - 150px); pointer-events:none; z-index:2; }
-    #threeContainer canvas { display:block; width:100%; height:100%; pointer-events:none; }
-    /* Панель pitch/roll (только числа) */
-    #prPanel { position:absolute; top:50px; left:10px; background:rgba(0,0,0,0.85); padding:8px 12px; border-radius:8px; border:1px solid #444; backdrop-filter:blur(4px); pointer-events:none; z-index:5; min-width:180px; font-size:12px; }
-    #prPanel .pr-row { display:flex; gap:12px; margin-bottom:2px; }
-    #prPanel .pr-label { color:#8fa0b9; }
-    #prPanel .pr-value { font-weight:bold; }
-    #prPanel .pr-extremes { display:flex; justify-content:space-between; gap:6px; font-size:10px; color:#6a7b94; flex-wrap:wrap; }
-    #prPanel .pr-reset-btn { background:#2a3545; border:1px solid #4a5a6a; color:#d0def0; border-radius:4px; padding:1px 8px; font-size:9px; cursor:pointer; pointer-events:auto; }
-    /* Debug log */
-    #debugLog { position:absolute; bottom:200px; right:20px; background:rgba(0,0,0,0.8); padding:4px 10px; border-radius:4px; font-size:9px; color:#88ff88; font-family:monospace; pointer-events:none; z-index:5; border:1px solid #4a5a6a; max-height:100px; overflow-y:auto; }
-    /* Чекбокс 3D указателя */
-    #controlsTop label.checkbox3d { color:#8fa0b9; font-size:13px; margin-left:10px; }
-    /* Дополнительная информация (head heading, scale) */
-    #extraInfo { position:absolute; bottom:160px; right:20px; background:rgba(0,0,0,0.7); padding:4px 10px; border-radius:4px; font-size:10px; color:#8fa0b9; pointer-events:none; z-index:5; }
-</style>";
-        }
-
-        // ================================================================
-        // НАЧАЛО BODY И UI-ЭЛЕМЕНТЫ
-        // ================================================================
-        private string GenerateBodyStart()
-        {
-            return @"<body>";
-        }
-
-        private string GenerateUISections()
-        {
-            return @"<div id='info'>Просмотр трека</div>
-<div id='titlePanel'></div>
-<div id='dataPanel'>⛽ -- л &nbsp;|&nbsp; 🛠️ --%</div>
-<div id='cursorCoords'></div>
-<div id='measureTool'>📏 Расстояние: <span id='measureDist'>0.0</span> м</div>
-<div id='prPanel'>
-    <div class='pr-row'>
-        <span class='pr-label' style='color:#ff6b6b;'>Pitch</span>
-        <span class='pr-value' style='color:#ff6b6b;' id='pitchValue3d'>0.0°</span>
-        <span class='pr-label' style='color:#4ecdc4;'>Roll</span>
-        <span class='pr-value' style='color:#4ecdc4;' id='rollValue3d'>0.0°</span>
-    </div>
-    <div class='pr-extremes'>
-        <span>Pitch min: <span id='pitchMin3d'>0.0</span>°</span>
-        <span>Pitch max: <span id='pitchMax3d'>0.0</span>°</span>
-        <span>Roll min: <span id='rollMin3d'>0.0</span>°</span>
-        <span>Roll max: <span id='rollMax3d'>0.0</span>°</span>
-    </div>
-    <div style='margin-top:4px; text-align:right;'>
-        <button id='resetPitchRollBtn' class='pr-reset-btn'>Сбросить экстремумы</button>
-    </div>
-</div>
-<div id='extraInfo'></div>
-<div id='debugLog'>Debug</div>
-<canvas id='mapCanvas'></canvas>
-<div id='threeContainer'></div>
-<div id='controls'>
-    <div id='controlsTop'>
-        <button id='playBtn'>▶</button>
-        <button id='beginBtn'>⏮</button>
-        <button id='endBtn'>⏭</button>
-        <button id='stepBackBtn'>◀</button>
-        <button id='stepForwardBtn'>▶</button>
-        <button id='prevEventBtn'>⏪</button>
-        <button id='nextEventBtn'>⏩</button>
-        <span style='color:#8fa0b9;font-size:13px;'>Шаг:</span>
-        <input type='number' id='stepInput' value='1' min='0.5' max='600' step='0.5'>
-        <span style='color:#8fa0b9;font-size:12px;'>с</span>
-        <span id='speedLabel'>1×</span>
-        <button id='speedDownBtn'>−</button>
-        <button id='speedUpBtn'>+</button>
-        <label style='color:#8fa0b9;font-size:13px;'><input type='checkbox' id='followCheck' checked> Следить</label>
-        <label style='color:#8fa0b9;font-size:13px;'><input type='checkbox' id='interpolateCheck' checked> Интерполяция</label>
-        <label class='checkbox3d'><input type='checkbox' id='use3dCheck' checked> 3D указатель</label>
-    </div>
-    <div id='controlsBottom'>
-        <input type='range' id='timeSlider' min='0' max='1000' value='0' style='flex:1;'>
-        <span id='timeDisplay'>00:00:00.000</span>
-    </div>
-</div>";
-        }
-
-        // ================================================================
-        // СКРИПТЫ (ВЕСЬ JAVASCRIPT)
-        // ================================================================
-        private string GenerateScriptSection(string compactData, JObject? meta, JObject? mapData)
-        {
-            string escapedData = JsonConvert.ToString(compactData);
-            string metaJson = meta != null ? meta.ToString(Formatting.None) : "{}";
-            string mapJson = mapData != null ? mapData.ToString(Formatting.None) : "{}";
-
-            var sb = new StringBuilder();
-            sb.AppendLine("<script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'></script>");
-            sb.AppendLine("<script>");
-            sb.AppendLine($"const compactData = {escapedData};");
-            sb.AppendLine($"const metaData = {metaJson};");
-            sb.AppendLine($"const mapData = {mapJson};");
-            sb.AppendLine(GenerateConstants());
-            sb.AppendLine(GenerateParserFunctions());
-            sb.AppendLine(GenerateInitData());
-            sb.AppendLine(GenerateDrawMapFunction());
-            sb.AppendLine(GenerateThreeJSInit());
-            sb.AppendLine(GeneratePitchRollPanel());
-            sb.AppendLine(GenerateUIControls());
-            sb.AppendLine(GenerateTimelineControls());
-            sb.AppendLine(GenerateInitialization());
-            sb.AppendLine("</script>");
-            return sb.ToString();
-        }
-
-        // ----- Константы -----
-        private string GenerateConstants()
-        {
-            return @"// ================================================================
-// КОНСТАНТЫ (калибровка по документации TruckTel)
+            // Весь остальной JavaScript код пишем как verbatim string
+            sb.AppendLine(@"
+// ================================================================
+// КОНСТАНТЫ
 // ================================================================
 const NEARBY_CITIES_COUNT = 4;
-// heading: 0..1 → 0..360
-// pitch: -0.25..0.25 → -90..90 → умножаем на 360
-// roll: -0.5..0.5 → -180..180 → умножаем на 360
-const PITCH_SCALE = 360;   // -0.25..0.25 -> -90..90
-const ROLL_SCALE = 360;    // -0.5..0.5 -> -180..180
-const HEADING_SCALE = 360; // 0..1 -> 0..360
-";
-        }
+const RAW_TO_DEGREES = 360 / 283;
+const ROLL_CALIBRATION_FACTOR = 0.5;
+const PITCH_CALIBRATION_FACTOR = 1.0;
 
-        // ----- Парсер -----
-        private string GenerateParserFunctions()
-        {
-            return @"// ================================================================
+function normalizeAngle(deg) {
+    while (deg > 180) deg -= 360;
+    while (deg < -180) deg += 360;
+    return deg * 10;
+}
+
+// ================================================================
 // ПАРСЕР КОМПАКТНОГО ТРЕКА
 // ================================================================
 function parseTrail(data) {
@@ -1045,19 +189,10 @@ function parseTrail(data) {
                 fuel: parseFloat(parts[5]),
                 damage: parseFloat(parts[6]),
                 pitch: parseFloat(parts[7] || 0),
-                roll: parseFloat(parts[8] || 0),
-                // Новые поля
-                lights: parts[9] ? JSON.parse(parts[9]) : {},
-                gameTime: parseFloat(parts[10] || 0),
-                localScale: parseFloat(parts[11] || 1),
-                steering: parseFloat(parts[12] || 0),
-                throttle: parseFloat(parts[13] || 0),
-                brake: parseFloat(parts[14] || 0),
-                odometer: parseFloat(parts[15] || 0),
-                headOffset: parts[16] ? parts[16].split(',').map(Number) : [0,0,0,0,0,0]
+                roll: parseFloat(parts[8] || 0)
             };
             dataPoints.push(dp);
-            debugLines.push(`[DEBUG] D: t=${dp.t}, pitch=${dp.pitch}, roll=${dp.roll}`);
+            debugLines.push('[DEBUG] D: t=' + dp.t + ', pitch=' + dp.pitch + ', roll=' + dp.roll);
         } else if (type === 'E') {
             const eType = typeNames[parseInt(parts[4])] || 'unknown';
             events.push({ t: parseFloat(parts[1]), x: parseFloat(parts[2]), z: parseFloat(parts[3]), type: eType, label: parts[5], color: parts[6], subtext: parts[7] });
@@ -1076,13 +211,8 @@ function parseTrail(data) {
         logDiv.innerHTML = 'Data points: ' + dataPoints.length + ' | Trail: ' + trail.length + '<br>' + debugLines.slice(0,5).join('<br>');
     }
     return { meta, trail, dataPoints, events };
-}";
-        }
+}
 
-        // ----- Инициализация данных -----
-        private string GenerateInitData()
-        {
-            return @"
 const parsed = parseTrail(compactData);
 const trailPoints = parsed.trail;
 const dataPoints = parsed.dataPoints;
@@ -1100,387 +230,299 @@ const totalDuration = times.length > 0 ? times[times.length-1] : 0;
 
 const title = meta.title || '';
 const desc = meta.description || '';
-document.getElementById('titlePanel').innerHTML = title + (desc ? '<br><span style='font-size:10px; color:#888;'>'+desc+'</span>' : '');
-";
+document.getElementById('titlePanel').innerHTML = title + (desc ? '<br><span style=''font-size:10px; color:#888;''>'+desc+'</span>' : '');
+
+const canvas = document.getElementById('mapCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight - 150; drawMap(); }
+window.addEventListener('resize', resize);
+
+let centerX = 0, centerZ = 0, scale = 1;
+let dragStartX = 0, dragStartY = 0, dragStartCX = 0, dragStartCZ = 0, isDragging = false;
+let targetCenterX = 0, targetCenterZ = 0;
+
+function fitMap() {
+    if (trailPoints.length < 2) return;
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const p of trailPoints) {
+        if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+        if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z;
+    }
+    centerX = (minX + maxX) / 2;
+    centerZ = (minZ + maxZ) / 2;
+    targetCenterX = centerX;
+    targetCenterZ = centerZ;
+    const range = Math.max(maxX - minX, maxZ - minZ, 1);
+    scale = (Math.min(W, H) * 0.85) / (range * 1.15);
+}
+
+function worldToScreen(wx, wz) {
+    const dx = (wx - centerX) * scale;
+    const dz = (wz - centerZ) * scale;
+    return { x: W/2 + dx, y: H/2 - dz };
+}
+
+function getTrailColor(speed) {
+    const minS = meta.minSpeed || 0;
+    const maxS = meta.maxSpeed || 125;
+    const s = Math.max(minS, Math.min(maxS, speed));
+    const t = (s - minS) / (maxS - minS);
+    let r,g,b;
+    if (t <= 0.2) { const u = t/0.2; r=0; g=u*255; b=255; }
+    else if (t <= 0.4) { const u=(t-0.2)/0.2; r=0; g=255; b=255-u*255; }
+    else if (t <= 0.6) { const u=(t-0.4)/0.2; r=u*255; g=255; b=0; }
+    else if (t <= 0.8) { const u=(t-0.6)/0.2; r=255; g=255-u*(255-165); b=0; }
+    else { const u=(t-0.8)/0.2; r=255-u*(255-128); g=165-u*165; b=u*255; }
+    return 'rgb(' + Math.round(r) + ', ' + Math.round(g) + ', ' + Math.round(b) + ')';
+}
+
+function formatDistance(d) { if (d < 1000) return Math.round(d)+'м'; return (Math.round(d/1000))+'км'; }
+
+let currentIndex = 0;
+let currentTime = 0;
+let playing = false;
+let speedFactor = 1;
+let follow = true;
+let interpolate = true;
+let playStartTime = 0;
+let playStartElapsed = 0;
+let closest = null;
+
+function drawMap() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0f1217';
+    ctx.fillRect(0, 0, W, H);
+
+    // Сетка
+    const gridStep = 200 / scale;
+    ctx.strokeStyle = '#2a3545';
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([4,6]);
+    for (let x = -W/2; x < W/2; x += gridStep) {
+        const p = worldToScreen(centerX+x, centerZ);
+        ctx.beginPath(); ctx.moveTo(p.x,0); ctx.lineTo(p.x,H); ctx.stroke();
+    }
+    for (let z = -H/2; z < H/2; z += gridStep) {
+        const p = worldToScreen(centerX, centerZ+z);
+        ctx.beginPath(); ctx.moveTo(0,p.y); ctx.lineTo(W,p.y); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // Дороги
+    for (const r of roads) {
+        const p1 = worldToScreen(r.x1, r.z1);
+        const p2 = worldToScreen(r.x2, r.z2);
+        ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);
+        ctx.strokeStyle = '#5a7a8a';
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.6;
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // Города
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const c of cities) {
+        const p = worldToScreen(c.x, c.z);
+        if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, 2*Math.PI);
+        ctx.fillStyle = '#ffdd88';
+        ctx.shadowColor = '#ffdd8844';
+        ctx.shadowBlur = 6;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.font = '10px ""Segoe UI""';
+        ctx.fillStyle = '#c8ddee';
+        ctx.fillText(c.name, p.x, p.y-6);
+    }
+
+    // Цели
+    for (const t of customTargets) {
+        const p = worldToScreen(t.x, t.z);
+        if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;
+        ctx.beginPath(); ctx.arc(p.x, p.y, t.active ? 6 : 4, 0, 2*Math.PI);
+        ctx.fillStyle = t.active ? (t.color || '#ffc857') : (t.color || '#88aadd');
+        ctx.shadowColor = t.active ? '#ffc85788' : '#88aadd88';
+        ctx.shadowBlur = t.active ? 16 : 8;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = t.active ? 1.5 : 0.5;
+        ctx.stroke();
+        ctx.font = t.active ? 'bold 10px ""Segoe UI""' : '9px ""Segoe UI""';
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(t.name, p.x, p.y - (t.active ? 14 : 10));
+        ctx.shadowBlur = 0;
+    }
+
+    // Ближайшие города и цели за пределами экрана
+    const cx = W/2, cy = H/2;
+    const radius = Math.min(W, H) * 0.42;
+    const currentPos = currentIndex < trailPoints.length ? trailPoints[currentIndex] : { x:0, z:0 };
+    // Ближайшие города
+    const cityDist = cities.map(c => ({ ...c, dist: Math.hypot(c.x - currentPos.x, c.z - currentPos.z) }));
+    cityDist.sort((a,b) => a.dist - b.dist);
+    const nearCities = cityDist.slice(0, NEARBY_CITIES_COUNT);
+    for (const c of nearCities) {
+        const p = worldToScreen(c.x, c.z);
+        if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) continue;
+        const dx = p.x - cx, dy = p.y - cy; const len = Math.hypot(dx, dy); if (len < 0.01) continue;
+        const nx = dx/len, ny = dy/len;
+        const arrowX = cx + nx * radius, arrowY = cy + ny * radius;
+        const angle = Math.atan2(ny, nx);
+        ctx.save(); ctx.translate(arrowX, arrowY); ctx.rotate(angle);
+        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath();
+        ctx.fillStyle = '#aabbcc'; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 4; ctx.fill();
+        ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0; ctx.restore();
+        let lx = arrowX, ly = (ny>0) ? arrowY-16 : arrowY+22;
+        if (lx < 50) lx = 50; if (lx > W-50) lx = W-50; if (ly < 20) ly = 20; if (ly > H-20) ly = H-20;
+        ctx.font = '10px ""Segoe UI""';
+        ctx.fillStyle = '#c8ddee';
+        ctx.shadowColor='rgba(0,0,0,0.8)';
+        ctx.shadowBlur=4;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(c.name + ' (' + formatDistance(c.dist) + ')', lx, ly);
+        ctx.shadowBlur = 0;
+    }
+
+    // Цели за пределами экрана
+    for (const t of customTargets) {
+        const p = worldToScreen(t.x, t.z);
+        if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) continue;
+        const dx = p.x - cx, dy = p.y - cy; const len = Math.hypot(dx, dy); if (len < 0.01) continue;
+        const nx = dx/len, ny = dy/len;
+        const arrowX = cx + nx * radius, arrowY = cy + ny * radius;
+        const angle = Math.atan2(ny, nx);
+        const color = t.active ? (t.color || '#ffc857') : (t.color || '#88aadd');
+        ctx.save(); ctx.translate(arrowX, arrowY); ctx.rotate(angle);
+        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath();
+        ctx.fillStyle = color; ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=4; ctx.fill();
+        ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); ctx.shadowBlur=0; ctx.restore();
+        let lx = arrowX, ly = (ny>0) ? arrowY-16 : arrowY+22;
+        if (lx < 50) lx = 50; if (lx > W-50) lx = W-50; if (ly < 20) ly = 20; if (ly > H-20) ly = H-20;
+        ctx.font = t.active ? 'bold 10px ""Segoe UI""' : '9px ""Segoe UI""';
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor='rgba(0,0,0,0.8)';
+        ctx.shadowBlur=4;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(t.name + ' (' + formatDistance(t.dist || 0) + ')', lx, ly);
+        ctx.shadowBlur = 0;
+    }
+
+    // Шлейф
+    if (trailPoints.length > 1) {
+        for (let i=1; i<trailPoints.length; i++) {
+            const p1 = trailPoints[i-1]; const p2 = trailPoints[i];
+            const s1 = worldToScreen(p1.x, p1.z);
+            const s2 = worldToScreen(p2.x, p2.z);
+            const speed = p2.speed || 0;
+            ctx.beginPath(); ctx.moveTo(s1.x,s1.y); ctx.lineTo(s2.x,s2.y);
+            ctx.strokeStyle = getTrailColor(speed); ctx.lineWidth = 2.5;
+            ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=4; ctx.stroke(); ctx.shadowBlur=0;
         }
+    }
 
-        // ----- drawMap (основная функция) -----
-
-        private string GenerateDrawMapFunction()
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("const canvas = document.getElementById('mapCanvas');");
-            sb.AppendLine("const ctx = canvas.getContext('2d');");
-            sb.AppendLine("let W, H;");
-            sb.AppendLine("function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight - 150; drawMap(); }");
-            sb.AppendLine("window.addEventListener('resize', resize);");
-            sb.AppendLine("let centerX = 0, centerZ = 0, scale = 1;");
-            sb.AppendLine("let dragStartX = 0, dragStartY = 0, dragStartCX = 0, dragStartCZ = 0, isDragging = false;");
-            sb.AppendLine("let targetCenterX = 0, targetCenterZ = 0;");
-            sb.AppendLine("function fitMap() {");
-            sb.AppendLine("    if (trailPoints.length < 2) return;");
-            sb.AppendLine("    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;");
-            sb.AppendLine("    for (const p of trailPoints) { if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x; if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z; }");
-            sb.AppendLine("    centerX = (minX + maxX) / 2; centerZ = (minZ + maxZ) / 2;");
-            sb.AppendLine("    targetCenterX = centerX; targetCenterZ = centerZ;");
-            sb.AppendLine("    const range = Math.max(maxX - minX, maxZ - minZ, 1);");
-            sb.AppendLine("    scale = (Math.min(W, H) * 0.85) / (range * 1.15);");
-            sb.AppendLine("}");
-            sb.AppendLine("function worldToScreen(wx, wz) {");
-            sb.AppendLine("    const dx = (wx - centerX) * scale; const dz = (wz - centerZ) * scale;");
-            sb.AppendLine("    return { x: W/2 + dx, y: H/2 - dz };");
-            sb.AppendLine("}");
-            sb.AppendLine("function getTrailColor(speed) {");
-            sb.AppendLine("    const minS = meta.minSpeed || 0; const maxS = meta.maxSpeed || 125;");
-            sb.AppendLine("    const s = Math.max(minS, Math.min(maxS, speed)); const t = (s - minS) / (maxS - minS);");
-            sb.AppendLine("    let r,g,b;");
-            sb.AppendLine("    if (t <= 0.2) { const u = t/0.2; r=0; g=u*255; b=255; }");
-            sb.AppendLine("    else if (t <= 0.4) { const u=(t-0.2)/0.2; r=0; g=255; b=255-u*255; }");
-            sb.AppendLine("    else if (t <= 0.6) { const u=(t-0.4)/0.2; r=u*255; g=255; b=0; }");
-            sb.AppendLine("    else if (t <= 0.8) { const u=(t-0.6)/0.2; r=255; g=255-u*(255-165); b=0; }");
-            sb.AppendLine("    else { const u=(t-0.8)/0.2; r=255-u*(255-128); g=165-u*165; b=u*255; }");
-            sb.AppendLine("    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;");
-            sb.AppendLine("}");
-            sb.AppendLine("function formatDistance(d) { if (d < 1000) return Math.round(d)+'м'; return (Math.round(d/1000))+'км'; }");
-            //sb.AppendLine("let closest = null;");
-            sb.AppendLine("function drawMap() {");
-            sb.AppendLine("    ctx.clearRect(0, 0, W, H);");
-            // --- Фон в зависимости от времени суток ---
-            sb.AppendLine("    let gameTimeMinutes = 0;");
-            sb.AppendLine("    if (closest && closest.gameTime !== undefined) gameTimeMinutes = closest.gameTime;");
-            sb.AppendLine("    const hour = (gameTimeMinutes % 1440) / 60;");
-            sb.AppendLine("    const isDay = hour >= 6 && hour < 18;");
-            sb.AppendLine("    const nightColor = [15, 18, 23]; // #0f1217");
-            sb.AppendLine("    const dayColor = [42, 74, 42];   // #2a4a2a");
-            sb.AppendLine("    let mix = 0;");
-            sb.AppendLine("    if (hour >= 6 && hour < 7) mix = (hour - 6) / 1;");
-            sb.AppendLine("    else if (hour >= 17 && hour < 18) mix = 1 - (hour - 17) / 1;");
-            sb.AppendLine("    else if (hour >= 7 && hour < 17) mix = 1;");
-            sb.AppendLine("    else mix = 0;");
-            sb.AppendLine("    const r = Math.round(nightColor[0] + (dayColor[0] - nightColor[0]) * mix);");
-            sb.AppendLine("    const g = Math.round(nightColor[1] + (dayColor[1] - nightColor[1]) * mix);");
-            sb.AppendLine("    const b = Math.round(nightColor[2] + (dayColor[2] - nightColor[2]) * mix);");
-            sb.AppendLine("    ctx.fillStyle = `rgb(${r},${g},${b})`;");
-            sb.AppendLine("    ctx.fillRect(0, 0, W, H);");
-            // --- Сетка ---
-            sb.AppendLine("    const gridStep = 200 / scale;");
-            sb.AppendLine("    ctx.strokeStyle = '#2a3545'; ctx.lineWidth = 0.5; ctx.setLineDash([4,6]);");
-            sb.AppendLine("    for (let x = -W/2; x < W/2; x += gridStep) { const p = worldToScreen(centerX+x, centerZ); ctx.beginPath(); ctx.moveTo(p.x,0); ctx.lineTo(p.x,H); ctx.stroke(); }");
-            sb.AppendLine("    for (let z = -H/2; z < H/2; z += gridStep) { const p = worldToScreen(centerX, centerZ+z); ctx.beginPath(); ctx.moveTo(0,p.y); ctx.lineTo(W,p.y); ctx.stroke(); }");
-            sb.AppendLine("    ctx.setLineDash([]);");
-            // --- Дороги ---
-            sb.AppendLine("    for (const r of roads) {");
-            sb.AppendLine("        const p1 = worldToScreen(r.x1, r.z1); const p2 = worldToScreen(r.x2, r.z2);");
-            sb.AppendLine("        ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);");
-            sb.AppendLine("        ctx.strokeStyle = '#5a7a8a'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.6; ctx.stroke();");
-            sb.AppendLine("    }");
-            sb.AppendLine("    ctx.globalAlpha = 1;");
-            // --- Города (видимые) ---
-            sb.AppendLine("    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';");
-            sb.AppendLine("    for (const c of cities) {");
-            sb.AppendLine("        const p = worldToScreen(c.x, c.z); if (p.x<0||p.x>W||p.y<0||p.y>H) continue;");
-            sb.AppendLine("        ctx.beginPath(); ctx.arc(p.x,p.y,4,0,2*Math.PI);");
-            sb.AppendLine("        ctx.fillStyle = '#ffdd88'; ctx.shadowColor = '#ffdd8844'; ctx.shadowBlur = 6; ctx.fill(); ctx.shadowBlur = 0;");
-            sb.AppendLine("        ctx.font = '10px \"Segoe UI\"'; ctx.fillStyle = '#c8ddee'; ctx.fillText(c.name, p.x, p.y-6);");
-            sb.AppendLine("    }");
-            // --- Цели (customTargets) ---
-            sb.AppendLine("    for (const t of customTargets) {");
-            sb.AppendLine("        const p = worldToScreen(t.x, t.z); if (p.x<0||p.x>W||p.y<0||p.y>H) continue;");
-            sb.AppendLine("        ctx.beginPath(); ctx.arc(p.x, p.y, t.active ? 6 : 4, 0, 2*Math.PI);");
-            sb.AppendLine("        ctx.fillStyle = t.active ? (t.color || '#ffc857') : (t.color || '#88aadd');");
-            sb.AppendLine("        ctx.shadowColor = t.active ? '#ffc85788' : '#88aadd88';");
-            sb.AppendLine("        ctx.shadowBlur = t.active ? 16 : 8; ctx.fill(); ctx.shadowBlur = 0;");
-            sb.AppendLine("        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = t.active ? 1.5 : 0.5; ctx.stroke();");
-            sb.AppendLine("        ctx.font = t.active ? 'bold 10px \"Segoe UI\"' : '9px \"Segoe UI\"';");
-            sb.AppendLine("        ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 4;");
-            sb.AppendLine("        ctx.fillText(t.name, p.x, p.y - (t.active ? 14 : 10));");
-            sb.AppendLine("        ctx.shadowBlur = 0;");
-            sb.AppendLine("    }");
-            // --- Города и цели за пределами экрана ---
-            sb.AppendLine("    const cx = W/2, cy = H/2; const radius = Math.min(W, H) * 0.42;");
-            sb.AppendLine("    const currentPos = currentIndex < trailPoints.length ? trailPoints[currentIndex] : { x:0, z:0 };");
-            sb.AppendLine("    // Ближайшие города");
-            sb.AppendLine("    const cityDist = cities.map(c => ({ ...c, dist: Math.hypot(c.x - currentPos.x, c.z - currentPos.z) }));");
-            sb.AppendLine("    cityDist.sort((a,b) => a.dist - b.dist);");
-            sb.AppendLine("    const nearCities = cityDist.slice(0, NEARBY_CITIES_COUNT);");
-            sb.AppendLine("    for (const c of nearCities) {");
-            sb.AppendLine("        const p = worldToScreen(c.x, c.z); if (p.x>=0 && p.x<=W && p.y>=0 && p.y<=H) continue;");
-            sb.AppendLine("        const dx = p.x - cx, dy = p.y - cy; const len = Math.hypot(dx, dy); if (len < 0.01) continue;");
-            sb.AppendLine("        const nx = dx/len, ny = dy/len; const arrowX = cx + nx * radius, arrowY = cy + ny * radius;");
-            sb.AppendLine("        const angle = Math.atan2(ny, nx);");
-            sb.AppendLine("        ctx.save(); ctx.translate(arrowX, arrowY); ctx.rotate(angle);");
-            sb.AppendLine("        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath();");
-            sb.AppendLine("        ctx.fillStyle = '#aabbcc'; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 4; ctx.fill();");
-            sb.AppendLine("        ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();");
-            sb.AppendLine("        let lx = arrowX, ly = (ny>0) ? arrowY-16 : arrowY+22;");
-            sb.AppendLine("        if (lx < 50) lx = 50; if (lx > W-50) lx = W-50; if (ly < 20) ly = 20; if (ly > H-20) ly = H-20;");
-            sb.AppendLine("        ctx.font = '10px \"Segoe UI\"'; ctx.fillStyle = '#c8ddee'; ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 4;");
-            sb.AppendLine("        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';");
-            sb.AppendLine("        ctx.fillText(`${c.name} (${formatDistance(c.dist)})`, lx, ly);");
-            sb.AppendLine("        ctx.shadowBlur = 0;");
-            sb.AppendLine("    }");
-            // --- Цели за пределами экрана ---
-            sb.AppendLine("    for (const t of customTargets) {");
-            sb.AppendLine("        const p = worldToScreen(t.x, t.z); if (p.x>=0 && p.x<=W && p.y>=0 && p.y<=H) continue;");
-            sb.AppendLine("        const dx = p.x - cx, dy = p.y - cy; const len = Math.hypot(dx, dy); if (len < 0.01) continue;");
-            sb.AppendLine("        const nx = dx/len, ny = dy/len; const arrowX = cx + nx * radius, arrowY = cy + ny * radius;");
-            sb.AppendLine("        const angle = Math.atan2(ny, nx);");
-            sb.AppendLine("        const color = t.active ? (t.color || '#ffc857') : (t.color || '#88aadd');");
-            sb.AppendLine("        ctx.save(); ctx.translate(arrowX, arrowY); ctx.rotate(angle);");
-            sb.AppendLine("        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath();");
-            sb.AppendLine("        ctx.fillStyle = color; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 4; ctx.fill();");
-            sb.AppendLine("        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();");
-            sb.AppendLine("        let lx = arrowX, ly = (ny>0) ? arrowY-16 : arrowY+22;");
-            sb.AppendLine("        if (lx < 50) lx = 50; if (lx > W-50) lx = W-50; if (ly < 20) ly = 20; if (ly > H-20) ly = H-20;");
-            sb.AppendLine("        ctx.font = t.active ? 'bold 10px \"Segoe UI\"' : '9px \"Segoe UI\"';");
-            sb.AppendLine("        ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 4;");
-            sb.AppendLine("        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';");
-            sb.AppendLine("        ctx.fillText(`${t.name} (${formatDistance(t.dist || 0)})`, lx, ly);");
-            sb.AppendLine("        ctx.shadowBlur = 0;");
-            sb.AppendLine("    }");
-            // --- Шлейф ---
-            sb.AppendLine("    if (trailPoints.length > 1) {");
-            sb.AppendLine("        for (let i=1; i<trailPoints.length; i++) {");
-            sb.AppendLine("            const p1 = trailPoints[i-1]; const p2 = trailPoints[i];");
-            sb.AppendLine("            const s1 = worldToScreen(p1.x, p1.z); const s2 = worldToScreen(p2.x, p2.z);");
-            sb.AppendLine("            const speed = p2.speed || 0;");
-            sb.AppendLine("            ctx.beginPath(); ctx.moveTo(s1.x,s1.y); ctx.lineTo(s2.x,s2.y);");
-            sb.AppendLine("            ctx.strokeStyle = getTrailColor(speed); ctx.lineWidth = 2.5;");
-            sb.AppendLine("            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4; ctx.stroke(); ctx.shadowBlur = 0;");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            // --- События ---
-            sb.AppendLine("    for (const e of events) {");
-            sb.AppendLine("        const p = worldToScreen(e.x, e.z); if (p.x<0||p.x>W||p.y<0||p.y>H) continue;");
-            sb.AppendLine("        const size = 10;");
-            sb.AppendLine("        ctx.save(); ctx.translate(p.x,p.y); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 6;");
-            sb.AppendLine("        ctx.beginPath(); ctx.arc(0,0,size,0,2*Math.PI);");
-            sb.AppendLine("        ctx.fillStyle = e.color || '#ffffff'; ctx.fill(); ctx.shadowBlur = 0;");
-            sb.AppendLine("        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();");
-            sb.AppendLine("        ctx.fillStyle = '#fff'; ctx.font = 'bold 10px \"Segoe UI\"';");
-            sb.AppendLine("        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';");
-            sb.AppendLine("        ctx.fillText(e.label || '?', 0, -1);");
-            sb.AppendLine("        if (e.subtext) {");
-            sb.AppendLine("            ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 3;");
-            sb.AppendLine("            ctx.font = '7px \"Segoe UI\"'; ctx.textBaseline = 'top';");
-            sb.AppendLine("            ctx.fillText(e.subtext, 0, size+2); ctx.shadowBlur = 0;");
-            sb.AppendLine("        }");
-            sb.AppendLine("        ctx.restore();");
-            sb.AppendLine("    }");
-            // --- Грузовик (2D или 3D) ---
-            sb.AppendLine("    if (trailPoints.length > 0) {");
-            sb.AppendLine("        let idx = currentIndex; let nextIdx = Math.min(idx + 1, trailPoints.length - 1);");
-            sb.AppendLine("        let p1 = trailPoints[idx]; let p2 = trailPoints[nextIdx];");
-            sb.AppendLine("        let t1 = p1.t; let t2 = p2.t;");
-            sb.AppendLine("        let currentPos = { x: p1.x, z: p1.z, heading: p1.heading || 0, speed: p1.speed || 0 };");
-            sb.AppendLine("        if (interpolate && idx < trailPoints.length - 1 && t2 > t1) {");
-            sb.AppendLine("            const progress = (currentTime - t1) / (t2 - t1);");
-            sb.AppendLine("            const clampedProgress = Math.max(0, Math.min(1, progress));");
-            sb.AppendLine("            currentPos.x = p1.x + (p2.x - p1.x) * clampedProgress;");
-            sb.AppendLine("            currentPos.z = p1.z + (p2.z - p1.z) * clampedProgress;");
-            sb.AppendLine("            let h1 = p1.heading || 0; let h2 = p2.heading || 0;");
-            sb.AppendLine("            let diff = h2 - h1; while (diff > Math.PI) diff -= 2*Math.PI; while (diff < -Math.PI) diff += 2*Math.PI;");
-            sb.AppendLine("            currentPos.heading = h1 + diff * clampedProgress;");
-            sb.AppendLine("            currentPos.speed = p1.speed + (p2.speed - p1.speed) * clampedProgress;");
-            sb.AppendLine("        }");
-            sb.AppendLine("        const sp = worldToScreen(currentPos.x, currentPos.z);");
-            sb.AppendLine("        const heading = currentPos.heading || 0;");
-            // Получаем pitch/roll из closest
-            sb.AppendLine("        let pitchDeg = 0, rollDeg = 0;");
-            sb.AppendLine("        if (closest) {");
-            sb.AppendLine("            const pitchRaw = closest.pitch || 0;");
-            sb.AppendLine("            const rollRaw = closest.roll || 0;");
-            sb.AppendLine("            pitchDeg = pitchRaw * PITCH_SCALE; // -0.25..0.25 -> -90..90");
-            sb.AppendLine("            rollDeg = rollRaw * ROLL_SCALE;   // -0.5..0.5 -> -180..180");
-            sb.AppendLine("        }");
-            sb.AppendLine("        truckPosScreen = sp;");
-            sb.AppendLine("        truckHeading = heading * 180 / Math.PI; // радианы → градусы");
-            sb.AppendLine("        truckPitch = pitchDeg;");
-            sb.AppendLine("        truckRoll = rollDeg;");
-            // Если 3D отключен или не готов – рисуем красный треугольник
-            sb.AppendLine("        if (!use3d || !threeReady) {");
-            sb.AppendLine("            ctx.save(); ctx.translate(sp.x, sp.y); ctx.rotate(heading + Math.PI);");
-            sb.AppendLine("            ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(-9, 9); ctx.lineTo(0, 3); ctx.lineTo(9, 9); ctx.closePath();");
-            sb.AppendLine("            ctx.fillStyle = '#ff4d4d'; ctx.shadowColor = '#ff4d4d88'; ctx.shadowBlur = 12; ctx.fill();");
-            sb.AppendLine("            ctx.shadowBlur = 0; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();");
-            sb.AppendLine("        }");
-            // Скорость под грузовиком
-            sb.AppendLine("        ctx.save(); ctx.translate(sp.x, sp.y+22);");
-            sb.AppendLine("        ctx.font = '10px \"Segoe UI\"'; ctx.fillStyle = '#fff';");
-            sb.AppendLine("        ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 4;");
-            sb.AppendLine("        ctx.textAlign = 'center'; ctx.textBaseline = 'top';");
-            sb.AppendLine("        ctx.fillText(`${currentPos.speed.toFixed(0)} km/h`, 0, 0);");
-            sb.AppendLine("        ctx.restore();");
-            // Обновление центра камеры при слежении
-            sb.AppendLine("        if (follow) { targetCenterX = currentPos.x; targetCenterZ = currentPos.z; }");
-            sb.AppendLine("        const camSmooth = 0.15;");
-            sb.AppendLine("        centerX += (targetCenterX - centerX) * camSmooth;");
-            sb.AppendLine("        centerZ += (targetCenterZ - centerZ) * camSmooth;");
-            sb.AppendLine("    }");
-            // --- Обновление данных (топливо, повреждения, pitch/roll) ---
-            sb.AppendLine("    closest = null;");
-            sb.AppendLine("    if (dataPoints.length > 0 && currentIndex < trailPoints.length) {");
-            sb.AppendLine("        let minDist = Infinity;");
-            sb.AppendLine("        const curP = trailPoints[currentIndex];");
-            sb.AppendLine("        for (const dp of dataPoints) {");
-            sb.AppendLine("            const d = Math.hypot(dp.x - curP.x, dp.z - curP.z);");
-            sb.AppendLine("            if (d < minDist) { minDist = d; closest = dp; }");
-            sb.AppendLine("        }");
-            sb.AppendLine("        if (closest) {");
-            sb.AppendLine("            document.getElementById('dataPanel').innerHTML = `⛽ ${closest.fuel.toFixed(1) || '--'} л &nbsp;|&nbsp; 🛠️ ${closest.damage.toFixed(1) || '--'}%`;");
-            sb.AppendLine("            const pitchRaw = closest.pitch || 0;");
-            sb.AppendLine("            const rollRaw = closest.roll || 0;");
-            sb.AppendLine("            let pitchDeg = pitchRaw * PITCH_SCALE;");
-            sb.AppendLine("            let rollDeg = rollRaw * ROLL_SCALE;");
-            sb.AppendLine("            if (typeof currentPitchRoll === 'undefined') window.currentPitchRoll = {};");
-            sb.AppendLine("            window.currentPitchRoll.pitch = pitchDeg;");
-            sb.AppendLine("            window.currentPitchRoll.roll = rollDeg;");
-            sb.AppendLine("            updatePitchRollPanel(pitchDeg, rollDeg);");
-            // --- Дополнительная информация (head heading, local scale) ---
-            sb.AppendLine("            const headOffset = closest.headOffset || [0,0,0,0,0,0];");
-            sb.AppendLine("            const headHeadingDeg = headOffset[3] * 360; // 0..1 -> 0..360");
-            sb.AppendLine("            const localScale = closest.localScale || 1.0;");
-            sb.AppendLine("            document.getElementById('extraInfo').innerHTML = `Head heading: ${headHeadingDeg.toFixed(1)}° | Scale: ${localScale.toFixed(2)}`;");
-            sb.AppendLine("        }");
-            sb.AppendLine("    }");
-            sb.AppendLine("}");
-            return sb.ToString();
+    // События
+    for (const e of events) {
+        const p = worldToScreen(e.x, e.z); if (p.x<0||p.x>W||p.y<0||p.y>H) continue;
+        const size=10;
+        ctx.save(); ctx.translate(p.x,p.y); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=6;
+        ctx.beginPath(); ctx.arc(0,0,size,0,2*Math.PI);
+        ctx.fillStyle=e.color||'#ffffff'; ctx.fill(); ctx.shadowBlur=0;
+        ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+        ctx.fillStyle='#fff'; ctx.font='bold 10px ""Segoe UI""';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(e.label||'?',0,-1);
+        if (e.subtext) {
+            ctx.fillStyle='#fff'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=3;
+            ctx.font='7px ""Segoe UI""'; ctx.textBaseline='top';
+            ctx.fillText(e.subtext,0,size+2); ctx.shadowBlur=0;
         }
+        ctx.restore();
+    }
 
-        // ----- 3D инициализация -----
-        private string GenerateThreeJSInit()
-        {
-            return @"// ================================================================
-// 3D ИНИЦИАЛИЗАЦИЯ (ортографическая проекция, pivot на колёсах)
+    // Текущая позиция (грузовик)
+    if (trailPoints.length > 0) {
+        let idx = currentIndex;
+        let nextIdx = Math.min(idx + 1, trailPoints.length - 1);
+        let p1 = trailPoints[idx];
+        let p2 = trailPoints[nextIdx];
+        let t1 = p1.t;
+        let t2 = p2.t;
+        let currentPos = { x: p1.x, z: p1.z, heading: p1.heading || 0, speed: p1.speed || 0 };
+        if (interpolate && idx < trailPoints.length - 1 && t2 > t1) {
+            const progress = (currentTime - t1) / (t2 - t1);
+            const clampedProgress = Math.max(0, Math.min(1, progress));
+            currentPos.x = p1.x + (p2.x - p1.x) * clampedProgress;
+            currentPos.z = p1.z + (p2.z - p1.z) * clampedProgress;
+            let h1 = p1.heading || 0;
+            let h2 = p2.heading || 0;
+            let diff = h2 - h1;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+            currentPos.heading = h1 + diff * clampedProgress;
+            currentPos.speed = p1.speed + (p2.speed - p1.speed) * clampedProgress;
+        }
+        const sp = worldToScreen(currentPos.x, currentPos.z);
+        // Рисуем грузовик (красный треугольник)
+        const heading = currentPos.heading || 0;
+        ctx.save(); ctx.translate(sp.x, sp.y); ctx.rotate(heading + Math.PI);
+        ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(-9, 9); ctx.lineTo(0, 3); ctx.lineTo(9, 9); ctx.closePath();
+        ctx.fillStyle = '#ff4d4d'; ctx.shadowColor = '#ff4d4d88'; ctx.shadowBlur = 12; ctx.fill();
+        ctx.shadowBlur = 0; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.restore();
+        // Скорость под грузовиком
+        ctx.save(); ctx.translate(sp.x, sp.y+22);
+        ctx.font = '10px ""Segoe UI""';
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 4;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(currentPos.speed.toFixed(0) + ' km/h', 0, 0);
+        ctx.restore();
+        // Обновление центра при слежении
+        if (follow) { targetCenterX = currentPos.x; targetCenterZ = currentPos.z; }
+        const camSmooth = 0.15;
+        centerX += (targetCenterX - centerX) * camSmooth;
+        centerZ += (targetCenterZ - centerZ) * camSmooth;
+    }
+
+    // Данные (топливо, повреждения, pitch/roll)
+    closest = null;
+    if (dataPoints.length > 0 && currentIndex < trailPoints.length) {
+        let minDist = Infinity;
+        const curP = trailPoints[currentIndex];
+        for (const dp of dataPoints) {
+            const d = Math.hypot(dp.x - curP.x, dp.z - curP.z);
+            if (d < minDist) { minDist = d; closest = dp; }
+        }
+        if (closest) {
+            document.getElementById('dataPanel').innerHTML = '⛽ ' + (closest.fuel.toFixed(1) || '--') + ' л &nbsp;|&nbsp; 🛠️ ' + (closest.damage.toFixed(1) || '--') + '%';
+            const pitchRaw = closest.pitch || 0;
+            const rollRaw = closest.roll || 0;
+            let pitchDeg = (pitchRaw * RAW_TO_DEGREES) * PITCH_CALIBRATION_FACTOR;
+            let rollDeg = (rollRaw * RAW_TO_DEGREES) * ROLL_CALIBRATION_FACTOR;
+            pitchDeg = normalizeAngle(pitchDeg);
+            rollDeg = normalizeAngle(rollDeg);
+            // Обновляем полоски
+            document.getElementById('pitchFill').style.width = Math.min(100, Math.max(0, 50 + pitchDeg * 0.5)) + '%';
+            document.getElementById('rollFill').style.width = Math.min(100, Math.max(0, 50 + rollDeg * 0.5)) + '%';
+            document.getElementById('pitchLabel').textContent = pitchDeg.toFixed(0);
+            document.getElementById('rollLabel').textContent = rollDeg.toFixed(0);
+            updatePitchRollPanel(pitchDeg, rollDeg);
+        }
+    }
+}
+
 // ================================================================
-let use3d = true;
-let threeInitialized = false;
-let scene, camera, renderer, pivotGroup, container;
-let threeReady = false;
-let truckPosScreen = { x: 0, y: 0 };
-let truckHeading = 0;
-let truckPitch = 0;
-let truckRoll = 0;
-
-function initThree() {
-    if (typeof THREE === 'undefined') {
-        console.warn('Three.js не загружен.');
-        threeReady = false;
-        return;
-    }
-    container = document.getElementById('threeContainer');
-    if (!container) return;
-    const w = window.innerWidth;
-    const h = window.innerHeight - 150;
-    const frustumSize = 4;
-    const aspect = w / h;
-    scene = new THREE.Scene();
-    camera = new THREE.OrthographicCamera(
-        -frustumSize * aspect / 2,
-        frustumSize * aspect / 2,
-        frustumSize / 2,
-        -frustumSize / 2,
-        0.1,
-        100
-    );
-    camera.position.set(0, 5, 5);
-    camera.lookAt(0, 0, 0);
-
-    renderer = new THREE.WebGLRenderer({ alpha: true });
-    renderer.setSize(w, h);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setClearColor(0x000000, 0);
-    container.appendChild(renderer.domElement);
-
-    // Создаём модель грузовика (упрощённо)
-    const truckGroup = new THREE.Group();
-    const geometry = new THREE.BoxGeometry(0.8, 0.4, 0.3);
-    const material = new THREE.MeshStandardMaterial({ color: 0x2a7fff, roughness: 0.4, metalness: 0.6 });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.y = 0.2; // поднимаем, чтобы колёса были на уровне 0
-    truckGroup.add(mesh);
-
-    // Кабина
-    const cabGeo = new THREE.BoxGeometry(0.3, 0.15, 0.2);
-    const cabMat = new THREE.MeshStandardMaterial({ color: 0x3a9aff });
-    const cab = new THREE.Mesh(cabGeo, cabMat);
-    cab.position.set(0.3, 0.35, 0);
-    truckGroup.add(cab);
-
-    // Колёса
-    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
-    const wheelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.04, 8);
-    for (let x of [-0.3, 0.3]) {
-        for (let z of [-0.2, 0.2]) {
-            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-            wheel.position.set(x, 0, z);
-            wheel.rotation.x = Math.PI/2;
-            truckGroup.add(wheel);
-        }
-    }
-
-    // Группа-пивот (вращение будет вокруг нижней оси)
-    pivotGroup = new THREE.Group();
-    pivotGroup.add(truckGroup);
-    // Смещаем так, чтобы pivot был в центре колёс (Y=0)
-    // truckGroup.position.y = -0.2; // если нужно сместить, но мы уже задали position.y = 0.2 для mesh
-    // Проще: pivotGroup.position.y = 0; и вращаем pivotGroup
-
-    scene.add(pivotGroup);
-
-    // Освещение
-    const ambientLight = new THREE.AmbientLight(0x404060);
-    scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(1, 2, 1);
-    scene.add(dirLight);
-    const backLight = new THREE.DirectionalLight(0x8888ff, 0.5);
-    backLight.position.set(-1, 0, -1);
-    scene.add(backLight);
-
-    threeInitialized = true;
-    threeReady = true;
-
-    window.addEventListener('resize', () => {
-        if (!threeReady) return;
-        const w2 = window.innerWidth;
-        const h2 = window.innerHeight - 150;
-        const aspect2 = w2 / h2;
-        camera.left = -frustumSize * aspect2 / 2;
-        camera.right = frustumSize * aspect2 / 2;
-        camera.top = frustumSize / 2;
-        camera.bottom = -frustumSize / 2;
-        camera.updateProjectionMatrix();
-        renderer.setSize(w2, h2);
-    });
-
-    function animate() {
-        if (!threeReady) return;
-        requestAnimationFrame(animate);
-        if (pivotGroup && use3d) {
-            // Позиционирование в NDC
-            const x = (truckPosScreen.x / window.innerWidth) * 2 - 1;
-            const y = - (truckPosScreen.y / (window.innerHeight - 150)) * 2 + 1;
-            const scaleFactor = 0.5;
-            pivotGroup.position.set(x * 3, y * 2, 0);
-            // Вращение
-            const hRad = truckHeading * Math.PI / 180;
-            const pRad = truckPitch * Math.PI / 180;
-            const rRad = truckRoll * Math.PI / 180;
-            pivotGroup.rotation.order = 'YXZ';
-            pivotGroup.rotation.set(pRad, hRad, rRad);
-        }
-        renderer.render(scene, camera);
-    }
-    animate();
-}";
-        }
-
-        // ----- Панель pitch/roll -----
-        private string GeneratePitchRollPanel()
-        {
-            return @"// ================================================================
-// ПАНЕЛЬ PITCH/ROLL (только числа)
+// ПАНЕЛЬ PITCH/ROLL
 // ================================================================
 let pitchRollState = { pitchMax: -Infinity, pitchMin: Infinity, rollMax: -Infinity, rollMin: Infinity };
 function updatePitchRollPanel(pitchDeg, rollDeg) {
@@ -1501,56 +543,86 @@ function updatePitchRollPanel(pitchDeg, rollDeg) {
             pitchRollState.pitchMin = Infinity;
             pitchRollState.rollMax = -Infinity;
             pitchRollState.rollMin = Infinity;
-            if (window.currentPitchRoll) {
-                updatePitchRollPanel(window.currentPitchRoll.pitch, window.currentPitchRoll.roll);
+            if (closest) {
+                const pitchRaw = closest.pitch || 0;
+                const rollRaw = closest.roll || 0;
+                let pitchDeg = (pitchRaw * RAW_TO_DEGREES) * PITCH_CALIBRATION_FACTOR;
+                let rollDeg = (rollRaw * RAW_TO_DEGREES) * ROLL_CALIBRATION_FACTOR;
+                pitchDeg = normalizeAngle(pitchDeg);
+                rollDeg = normalizeAngle(rollDeg);
+                updatePitchRollPanel(pitchDeg, rollDeg);
             }
         };
     }
-}";
-        }
+}
 
-        // ----- Управление (UI controls) -----
-        private string GenerateUIControls()
-        {
-            return @"// ================================================================
-// УПРАВЛЕНИЕ КАРТОЙ (wheel, drag, click)
 // ================================================================
-canvas.addEventListener('wheel', (e) => { e.preventDefault(); const delta = e.deltaY > 0 ? 0.9 : 1.1; scale *= delta; if (scale<0.001) scale=0.001; if (scale>1000) scale=1000; drawMap(); }, { passive: false });
-canvas.addEventListener('mousedown', (e) => { if (e.button===0) { isDragging = true; dragStartX = e.clientX; dragStartY = e.clientY; dragStartCX = centerX; dragStartCZ = centerZ; canvas.style.cursor = 'grabbing'; } });
-window.addEventListener('mousemove', (e) => { if (isDragging) { const dx = (e.clientX - dragStartX) / scale; const dy = (dragStartY - e.clientY) / scale; centerX = dragStartCX - dx; centerZ = dragStartCZ - dy; targetCenterX = centerX; targetCenterZ = centerZ; drawMap(); } const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left; const my = e.clientY - rect.top; if (mx>=0 && mx<=W && my>=0 && my<=H) { const wx = centerX + (mx - W/2) / scale; const wz = centerZ - (my - H/2) / scale; document.getElementById('cursorCoords').textContent = `📍 ${wx.toFixed(1)}, ${wz.toFixed(1)}`; } });
+// УПРАВЛЕНИЕ КАРТОЙ
+// ================================================================
+canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    scale *= delta; if (scale < 0.001) scale = 0.001; if (scale > 1000) scale = 1000; drawMap();
+}, { passive: false });
+
+canvas.addEventListener('mousedown', (e) => {
+    if (e.button === 0) {
+        isDragging = true;
+        dragStartX = e.clientX; dragStartY = e.clientY;
+        dragStartCX = centerX; dragStartCZ = centerZ;
+        canvas.style.cursor = 'grabbing';
+    }
+});
+window.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+        const dx = (e.clientX - dragStartX) / scale;
+        const dy = (dragStartY - e.clientY) / scale;
+        centerX = dragStartCX - dx;
+        centerZ = dragStartCZ - dy;
+        targetCenterX = centerX;
+        targetCenterZ = centerZ;
+        drawMap();
+    }
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    if (mx >= 0 && mx <= W && my >= 0 && my <= H) {
+        const wx = centerX + (mx - W/2) / scale;
+        const wz = centerZ - (my - H/2) / scale;
+        document.getElementById('cursorCoords').textContent = '📍 ' + wx.toFixed(1) + ', ' + wz.toFixed(1);
+    }
+});
 window.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; canvas.style.cursor = 'grab'; } });
 
-// Клик для копирования
 let notes = [];
 canvas.addEventListener('click', (e) => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    if (mx<0 || mx>W || my<0 || my>H) return;
+    if (mx < 0 || mx > W || my < 0 || my > H) return;
     const wx = centerX + (mx - W/2) / scale;
     const wz = centerZ - (my - H/2) / scale;
-    const coordStr = `${wx.toFixed(2)}, ${wz.toFixed(2)}`;
+    const coordStr = wx.toFixed(2) + ', ' + wz.toFixed(2);
     let objName = '';
     for (const c of cities) { const dx = c.x - wx; const dz = c.z - wz; if (dx*dx + dz*dz < 100) { objName = c.name; break; } }
     if (!objName) { for (const t of customTargets) { const dx = t.x - wx; const dz = t.z - wz; if (dx*dx + dz*dz < 100) { objName = t.name; break; } } }
     if (!objName) { for (const e of events) { const dx = e.x - wx; const dz = e.z - wz; if (dx*dx + dz*dz < 100) { objName = e.label || ''; break; } } }
-    const note = objName ? `${coordStr} – ${objName}` : coordStr;
+    const note = objName ? coordStr + ' – ' + objName : coordStr;
     notes.push(note);
-    navigator.clipboard?.writeText(coordStr);
+    if (navigator.clipboard) navigator.clipboard.writeText(coordStr);
     const toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;bottom:170px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;z-index:999;pointer-events:none;';
-    toast.textContent = `Скопировано: ${coordStr}`;
+    toast.textContent = 'Скопировано: ' + coordStr;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2000);
 });
 
-// Двойной клик - измерение
 let measureMode = false; let measureStart = null;
 canvas.addEventListener('dblclick', (e) => {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    if (mx<0 || mx>W || my<0 || my>H) return;
+    if (mx < 0 || mx > W || my < 0 || my > H) return;
     const wx = centerX + (mx - W/2) / scale;
     const wz = centerZ - (my - H/2) / scale;
     if (!measureMode) { measureMode = true; measureStart = { x: wx, z: wz }; document.getElementById('measureTool').classList.add('active'); document.getElementById('measureDist').textContent = '0.0'; return; }
@@ -1560,18 +632,10 @@ canvas.addEventListener('dblclick', (e) => {
     measureMode = false; measureStart = null;
     setTimeout(() => document.getElementById('measureTool').classList.remove('active'), 5000);
 });
-";
-        }
 
-        // ----- Таймлайн -----
-        private string GenerateTimelineControls()
-        {
-            return @"// ================================================================
-// ТАЙМЛАЙН
 // ================================================================
-let playing = false, speedFactor = 1, currentIndex = 0, follow = true, interpolate = true;
-let playStartTime = 0, playStartElapsed = 0, currentTime = 0;
-
+// ТАЙМЛАЙН И ВОСПРОИЗВЕДЕНИЕ
+// ================================================================
 const playBtn = document.getElementById('playBtn');
 const speedLabel = document.getElementById('speedLabel');
 const timeSlider = document.getElementById('timeSlider');
@@ -1585,14 +649,13 @@ const stepBackBtn = document.getElementById('stepBackBtn');
 const stepForwardBtn = document.getElementById('stepForwardBtn');
 const prevEventBtn = document.getElementById('prevEventBtn');
 const nextEventBtn = document.getElementById('nextEventBtn');
-const use3dCheck = document.getElementById('use3dCheck');
 
 function formatTime(seconds) {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
     const ms = Math.floor((seconds - Math.floor(seconds)) * 1000);
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
+    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + '.' + String(ms).padStart(3,'0');
 }
 
 function updateTimeDisplay() {
@@ -1636,6 +699,7 @@ playBtn.addEventListener('click', () => {
         playStep();
     }
 });
+
 beginBtn.addEventListener('click', () => { if (playing) { playing = false; playBtn.textContent = '▶'; } currentTime = 0; currentIndex = 0; if (follow) { targetCenterX = trailPoints[0].x; targetCenterZ = trailPoints[0].z; } updateTimeDisplay(); });
 endBtn.addEventListener('click', () => { if (playing) { playing = false; playBtn.textContent = '▶'; } currentTime = totalDuration; currentIndex = trailPoints.length-1; if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; } updateTimeDisplay(); });
 stepBackBtn.addEventListener('click', () => { if (playing) { playing = false; playBtn.textContent = '▶'; } const step = parseFloat(stepInput.value) || 1; let targetTime = currentTime - step; if (targetTime < 0) targetTime = 0; currentTime = targetTime; let idx = 0; for (let i=0; i<times.length; i++) { if (times[i] <= currentTime) idx = i; else break; } currentIndex = Math.min(idx, trailPoints.length-1); if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; } updateTimeDisplay(); });
@@ -1647,32 +711,24 @@ speedUpBtn.addEventListener('click', () => { speedFactor = Math.min(5, speedFact
 timeSlider.addEventListener('input', () => { if (playing) { playing = false; playBtn.textContent = '▶'; } const val = parseFloat(timeSlider.value) / 1000; setTimeByValue(val); });
 followCheck.addEventListener('change', () => { follow = followCheck.checked; if (follow && currentIndex < trailPoints.length) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; drawMap(); } });
 interpolateCheck.addEventListener('change', () => { interpolate = interpolateCheck.checked; drawMap(); });
-use3dCheck.addEventListener('change', () => {
-    use3d = use3dCheck.checked;
-    if (use3d && !threeInitialized) { initThree(); }
-    const container = document.getElementById('threeContainer');
-    if (container) container.style.display = use3d ? 'block' : 'none';
-    drawMap();
-});";
-        }
 
-        // ----- Инициализация -----
-        private string GenerateInitialization()
-        {
-            return @"// ================================================================
+// ================================================================
 // ИНИЦИАЛИЗАЦИЯ
 // ================================================================
 resize(); fitMap();
 if (trailPoints.length > 0) { currentTime = 0; currentIndex = 0; targetCenterX = trailPoints[0].x; targetCenterZ = trailPoints[0].z; centerX = targetCenterX; centerZ = targetCenterZ; }
-if (use3dCheck && use3dCheck.checked) {
-    if (typeof THREE !== 'undefined') { initThree(); } else { console.warn('Three.js не загружен.'); use3d = false; use3dCheck.checked = false; }
-} else { use3d = false; const container = document.getElementById('threeContainer'); if (container) container.style.display = 'none'; }
 drawMap(); updateTimeDisplay();
-window.addEventListener('resize', () => { resize(); fitMap(); drawMap(); });";
+window.addEventListener('resize', () => { resize(); fitMap(); drawMap(); });
+");
+
+            sb.AppendLine("</script>");
+            sb.AppendLine("</body>");
+            sb.AppendLine("</html>");
+            return sb.ToString();
         }
 
         // ================================================================
-        // ГЕНЕРАЦИЯ СТРАНИЦЫ СПИСКА ТРЕКОВ (без изменений)
+        // МЕТОД ГЕНЕРАЦИИ СТРАНИЦЫ СПИСКА ТРЕКОВ (trail_player.html)
         // ================================================================
         private string GenerateTrailPlayerHtml()
         {

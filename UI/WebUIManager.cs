@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Net.Http;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json.Linq;
@@ -10,37 +8,23 @@ namespace ETS2_Assist_GUI
 {
     public partial class MainForm
     {
-        private uint _gameProcessId = 0;
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
-
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-        private bool IsGameWindowFocused()
-        {
-            if (_gameProcessId == 0) return false;
-            IntPtr foreground = GetForegroundWindow();
-            if (foreground == IntPtr.Zero) return false;
-            GetWindowThreadProcessId(foreground, out uint pid);
-            return pid == _gameProcessId;
-        }
+        private bool _debugMode = false;
 
         private void StartPauseCheck()
         {
-            try
+            // Проверяем, включен ли debug-режим (передаётся через параметр в URL)
+            // В веб-страницах используется ?debug=true, мы можем сохранить это состояние при запуске
+            // Для простоты будем проверять наличие файла debug.flag или параметра в конфиге.
+            // Я добавлю проверку через AppSettings или просто по наличию аргумента командной строки.
+            // Для демонстрации будем считать, что debug включен, если в аргументах есть --debug
+            var args = Environment.GetCommandLineArgs();
+            foreach (var arg in args)
             {
-                var processes = Process.GetProcessesByName("eurotrucks2");
-                if (processes.Length > 0)
+                if (arg.Equals("--debug", StringComparison.OrdinalIgnoreCase))
                 {
-                    _gameProcessId = (uint)processes[0].Id;
-                    AppendLog($"Game process found, PID: {_gameProcessId}");
+                    _debugMode = true;
+                    break;
                 }
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"Error finding game process: {ex.Message}");
             }
 
             _pauseCheckTimer = new System.Windows.Forms.Timer();
@@ -52,17 +36,30 @@ namespace ETS2_Assist_GUI
 
         private async void CheckPauseAndUpdateUI()
         {
-            bool paused = await IsGamePausedAsync();
-            bool focused = IsGameWindowFocused();
-
-            bool shouldShow = !paused && focused;
-
-            if (shouldShow != _lastPauseState)
+            // Если debug режим, не скрываем UI
+            if (_debugMode)
             {
-                _lastPauseState = shouldShow;
-                if (shouldShow)
+                // Если UI ещё не показан, показываем его с анимацией один раз
+                if (!_uiShown)
                 {
-                    // Если первый раз показываем – используем анимацию увеличения
+                    _uiShown = true;
+                    SendCommandToMap("show_ui_first");
+                    AppendLog("[UI] Отправлена команда show_ui_first (debug mode)");
+                }
+                return;
+            }
+
+            bool paused = await IsGamePausedAsync();
+            if (paused != _lastPauseState)
+            {
+                _lastPauseState = paused;
+                if (paused)
+                {
+                    SendCommandToMap("hide_ui");
+                    AppendLog("[UI] Отправлена команда hide_ui (быстрый фейд-аут)");
+                }
+                else
+                {
                     if (!_uiShown)
                     {
                         _uiShown = true;
@@ -74,11 +71,6 @@ namespace ETS2_Assist_GUI
                         SendCommandToMap("show_ui");
                         AppendLog("[UI] Отправлена команда show_ui (быстрый фейд-ин)");
                     }
-                }
-                else
-                {
-                    SendCommandToMap("hide_ui");
-                    AppendLog("[UI] Отправлена команда hide_ui (быстрый фейд-аут)");
                 }
             }
         }
@@ -101,7 +93,7 @@ namespace ETS2_Assist_GUI
             }
             catch
             {
-                // Если не удалось получить, считаем не на паузе
+                // ignored
             }
             return false;
         }

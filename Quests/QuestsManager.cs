@@ -1,29 +1,33 @@
 using System;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace ETS2_Assist_GUI
 {
     public partial class MainForm
     {
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
         private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
-        private const byte VK_F1 = 0x70;
-        private const uint KEYEVENTF_KEYDOWN = 0x0000;
-        private const uint KEYEVENTF_KEYUP = 0x0002;
+        private const uint WM_KEYDOWN = 0x0100;
+        private const uint WM_KEYUP = 0x0101;
+        private const int VK_ESCAPE = 0x1B;
+        private const int VK_PAUSE = 0x13; // не используется, но можно задействовать
 
-        // Состояние случайной цели (серверная часть)
         private bool _randomTargetActive = false;
         private bool _randomTargetReached = false;
         private double _randomTargetX = 0;
@@ -50,7 +54,6 @@ namespace ETS2_Assist_GUI
         {
             var command = data["command"]?.Value<string>();
             if (string.IsNullOrEmpty(command)) return;
-
             AppendLog($"[WS Command] {command}");
 
             switch (command)
@@ -81,6 +84,63 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        private void SendPauseKeyToGame()
+        {
+            try
+            {
+                IntPtr gameHandle = IntPtr.Zero;
+                var procs = Process.GetProcessesByName("eurotrucks2");
+                if (procs.Length > 0 && procs[0].MainWindowHandle != IntPtr.Zero)
+                {
+                    gameHandle = procs[0].MainWindowHandle;
+                }
+
+                if (gameHandle == IntPtr.Zero)
+                {
+                    AppendLog("[DEBUG] Окно игры не найдено.");
+                    return;
+                }
+
+                // Активируем окно игры
+                SetForegroundWindow(gameHandle);
+                System.Threading.Thread.Sleep(50);
+
+                // Отправляем нажатие ESC через keybd_event
+                const uint KEYEVENTF_KEYUP = 0x02;
+                keybd_event((byte)VK_ESCAPE, 0, 0, UIntPtr.Zero);
+                System.Threading.Thread.Sleep(50);
+                keybd_event((byte)VK_ESCAPE, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+
+                AppendLog("[DEBUG] Клавиша ESC отправлена в окно игры через keybd_event.");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[DEBUG] Ошибка отправки ESC: {ex.Message}");
+            }
+        }
+
+        private void ReturnFocusToGame()
+        {
+            try
+            {
+                IntPtr gameHandle = IntPtr.Zero;
+                var procs = Process.GetProcessesByName("eurotrucks2");
+                if (procs.Length > 0 && procs[0].MainWindowHandle != IntPtr.Zero)
+                {
+                    gameHandle = procs[0].MainWindowHandle;
+                }
+                if (gameHandle != IntPtr.Zero)
+                {
+                    SetForegroundWindow(gameHandle);
+                    AppendLog("Фокус возвращён в игру.");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Ошибка возврата фокуса: {ex.Message}");
+            }
+        }
+
         private void HandleTargetReached(JObject data)
         {
             if (!_randomTargetActive || _randomTargetReached)
@@ -91,39 +151,28 @@ namespace ETS2_Assist_GUI
 
             _randomTargetReached = true;
 
-            // Пауза через F1
-            try
-            {
-                SendF1Key();
-                AppendLog("[DEBUG] Отправлена клавиша F1 для паузы.");
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"Ошибка паузы: {ex.Message}");
-            }
+            // Ставим игру на паузу
+            SendPauseKeyToGame();
 
             this.Invoke((System.Windows.Forms.MethodInvoker)delegate
             {
-                // Владелец-форма для MessageBox
-                Form ownerForm = new Form();
-                ownerForm.FormBorderStyle = FormBorderStyle.None;
-                ownerForm.WindowState = FormWindowState.Maximized;
-                ownerForm.BackColor = Color.Black;
-                ownerForm.Opacity = 0.01;
-                ownerForm.TopMost = true;
-                ownerForm.ShowInTaskbar = false;
-                ownerForm.Show(this);
-                ownerForm.Activate();
+                // Делаем окно приложения активным и поверх всех
+                bool wasTopMost = this.TopMost;
+                this.TopMost = true;
+                this.Activate();
 
-                DialogResult result = MessageBox.Show(
-                    ownerForm,
+                var result = MessageBox.Show(
+                    this,
                     "Вы достигли случайной цели. Завершить задание?",
                     "Достижение цели",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question,
-                    MessageBoxDefaultButton.Button1);
+                    MessageBoxDefaultButton.Button1,
+                    MessageBoxOptions.DefaultDesktopOnly); // Окно поверх
 
-                ownerForm.Close();
+                this.TopMost = wasTopMost;
+
+                // Возвращаем фокус в игру
                 ReturnFocusToGame();
 
                 if (result == DialogResult.Yes)
@@ -149,68 +198,24 @@ namespace ETS2_Assist_GUI
                         }
                         catch (Exception ex)
                         {
-                            AppendLog($"Ошибка выполнения ets2c: {ex.Message}");
+                            AppendLog($"Ошибка ets2c: {ex.Message}");
                         }
-                    }
-                    else
-                    {
-                        AppendLog("ets2c.exe не найден. Начисление не выполнено.");
                     }
 
                     SendCommandToMap("remove_random_target");
                     _randomTargetActive = false;
                     _randomTargetReached = false;
 
-                    MessageBox.Show("Задание выполнено!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(this, "Задание выполнено!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    ReturnFocusToGame(); // ещё раз возвращаем фокус
                 }
                 else
                 {
                     _randomTargetReached = false;
                     SendCommandToMap("reset_target_reached");
-                    AppendLog("Пользователь отклонил завершение задания.");
+                    AppendLog("Пользователь отклонил задание.");
                 }
             });
-        }
-
-        private void SendF1Key()
-        {
-            try
-            {
-                keybd_event(VK_F1, 0, KEYEVENTF_KEYDOWN, UIntPtr.Zero);
-                System.Threading.Thread.Sleep(50);
-                keybd_event(VK_F1, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-                AppendLog("[DEBUG] Клавиша F1 отправлена.");
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"[DEBUG] Ошибка отправки F1: {ex.Message}");
-            }
-        }
-
-        private void ReturnFocusToGame()
-        {
-            try
-            {
-                IntPtr gameHandle = IntPtr.Zero;
-                var procs = Process.GetProcessesByName("eurotrucks2");
-                if (procs.Length > 0 && procs[0].MainWindowHandle != IntPtr.Zero)
-                {
-                    gameHandle = procs[0].MainWindowHandle;
-                }
-                if (gameHandle != IntPtr.Zero)
-                {
-                    SetForegroundWindow(gameHandle);
-                    AppendLog("Фокус возвращён в игру.");
-                }
-                else
-                {
-                    AppendLog("Не удалось найти окно игры для возврата фокуса.");
-                }
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"Ошибка возврата фокуса: {ex.Message}");
-            }
         }
     }
 }
