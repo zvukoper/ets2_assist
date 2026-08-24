@@ -19,6 +19,7 @@
     <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
     <AssemblyInformationalVersion>$(Version)</AssemblyInformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
 </PropertyGroup>
 
   <!-- Удалён PackageReference на System.Configuration.ConfigurationManager -->

@@ -498,7 +498,17 @@ namespace ETS2_Assist_GUI
 
             StartPauseCheck();
 
-            AppendLog("System started successfully.");
+            // ===== ИНИЦИАЛИЗАЦИЯ SCS CONTROLLER =====
+            // ===== ИНИЦИАЛИЗАЦИЯ SCS CONTROLLER =====
+            SCSController.OnLog += (msg) => AppendLog(msg);
+            if (!SCSController.Initialize())
+            {
+                AppendLog("SCS Controller initialization failed. Pause via SDK may not work.");
+            }
+            else
+            {
+                AppendLog("SCS Controller initialized successfully.");
+            }
 
             UpdateStartButton();
         }
@@ -817,7 +827,7 @@ namespace ETS2_Assist_GUI
                     foreach (var prop in extra.Properties())
                         msg[prop.Name] = prop.Value;
                 }
-                _wsSaveServer.WebSocketServices.Broadcast(msg.ToString(Formatting.None));
+                _wsSaveServer.WebSocketServices["/"]?.Sessions?.Broadcast(msg.ToString(Formatting.None));
                 AppendLog($"Command '{command}' sent to map.");
             }
             else
@@ -972,6 +982,7 @@ namespace ETS2_Assist_GUI
         // ================================================================
         // ОСТАЛЬНЫЕ МЕТОДЫ (загрузка плагинов, серверов, индикаторы)
         // ================================================================
+
         private bool CheckPlugins()
         {
             AppendLog("Checking ETS2 plugins...");
@@ -982,14 +993,24 @@ namespace ETS2_Assist_GUI
                 return false;
             }
             string pluginsDir = Path.Combine(ets2Path, "bin", "win_x64", "plugins");
+
+            // Проверяем наличие всех трёх плагинов
             bool hasTelemetry = File.Exists(Path.Combine(pluginsDir, "ets2-telemetry-server.dll"));
             bool hasTruckTel = File.Exists(Path.Combine(pluginsDir, "trucktel.dll"));
+            bool hasSdkController = File.Exists(Path.Combine(pluginsDir, "scs_sdk_controller.dll"));
 
-            if (!hasTelemetry || !hasTruckTel)
+            if (!hasTelemetry || !hasTruckTel || !hasSdkController)
             {
+                // Формируем сообщение о том, какие плагины отсутствуют
+                string missing = "";
+                if (!hasTelemetry) missing += "ets2-telemetry-server.dll, ";
+                if (!hasTruckTel) missing += "trucktel.dll, ";
+                if (!hasSdkController) missing += "scs_sdk_controller.dll, ";
+                missing = missing.TrimEnd(' ', ',');
+
                 DialogResult result = MessageBox.Show(
-                    lang.Get("plugins_missing_prompt") ?? "Some plugins are missing. Install them now?",
-                    lang.Get("plugins_missing_title") ?? "Plugins Missing",
+                    $"Some plugins are missing: {missing}. Install them now?",
+                    "Plugins Missing",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Warning
                 );
@@ -999,9 +1020,14 @@ namespace ETS2_Assist_GUI
                     if (Directory.Exists(sourcePlugins))
                     {
                         if (!Directory.Exists(pluginsDir)) Directory.CreateDirectory(pluginsDir);
+                        // Копируем все файлы из sourcePlugins
                         foreach (var file in Directory.GetFiles(sourcePlugins))
-                            File.Copy(file, Path.Combine(pluginsDir, Path.GetFileName(file)), true);
-                        AppendLog("Plugins copied.");
+                        {
+                            string dest = Path.Combine(pluginsDir, Path.GetFileName(file));
+                            File.Copy(file, dest, true);
+                            AppendLog($"Copied {Path.GetFileName(file)} to plugins.");
+                        }
+                        AppendLog("All plugins copied.");
                         return true;
                     }
                     else
@@ -1026,9 +1052,11 @@ namespace ETS2_Assist_GUI
             if (string.IsNullOrEmpty(ets2Path)) return false;
             string pluginsDir = Path.Combine(ets2Path, "bin", "win_x64", "plugins");
             return File.Exists(Path.Combine(pluginsDir, "ets2-telemetry-server.dll")) &&
-                   File.Exists(Path.Combine(pluginsDir, "trucktel.dll"));
+                   File.Exists(Path.Combine(pluginsDir, "trucktel.dll")) &&
+                   File.Exists(Path.Combine(pluginsDir, "scs_sdk_controller.dll"));
         }
 
+   
         private string? GetEts2Path()
         {
             string[] commonPaths = {
@@ -1193,6 +1221,11 @@ namespace ETS2_Assist_GUI
             StopTriggerServer();
             StopWebSocketSaveServer();
             KillChildProcesses();
+
+            // ===== ОСВОБОЖДЕНИЕ SCS CONTROLLER =====
+            SCSController.OnLog -= (msg) => AppendLog(msg); // отписка
+            SCSController.Dispose();
+
             AppendLog("System stopped.");
             RefreshUI();
         }

@@ -1,9 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json.Linq;
 
@@ -21,12 +19,57 @@ namespace ETS2_Assist_GUI
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
         private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        [DllImport("user32.dll")]
+        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetMessageExtraInfo();
 
         private const uint WM_KEYDOWN = 0x0100;
         private const uint WM_KEYUP = 0x0101;
         private const int VK_ESCAPE = 0x1B;
-        private const int VK_PAUSE = 0x13; // не используется, но можно задействовать
+        private const int VK_F1 = 0x70;
+        private const int VK_PAUSE = 0x13;
+        private const int SW_RESTORE = 9;
+        private const uint KEYEVENTF_KEYUP = 0x02;
+        private const uint KEYEVENTF_EXTENDEDKEY = 0x01;
+        private const uint INPUT_KEYBOARD = 1;
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct INPUT
+        {
+            public uint type;
+            public MOUSEKEYBDHARDWAREINPUT union;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        struct MOUSEKEYBDHARDWAREINPUT
+        {
+            [FieldOffset(0)] public MOUSEINPUT mouse;
+            [FieldOffset(0)] public KEYBDINPUT keyboard;
+            [FieldOffset(0)] public HARDWAREINPUT hardware;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct KEYBDINPUT
+        {
+            public ushort wVk;
+            public ushort wScan;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct MOUSEINPUT { /* не используется */ }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct HARDWAREINPUT { /* не используется */ }
 
         private bool _randomTargetActive = false;
         private bool _randomTargetReached = false;
@@ -84,38 +127,54 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        // ============================================================
+        // ОТПРАВКА КЛАВИШИ F1 (пауза) через SendInput + PostMessage
+        // ============================================================
         private void SendPauseKeyToGame()
         {
             try
             {
-                IntPtr gameHandle = IntPtr.Zero;
-                var procs = Process.GetProcessesByName("eurotrucks2");
-                if (procs.Length > 0 && procs[0].MainWindowHandle != IntPtr.Zero)
-                {
-                    gameHandle = procs[0].MainWindowHandle;
-                }
+                AppendLog("[DEBUG] SendPauseKeyToGame() вызван");
 
-                if (gameHandle == IntPtr.Zero)
+                var procs = Process.GetProcessesByName("eurotrucks2");
+                if (procs.Length == 0 || procs[0].MainWindowHandle == IntPtr.Zero)
                 {
                     AppendLog("[DEBUG] Окно игры не найдено.");
                     return;
                 }
 
-                // Активируем окно игры
+                IntPtr gameHandle = procs[0].MainWindowHandle;
+
+                // Восстанавливаем окно
+                ShowWindow(gameHandle, SW_RESTORE);
                 SetForegroundWindow(gameHandle);
-                System.Threading.Thread.Sleep(50);
+                System.Threading.Thread.Sleep(100);
 
-                // Отправляем нажатие ESC через keybd_event
-                const uint KEYEVENTF_KEYUP = 0x02;
-                keybd_event((byte)VK_ESCAPE, 0, 0, UIntPtr.Zero);
-                System.Threading.Thread.Sleep(50);
-                keybd_event((byte)VK_ESCAPE, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                // 1. Отправляем через PostMessage напрямую в окно (быстро, но не всегда работает)
+                AppendLog("[DEBUG] Отправка PostMessage WM_KEYDOWN/WM_KEYUP VK_F1");
+                PostMessage(gameHandle, WM_KEYDOWN, (IntPtr)VK_F1, IntPtr.Zero);
+                System.Threading.Thread.Sleep(30);
+                PostMessage(gameHandle, WM_KEYUP, (IntPtr)VK_F1, IntPtr.Zero);
 
-                AppendLog("[DEBUG] Клавиша ESC отправлена в окно игры через keybd_event.");
+                // 2. Отправляем через SendInput (более надёжно)
+                AppendLog("[DEBUG] Отправка SendInput VK_F1");
+                INPUT[] inputs = new INPUT[2];
+                inputs[0].type = INPUT_KEYBOARD;
+                inputs[0].union.keyboard.wVk = (ushort)VK_F1;
+                inputs[0].union.keyboard.dwExtraInfo = GetMessageExtraInfo();
+
+                inputs[1].type = INPUT_KEYBOARD;
+                inputs[1].union.keyboard.wVk = (ushort)VK_F1;
+                inputs[1].union.keyboard.dwFlags = KEYEVENTF_KEYUP;
+                inputs[1].union.keyboard.dwExtraInfo = GetMessageExtraInfo();
+
+                SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+
+                AppendLog("[DEBUG] Клавиша F1 отправлена через SendInput.");
             }
             catch (Exception ex)
             {
-                AppendLog($"[DEBUG] Ошибка отправки ESC: {ex.Message}");
+                AppendLog($"[DEBUG] Ошибка отправки F1: {ex.Message}");
             }
         }
 
@@ -123,15 +182,10 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                IntPtr gameHandle = IntPtr.Zero;
                 var procs = Process.GetProcessesByName("eurotrucks2");
                 if (procs.Length > 0 && procs[0].MainWindowHandle != IntPtr.Zero)
                 {
-                    gameHandle = procs[0].MainWindowHandle;
-                }
-                if (gameHandle != IntPtr.Zero)
-                {
-                    SetForegroundWindow(gameHandle);
+                    SetForegroundWindow(procs[0].MainWindowHandle);
                     AppendLog("Фокус возвращён в игру.");
                 }
             }
@@ -143,6 +197,8 @@ namespace ETS2_Assist_GUI
 
         private void HandleTargetReached(JObject data)
         {
+            AppendLog("[WS] HandleTargetReached вызван");
+
             if (!_randomTargetActive || _randomTargetReached)
             {
                 AppendLog("[WS] Цель не активна или уже обработана. Игнорируем.");
@@ -151,29 +207,32 @@ namespace ETS2_Assist_GUI
 
             _randomTargetReached = true;
 
-            // Ставим игру на паузу
+            // Ставим паузу
+            AppendLog("[DEBUG] Вызов SendPauseKeyToGame() для установки паузы");
             SendPauseKeyToGame();
 
-            this.Invoke((System.Windows.Forms.MethodInvoker)delegate
+            // Показываем диалог
+            this.BeginInvoke((System.Windows.Forms.MethodInvoker)delegate
             {
-                // Делаем окно приложения активным и поверх всех
                 bool wasTopMost = this.TopMost;
                 this.TopMost = true;
                 this.Activate();
 
+                AppendLog("[UI] Показываем диалог достижения цели...");
+
                 var result = MessageBox.Show(
-                    this,
                     "Вы достигли случайной цели. Завершить задание?",
                     "Достижение цели",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question,
                     MessageBoxDefaultButton.Button1,
-                    MessageBoxOptions.DefaultDesktopOnly); // Окно поверх
+                    MessageBoxOptions.DefaultDesktopOnly);
 
                 this.TopMost = wasTopMost;
 
-                // Возвращаем фокус в игру
-                ReturnFocusToGame();
+                // Снимаем паузу
+                AppendLog("[DEBUG] Снимаем паузу (отправляем F1 ещё раз)");
+                SendPauseKeyToGame();
 
                 if (result == DialogResult.Yes)
                 {
@@ -194,7 +253,7 @@ namespace ETS2_Assist_GUI
 
                             startInfo.Arguments = "-xpgive 150";
                             Process.Start(startInfo);
-                            AppendLog("Начислено 3000 денег и 150 опыта (скрыто).");
+                            AppendLog("Начислено 3000 денег и 150 опыта.");
                         }
                         catch (Exception ex)
                         {
@@ -205,9 +264,7 @@ namespace ETS2_Assist_GUI
                     SendCommandToMap("remove_random_target");
                     _randomTargetActive = false;
                     _randomTargetReached = false;
-
-                    MessageBox.Show(this, "Задание выполнено!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    ReturnFocusToGame(); // ещё раз возвращаем фокус
+                    MessageBox.Show("Задание выполнено!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
@@ -215,6 +272,8 @@ namespace ETS2_Assist_GUI
                     SendCommandToMap("reset_target_reached");
                     AppendLog("Пользователь отклонил задание.");
                 }
+
+                ReturnFocusToGame();
             });
         }
     }
