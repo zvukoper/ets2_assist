@@ -1,142 +1,135 @@
-﻿using System;
-using System.IO.MemoryMappedFiles;
+using System;
+using System.IO;
+using System.IO.Pipes;
+using System.Text;
 
 namespace ETS2_Assist_GUI
 {
+    /// <summary>
+    /// Управление ETS2 через проверенный ets2_assist_input.dll.
+    /// Плагин поднимает Named Pipe: ETS2AssistPause.
+    /// Команды: PING, PAUSE.
+    /// </summary>
     public static class SCSController
     {
-        private const string MapName = "Local\\SCSControls";
-        private const int FloatCount = 4;
-        private const int BoolCount = 38;
-        private const int FloatSize = 4;
-        private const int BoolSize = 1;
-        private const int TotalSize = FloatCount * FloatSize + BoolCount * BoolSize;
+        private const string PipeName = "ETS2AssistPause";
+        private const int ConnectTimeoutMs = 1500;
+        private const int ReadTimeoutMs = 1500;
 
-        public const int ActionPause = 4;
-        public const int ActionParkingBrake = 5;
+        private static bool _initialized;
 
-        private static MemoryMappedFile? _mmf;
-        private static MemoryMappedViewAccessor? _accessor;
-        private static bool _initialized = false;
-        private static bool _lastPauseState = false;
-
-        // Событие для логирования
         public static event Action<string>? OnLog;
 
-        private static void Log(string message)
-        {
-            OnLog?.Invoke(message);
-        }
+        private static void Log(string message) => OnLog?.Invoke(message);
 
         public static bool Initialize()
         {
+            // Инициализация лёгкая: сам канал создаётся плагином в ETS2.
+            // Проверяем его через PING только при наличии запущенной игры.
             try
             {
-                Log("[SCS] Attempting to create/open shared memory: " + MapName);
-                _mmf = MemoryMappedFile.CreateOrOpen(MapName, TotalSize);
-                Log("[SCS] Shared memory opened successfully.");
+                bool ok = SendCommand("PING", out string response);
+                _initialized = ok;
 
-                _accessor = _mmf.CreateViewAccessor(0, TotalSize);
-                Log("[SCS] View accessor created.");
+                if (ok)
+                    Log($"[SCS] ets2_assist_input.dll connected. PING -> {response}");
+                else
+                    Log("[SCS] ets2_assist_input.dll / Named Pipe ETS2AssistPause is not available.");
 
-                // Тестовая запись
-                try
-                {
-                    _accessor.Write(0, (byte)123);
-                    byte test = _accessor.ReadByte(0);
-                    if (test == 123)
-                    {
-                        Log("[SCS] Test write successful.");
-                    }
-                    else
-                    {
-                        Log("[SCS] Test write FAILED (read back " + test + ").");
-                    }
-                    _accessor.Write(0, (byte)0);
-                }
-                catch (Exception ex)
-                {
-                    Log("[SCS] Test write EXCEPTION: " + ex.Message);
-                }
-
-                _initialized = true;
-                return true;
+                return ok;
             }
             catch (Exception ex)
             {
-                Log("[SCS] Init error: " + ex.Message);
+                _initialized = false;
+                Log($"[SCS] Initialize error: {ex.Message}");
                 return false;
             }
         }
 
         public static bool SetPause(bool enabled)
         {
-            if (!_initialized && !Initialize())
-            {
-                Log("[SCS] SetPause failed: not initialized.");
-                return false;
-            }
-            Log($"[SCS] SetPause({enabled}) - writing to index {ActionPause}");
-            bool result = SetBool(ActionPause, enabled);
-            if (result)
-            {
-                _lastPauseState = enabled;
-                Log($"[SCS] SetPause({enabled}) - SUCCESS.");
-            }
-            else
-            {
-                Log($"[SCS] SetPause({enabled}) - FAILED.");
-            }
-            return result;
-        }
+            // Проверенный плагин принимает команду PAUSE. Она переключает состояние паузы.
+            string command = "PAUSE";
 
-        public static bool SetParkingBrake(bool enabled)
-        {
-            if (!_initialized && !Initialize())
-                return false;
-            return SetBool(ActionParkingBrake, enabled);
-        }
-
-        private static bool SetBool(int index, bool value)
-        {
-            if (!_initialized || _accessor == null)
-            {
-                Log("[SCS] SetBool: not initialized or accessor null.");
-                return false;
-            }
             try
             {
-                long offset = FloatCount * FloatSize + index * BoolSize;
-                Log($"[SCS] SetBool: writing {(value ? 1 : 0)} to offset {offset} (index {index})");
-                _accessor.Write(offset, (byte)(value ? 1 : 0));
-
-                byte readback = _accessor.ReadByte(offset);
-                if (readback == (value ? 1 : 0))
+                if (!SendCommand(command, out string response, requireResponse: false))
                 {
-                    Log($"[SCS] SetBool: readback verified.");
-                    return true;
-                }
-                else
-                {
-                    Log($"[SCS] SetBool: readback mismatch! Expected {(value ? 1 : 0)}, got {readback}.");
+                    _initialized = false;
+                    Log($"[SCS] SetPause({enabled}) FAILED: pipe unavailable.");
                     return false;
                 }
+
+                _initialized = true;
+                Log($"[SCS] SetPause({enabled}) -> команда PAUSE успешно отправлена в Named Pipe.");
+                return true;
             }
             catch (Exception ex)
             {
-                Log($"[SCS] SetBool: EXCEPTION: {ex.Message}");
+                _initialized = false;
+                Log($"[SCS] SetPause({enabled}) EXCEPTION: {ex.Message}");
                 return false;
             }
+        }
+
+        private static bool SendCommand(string command, out string response, bool requireResponse = true)
+        {
+            response = string.Empty;
+
+            using var pipe = new NamedPipeClientStream(
+                ".",
+                PipeName,
+                PipeDirection.InOut,
+                PipeOptions.Asynchronous);
+
+            try
+            {
+                pipe.Connect(ConnectTimeoutMs);
+            }
+            catch (TimeoutException)
+            {
+                Log($"[SCS] Pipe '{PipeName}' connect timeout ({ConnectTimeoutMs} ms).");
+                return false;
+            }
+
+            byte[] bytes = Encoding.ASCII.GetBytes(command);
+            pipe.Write(bytes, 0, bytes.Length);
+            pipe.Flush();
+
+            // В PAUSE-команде важен сам факт отправки команды.
+            // Проверенный plugin может изменить состояние игры даже если
+            // ответ от pipe не пришёл/не был сформирован вовремя.
+            if (!requireResponse)
+                return true;
+
+            var buffer = new byte[128];
+            using var cts = new System.Threading.CancellationTokenSource(ReadTimeoutMs);
+
+            try
+            {
+                int n = pipe.ReadAsync(buffer.AsMemory(0, buffer.Length), cts.Token).AsTask().GetAwaiter().GetResult();
+                if (n > 0)
+                {
+                    response = Encoding.ASCII.GetString(buffer, 0, n).Trim();
+                    return !string.IsNullOrWhiteSpace(response);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Log($"[SCS] Ответ на '{command}' не получен за {ReadTimeoutMs} ms. Команда уже отправлена.");
+            }
+            catch (IOException ex)
+            {
+                Log($"[SCS] Ошибка чтения ответа на '{command}': {ex.Message}");
+            }
+
+            return false;
         }
 
         public static void Dispose()
         {
-            _accessor?.Dispose();
-            _mmf?.Dispose();
-            _accessor = null;
-            _mmf = null;
             _initialized = false;
-            Log("[SCS] Disposed.");
+            Log("[SCS] Controller disposed.");
         }
     }
 }

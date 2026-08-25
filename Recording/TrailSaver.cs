@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -116,7 +116,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("        </div>");
             sb.AppendLine("    </div>");
             sb.AppendLine("</div>");
-            sb.AppendLine("<div id=\"debugLog\">Debug</div>");
+            sb.AppendLine("<div id=\"debugLog\" style=\"position:absolute;left:10px;bottom:155px;z-index:50;background:rgba(0,0,0,.72);color:#b9c7d6;padding:5px 8px;border-radius:5px;font:11px/1.35 monospace;pointer-events:none;max-width:460px;\">Playback diagnostics</div>");
             sb.AppendLine("<canvas id=\"mapCanvas\"></canvas>");
             sb.AppendLine("<div id=\"controls\">");
             sb.AppendLine("    <div id=\"controlsTop\">");
@@ -225,12 +225,47 @@ const roads = mapData?.roads || [];
 const customTargets = mapData?.customTargets || [];
 console.log('[DEBUG] Cities:', cities.length, 'Roads:', roads.length, 'Targets:', customTargets.length);
 
-const times = trailPoints.map(p => p.t);
-const totalDuration = times.length > 0 ? times[times.length-1] : 0;
+// Playback diagnostics + defensive timeline normalization.
+const rawTimes = trailPoints.map(p => Number(p.t));
+const invalidTimeCount = rawTimes.filter(t => !Number.isFinite(t)).length;
+const nonMonotonicCount = rawTimes.slice(1).reduce((n, t, i) => n + (Number.isFinite(t) && Number.isFinite(rawTimes[i]) && t < rawTimes[i] ? 1 : 0), 0);
+const metaDurationSec = Number(meta.durationMs) > 0 ? Number(meta.durationMs) / 1000 : 0;
+const rawLastTime = rawTimes.length ? rawTimes[rawTimes.length - 1] : 0;
+const timeUnit = (metaDurationSec > 0 && rawLastTime > metaDurationSec * 20) ? 'milliseconds' : 'seconds';
+const normalizedRawTimes = timeUnit === 'milliseconds' ? rawTimes.map(t => t / 1000) : rawTimes;
+const normalizedLastTime = normalizedRawTimes.length ? normalizedRawTimes[normalizedRawTimes.length - 1] : 0;
+const rawTimelineUsable = normalizedRawTimes.length > 1 && invalidTimeCount === 0 && nonMonotonicCount === 0 && Number.isFinite(normalizedLastTime) && normalizedLastTime > 0;
+const timelineMode = rawTimelineUsable ? `recorded-${timeUnit}` : (metaDurationSec > 0 && trailPoints.length > 1 ? 'meta-fallback' : 'index-fallback');
+const totalDuration = rawTimelineUsable ? normalizedLastTime : (metaDurationSec > 0 ? metaDurationSec : Math.max(0, trailPoints.length - 1) / 10);
+const times = trailPoints.map((p, i) => {
+    if (rawTimelineUsable) return normalizedRawTimes[i];
+    if (metaDurationSec > 0 && trailPoints.length > 1) return (i / (trailPoints.length - 1)) * totalDuration;
+    return i / 10;
+});
+
+console.log('[ETS2 ASSIST BUILD] 1.0.13-FIX-2026.08.25-1400');
+console.groupCollapsed('[PLAYBACK] Timeline diagnostics');
+console.log('trailPoints:', trailPoints.length);
+console.log('dataPoints:', dataPoints.length);
+console.log('events:', events.length);
+console.log('meta.durationMs:', Number(meta.durationMs) || 0);
+console.log('metaDurationSec:', metaDurationSec.toFixed(3));
+console.log('firstTrailTime:', rawTimes.length ? rawTimes[0] : null);
+console.log('lastTrailTime:', rawLastTime);
+console.log('timeUnit:', timeUnit);
+console.log('normalizedLastTime:', normalizedLastTime);
+console.log('totalDurationSec:', totalDuration.toFixed(3));
+console.log('invalidTimeCount:', invalidTimeCount);
+console.log('nonMonotonicCount:', nonMonotonicCount);
+console.log('timelineMode:', timelineMode);
+console.log('firstPoint:', trailPoints[0] || null);
+console.log('lastPoint:', trailPoints[trailPoints.length - 1] || null);
+console.groupEnd();
 
 const title = meta.title || '';
 const desc = meta.description || '';
-document.getElementById('titlePanel').innerHTML = title + (desc ? '<br><span style=''font-size:10px; color:#888;''>'+desc+'</span>' : '');
+// ETS2 Assist trail viewer title HTML: JS string uses single quotes; HTML attributes use double quotes.
+document.getElementById('titlePanel').innerHTML = title + (desc ? '<br><span style=""font-size:10px; color:#888;"">' + desc + '</span>' : '');
 
 const canvas = document.getElementById('mapCanvas');
 const ctx = canvas.getContext('2d');
@@ -288,350 +323,40 @@ let interpolate = true;
 let playStartTime = 0;
 let playStartElapsed = 0;
 let closest = null;
+let playbackFrameCount = 0;
+let playbackLastIndex = -1;
+let playbackLastTime = -1;
+let playbackWatchdog = null;
 
-function drawMap() {
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#0f1217';
-    ctx.fillRect(0, 0, W, H);
-
-    // Сетка
-    const gridStep = 200 / scale;
-    ctx.strokeStyle = '#2a3545';
-    ctx.lineWidth = 0.5;
-    ctx.setLineDash([4,6]);
-    for (let x = -W/2; x < W/2; x += gridStep) {
-        const p = worldToScreen(centerX+x, centerZ);
-        ctx.beginPath(); ctx.moveTo(p.x,0); ctx.lineTo(p.x,H); ctx.stroke();
-    }
-    for (let z = -H/2; z < H/2; z += gridStep) {
-        const p = worldToScreen(centerX, centerZ+z);
-        ctx.beginPath(); ctx.moveTo(0,p.y); ctx.lineTo(W,p.y); ctx.stroke();
-    }
-    ctx.setLineDash([]);
-
-    // Дороги
-    for (const r of roads) {
-        const p1 = worldToScreen(r.x1, r.z1);
-        const p2 = worldToScreen(r.x2, r.z2);
-        ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);
-        ctx.strokeStyle = '#5a7a8a';
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.6;
-        ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-
-    // Города
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (const c of cities) {
-        const p = worldToScreen(c.x, c.z);
-        if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, 2*Math.PI);
-        ctx.fillStyle = '#ffdd88';
-        ctx.shadowColor = '#ffdd8844';
-        ctx.shadowBlur = 6;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.font = '10px ""Segoe UI""';
-        ctx.fillStyle = '#c8ddee';
-        ctx.fillText(c.name, p.x, p.y-6);
-    }
-
-    // Цели
-    for (const t of customTargets) {
-        const p = worldToScreen(t.x, t.z);
-        if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;
-        ctx.beginPath(); ctx.arc(p.x, p.y, t.active ? 6 : 4, 0, 2*Math.PI);
-        ctx.fillStyle = t.active ? (t.color || '#ffc857') : (t.color || '#88aadd');
-        ctx.shadowColor = t.active ? '#ffc85788' : '#88aadd88';
-        ctx.shadowBlur = t.active ? 16 : 8;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = t.active ? 1.5 : 0.5;
-        ctx.stroke();
-        ctx.font = t.active ? 'bold 10px ""Segoe UI""' : '9px ""Segoe UI""';
-        ctx.fillStyle = '#fff';
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = 4;
-        ctx.fillText(t.name, p.x, p.y - (t.active ? 14 : 10));
-        ctx.shadowBlur = 0;
-    }
-
-    // Ближайшие города и цели за пределами экрана
-    const cx = W/2, cy = H/2;
-    const radius = Math.min(W, H) * 0.42;
-    const currentPos = currentIndex < trailPoints.length ? trailPoints[currentIndex] : { x:0, z:0 };
-    // Ближайшие города
-    const cityDist = cities.map(c => ({ ...c, dist: Math.hypot(c.x - currentPos.x, c.z - currentPos.z) }));
-    cityDist.sort((a,b) => a.dist - b.dist);
-    const nearCities = cityDist.slice(0, NEARBY_CITIES_COUNT);
-    for (const c of nearCities) {
-        const p = worldToScreen(c.x, c.z);
-        if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) continue;
-        const dx = p.x - cx, dy = p.y - cy; const len = Math.hypot(dx, dy); if (len < 0.01) continue;
-        const nx = dx/len, ny = dy/len;
-        const arrowX = cx + nx * radius, arrowY = cy + ny * radius;
-        const angle = Math.atan2(ny, nx);
-        ctx.save(); ctx.translate(arrowX, arrowY); ctx.rotate(angle);
-        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath();
-        ctx.fillStyle = '#aabbcc'; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 4; ctx.fill();
-        ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0; ctx.restore();
-        let lx = arrowX, ly = (ny>0) ? arrowY-16 : arrowY+22;
-        if (lx < 50) lx = 50; if (lx > W-50) lx = W-50; if (ly < 20) ly = 20; if (ly > H-20) ly = H-20;
-        ctx.font = '10px ""Segoe UI""';
-        ctx.fillStyle = '#c8ddee';
-        ctx.shadowColor='rgba(0,0,0,0.8)';
-        ctx.shadowBlur=4;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(c.name + ' (' + formatDistance(c.dist) + ')', lx, ly);
-        ctx.shadowBlur = 0;
-    }
-
-    // Цели за пределами экрана
-    for (const t of customTargets) {
-        const p = worldToScreen(t.x, t.z);
-        if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) continue;
-        const dx = p.x - cx, dy = p.y - cy; const len = Math.hypot(dx, dy); if (len < 0.01) continue;
-        const nx = dx/len, ny = dy/len;
-        const arrowX = cx + nx * radius, arrowY = cy + ny * radius;
-        const angle = Math.atan2(ny, nx);
-        const color = t.active ? (t.color || '#ffc857') : (t.color || '#88aadd');
-        ctx.save(); ctx.translate(arrowX, arrowY); ctx.rotate(angle);
-        ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath();
-        ctx.fillStyle = color; ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=4; ctx.fill();
-        ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); ctx.shadowBlur=0; ctx.restore();
-        let lx = arrowX, ly = (ny>0) ? arrowY-16 : arrowY+22;
-        if (lx < 50) lx = 50; if (lx > W-50) lx = W-50; if (ly < 20) ly = 20; if (ly > H-20) ly = H-20;
-        ctx.font = t.active ? 'bold 10px ""Segoe UI""' : '9px ""Segoe UI""';
-        ctx.fillStyle = '#fff';
-        ctx.shadowColor='rgba(0,0,0,0.8)';
-        ctx.shadowBlur=4;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(t.name + ' (' + formatDistance(t.dist || 0) + ')', lx, ly);
-        ctx.shadowBlur = 0;
-    }
-
-    // Шлейф
-    if (trailPoints.length > 1) {
-        for (let i=1; i<trailPoints.length; i++) {
-            const p1 = trailPoints[i-1]; const p2 = trailPoints[i];
-            const s1 = worldToScreen(p1.x, p1.z);
-            const s2 = worldToScreen(p2.x, p2.z);
-            const speed = p2.speed || 0;
-            ctx.beginPath(); ctx.moveTo(s1.x,s1.y); ctx.lineTo(s2.x,s2.y);
-            ctx.strokeStyle = getTrailColor(speed); ctx.lineWidth = 2.5;
-            ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=4; ctx.stroke(); ctx.shadowBlur=0;
-        }
-    }
-
-    // События
-    for (const e of events) {
-        const p = worldToScreen(e.x, e.z); if (p.x<0||p.x>W||p.y<0||p.y>H) continue;
-        const size=10;
-        ctx.save(); ctx.translate(p.x,p.y); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=6;
-        ctx.beginPath(); ctx.arc(0,0,size,0,2*Math.PI);
-        ctx.fillStyle=e.color||'#ffffff'; ctx.fill(); ctx.shadowBlur=0;
-        ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
-        ctx.fillStyle='#fff'; ctx.font='bold 10px ""Segoe UI""';
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText(e.label||'?',0,-1);
-        if (e.subtext) {
-            ctx.fillStyle='#fff'; ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=3;
-            ctx.font='7px ""Segoe UI""'; ctx.textBaseline='top';
-            ctx.fillText(e.subtext,0,size+2); ctx.shadowBlur=0;
-        }
-        ctx.restore();
-    }
-
-    // Текущая позиция (грузовик)
-    if (trailPoints.length > 0) {
-        let idx = currentIndex;
-        let nextIdx = Math.min(idx + 1, trailPoints.length - 1);
-        let p1 = trailPoints[idx];
-        let p2 = trailPoints[nextIdx];
-        let t1 = p1.t;
-        let t2 = p2.t;
-        let currentPos = { x: p1.x, z: p1.z, heading: p1.heading || 0, speed: p1.speed || 0 };
-        if (interpolate && idx < trailPoints.length - 1 && t2 > t1) {
-            const progress = (currentTime - t1) / (t2 - t1);
-            const clampedProgress = Math.max(0, Math.min(1, progress));
-            currentPos.x = p1.x + (p2.x - p1.x) * clampedProgress;
-            currentPos.z = p1.z + (p2.z - p1.z) * clampedProgress;
-            let h1 = p1.heading || 0;
-            let h2 = p2.heading || 0;
-            let diff = h2 - h1;
-            while (diff > Math.PI) diff -= 2 * Math.PI;
-            while (diff < -Math.PI) diff += 2 * Math.PI;
-            currentPos.heading = h1 + diff * clampedProgress;
-            currentPos.speed = p1.speed + (p2.speed - p1.speed) * clampedProgress;
-        }
-        const sp = worldToScreen(currentPos.x, currentPos.z);
-        // Рисуем грузовик (красный треугольник)
-        const heading = currentPos.heading || 0;
-        ctx.save(); ctx.translate(sp.x, sp.y); ctx.rotate(heading + Math.PI);
-        ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(-9, 9); ctx.lineTo(0, 3); ctx.lineTo(9, 9); ctx.closePath();
-        ctx.fillStyle = '#ff4d4d'; ctx.shadowColor = '#ff4d4d88'; ctx.shadowBlur = 12; ctx.fill();
-        ctx.shadowBlur = 0; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-        ctx.restore();
-        // Скорость под грузовиком
-        ctx.save(); ctx.translate(sp.x, sp.y+22);
-        ctx.font = '10px ""Segoe UI""';
-        ctx.fillStyle = '#fff';
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = 4;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText(currentPos.speed.toFixed(0) + ' km/h', 0, 0);
-        ctx.restore();
-        // Обновление центра при слежении
-        if (follow) { targetCenterX = currentPos.x; targetCenterZ = currentPos.z; }
-        const camSmooth = 0.15;
-        centerX += (targetCenterX - centerX) * camSmooth;
-        centerZ += (targetCenterZ - centerZ) * camSmooth;
-    }
-
-    // Данные (топливо, повреждения, pitch/roll)
-    closest = null;
-    if (dataPoints.length > 0 && currentIndex < trailPoints.length) {
-        let minDist = Infinity;
-        const curP = trailPoints[currentIndex];
-        for (const dp of dataPoints) {
-            const d = Math.hypot(dp.x - curP.x, dp.z - curP.z);
-            if (d < minDist) { minDist = d; closest = dp; }
-        }
-        if (closest) {
-            document.getElementById('dataPanel').innerHTML = '⛽ ' + (closest.fuel.toFixed(1) || '--') + ' л &nbsp;|&nbsp; 🛠️ ' + (closest.damage.toFixed(1) || '--') + '%';
-            const pitchRaw = closest.pitch || 0;
-            const rollRaw = closest.roll || 0;
-            let pitchDeg = (pitchRaw * RAW_TO_DEGREES) * PITCH_CALIBRATION_FACTOR;
-            let rollDeg = (rollRaw * RAW_TO_DEGREES) * ROLL_CALIBRATION_FACTOR;
-            pitchDeg = normalizeAngle(pitchDeg);
-            rollDeg = normalizeAngle(rollDeg);
-            // Обновляем полоски
-            document.getElementById('pitchFill').style.width = Math.min(100, Math.max(0, 50 + pitchDeg * 0.5)) + '%';
-            document.getElementById('rollFill').style.width = Math.min(100, Math.max(0, 50 + rollDeg * 0.5)) + '%';
-            document.getElementById('pitchLabel').textContent = pitchDeg.toFixed(0);
-            document.getElementById('rollLabel').textContent = rollDeg.toFixed(0);
-            updatePitchRollPanel(pitchDeg, rollDeg);
-        }
-    }
+function playbackStatusText(extra='') {
+    return `Frames ${trailPoints.length} | Duration ${totalDuration.toFixed(1)}s | Time ${currentTime.toFixed(1)}s | Index ${currentIndex}/${Math.max(0, trailPoints.length-1)} | ${playing ? 'PLAYING' : 'STOPPED'}${extra ? ' | ' + extra : ''}`;
+}
+function updatePlaybackDebug(extra='') {
+    const logDiv = document.getElementById('debugLog');
+    const text = playbackStatusText(extra);
+    if (logDiv) logDiv.textContent = text;
+    return text;
 }
 
-// ================================================================
-// ПАНЕЛЬ PITCH/ROLL
-// ================================================================
-let pitchRollState = { pitchMax: -Infinity, pitchMin: Infinity, rollMax: -Infinity, rollMin: Infinity };
-function updatePitchRollPanel(pitchDeg, rollDeg) {
-    if (pitchDeg > pitchRollState.pitchMax) pitchRollState.pitchMax = pitchDeg;
-    if (pitchDeg < pitchRollState.pitchMin) pitchRollState.pitchMin = pitchDeg;
-    if (rollDeg > pitchRollState.rollMax) pitchRollState.rollMax = rollDeg;
-    if (rollDeg < pitchRollState.rollMin) pitchRollState.rollMin = rollDeg;
-    document.getElementById('pitchValue3d').textContent = pitchDeg.toFixed(1) + '°';
-    document.getElementById('rollValue3d').textContent = rollDeg.toFixed(1) + '°';
-    document.getElementById('pitchMin3d').textContent = pitchRollState.pitchMin.toFixed(1);
-    document.getElementById('pitchMax3d').textContent = pitchRollState.pitchMax.toFixed(1);
-    document.getElementById('rollMin3d').textContent = pitchRollState.rollMin.toFixed(1);
-    document.getElementById('rollMax3d').textContent = pitchRollState.rollMax.toFixed(1);
-    const resetBtn = document.getElementById('resetPitchRollBtn');
-    if (resetBtn) {
-        resetBtn.onclick = function() {
-            pitchRollState.pitchMax = -Infinity;
-            pitchRollState.pitchMin = Infinity;
-            pitchRollState.rollMax = -Infinity;
-            pitchRollState.rollMin = Infinity;
-            if (closest) {
-                const pitchRaw = closest.pitch || 0;
-                const rollRaw = closest.roll || 0;
-                let pitchDeg = (pitchRaw * RAW_TO_DEGREES) * PITCH_CALIBRATION_FACTOR;
-                let rollDeg = (rollRaw * RAW_TO_DEGREES) * ROLL_CALIBRATION_FACTOR;
-                pitchDeg = normalizeAngle(pitchDeg);
-                rollDeg = normalizeAngle(rollDeg);
-                updatePitchRollPanel(pitchDeg, rollDeg);
-            }
-        };
-    }
+function formatTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds - Math.floor(seconds)) * 1000);
+    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + '.' + String(ms).padStart(3,'0');
 }
 
-// ================================================================
-// УПРАВЛЕНИЕ КАРТОЙ
-// ================================================================
-canvas.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    scale *= delta; if (scale < 0.001) scale = 0.001; if (scale > 1000) scale = 1000; drawMap();
-}, { passive: false });
-
-canvas.addEventListener('mousedown', (e) => {
-    if (e.button === 0) {
-        isDragging = true;
-        dragStartX = e.clientX; dragStartY = e.clientY;
-        dragStartCX = centerX; dragStartCZ = centerZ;
-        canvas.style.cursor = 'grabbing';
+function indexForTime(t) {
+    if (!times.length) return 0;
+    let lo = 0, hi = times.length - 1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        const v = times[mid];
+        if (v <= t) lo = mid + 1;
+        else hi = mid - 1;
     }
-});
-window.addEventListener('mousemove', (e) => {
-    if (isDragging) {
-        const dx = (e.clientX - dragStartX) / scale;
-        const dy = (dragStartY - e.clientY) / scale;
-        centerX = dragStartCX - dx;
-        centerZ = dragStartCZ - dy;
-        targetCenterX = centerX;
-        targetCenterZ = centerZ;
-        drawMap();
-    }
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    if (mx >= 0 && mx <= W && my >= 0 && my <= H) {
-        const wx = centerX + (mx - W/2) / scale;
-        const wz = centerZ - (my - H/2) / scale;
-        document.getElementById('cursorCoords').textContent = '📍 ' + wx.toFixed(1) + ', ' + wz.toFixed(1);
-    }
-});
-window.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; canvas.style.cursor = 'grab'; } });
-
-let notes = [];
-canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    if (mx < 0 || mx > W || my < 0 || my > H) return;
-    const wx = centerX + (mx - W/2) / scale;
-    const wz = centerZ - (my - H/2) / scale;
-    const coordStr = wx.toFixed(2) + ', ' + wz.toFixed(2);
-    let objName = '';
-    for (const c of cities) { const dx = c.x - wx; const dz = c.z - wz; if (dx*dx + dz*dz < 100) { objName = c.name; break; } }
-    if (!objName) { for (const t of customTargets) { const dx = t.x - wx; const dz = t.z - wz; if (dx*dx + dz*dz < 100) { objName = t.name; break; } } }
-    if (!objName) { for (const e of events) { const dx = e.x - wx; const dz = e.z - wz; if (dx*dx + dz*dz < 100) { objName = e.label || ''; break; } } }
-    const note = objName ? coordStr + ' – ' + objName : coordStr;
-    notes.push(note);
-    if (navigator.clipboard) navigator.clipboard.writeText(coordStr);
-    const toast = document.createElement('div');
-    toast.style.cssText = 'position:fixed;bottom:170px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;z-index:999;pointer-events:none;';
-    toast.textContent = 'Скопировано: ' + coordStr;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2000);
-});
-
-let measureMode = false; let measureStart = null;
-canvas.addEventListener('dblclick', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    if (mx < 0 || mx > W || my < 0 || my > H) return;
-    const wx = centerX + (mx - W/2) / scale;
-    const wz = centerZ - (my - H/2) / scale;
-    if (!measureMode) { measureMode = true; measureStart = { x: wx, z: wz }; document.getElementById('measureTool').classList.add('active'); document.getElementById('measureDist').textContent = '0.0'; return; }
-    const dx = wx - measureStart.x; const dz = wz - measureStart.z;
-    const dist = Math.sqrt(dx*dx + dz*dz);
-    document.getElementById('measureDist').textContent = dist.toFixed(1);
-    measureMode = false; measureStart = null;
-    setTimeout(() => document.getElementById('measureTool').classList.remove('active'), 5000);
-});
+    return Math.max(0, Math.min(hi, times.length - 1));
+}
 
 // ================================================================
 // ТАЙМЛАЙН И ВОСПРОИЗВЕДЕНИЕ
@@ -659,7 +384,7 @@ function formatTime(seconds) {
 }
 
 function updateTimeDisplay() {
-    const percent = totalDuration > 0 ? currentTime / totalDuration : 0;
+    const percent = totalDuration > 0 ? Math.max(0, Math.min(1, currentTime / totalDuration)) : 0;
     timeSlider.value = percent * 1000;
     timeDisplay.textContent = formatTime(currentTime);
     drawMap();
@@ -675,28 +400,74 @@ function setTimeByValue(value) {
     updateTimeDisplay();
 }
 
+let playbackDebugFrames = 0;
+let playbackLastLoggedIndex = -1;
+
 function playStep() {
     if (!playing) return;
-    const now = performance.now() / 1000;
-    const elapsed = (now - playStartTime) * speedFactor + playStartElapsed;
-    currentTime = Math.min(elapsed, totalDuration);
-    let idx = 0;
-    for (let i=0; i<times.length; i++) { if (times[i] <= currentTime) idx = i; else break; }
-    currentIndex = Math.min(idx, trailPoints.length-1);
-    if (follow) { targetCenterX = trailPoints[currentIndex].x; targetCenterZ = trailPoints[currentIndex].z; }
-    updateTimeDisplay();
-    if (currentTime >= totalDuration) { playing = false; playBtn.textContent = '▶'; return; }
-    requestAnimationFrame(playStep);
+    try {
+        const now = performance.now() / 1000;
+        const elapsed = (now - playStartTime) * speedFactor + playStartElapsed;
+        currentTime = Math.min(elapsed, totalDuration);
+        let idx = 0;
+        for (let i=0; i<times.length; i++) { if (times[i] <= currentTime) idx = i; else break; }
+        currentIndex = Math.min(idx, trailPoints.length - 1);
+        if (follow && currentIndex >= 0 && currentIndex < trailPoints.length) {
+            targetCenterX = trailPoints[currentIndex].x;
+            targetCenterZ = trailPoints[currentIndex].z;
+        }
+        playbackDebugFrames++;
+        if (playbackDebugFrames === 1 || currentIndex !== playbackLastLoggedIndex && (currentIndex % 100 === 0 || currentIndex === trailPoints.length - 1)) {
+            console.log('[PLAYBACK] tick', { frame: playbackDebugFrames, currentTime: Number(currentTime.toFixed(3)), currentIndex, totalFrames: trailPoints.length, totalDuration: Number(totalDuration.toFixed(3)), speedFactor });
+            playbackLastLoggedIndex = currentIndex;
+        }
+        updateTimeDisplay();
+        if (currentTime >= totalDuration) {
+            playing = false;
+            playBtn.textContent = '▶';
+            console.log('[PLAYBACK] finished', { frames: playbackDebugFrames, finalTime: Number(currentTime.toFixed(3)), finalIndex: currentIndex });
+            return;
+        }
+        requestAnimationFrame(playStep);
+    } catch (error) {
+        playing = false;
+        playBtn.textContent = '▶';
+        console.error('[PLAYBACK] playStep exception:', error);
+    }
 }
 
 playBtn.addEventListener('click', () => {
+    const wasPlaying = playing;
     playing = !playing;
     playBtn.textContent = playing ? '⏸' : '▶';
+    console.log('[PLAYBACK] play button', { wasPlaying, playing, currentTime: Number(currentTime.toFixed(3)), totalDuration: Number(totalDuration.toFixed(3)), currentIndex, totalFrames: trailPoints.length, speedFactor, timelineMode });
     if (playing) {
-        if (currentTime >= totalDuration) { currentTime = 0; currentIndex = 0; if (follow) { targetCenterX = trailPoints[0].x; targetCenterZ = trailPoints[0].z; } }
+        if (trailPoints.length < 2) {
+            playing = false;
+            playBtn.textContent = '▶';
+            console.warn('[PLAYBACK] Start blocked: less than 2 trail points.');
+            return;
+        }
+        if (!(totalDuration > 0) || !Number.isFinite(totalDuration)) {
+            playing = false;
+            playBtn.textContent = '▶';
+            console.error('[PLAYBACK] Start blocked: invalid totalDuration.', totalDuration);
+            return;
+        }
+        if (currentTime >= totalDuration) {
+            currentTime = 0;
+            currentIndex = 0;
+            if (follow) { targetCenterX = trailPoints[0].x; targetCenterZ = trailPoints[0].z; }
+            console.log('[PLAYBACK] Restarting from beginning.');
+        }
+        playbackDebugFrames = 0;
+        playbackLastLoggedIndex = -1;
         playStartTime = performance.now() / 1000;
         playStartElapsed = currentTime;
+        console.log('[PLAYBACK] started', { startTime: Number(playStartTime.toFixed(3)), startElapsed: Number(playStartElapsed.toFixed(3)) });
         playStep();
+    } else {
+        console.log('[PLAYBACK] paused manually', { currentTime: Number(currentTime.toFixed(3)), currentIndex, playbackDebugFrames });
     }
 });
 
@@ -758,7 +529,7 @@ async function loadTracks() {
         const list = document.getElementById('trackList');
         list.innerHTML = '';
         if (data.files.length === 0) {
-            list.innerHTML = '<div style='color:#666;'>Нет сохранённых треков</div>';
+            list.innerHTML = '<div style=""color:#666;"">Нет сохранённых треков</div>';
             return;
         }
         for (const file of data.files) {

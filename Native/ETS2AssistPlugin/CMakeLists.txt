@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.24)
+project(ETS2AssistPlugin LANGUAGES CXX)
+
+add_library(ets2_assist_plugin SHARED src/ets2_assist_plugin.cpp)
+target_compile_features(ets2_assist_plugin PRIVATE cxx_std_17)
+target_compile_definitions(ets2_assist_plugin PRIVATE WIN32_LEAN_AND_MEAN ETS2ASSIST_EXPORTS)
+target_include_directories(ets2_assist_plugin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/sdk/include)
+set_target_properties(ets2_assist_plugin PROPERTIES OUTPUT_NAME "ets2_assist_plugin")
+if(MSVC)
+  target_compile_options(ets2_assist_plugin PRIVATE /W4 /EHsc)
+endif()

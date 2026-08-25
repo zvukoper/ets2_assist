@@ -10,7 +10,7 @@ namespace ETS2_Assist_GUI
         static void Main()
         {
             // Лог запуска
-            File.AppendAllText("startup.log", $"{DateTime.Now}: Application started\n");
+            File.AppendAllText("startup.log", $"{DateTime.Now}: Application started BUILD={BuildInfo.Version}\n");
 
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
             Application.ThreadException += (s, e) =>
@@ -27,6 +27,8 @@ namespace ETS2_Assist_GUI
                 File.AppendAllText("crash.log", $"{DateTime.Now}: {msg}\n");
             };
 
+            try { SetProcessDpiAwarenessContext(new IntPtr(-4)); } catch { }
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
@@ -47,5 +49,7 @@ namespace ETS2_Assist_GUI
                 File.AppendAllText("crash.log", $"{DateTime.Now}: {msg}\n");
             }
         }
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
     }
 }

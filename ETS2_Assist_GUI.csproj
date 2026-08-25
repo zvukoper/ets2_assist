@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -13,7 +13,7 @@
     <!-- <PublishTrimmed>false</PublishTrimmed> (по умолчанию false) -->
     <!-- Можно ускорить запуск (опционально) -->
     <PublishReadyToRun>true</PublishReadyToRun>
-    <VersionPrefix>1.0.12</VersionPrefix>
+    <VersionPrefix>1.0.26</VersionPrefix>
 <VersionSuffix>$([System.String]::Format("{0}{1}{2}{3}", $([System.DateTime]::Now.Month), $([System.DateTime]::Now.Day), $([System.DateTime]::Now.Hour), $([System.DateTime]::Now.Minute)))</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
@@ -24,9 +24,20 @@
 
   <!-- Удалён PackageReference на System.Configuration.ConfigurationManager -->
 
+  <!-- SDK_Test содержит отдельный диагностический WinForms-тест и не должен компилироваться в основной EXE. -->
   <ItemGroup>
+    <Compile Remove="SDK_Test\**" />
+    <EmbeddedResource Remove="SDK_Test\**" />
+    <None Remove="SDK_Test\**" />
+    <None Include="SDK_Test\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Runtime data is authoritative under bin\Release\net10.0-windows\win-x64\publish\data.
+         Do not overwrite it from the legacy root data folder during publish. -->
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
 

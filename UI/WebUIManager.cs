@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -82,12 +82,13 @@ namespace ETS2_Assist_GUI
                 using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(1);
-                    var response = await client.GetAsync("http://localhost:25555/api/ets2/telemetry");
+                    var response = await client.GetAsync("http://localhost:8080/api/rest/single/frame/paused");
                     if (response.IsSuccessStatusCode)
                     {
-                        var json = await response.Content.ReadAsStringAsync();
-                        var obj = JObject.Parse(json);
-                        return obj["game"]?["paused"]?.Value<bool>() ?? false;
+                        var json = (await response.Content.ReadAsStringAsync()).Trim();
+                        if (bool.TryParse(json, out bool paused)) return paused;
+                        var token = JToken.Parse(json);
+                        if (token.Type == JTokenType.Boolean) return token.Value<bool>();
                     }
                 }
             }

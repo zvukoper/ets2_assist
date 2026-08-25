@@ -15,6 +15,11 @@ namespace ETS2_Assist_GUI
         public static bool CheckUpdatesOnStart { get; set; } = true;
         public static string GitHubRepoUrl { get; set; } = "https://api.github.com/repos/zvukoper/ets2_assist/releases/latest";
 
+        public static int? WindowX { get; set; }
+        public static int? WindowY { get; set; }
+        public static int? WindowWidth { get; set; }
+        public static int? WindowHeight { get; set; }
+
         static AppSettings() => Load();
 
         public static void Load()
@@ -32,6 +37,10 @@ namespace ETS2_Assist_GUI
                     StartMinimized = settings.StartMinimized;
                     CheckUpdatesOnStart = settings.CheckUpdatesOnStart;
                     GitHubRepoUrl = settings.GitHubRepoUrl ?? "https://api.github.com/repos/zvukoper/ets2_assist/releases/latest";
+                    WindowX = settings.WindowX;
+                    WindowY = settings.WindowY;
+                    WindowWidth = settings.WindowWidth;
+                    WindowHeight = settings.WindowHeight;
                 }
             }
             catch { /* ignore errors */ }
@@ -48,7 +57,11 @@ namespace ETS2_Assist_GUI
                     AutoStartSystem = AutoStartSystem,
                     StartMinimized = StartMinimized,
                     CheckUpdatesOnStart = CheckUpdatesOnStart,
-                    GitHubRepoUrl = GitHubRepoUrl
+                    GitHubRepoUrl = GitHubRepoUrl,
+                    WindowX = WindowX,
+                    WindowY = WindowY,
+                    WindowWidth = WindowWidth,
+                    WindowHeight = WindowHeight
                 };
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(SettingsFile, json);
@@ -64,6 +77,10 @@ namespace ETS2_Assist_GUI
             public bool StartMinimized { get; set; }
             public bool CheckUpdatesOnStart { get; set; }
             public string GitHubRepoUrl { get; set; } = string.Empty;
+            public int? WindowX { get; set; }
+            public int? WindowY { get; set; }
+            public int? WindowWidth { get; set; }
+            public int? WindowHeight { get; set; }
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Newtonsoft.Json.Linq;
@@ -15,11 +16,32 @@ namespace ETS2_Assist_GUI
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
+        private static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetActiveWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetFocus(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
 
         [DllImport("user32.dll")]
         private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
@@ -102,9 +124,16 @@ namespace ETS2_Assist_GUI
             switch (command)
             {
                 case "target_reached":
+                    var reachedTarget = data["target"];
+                    AppendDataLog($"target_reached x={reachedTarget?["x"]} z={reachedTarget?["z"]}");
+                    // ACK immediately so the map can stop retrying while the
+                    // modal quest dialog is open on the GUI thread.
+                    SendCommandToMap("target_reached_ack");
                     HandleTargetReached(data);
                     break;
                 case "target_created":
+                    var createdTarget = data["target"];
+                    AppendDataLog($"target_created x={createdTarget?["x"]} z={createdTarget?["z"]}");
                     HandleTargetCreated(data);
                     break;
                 default:
@@ -128,53 +157,67 @@ namespace ETS2_Assist_GUI
         }
 
         // ============================================================
-        // ОТПРАВКА КЛАВИШИ F1 (пауза) через SendInput + PostMessage
+        // ПАУЗА ETS2 ЧЕРЕЗ ets2_assist_input.dll (Named Pipe)
         // ============================================================
-        private void SendPauseKeyToGame()
+        private bool SetGamePause(bool enabled)
         {
+            AppendLog($"[SCS] SetGamePause({enabled})");
+            bool ok = SCSController.SetPause(enabled);
+            AppendLog(ok
+                ? $"[SCS] Игра {(enabled ? "поставлена на паузу" : "снята с паузы")} через SDK."
+                : $"[SCS] Не удалось {(enabled ? "поставить игру на паузу" : "снять игру с паузы")} через SDK.");
+            return ok;
+        }
+
+        private bool ForceForegroundWindow(IntPtr hWnd, string reason)
+        {
+            if (hWnd == IntPtr.Zero)
+                return false;
+
+            uint currentThread = GetCurrentThreadId();
+            uint targetThread = GetWindowThreadProcessId(hWnd, IntPtr.Zero);
+            IntPtr foreground = GetForegroundWindow();
+            uint foregroundThread = foreground != IntPtr.Zero
+                ? GetWindowThreadProcessId(foreground, IntPtr.Zero)
+                : 0;
+
+            bool attached = false;
             try
             {
-                AppendLog("[DEBUG] SendPauseKeyToGame() вызван");
-
-                var procs = Process.GetProcessesByName("eurotrucks2");
-                if (procs.Length == 0 || procs[0].MainWindowHandle == IntPtr.Zero)
+                // Windows can reject SetForegroundWindow when another process owns
+                // the foreground queue (ETS2 in our case). Temporarily sharing the
+                // input queue removes that restriction for this transition.
+                if (foregroundThread != 0 && foregroundThread != currentThread)
                 {
-                    AppendLog("[DEBUG] Окно игры не найдено.");
-                    return;
+                    attached = AttachThreadInput(foregroundThread, currentThread, true);
                 }
 
-                IntPtr gameHandle = procs[0].MainWindowHandle;
+                if (targetThread != 0 && targetThread != currentThread && !attached)
+                {
+                    attached = AttachThreadInput(targetThread, currentThread, true);
+                }
 
-                // Восстанавливаем окно
-                ShowWindow(gameHandle, SW_RESTORE);
-                SetForegroundWindow(gameHandle);
-                System.Threading.Thread.Sleep(100);
+                ShowWindow(hWnd, SW_RESTORE);
+                BringWindowToTop(hWnd);
+                bool result = SetForegroundWindow(hWnd);
+                SetActiveWindow(hWnd);
+                SetFocus(hWnd);
 
-                // 1. Отправляем через PostMessage напрямую в окно (быстро, но не всегда работает)
-                AppendLog("[DEBUG] Отправка PostMessage WM_KEYDOWN/WM_KEYUP VK_F1");
-                PostMessage(gameHandle, WM_KEYDOWN, (IntPtr)VK_F1, IntPtr.Zero);
-                System.Threading.Thread.Sleep(30);
-                PostMessage(gameHandle, WM_KEYUP, (IntPtr)VK_F1, IntPtr.Zero);
-
-                // 2. Отправляем через SendInput (более надёжно)
-                AppendLog("[DEBUG] Отправка SendInput VK_F1");
-                INPUT[] inputs = new INPUT[2];
-                inputs[0].type = INPUT_KEYBOARD;
-                inputs[0].union.keyboard.wVk = (ushort)VK_F1;
-                inputs[0].union.keyboard.dwExtraInfo = GetMessageExtraInfo();
-
-                inputs[1].type = INPUT_KEYBOARD;
-                inputs[1].union.keyboard.wVk = (ushort)VK_F1;
-                inputs[1].union.keyboard.dwFlags = KEYEVENTF_KEYUP;
-                inputs[1].union.keyboard.dwExtraInfo = GetMessageExtraInfo();
-
-                SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
-
-                AppendLog("[DEBUG] Клавиша F1 отправлена через SendInput.");
+                IntPtr foregroundAfter = GetForegroundWindow();
+                bool foregroundConfirmed = foregroundAfter == hWnd;
+                AppendLog($"[UI] ForceForegroundWindow({reason}) handle=0x{hWnd.ToInt64():X}, SetForegroundWindow={result}, foregroundAfter=0x{foregroundAfter.ToInt64():X}, confirmed={foregroundConfirmed}");
+                return foregroundConfirmed;
             }
-            catch (Exception ex)
+            finally
             {
-                AppendLog($"[DEBUG] Ошибка отправки F1: {ex.Message}");
+                if (attached)
+                {
+                    // Detach the same pair we attached.
+                    if (foregroundThread != 0 && foregroundThread != currentThread)
+                        AttachThreadInput(foregroundThread, currentThread, false);
+                    else if (targetThread != 0 && targetThread != currentThread)
+                        AttachThreadInput(targetThread, currentThread, false);
+                }
             }
         }
 
@@ -183,10 +226,14 @@ namespace ETS2_Assist_GUI
             try
             {
                 var procs = Process.GetProcessesByName("eurotrucks2");
-                if (procs.Length > 0 && procs[0].MainWindowHandle != IntPtr.Zero)
+                var gameHandle = procs.FirstOrDefault(p => p.MainWindowHandle != IntPtr.Zero)?.MainWindowHandle ?? IntPtr.Zero;
+                if (gameHandle != IntPtr.Zero && ForceForegroundWindow(gameHandle, "return-to-game"))
                 {
-                    SetForegroundWindow(procs[0].MainWindowHandle);
-                    AppendLog("Фокус возвращён в игру.");
+                    AppendLog("[UI] Фокус возвращён в игру.");
+                }
+                else
+                {
+                    AppendLog("[UI] Не удалось надёжно вернуть фокус в игру.");
                 }
             }
             catch (Exception ex)
@@ -207,73 +254,139 @@ namespace ETS2_Assist_GUI
 
             _randomTargetReached = true;
 
-            // Ставим паузу
-            AppendLog("[DEBUG] Вызов SendPauseKeyToGame() для установки паузы");
-            SendPauseKeyToGame();
+            // Критически важно: сначала проверяем фактическую паузу.
+            // Команда PAUSE у проверенного SDK-плагина является toggle,
+            // поэтому нельзя отправлять её, если игра уже находится на паузе.
+            AppendLog("[SCS] Проверяем состояние ETS2 перед показом диалога...");
+            bool alreadyPaused = IsGamePaused();
+            if (alreadyPaused)
+            {
+                AppendLog("[SCS] ETS2 уже была на паузе — toggle PAUSE не отправляем.");
+            }
+            else
+            {
+                bool sent = SetGamePause(true);
+                AppendLog(sent
+                    ? "[SCS] Команда PAUSE отправлена. Проверяем фактическое состояние игры."
+                    : "[SCS] Не удалось отправить PAUSE через SDK.");
+            }
 
-            // Показываем диалог
+            // Не используем ответ Named Pipe как критерий успеха:
+            // plugin уже показал, что команда может выполнить PAUSE без корректного ACK.
+            bool paused = false;
+            for (int attempt = 1; attempt <= 10; attempt++)
+            {
+                System.Threading.Thread.Sleep(100);
+                if (IsGamePaused())
+                {
+                    paused = true;
+                    AppendLog($"[SCS] Фактическое состояние подтверждено: ETS2 paused=true (попытка {attempt}).");
+                    break;
+                }
+            }
+
+            if (!paused)
+            {
+                _randomTargetReached = false;
+                AppendLog("[SCS] Игра не перешла в состояние paused=true. Диалог завершения задания НЕ показываем.");
+                SendCommandToMap("reset_target_reached");
+                return;
+            }
+
             this.BeginInvoke((System.Windows.Forms.MethodInvoker)delegate
             {
                 bool wasTopMost = this.TopMost;
-                this.TopMost = true;
-                this.Activate();
 
-                AppendLog("[UI] Показываем диалог достижения цели...");
-
-                var result = MessageBox.Show(
-                    "Вы достигли случайной цели. Завершить задание?",
-                    "Достижение цели",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question,
-                    MessageBoxDefaultButton.Button1,
-                    MessageBoxOptions.DefaultDesktopOnly);
-
-                this.TopMost = wasTopMost;
-
-                // Снимаем паузу
-                AppendLog("[DEBUG] Снимаем паузу (отправляем F1 ещё раз)");
-                SendPauseKeyToGame();
-
-                if (result == DialogResult.Yes)
+                try
                 {
-                    string ets2cPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "ets2c.exe");
-                    if (File.Exists(ets2cPath))
+                    // Убираем фокус с ETS2 и делаем окно приложения владельцем диалога.
+                    this.TopMost = true;
+                    this.Show();
+                    this.WindowState = FormWindowState.Normal;
+                    this.Activate();
+                    ForceForegroundWindow(this.Handle, "before-quest-dialog");
+
+                    AppendLog($"[UI] Фокус передан окну ETS2 Assist перед диалогом. OwnerHandle=0x{this.Handle.ToInt64():X}, IsHandleCreated={this.IsHandleCreated}, Visible={this.Visible}, TopMost={this.TopMost}");
+
+                    // Используем собственную модальную форму вместо MessageBox.
+                    // У неё есть отдельный HWND, поэтому мы можем надёжно передать
+                    // foreground и mouse/keyboard focus от ETS2 к самому диалогу.
+                    using var dialog = new QuestDialogForm(
+                        "Достижение цели",
+                        "Вы достигли случайной цели. Завершить задание?",
+                        isSuccess: false);
+                    dialog.Shown += (_, _) =>
                     {
-                        try
+                        ForceForegroundWindow(dialog.Handle, "quest-completion-dialog");
+                        dialog.BringToFront();
+                        dialog.Activate();
+                    };
+                    var result = dialog.ShowDialog(this);
+
+                    if (result == DialogResult.Yes)
+                    {
+                        AppendLog("[QUEST] Игрок подтвердил завершение случайного задания.");
+                        string ets2cPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "ets2c.exe");
+                        if (File.Exists(ets2cPath))
                         {
-                            var startInfo = new ProcessStartInfo
+                            try
                             {
-                                FileName = ets2cPath,
-                                Arguments = "-moneygive 3000",
-                                UseShellExecute = false,
-                                CreateNoWindow = true,
-                                WindowStyle = ProcessWindowStyle.Hidden
-                            };
-                            Process.Start(startInfo);
+                                var startInfo = new ProcessStartInfo
+                                {
+                                    FileName = ets2cPath,
+                                    Arguments = "-moneygive 3000",
+                                    UseShellExecute = false,
+                                    CreateNoWindow = true,
+                                    WindowStyle = ProcessWindowStyle.Hidden
+                                };
+                                Process.Start(startInfo);
 
-                            startInfo.Arguments = "-xpgive 150";
-                            Process.Start(startInfo);
-                            AppendLog("Начислено 3000 денег и 150 опыта.");
+                                startInfo.Arguments = "-xpgive 150";
+                                Process.Start(startInfo);
+                                AppendLog("Начислено 3000 денег и 150 опыта.");
+                            }
+                            catch (Exception ex)
+                            {
+                                AppendLog($"Ошибка ets2c: {ex.Message}");
+                            }
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            AppendLog($"Ошибка ets2c: {ex.Message}");
+                            AppendLog("ets2c.exe не найден — награда не начислена.");
                         }
+
+                        SendCommandToMap("remove_random_target");
+                        _randomTargetActive = false;
+                        _randomTargetReached = false;
+                        using var successDialog = new QuestDialogForm(
+                            "Успех",
+                            "Задание выполнено!",
+                            isSuccess: true);
+                        successDialog.Shown += (_, _) =>
+                        {
+                            ForceForegroundWindow(successDialog.Handle, "quest-success-dialog");
+                            successDialog.BringToFront();
+                            successDialog.Activate();
+                        };
+                        successDialog.ShowDialog(this);
                     }
-
-                    SendCommandToMap("remove_random_target");
-                    _randomTargetActive = false;
-                    _randomTargetReached = false;
-                    MessageBox.Show("Задание выполнено!", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    else
+                    {
+                        AppendLog("[QUEST] Игрок отказался завершать случайное задание.");
+                        _randomTargetReached = false;
+                        SendCommandToMap("reset_target_reached");
+                        AppendLog("Пользователь отклонил задание.");
+                    }
                 }
-                else
+                finally
                 {
-                    _randomTargetReached = false;
-                    SendCommandToMap("reset_target_reached");
-                    AppendLog("Пользователь отклонил задание.");
-                }
+                    this.TopMost = wasTopMost;
 
-                ReturnFocusToGame();
+                    // ВАЖНО: после завершения задания НЕ снимаем паузу автоматически.
+                    // Игрок сам возвращается в игру и снимает паузу, когда готов.
+                    AppendLog("[SCS] Игра оставлена на паузе. Автоматический UNPAUSE отключён.");
+                    ReturnFocusToGame();
+                }
             });
         }
     }

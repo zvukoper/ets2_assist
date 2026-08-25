@@ -11,6 +11,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -61,6 +62,7 @@ namespace ETS2_Assist_GUI
         private Label indicatorWebServer = null!;
         private Label indicatorWebOverlay = null!;
         private Label indicatorArduino = null!;
+        private Label buildVersionLabel = null!;
 
         private System.Windows.Forms.Timer statusTimer = null!;
 
@@ -98,12 +100,21 @@ namespace ETS2_Assist_GUI
 
         // ========== УПРАВЛЕНИЕ UI И ПАУЗОЙ ==========
         private bool _uiShown = false;
-        private bool _lastPauseState = false;
+        private bool? _lastPauseState = null;
         private System.Windows.Forms.Timer _pauseCheckTimer = null!;
 
         // ========== WEBSOCKET-СЕРВЕР ДЛЯ СОХРАНЕНИЯ ТРЕКОВ (порт 8084) ==========
         private WebSocketSharp.Server.WebSocketServer? _wsSaveServer;
         private bool _wsSaveRunning = false;
+
+        // Local static file server for WebOverlay. It disables browser caching so stable URLs
+        // can be retained for WebOverlay position persistence without stale HTML/JS.
+        private HttpListener? _staticWebListener;
+        private Thread? _staticWebThread;
+        private volatile bool _staticWebRunning;
+        // One cache epoch per application start. WebOverlay URLs stay stable for saved window state;
+        // only local JS/CSS asset URLs receive ?t=<epoch>.
+        private readonly long _webCacheEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         // ========== HTTP-СЕРВЕР ДЛЯ ТРИГГЕР-ФАЙЛА И СПИСКА ТРЕКОВ (порт 8083) ==========
         private HttpListener? _triggerListener;
@@ -125,15 +136,23 @@ namespace ETS2_Assist_GUI
             try
             {
                 var version = Application.ProductVersion ?? "0.0.0";
-                this.Text = $"ETS2 Assist v{version}";
+                this.Text = $"ETS2 Assist v{BuildInfo.Version}";
             }
             catch
             {
-                this.Text = "ETS2 Assist";
+                this.Text = $"ETS2 Assist v{BuildInfo.Version}";
             }
-            this.Size = new Size(1100, 700);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.FormClosing += (s, e) => { if (e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; this.Hide(); } };
+            ApplySavedWindowBounds();
+            this.FormClosing += (s, e) =>
+            {
+                SaveWindowBounds();
+                if (e.CloseReason == CloseReason.UserClosing)
+                {
+                    e.Cancel = true;
+                    this.Hide();
+                }
+            };
+            this.Resize += (s, e) => PositionBuildLabel();
 
             InitializeComponents();
             InitializeTray();
@@ -170,6 +189,44 @@ namespace ETS2_Assist_GUI
 
             RefreshTrackList();
             LoadRecordingSettings();
+
+            this.Shown += (_, _) => EnsureStartupForeground();
+        }
+
+        private void EnsureStartupForeground()
+        {
+            if (AppSettings.StartMinimized) return;
+
+            void BringToFront()
+            {
+                try
+                {
+                    if (IsDisposed || Disposing) return;
+                    if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+                    Show();
+                    Activate();
+                    bool confirmed = ForceForegroundWindow(Handle, "application-startup");
+                    if (!confirmed)
+                    {
+                        TopMost = true;
+                        TopMost = false;
+                        ForceForegroundWindow(Handle, "application-startup-retry");
+                    }
+                    AppendLog($"[UI] ETS2 Assist выведен на передний план при запуске. confirmed={confirmed}");
+                }
+                catch (Exception ex)
+                {
+                    AppendLog($"[UI] Ошибка вывода главного окна на передний план: {ex.Message}");
+                }
+            }
+
+            BeginInvoke((Action)BringToFront);
+            var retry1 = new System.Windows.Forms.Timer { Interval = 400 };
+            retry1.Tick += (_, _) => { retry1.Stop(); retry1.Dispose(); BringToFront(); };
+            retry1.Start();
+            var retry2 = new System.Windows.Forms.Timer { Interval = 1200 };
+            retry2.Tick += (_, _) => { retry2.Stop(); retry2.Dispose(); BringToFront(); };
+            retry2.Start();
         }
 
         private void LoadRecordingSettings()
@@ -180,6 +237,13 @@ namespace ETS2_Assist_GUI
             _titleSuffix = "";
             _description = "";
             _saveFormat = 1;
+        }
+
+        private void PositionBuildLabel()
+        {
+            if (buildVersionLabel == null) return;
+            buildVersionLabel.Location = new Point(Math.Max(0, ClientSize.Width - buildVersionLabel.Width - 10), Math.Max(0, ClientSize.Height - buildVersionLabel.Height - 8));
+            buildVersionLabel.BringToFront();
         }
 
         private void InitializeComponents()
@@ -235,14 +299,14 @@ namespace ETS2_Assist_GUI
                 SendCommandToMap("show_ui");
             };
 
-            // Кнопка теста паузы (временно закомментирована, т.к. метод SendPauseKey теперь в QuestsManager)
-            btnTestPause = new Button { Text = "Тест паузы", Location = new Point(leftX, topY + 400), Size = new Size(120, 30) };
+            // Тест паузы через тот же Named Pipe, который используется при достижении цели.
+            btnTestPause = new Button { Text = "Тест паузы SDK", Location = new Point(leftX, topY + 400), Size = new Size(135, 30) };
             btnTestPause.Click += (s, e) => {
-                AppendLog("=== ТЕСТ ПАУЗЫ ===");
-                // Метод SendPauseKey теперь в QuestsManager, здесь он не виден.
-                // Для теста можно использовать QuestsManager.SendPauseKey(),
-                // но сейчас оставим просто лог.
-                AppendLog("=== ТЕСТ ПАУЗЫ ЗАВЕРШЁН ===");
+                AppendLog("=== ТЕСТ ПАУЗЫ SDK ===");
+                bool ok = SCSController.SetPause(true);
+                AppendLog(ok
+                    ? "[SCS] Команда PAUSE подтверждена."
+                    : "[SCS] Команда PAUSE не подтверждена. Проверить ets2_assist_input.dll и ETS2.");
             };
             // Если кнопка не нужна, можно её не добавлять или скрыть.
 
@@ -307,11 +371,23 @@ namespace ETS2_Assist_GUI
                 indicatorWebOverlay, indicatorArduino
             });
 
+            buildVersionLabel = new Label
+            {
+                Text = $"BUILD {BuildInfo.Version}",
+                AutoSize = true,
+                Font = new Font("Consolas", 8.5f, FontStyle.Bold),
+                ForeColor = Color.DarkGray,
+                BackColor = Color.Transparent,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                Location = new Point(this.ClientSize.Width - 210, this.ClientSize.Height - 25)
+            };
+
             this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
                 btnShowMap, btnShowHybrid, btnTestPause,
-                logConsole, listTracks, indicatorsPanel, mainMenu
+                logConsole, listTracks, indicatorsPanel, buildVersionLabel, mainMenu
             });
+            PositionBuildLabel();
         }
 
         private Label CreateIndicator(string labelText, int top)
@@ -390,7 +466,8 @@ namespace ETS2_Assist_GUI
         private void InitializeProcessManager()
         {
             logger = new Logger();
-            logger.OnLogMessage += (msg) => AppendLog(msg);
+            logger.OnLogMessage += (msg) => AppendLog(msg, persistWorkflow: false);
+            logger.Workflow("ETS2 Assist logger initialized.");
             procManager = new ProcessManager(logger);
             procManager.StatusChanged += (s, e) => RefreshUI();
         }
@@ -409,7 +486,7 @@ namespace ETS2_Assist_GUI
         {
             this.Text = lang.Get("app_title") ?? "ETS2 Assist";
             var version = Application.ProductVersion ?? "0.0.0";
-            this.Text = $"ETS2 Assist v{version}";
+            this.Text = $"ETS2 Assist v{BuildInfo.Version}";
 
             btnStart.Text = lang.Get("ui_start") ?? "Start";
             btnStop.Text = lang.Get("ui_stop") ?? "Stop";
@@ -468,6 +545,7 @@ namespace ETS2_Assist_GUI
             if (procManager.IsRunning) return;
 
             AppendLog("Starting system...");
+            CleanupStaleTriggerFiles();
 
             if (!CheckPlugins())
             {
@@ -475,11 +553,11 @@ namespace ETS2_Assist_GUI
                 return;
             }
 
-            if (!StartTelemetryServer())
-            {
-                AppendLog("Telemetry server start failed. System start aborted.");
-                return;
-            }
+            // Старый Ets2Telemetry.exe больше не запускаем.
+            // Телеметрия должна приходить напрямую из TruckTel / ETS2 Assist Plugin.
+            AppendLog("Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.");
+
+            EnsureStaticMapData();
 
             if (!StartPythonServer())
             {
@@ -503,14 +581,119 @@ namespace ETS2_Assist_GUI
             SCSController.OnLog += (msg) => AppendLog(msg);
             if (!SCSController.Initialize())
             {
-                AppendLog("SCS Controller initialization failed. Pause via SDK may not work.");
+                AppendLog("SCS SDK input controller initialization failed. Pause via SDK may not work until ETS2/plugin is running.");
             }
             else
             {
-                AppendLog("SCS Controller initialized successfully.");
+                AppendLog("SCS SDK input controller initialized successfully.");
             }
 
             UpdateStartButton();
+        }
+
+        private void CleanupStaleTriggerFiles()
+        {
+            try
+            {
+                string dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+                if (!Directory.Exists(dataDir))
+                {
+                    AppendLog("[TRIGGER] Папка data не найдена, очистка старых триггеров не требуется.");
+                    return;
+                }
+
+                var triggerFiles = Directory.GetFiles(dataDir, "*.trigger", SearchOption.TopDirectoryOnly);
+                if (triggerFiles.Length == 0)
+                {
+                    AppendLog("[TRIGGER] Старых trigger-файлов не найдено.");
+                    return;
+                }
+
+                foreach (string path in triggerFiles)
+                {
+                    try
+                    {
+                        File.Delete(path);
+                        AppendLog($"[TRIGGER] Удалён старый trigger-файл: {Path.GetFileName(path)}");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"[TRIGGER] Не удалось удалить старый trigger-файл {Path.GetFileName(path)}: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[TRIGGER] Ошибка очистки старых trigger-файлов: {ex.Message}");
+            }
+        }
+
+
+        private void EnsureStaticMapData()
+        {
+            try
+            {
+                string publishData = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+                Directory.CreateDirectory(publishData);
+                var required = new[]
+                {
+                    Path.Combine("GeoJson", "roads.geojson"),
+                    Path.Combine("GeoJson", "cities.geojson"),
+                    "Overlays.json",
+                    Path.Combine("localized_cities", "cities_sibirmap.json")
+                };
+                bool complete = required.All(r => File.Exists(Path.Combine(publishData, r)));
+                if (complete)
+                {
+                    AppendLog("[STATIC] Map static data is present in publish\\data.");
+                    return;
+                }
+
+                DirectoryInfo? cur = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+                DirectoryInfo? candidate = null;
+                for (int i = 0; i < 8 && cur != null; i++, cur = cur.Parent)
+                {
+                    string rootData = Path.Combine(cur.FullName, "data");
+                    if (Directory.Exists(rootData) && required.Any(r => File.Exists(Path.Combine(rootData, r))))
+                    {
+                        candidate = new DirectoryInfo(rootData);
+                        break;
+                    }
+                }
+
+                if (candidate != null && !candidate.FullName.Equals(publishData, StringComparison.OrdinalIgnoreCase))
+                {
+                    int copied = 0;
+                    foreach (string rel in required)
+                    {
+                        string source = Path.Combine(candidate.FullName, rel);
+                        string dest = Path.Combine(publishData, rel);
+                        if (File.Exists(source) && !File.Exists(dest))
+                        {
+                            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                            File.Copy(source, dest, overwrite: false);
+                            copied++;
+                            AppendLog($"[STATIC] Recovered missing static file: {rel}");
+                        }
+                    }
+                    if (copied > 0)
+                    {
+                        AppendLog($"[STATIC] Recovered {copied} static file(s) from legacy data directory.");
+                    }
+                }
+
+                var missing = required.Where(r => !File.Exists(Path.Combine(publishData, r))).ToArray();
+                if (missing.Length > 0)
+                {
+                    AppendLog("[STATIC][ERROR] Missing map static data:");
+                    foreach (string rel in missing) AppendLog($"[STATIC][ERROR]   {rel}");
+                    AppendLog("[STATIC][ERROR] The minimap cannot show roads/cities/POI until these files are restored.");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[STATIC][ERROR] Static map data check failed: {ex.Message}");
+            }
         }
 
         private void StartTriggerServer()
@@ -593,7 +776,23 @@ namespace ETS2_Assist_GUI
                     string file = request.QueryString["file"] ?? "save_trail.trigger";
                     string triggerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", file);
                     bool exists = File.Exists(triggerPath);
-                    string json = JsonConvert.SerializeObject(new { exists = exists });
+                    bool paused = false;
+
+                    // A trail-save trigger may only be consumed while ETS2 is paused.
+                    // Do not let the browser begin a save while the truck is moving.
+                    if (exists)
+                    {
+                        paused = IsGamePaused();
+                        if (!paused)
+                            AppendLog("[SAVE] Trigger found, but saving is blocked because ETS2 is not paused.");
+                    }
+
+                    string json = JsonConvert.SerializeObject(new
+                    {
+                        exists = exists && paused,
+                        paused,
+                        blocked = exists && !paused
+                    });
                     byte[] buffer = Encoding.UTF8.GetBytes(json);
                     response.ContentType = "application/json";
                     response.ContentLength64 = buffer.Length;
@@ -694,25 +893,42 @@ namespace ETS2_Assist_GUI
             private static Action<JObject>? _onTrail;
             private static Action<string>? _playSoundAction;
             private static Action<JObject>? _onCommand;
+            private static Func<string>? _uiSyncCommand;
 
             public static void SetLog(Action<string> log) => _log = log;
             public static void SetOnTrail(Action<JObject> action) => _onTrail = action;
             public static void SetPlaySoundAction(Action<string> action) => _playSoundAction = action;
             public static void SetOnCommand(Action<JObject> action) => _onCommand = action;
+            public static void SetUiSync(Func<string> provider) => _uiSyncCommand = provider;
 
             protected override void OnOpen()
             {
                 _log?.Invoke("[WebSocket] Клиент карты подключился");
+                try
+                {
+                    var command = _uiSyncCommand?.Invoke() ?? "show_ui";
+                    Send(JsonConvert.SerializeObject(new { command }));
+                    _log?.Invoke($"[WebSocket] Новому клиенту отправлена синхронизация UI: {command}");
+                }
+                catch (Exception ex) { _log?.Invoke($"[WebSocket] UI sync error: {ex.Message}"); }
             }
 
 
             protected override void OnMessage(MessageEventArgs e)
             {
+                string? requestId = null;
                 try
                 {
+                    if (!e.IsText || string.IsNullOrWhiteSpace(e.Data))
+                    {
+                        _log?.Invoke("[WebSocket] Игнорировано пустое или бинарное сообщение.");
+                        return;
+                    }
+
                     var json = e.Data;
                     _log?.Invoke($"[WebSocket] Получено сообщение: {json.Substring(0, Math.Min(json.Length, 200))}...");
                     var data = JObject.Parse(json);
+                    requestId = data["requestId"]?.Value<string>();
 
                     if (data["command"]?.Value<string>() == "play_sound")
                     {
@@ -730,14 +946,15 @@ namespace ETS2_Assist_GUI
                     }
 
                     _log?.Invoke($"[WebSocket] Получен трек ({json.Length} байт)");
+                    _log?.Invoke($"[SAVE] Начало сохранения requestId={requestId ?? "-"}");
                     _onTrail?.Invoke(data);
-                    Send(JsonConvert.SerializeObject(new { status = "ok", message = "Трек получен" }));
-                    _log?.Invoke("[WebSocket] Ответ отправлен клиенту");
+                    Send(JsonConvert.SerializeObject(new { status = "ok", message = "Трек сохранён", requestId }));
+                    _log?.Invoke($"[SAVE] Успешный ответ отправлен requestId={requestId ?? "-"}");
                 }
                 catch (Exception ex)
                 {
                     _log?.Invoke($"[WebSocket] Ошибка обработки: {ex.Message}");
-                    Send(JsonConvert.SerializeObject(new { status = "error", message = ex.Message }));
+                    Send(JsonConvert.SerializeObject(new { status = "error", message = ex.Message, requestId }));
                 }
             }
 
@@ -761,6 +978,7 @@ namespace ETS2_Assist_GUI
                 TrailBehavior.SetOnTrail(data => SaveTrailFromWebSocket(data));
                 TrailBehavior.SetPlaySoundAction(PlaySound);
                 TrailBehavior.SetOnCommand(data => OnClientCommand(data));
+                TrailBehavior.SetUiSync(() => _lastPauseState == true ? "hide_ui" : "show_ui_first");
 
                 _wsSaveServer = new WebSocketSharp.Server.WebSocketServer($"ws://localhost:8084");
                 _wsSaveServer.AddWebSocketService<TrailBehavior>("/");
@@ -843,12 +1061,16 @@ namespace ETS2_Assist_GUI
         {
             try
             {
+                AppendLog("[SAVE] Сервер получил запрос сохранения трека.");
                 string tracksDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "saved_tracks");
                 if (!Directory.Exists(tracksDir))
                     Directory.CreateDirectory(tracksDir);
 
                 string format = data["format"]?.Value<string>() ?? "";
                 string compactData = data["data"]?.Value<string>() ?? "";
+                string requestId = data["requestId"]?.Value<string>() ?? "-";
+                AppendDataLog($"save_trail requestId={requestId} format={format} compactChars={compactData.Length}");
+                AppendLog($"[SAVE] Начата обработка трека: format={format}, compactChars={compactData.Length}");
                 JObject? meta = data["meta"] as JObject;
                 JObject? mapData = data["mapData"] as JObject;
                 if (mapData == null) mapData = new JObject();
@@ -906,7 +1128,8 @@ namespace ETS2_Assist_GUI
                 if (!File.Exists(playerPath))
                     File.WriteAllText(playerPath, GenerateTrailPlayerHtml());
 
-                AppendLog($"[WebSocket] Трек сохранён: {baseName}.html");
+                AppendDataLog($"track_saved baseName={baseName} compactChars={compactData.Length}");
+                AppendLog($"[SAVE] Трек сохранён: {baseName}.track/.meta.json/.map.json/.html");
                 trayIcon.ShowBalloonTip(2000, "ETS2 Assist", $"Трек сохранён: {baseName}.html", ToolTipIcon.Info);
 
                 RefreshTrackList();
@@ -914,7 +1137,8 @@ namespace ETS2_Assist_GUI
             }
             catch (Exception ex)
             {
-                AppendLog($"[WebSocket] Ошибка сохранения трека: {ex.Message}");
+                AppendLog($"[SAVE] Ошибка сохранения трека: {ex.Message}");
+                throw;
             }
         }
 
@@ -994,18 +1218,18 @@ namespace ETS2_Assist_GUI
             }
             string pluginsDir = Path.Combine(ets2Path, "bin", "win_x64", "plugins");
 
-            // Проверяем наличие всех трёх плагинов
-            bool hasTelemetry = File.Exists(Path.Combine(pluginsDir, "ets2-telemetry-server.dll"));
+            // Старый ets2-telemetry-server больше не нужен.
+            // На переходном этапе принимаем TruckTel, а целевой вариант — наш ets2_assist_plugin.dll.
+            bool hasAssistPlugin = File.Exists(Path.Combine(pluginsDir, "ets2_assist_plugin.dll"));
             bool hasTruckTel = File.Exists(Path.Combine(pluginsDir, "trucktel.dll"));
-            bool hasSdkController = File.Exists(Path.Combine(pluginsDir, "scs_sdk_controller.dll"));
+            bool hasSdkController = File.Exists(Path.Combine(pluginsDir, "ets2_assist_input.dll"));
+            bool hasTelemetryProvider = hasAssistPlugin || hasTruckTel;
 
-            if (!hasTelemetry || !hasTruckTel || !hasSdkController)
+            if (!hasTelemetryProvider || !hasSdkController)
             {
-                // Формируем сообщение о том, какие плагины отсутствуют
                 string missing = "";
-                if (!hasTelemetry) missing += "ets2-telemetry-server.dll, ";
-                if (!hasTruckTel) missing += "trucktel.dll, ";
-                if (!hasSdkController) missing += "scs_sdk_controller.dll, ";
+                if (!hasTelemetryProvider) missing += "ets2_assist_plugin.dll (или trucktel.dll на время миграции), ";
+                if (!hasSdkController) missing += "ets2_assist_input.dll, ";
                 missing = missing.TrimEnd(' ', ',');
 
                 DialogResult result = MessageBox.Show(
@@ -1042,7 +1266,10 @@ namespace ETS2_Assist_GUI
                     return false;
                 }
             }
-            AppendLog("All plugins present.");
+            AppendLog(hasAssistPlugin
+                ? "Our ETS2 Assist native plugin is present."
+                : "TruckTel is present (temporary telemetry provider during native-plugin migration).");
+            AppendLog("ets2-telemetry-server.dll is no longer required.");
             return true;
         }
 
@@ -1051,9 +1278,10 @@ namespace ETS2_Assist_GUI
             string ets2Path = GetEts2Path();
             if (string.IsNullOrEmpty(ets2Path)) return false;
             string pluginsDir = Path.Combine(ets2Path, "bin", "win_x64", "plugins");
-            return File.Exists(Path.Combine(pluginsDir, "ets2-telemetry-server.dll")) &&
-                   File.Exists(Path.Combine(pluginsDir, "trucktel.dll")) &&
-                   File.Exists(Path.Combine(pluginsDir, "scs_sdk_controller.dll"));
+            bool hasAssistPlugin = File.Exists(Path.Combine(pluginsDir, "ets2_assist_plugin.dll"));
+            bool hasTruckTel = File.Exists(Path.Combine(pluginsDir, "trucktel.dll"));
+            bool hasSdkController = File.Exists(Path.Combine(pluginsDir, "ets2_assist_input.dll"));
+            return (hasAssistPlugin || hasTruckTel) && hasSdkController;
         }
 
    
@@ -1131,60 +1359,200 @@ namespace ETS2_Assist_GUI
         }
 
 
+        // Legacy method retained for source compatibility; intentionally disabled.
         private bool StartTelemetryServer()
         {
-            string serverExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "ets2_server", "Ets2Telemetry.exe");
-            if (!File.Exists(serverExe))
-            {
-                AppendLog($"Telemetry server executable not found at: {serverExe}");
-                return false;
-            }
-            try
-            {
-                // Запускаем с правильным рабочим каталогом
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = serverExe,
-                    WorkingDirectory = Path.GetDirectoryName(serverExe),
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                };
-                var proc = Process.Start(startInfo);
-                AppendLog($"Telemetry server started with PID {proc?.Id}");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"Failed to start telemetry server: {ex.Message}");
-                return false;
-            }
+            AppendLog("[Telemetry] Legacy Ets2Telemetry.exe is disabled.");
+            return true;
         }
 
 
         private bool StartPythonServer()
         {
+            return StartStaticWebServer();
+        }
+
+        private bool StartStaticWebServer()
+        {
             try
             {
-                string pythonCmd = "python";
-                if (File.Exists("pythonw.exe")) pythonCmd = "pythonw";
-                var proc = Process.Start(new ProcessStartInfo
+                StopStaticWebServer();
+                string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+                if (!Directory.Exists(root))
                 {
-                    FileName = pythonCmd,
-                    Arguments = "-m http.server 8082",
-                    WorkingDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data"),
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                    UseShellExecute = true,
-                    CreateNoWindow = true
-                });
-                AppendLog($"Web server started on port 8082.");
+                    AppendLog($"Static web root not found: {root}");
+                    return false;
+                }
+
+                _staticWebListener = new HttpListener();
+                _staticWebListener.Prefixes.Add("http://localhost:8082/");
+                _staticWebListener.Start();
+                _staticWebRunning = true;
+                _staticWebThread = new Thread(() => StaticWebLoop(root)) { IsBackground = true, Name = "ETS2AssistStaticWeb" };
+                _staticWebThread.Start();
+                AppendLog($"Web server started on port 8082 (stable overlay URLs, asset cache epoch={_webCacheEpoch}).");
+                LogWebRuntimeFingerprint(root);
                 return true;
             }
             catch (Exception ex)
             {
-                AppendLog($"Failed to start web server: {ex.Message}");
+                AppendLog($"Failed to start no-cache web server: {ex.Message}");
+                try { _staticWebListener?.Close(); } catch { }
+                _staticWebListener = null;
+                _staticWebRunning = false;
                 return false;
             }
+        }
+
+        private void StopStaticWebServer()
+        {
+            _staticWebRunning = false;
+            try { _staticWebListener?.Stop(); } catch { }
+            try { _staticWebListener?.Close(); } catch { }
+            _staticWebListener = null;
+            try { _staticWebThread?.Join(300); } catch { }
+            _staticWebThread = null;
+        }
+
+        private void StaticWebLoop(string root)
+        {
+            while (_staticWebRunning && _staticWebListener != null)
+            {
+                HttpListenerContext? context = null;
+                try
+                {
+                    context = _staticWebListener.GetContext();
+                }
+                catch
+                {
+                    if (!_staticWebRunning) break;
+                    continue;
+                }
+
+                try
+                {
+                    string urlPath = Uri.UnescapeDataString(context.Request.Url?.AbsolutePath ?? "/");
+                    if (urlPath == "/") urlPath = "/web_ui_hybrid.html";
+                    urlPath = urlPath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+                    string rootFull = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                    string filePath = Path.GetFullPath(Path.Combine(root, urlPath));
+
+                    if (!filePath.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase) || !File.Exists(filePath))
+                    {
+                        context.Response.StatusCode = 404;
+                        context.Response.ContentType = "text/plain; charset=utf-8";
+                        byte[] notFound = Encoding.UTF8.GetBytes("File not found");
+                        context.Response.ContentLength64 = notFound.Length;
+                        context.Response.OutputStream.Write(notFound, 0, notFound.Length);
+                        return;
+                    }
+
+                    byte[] bytes = File.ReadAllBytes(filePath);
+                    string contentType = GetStaticMimeType(filePath);
+
+                    // Keep WebOverlay window URLs stable for saved geometry, but rewrite every local
+                    // JS/CSS reference in HTML to a unique epoch query string for this application run.
+                    if (contentType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string html = Encoding.UTF8.GetString(bytes);
+                        html = AddEpochCacheBusterToLocalAssets(html, _webCacheEpoch);
+                        bytes = Encoding.UTF8.GetBytes(html);
+                    }
+
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = contentType;
+                    context.Response.ContentEncoding = Encoding.UTF8;
+                    context.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+                    context.Response.Headers["Pragma"] = "no-cache";
+                    context.Response.Headers["Expires"] = "0";
+                    context.Response.Headers["X-ETS2-Assist-Build"] = BuildInfo.Version;
+                    context.Response.Headers["X-ETS2-Assist-Cache-Epoch"] = _webCacheEpoch.ToString(CultureInfo.InvariantCulture);
+                    context.Response.Headers["Access-Control-Allow-Origin"] = "*";
+                    context.Response.ContentLength64 = bytes.Length;
+                    context.Response.OutputStream.Write(bytes, 0, bytes.Length);
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        context.Response.StatusCode = 500;
+                        byte[] error = Encoding.UTF8.GetBytes(ex.Message);
+                        context.Response.ContentLength64 = error.Length;
+                        context.Response.OutputStream.Write(error, 0, error.Length);
+                    }
+                    catch { }
+                }
+                finally
+                {
+                    try { context.Response.Close(); } catch { }
+                }
+            }
+        }
+
+        private static string AddEpochCacheBusterToLocalAssets(string html, long epochSeconds)
+        {
+            const string pattern = "(?<prefix>\\b(?:src|href)\\s*=\\s*[\"'])(?<url>(?!https?://)(?!data:)(?!#)[^\"']+\\.(?:js|css)(?:\\?[^\"']*)?)(?<quote>[\"'])";
+            return Regex.Replace(
+                html,
+                pattern,
+                match =>
+                {
+                    string url = match.Groups["url"].Value;
+                    int q = url.IndexOf('?');
+                    if (q >= 0)
+                        url = url[..q];
+                    url += $"?t={epochSeconds}";
+                    return match.Groups["prefix"].Value + url + match.Groups["quote"].Value;
+                },
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        }
+
+        private void LogWebRuntimeFingerprint(string root)
+        {
+            foreach (string fileName in new[] { "web_pda_map.html", "web_ui_hybrid.html" })
+            {
+                try
+                {
+                    string path = Path.Combine(root, fileName);
+                    if (!File.Exists(path))
+                    {
+                        AppendLog($"[WEB] {fileName}: NOT FOUND at {path}");
+                        continue;
+                    }
+
+                    string text = File.ReadAllText(path, Encoding.UTF8);
+                    Match buildMatch = Regex.Match(text, @"1\.0\.[0-9]+[-A-Z0-9._]*", RegexOptions.IgnoreCase);
+                    string build = buildMatch.Success ? buildMatch.Value : "unknown";
+                    AppendLog($"[WEB] {fileName}: build={build}, bytes={new FileInfo(path).Length}, lastWrite={File.GetLastWriteTime(path):yyyy-MM-dd HH:mm:ss}");
+                }
+                catch (Exception ex)
+                {
+                    AppendLog($"[WEB] {fileName}: fingerprint error: {ex.Message}");
+                }
+            }
+        }
+
+        private static string GetStaticMimeType(string path)
+        {
+            return Path.GetExtension(path).ToLowerInvariant() switch
+            {
+                ".html" or ".htm" => "text/html; charset=utf-8",
+                ".js" => "application/javascript; charset=utf-8",
+                ".css" => "text/css; charset=utf-8",
+                ".json" => "application/json; charset=utf-8",
+                ".txt" => "text/plain; charset=utf-8",
+                ".png" => "image/png",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                ".svg" => "image/svg+xml",
+                ".ico" => "image/x-icon",
+                ".webp" => "image/webp",
+                ".wasm" => "application/wasm",
+                ".mp3" => "audio/mpeg",
+                ".wav" => "audio/wav",
+                ".ogg" => "audio/ogg",
+                _ => "application/octet-stream"
+            };
         }
 
         private void StartWebOverlay()
@@ -1199,6 +1567,17 @@ namespace ETS2_Assist_GUI
             }
             try
             {
+                // Remove stale overlay host processes so old URL instances cannot remain stacked.
+                foreach (var proc in Process.GetProcessesByName("WebOverlay"))
+                {
+                    try { proc.Kill(); proc.WaitForExit(1500); } catch { }
+                }
+                foreach (var proc in Process.GetProcessesByName("pano"))
+                {
+                    try { proc.Kill(); proc.WaitForExit(1500); } catch { }
+                }
+
+                // Keep URLs stable: WebOverlay persists position/size by URL.
                 string urlMain = "http://localhost:8082/web_ui_hybrid.html";
                 string urlPda = "http://localhost:8082/web_pda_map.html";
                 Process.Start(overlayExe, urlMain);
@@ -1220,6 +1599,7 @@ namespace ETS2_Assist_GUI
             procManager.Stop();
             StopTriggerServer();
             StopWebSocketSaveServer();
+            StopStaticWebServer();
             KillChildProcesses();
 
             // ===== ОСВОБОЖДЕНИЕ SCS CONTROLLER =====
@@ -1373,7 +1753,7 @@ namespace ETS2_Assist_GUI
                 switch (id)
                 {
                     case HOTKEY_SAVE:
-                        AppendLog("Hotkey save (Shift+Ctrl+S) pressed. Triggering save regardless of pause.");
+                        AppendLog("Hotkey save (Shift+Ctrl+S) pressed.");
                         TriggerTrailSave();
                         break;
                     case HOTKEY_START_REC:
@@ -1412,12 +1792,15 @@ namespace ETS2_Assist_GUI
                 using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(2);
-                    var response = client.GetAsync("http://localhost:25555/api/ets2/telemetry").Result;
+                    // TruckTel-compatible direct REST endpoint.
+                    // The native ETS2 Assist plugin will expose the same API.
+                    var response = client.GetAsync("http://localhost:8080/api/rest/single/frame/paused").Result;
                     if (response.IsSuccessStatusCode)
                     {
-                        var json = response.Content.ReadAsStringAsync().Result;
-                        var obj = JObject.Parse(json);
-                        return obj["game"]?["paused"]?.Value<bool>() ?? false;
+                        var json = response.Content.ReadAsStringAsync().Result.Trim();
+                        if (bool.TryParse(json, out bool paused)) return paused;
+                        var token = JToken.Parse(json);
+                        if (token.Type == JTokenType.Boolean) return token.Value<bool>();
                     }
                 }
             }
@@ -1432,14 +1815,51 @@ namespace ETS2_Assist_GUI
         {
             try
             {
+                if (!IsGamePaused())
+                {
+                    AppendLog("[SAVE] Сохранение трека отклонено: ETS2 не находится на паузе.");
+                    trayIcon.ShowBalloonTip(2500, "ETS2 Assist", "Сначала поставьте игру на паузу.", ToolTipIcon.Warning);
+                    return;
+                }
+
+                if (TryBroadcastMapCommand("save_trail"))
+                {
+                    AppendLog("[SAVE] Команда save_trail отправлена напрямую на карту (игра на паузе).");
+                    trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Начало сохранения трека.", ToolTipIcon.Info);
+                    return;
+                }
+
                 string triggerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "save_trail.trigger");
                 File.WriteAllText(triggerPath, "trigger");
-                AppendLog($"Trail save triggered. File created: {triggerPath}");
-                trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Сохранение трека инициировано.", ToolTipIcon.Info);
+                AppendLog($"[SAVE] Карта не подключена — создан fallback trigger: {triggerPath}");
+                trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Начало сохранения трека (fallback).", ToolTipIcon.Info);
             }
             catch (Exception ex)
             {
-                AppendLog($"Failed to trigger trail save: {ex.Message}");
+                AppendLog($"[SAVE] Trail save trigger error: {ex.Message}");
+            }
+        }
+
+        private bool TryBroadcastMapCommand(string command, JObject? extra = null)
+        {
+            try
+            {
+                if (!_wsSaveRunning || _wsSaveServer == null) return false;
+                var sessions = _wsSaveServer.WebSocketServices["/"]?.Sessions;
+                if (sessions == null || sessions.Count <= 0)
+                {
+                    AppendLog($"[SAVE] Нет подключённых web-клиентов для команды '{command}'.");
+                    return false;
+                }
+                var msg = new JObject { ["command"] = command };
+                if (extra != null) foreach (var prop in extra.Properties()) msg[prop.Name] = prop.Value;
+                sessions.Broadcast(msg.ToString(Formatting.None));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[SAVE] Ошибка отправки команды '{command}': {ex.Message}");
+                return false;
             }
         }
 
@@ -1606,15 +2026,24 @@ namespace ETS2_Assist_GUI
                 Process.Start("explorer.exe", logDir);
         }
 
-        private void AppendLog(string msg)
+        private void AppendLog(string msg, bool persistWorkflow = true)
         {
+            if (persistWorkflow && logger != null)
+                logger.Workflow(msg);
+
             if (logConsole.InvokeRequired)
-                logConsole.Invoke(new Action(() => AppendLog(msg)));
+                logConsole.Invoke(new Action(() => AppendLog(msg, false)));
             else
             {
                 logConsole.AppendText(msg + Environment.NewLine);
                 logConsole.ScrollToCaret();
             }
+        }
+
+        private void AppendDataLog(string msg)
+        {
+            if (logger != null)
+                logger.Data(msg);
         }
 
         private void UpdateStartButton()
@@ -1753,6 +2182,49 @@ namespace ETS2_Assist_GUI
         // ================================================================
         // ЗАКРЫТИЕ ФОРМЫ
         // ================================================================
+        private void ApplySavedWindowBounds()
+        {
+            const int defaultWidth = 1100;
+            const int defaultHeight = 700;
+
+            var savedWidth = AppSettings.WindowWidth.GetValueOrDefault(defaultWidth);
+            var savedHeight = AppSettings.WindowHeight.GetValueOrDefault(defaultHeight);
+            savedWidth = Math.Max(800, savedWidth);
+            savedHeight = Math.Max(500, savedHeight);
+
+            var hasSavedPosition = AppSettings.WindowX.HasValue && AppSettings.WindowY.HasValue;
+            if (!hasSavedPosition)
+            {
+                Size = new Size(savedWidth, savedHeight);
+                StartPosition = FormStartPosition.CenterScreen;
+                return;
+            }
+
+            var savedBounds = new Rectangle(AppSettings.WindowX!.Value, AppSettings.WindowY!.Value, savedWidth, savedHeight);
+            var screen = Screen.AllScreens.FirstOrDefault(sc => sc.WorkingArea.IntersectsWith(savedBounds)) ?? Screen.PrimaryScreen;
+            var work = screen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
+            savedWidth = Math.Min(savedWidth, work.Width);
+            savedHeight = Math.Min(savedHeight, work.Height);
+            var x = Math.Clamp(savedBounds.X, work.Left, work.Right - savedWidth);
+            var y = Math.Clamp(savedBounds.Y, work.Top, work.Bottom - savedHeight);
+
+            Size = new Size(savedWidth, savedHeight);
+            Location = new Point(x, y);
+            StartPosition = FormStartPosition.Manual;
+        }
+
+        private void SaveWindowBounds()
+        {
+            if (WindowState == FormWindowState.Minimized) return;
+            var bounds = RestoreBounds;
+            if (bounds.Width <= 0 || bounds.Height <= 0) return;
+            AppSettings.WindowX = bounds.X;
+            AppSettings.WindowY = bounds.Y;
+            AppSettings.WindowWidth = bounds.Width;
+            AppSettings.WindowHeight = bounds.Height;
+            AppSettings.Save();
+        }
+
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             if (hotKeyRegistered)
