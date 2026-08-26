@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -61,9 +62,16 @@ namespace ETS2_Assist_GUI
         [DllImport("user32.dll")]
         private static extern bool ReleaseCapture();
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
+
+        private static readonly IntPtr DpiAwarenessContextPerMonitorV2 = new IntPtr(-4);
+
         public SplashForm()
         {
+            SetThreadDpiAwarenessContext(DpiAwarenessContextPerMonitorV2);
             AutoScaleMode = AutoScaleMode.None;
+            AutoScaleDimensions = new SizeF(96F, 96F);
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;
@@ -72,10 +80,11 @@ namespace ETS2_Assist_GUI
             Text = string.Empty;
 
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "ets2a_logo.png");
-            _bitmap = LoadPArgbBitmap(path);
+            _bitmap = AddVersionCaption(LoadPArgbBitmap(path), BuildInfo.Version);
 
-            ClientSize = _bitmap.Size;
             Size = _bitmap.Size;
+            MaximumSize = _bitmap.Size;
+            MinimumSize = _bitmap.Size;
             var area = Screen.PrimaryScreen?.WorkingArea ?? Screen.AllScreens[0].WorkingArea;
             Location = new Point(
                 area.Left + Math.Max(0, (area.Width - Width) / 2),
@@ -110,6 +119,7 @@ namespace ETS2_Assist_GUI
             {
                 using var source = Image.FromFile(path);
                 var clone = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppPArgb);
+                clone.SetResolution(96F, 96F);
                 using var g = Graphics.FromImage(clone);
                 g.Clear(Color.Transparent);
                 g.DrawImageUnscaled(source, 0, 0);
@@ -117,11 +127,39 @@ namespace ETS2_Assist_GUI
             }
 
             var fallback = new Bitmap(420, 180, PixelFormat.Format32bppPArgb);
+            fallback.SetResolution(96F, 96F);
             using var fallbackGraphics = Graphics.FromImage(fallback);
             fallbackGraphics.Clear(Color.Transparent);
             using var font = new Font("Segoe UI", 28, FontStyle.Bold);
             fallbackGraphics.DrawString("ETS2 Assist", font, Brushes.White, new PointF(20, 60));
             return fallback;
+        }
+
+        private static Bitmap AddVersionCaption(Bitmap source, string version)
+        {
+            const int captionHeight = 22;
+            var result = new Bitmap(source.Width, source.Height + captionHeight, PixelFormat.Format32bppPArgb);
+            result.SetResolution(96F, 96F);
+
+            using (var graphics = Graphics.FromImage(result))
+            using (var font = new Font("Segoe UI", 7.5f, FontStyle.Regular, GraphicsUnit.Point))
+            using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Near })
+            {
+                graphics.Clear(Color.Transparent);
+                graphics.DrawImageUnscaled(source, 0, 0);
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+
+                var area = new RectangleF(2, source.Height + 2, source.Width - 4, captionHeight - 3);
+                using var path = new GraphicsPath();
+                path.AddString(version, font.FontFamily, (int)font.Style, graphics.DpiY * font.Size / 72f, area, format);
+                using var outline = new Pen(Color.FromArgb(220, Color.Black), 2f) { LineJoin = LineJoin.Round };
+                graphics.DrawPath(outline, path);
+                using var fill = new SolidBrush(Color.White);
+                graphics.FillPath(fill, path);
+            }
+
+            source.Dispose();
+            return result;
         }
 
 
@@ -146,8 +184,8 @@ namespace ETS2_Assist_GUI
                 memDc = CreateCompatibleDC(screenDc);
                 oldObject = SelectObject(memDc, hBitmap);
 
-                // UpdateLayeredWindow works in physical pixels. Use the actual bitmap size,
-                // not WinForms Width/Height, which may be DPI-scaled logical units.
+                // The layered surface must use the bitmap's physical pixel size.
+                // Do not use WinForms Width/Height here: those values can be DPI-scaled.
                 var size = new SIZE(_bitmap.Width, _bitmap.Height);
                 var source = new POINT(0, 0);
                 var dest = new POINT(Left, Top);

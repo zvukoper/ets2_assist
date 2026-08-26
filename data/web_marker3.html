@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Marker 3</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        .marker {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(0, 200, 100, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 120px;
+            color: yellow;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            user-select: none;
+            pointer-events: none;
+        }
+        .label {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0,0,0,0.3);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="marker">%</div>
+    <div class="label">Marker 3 (%)</div>
+</body>
+</html>

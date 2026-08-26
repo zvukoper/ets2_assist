@@ -1,0 +1,23 @@
+{
+  "estimatedHours": 0,
+  "jobId": null,
+  "restHours": 9.6,
+  "estimatedDistance": 0,
+  "jobRemaining": 0,
+  "fuel": 84,
+  "jobInitial": 0,
+  "trailerAttached": false,
+  "engine": "ON",
+  "timestamp": "2026-08-24 21:28:56",
+  "hasJob": false,
+  "mode": "Max",
+  "rangeMin": 282,
+  "speed": 0,
+  "wsPort": 8080,
+  "lights": "off",
+  "status": "active",
+  "initialDistance": 0,
+  "rangeMax": 742,
+  "parking": "OFF",
+  "arduino": false
+}

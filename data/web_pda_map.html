@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ETS Mesh · Навигатор</title>
+    <link rel="stylesheet" href="css/map.css">
+</head>
+<body>
+<div class="app" id="app">
+    <div class="minimap-wrapper">
+        <div class="minimap-container" id="minimapContainer">
+            <canvas id="minimapCanvas"></canvas>
+            <div id="labelLayer"></div>
+            <!-- loading overlay удалён -->
+            <div style="position:absolute; top:8px; left:50%; transform:translateX(-50%); pointer-events:none; color:#ffc857; font-size:24px; opacity:0; transition:opacity 0.3s; text-shadow:0 0 8px rgba(0,0,0,0.8);" id="heightIndicatorUp">▲</div>
+            <div style="position:absolute; bottom:8px; left:50%; transform:translateX(-50%); pointer-events:none; color:#ffc857; font-size:24px; opacity:0; transition:opacity 0.3s; text-shadow:0 0 8px rgba(0,0,0,0.8);" id="heightIndicatorDown">▼</div>
+            <div id="runtimeDebug" style="position:absolute;right:8px;bottom:8px;z-index:81;pointer-events:none;color:#fff;background:rgba(8,12,18,.72);border:1px solid rgba(120,150,180,.5);border-radius:6px;padding:4px 6px;font:9px/1.2 Consolas,monospace;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;">Head: 0.0° | Scale: 0.00× | Speed: 0 km/h | POI: 0/0 | STATIC: checking</div>
+            <div id="toastContainer"><span class="toast" id="toastMsg"></span></div>
+        </div>
+        <div class="minimap-controls">
+            <div class="zoom-group">
+                <button id="zoomOutBtn">−</button>
+                <span class="zoom-label" id="zoomLabel">×1.0</span>
+                <button id="zoomInBtn">+</button>
+                <button id="zoomResetBtn" style="font-size:14px; padding:4px 12px;">Сброс</button>
+            </div>
+            <span style="color:#7e8ca3; font-size:12px;">Грузовик в центре · карта вращается</span>
+        </div>
+    </div>
+
+    <div class="target-controls">
+        <div class="target-group">
+            <label>🚛 Координаты транспорта (телеметрия)</label>
+            <div class="coords">
+                <input type="text" id="truckX" value="0" readonly>
+                <input type="text" id="truckY" value="0" readonly>
+                <input type="text" id="truckZ" value="0" readonly>
+            </div>
+            <div class="status">
+                <span><span class="dot" id="telemetryDot"></span> <span id="telemetryStatus">Обновление...</span></span>
+                <span id="headingDisplay">heading: 0.0°</span>
+            </div>
+        </div>
+        <div class="target-group">
+            <label>🎯 Координаты цели
+                <span style="font-weight:400; font-size:11px; color:#6a7b94; margin-left:6px;">
+                    <button class="btn-clipboard" id="copyTargetBtn">📋 Копировать</button>
+                    <button class="btn-clipboard" id="pasteTargetBtn">📥 Вставить</button>
+                </span>
+            </label>
+            <div class="coords">
+                <input type="text" id="targetX" value="0">
+                <input type="text" id="targetY" value="0">
+                <input type="text" id="targetZ" value="0">
+            </div>
+            <div class="status">
+                <span>✏️ редактируйте</span>
+                <span id="targetDistLabel">дист. 0 м</span>
+            </div>
+            <div class="target-actions">
+                <button class="btn-action" id="resetTargetBtn">↺ Сброс цели</button>
+                <button class="btn-action" id="targetToTruckBtn">🚛 Цель на грузовик</button>
+                <button class="btn-action" id="targetToCityBtn">🏙 Цель на город</button>
+                <button class="btn-action" id="targetToPOIBtn">📍 Цель на POI</button>
+            </div>
+            <div class="step-controls">
+                <label>Шаг:</label>
+                <input type="number" id="stepInput" value="200" min="1" max="10000">
+                <span style="font-size:11px; color:#6a7b94;">м</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-buttons">
+        <div class="nav-row-btns">
+            <button class="nav-btn" data-dir="up-left">  <span class="arrow">↖</span></button>
+            <button class="nav-btn" data-dir="up">       <span class="arrow">↑</span></button>
+            <button class="nav-btn" data-dir="up-right"> <span class="arrow">↗</span></button>
+        </div>
+        <div class="nav-row-btns">
+            <button class="nav-btn" data-dir="left">     <span class="arrow">←</span></button>
+            <button class="nav-btn" data-dir="reset" style="background:#2a3545; font-size:14px; font-weight:600;"><span class="arrow">↺</span></button>
+            <button class="nav-btn" data-dir="right">    <span class="arrow">→</span></button>
+        </div>
+        <div class="nav-row-btns">
+            <button class="nav-btn" data-dir="down-left"><span class="arrow">↙</span></button>
+            <button class="nav-btn" data-dir="down">     <span class="arrow">↓</span></button>
+            <button class="nav-btn" data-dir="down-right"><span class="arrow">↘</span></button>
+        </div>
+        <div class="step-info">Шаг <strong id="stepDisplay">200</strong> м (относительно направления грузовика)</div>
+    </div>
+
+<div id="mapBuildBadge" style="position:absolute;left:8px;bottom:8px;z-index:80;pointer-events:none;color:#fff;font:10px/1.2 Consolas,monospace;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;opacity:.9;">BUILD 1.0.32-MAP-DATA-APPDATA-2026.08.26-1150</div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/greedy.js"></script>
+<script src="js/websocket.js"></script>
+<script src="js/trail.js"></script>
+<script src="js/save.js"></script>
+<script src="js/targets.js"></script>
+<script src="js/map_helpers.js"></script>
+<script src="js/map_pitchroll.js"></script>
+<script src="js/map_draw.js"></script>
+<script src="js/map_controls.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/init.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "build": "1.0.16-TELEMETRY-MAP-2026.08.25-1508",
+  "telemetry_ws": "ws://localhost:8080/api/ws/delta/flat/?throttle=50",
+  "map_render": "direct-state",
+  "minimap_frame": "none",
+  "notes": "Patch build; preserve existing publish/data datasets such as GeoJson.
+"}

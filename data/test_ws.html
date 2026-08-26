@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Test WebSocket Client</title>
+<style>
+    body { background:#1a1f26; color:#e0e0e0; font-family:'Segoe UI',sans-serif; padding:20px; }
+    #status { display:inline-block; width:20px; height:20px; border-radius:50%; background:red; vertical-align:middle; margin-right:10px; }
+    #status.connected { background:green; }
+    #log { background:#0a0c10; color:#aabbcc; padding:10px; height:300px; overflow-y:auto; font-family:Consolas; font-size:12px; border:1px solid #333; border-radius:6px; white-space:pre-wrap; }
+    button { background:#2a3545; border:1px solid #4a5a6a; color:#d0def0; border-radius:6px; padding:8px 20px; margin:5px; cursor:pointer; }
+    button:hover { background:#3a4a5a; }
+    .controls { margin:15px 0; }
+</style>
+</head>
+<body>
+<h2>🧪 Тестовый WebSocket клиент</h2>
+<div>
+    <span id="status"></span>
+    <span id="statusText">Отключено</span>
+    <span style="margin-left:20px;font-size:14px;color:#888;" id="wsUrl">ws://localhost:8085</span>
+</div>
+<div class="controls">
+    <button id="connectBtn">Подключиться</button>
+    <button id="generateBtn" disabled>Сгенерировать данные</button>
+    <button id="saveBtn" disabled>Сохранить</button>
+</div>
+<div id="log">[Лог] Ожидание подключения...</div>
+
+<script>
+    let ws = null;
+    const logDiv = document.getElementById('log');
+    const statusEl = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+    const connectBtn = document.getElementById('connectBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const saveBtn = document.getElementById('saveBtn');
+
+    function appendLog(msg) {
+        const line = document.createElement('div');
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logDiv.appendChild(line);
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function setStatus(connected) {
+        statusEl.className = connected ? 'connected' : '';
+        statusText.textContent = connected ? 'Подключено' : 'Отключено';
+        connectBtn.textContent = connected ? 'Отключиться' : 'Подключиться';
+        generateBtn.disabled = !connected;
+        saveBtn.disabled = !connected;
+    }
+
+    connectBtn.addEventListener('click', () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.close();
+            return;
+        }
+        try {
+            ws = new WebSocket('ws://localhost:8085');
+            ws.onopen = () => {
+                appendLog('✅ WebSocket подключён');
+                setStatus(true);
+            };
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                appendLog(`📥 Получено: ${JSON.stringify(data)}`);
+                if (data.type === 'save_result') {
+                    appendLog(`💾 Сохранено: ${data.filename}`);
+                }
+            };
+            ws.onerror = (e) => {
+                appendLog(`❌ Ошибка: ${e.message || 'неизвестная'}`);
+            };
+            ws.onclose = () => {
+                appendLog('🔴 Соединение закрыто');
+                setStatus(false);
+                ws = null;
+            };
+        } catch (e) {
+            appendLog(`❌ Не удалось подключиться: ${e.message}`);
+        }
+    });
+
+    generateBtn.addEventListener('click', () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send('generate_data');
+            appendLog('📤 Отправлена команда generate_data');
+        } else {
+            appendLog('⚠️ Нет подключения');
+        }
+    });
+
+    saveBtn.addEventListener('click', () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send('save_data');
+            appendLog('📤 Отправлена команда save_data');
+        } else {
+            appendLog('⚠️ Нет подключения');
+        }
+    });
+
+    appendLog('🟡 Страница загружена. Нажмите "Подключиться".');
+    setStatus(false);
+</script>
+</body>
+</html>

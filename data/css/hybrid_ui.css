@@ -1,0 +1,472 @@
+/* ================================================================
+   hybrid_ui.css – Стили для гибридного интерфейса (web_ui_hybrid.html)
+   ================================================================ */
+
+/* Базовый сброс */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Полупрозрачный фон, курсор скрыт */
+body {
+    background: transparent !important;
+    color: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    cursor: none;
+}
+
+/* Главная панель приборов */
+.dashboard {
+    max-width: 1100px;
+    width: 100%;
+    background: transparent !important;
+    backdrop-filter: none;
+    border-radius: 24px;
+    padding: 12px 16px 16px;
+    border: none;
+    position: relative;
+    z-index: 5;
+}
+
+/* Внутренний контейнер с анимацией появления */
+.dashboard-content {
+    opacity: 0;
+    transform: scale(0.45);
+    transition: transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease-in;
+}
+
+/* Видимое состояние (добавляется через JS) */
+.dashboard-content.show {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Основной ряд карточек */
+.main-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 14px;
+    margin: 12px 0;
+}
+
+/* Левая и правая группы */
+.left-group,
+.right-group {
+    display: flex;
+    gap: 14px;
+    align-items: flex-end;
+    flex: 0 1 auto;
+}
+
+.left-group {
+    justify-content: flex-end;
+}
+
+.right-group {
+    justify-content: flex-start;
+}
+
+/* Карточка-индикатор (универсальная) */
+.card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    background: #1e2633;
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+    border: 1px solid #2f3a4a;
+    transition: background-color 0.3s, border-color 0.3s;
+    z-index: 1;
+    min-height: 80px;
+    min-width: 100px;
+    flex: 0 1 auto;
+}
+
+/* Фоновая полоса прогресса (для fuel, rest, job) */
+.card .progress-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    border-radius: 14px;
+    z-index: -1;
+    transition: width 0.3s ease, background-color 0.3s ease;
+    pointer-events: none;
+    background-color: transparent;
+}
+
+/* Мигающий фон при критических значениях */
+.card.fuel.critical .progress-bg,
+.card.rest.critical .progress-bg,
+.card.job.critical .progress-bg {
+    animation: blink-bg 0.6s infinite;
+}
+
+@keyframes blink-bg {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+
+/* Метка карточки */
+.card .label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #c0c0c0;
+    margin-bottom: 6px;
+    position: relative;
+    z-index: 2;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Значение */
+.card .value {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.2;
+    position: relative;
+    z-index: 2;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Единицы измерения */
+.card .unit {
+    font-size: 14px;
+    font-weight: 300;
+    color: #ddd;
+    margin-left: 3px;
+}
+
+/* Специальная карточка скорости */
+.card.speed {
+    flex: 0 0 auto;
+    padding: 20px 10px;
+    border-radius: 24px 24px 12px 12px;
+    min-height: 120px;
+    min-width: 160px;
+    background: #1e2633;
+    border-color: #4a5a6a;
+}
+
+.card.speed .value {
+    font-size: 60px;
+}
+
+.card.speed .unit {
+    display: block;
+    font-size: 18px;
+    margin-top: 2px;
+    margin-left: 0;
+}
+
+/* Индикаторы на карточке скорости (двигатель, парковка) */
+.speed-icon,
+.indicator {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    border: 2px solid rgba(200, 200, 200, 0.4);
+    transition: all 0.25s ease;
+    user-select: none;
+    pointer-events: none;
+    background: #1a1f2a;
+    color: rgba(200, 200, 200, 0.5);
+    line-height: 1;
+    box-shadow: inset 0 0 0 2px rgba(200, 200, 200, 0.3);
+}
+
+.speed-icon.engine-icon {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 20;
+}
+
+.speed-icon.parking-icon {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 20;
+}
+
+/* Активные состояния иконок */
+.speed-icon.engine-active,
+.indicator.active {
+    border: 5px solid #008500;
+    color: white;
+    box-shadow: inset 0 0 0 2px #ffffff;
+    background-color: #008500;
+}
+
+.speed-icon.engine-inactive {
+    border: 2px solid rgba(200, 200, 200, 0.4);
+    box-shadow: inset 0 0 0 2px rgba(200, 200, 200, 0.3);
+    color: rgba(200, 200, 200, 0.5);
+    background: #1a1f2a;
+}
+
+.speed-icon.parking-active {
+    border: 5px solid #bd0000;
+    color: white;
+    box-shadow: inset 0 0 0 2px #ffffff;
+    background-color: #bd0000;
+}
+
+.speed-icon.parking-inactive {
+    border: 2px solid rgba(200, 200, 200, 0.4);
+    box-shadow: inset 0 0 0 2px rgba(200, 200, 200, 0.3);
+    color: rgba(200, 200, 200, 0.5);
+    background: #1a1f2a;
+}
+
+/* Дальний свет (high beam) */
+.indicator.lights.highbeam {
+    border: 5px solid #1565C0;
+    color: white;
+    box-shadow: inset 0 0 0 2px #ffffff;
+    background-color: #1565C0;
+}
+
+/* Цветовые зоны скорости */
+.card.speed.warning {
+    background: #E65100 !important;
+    border-color: #FFA500;
+}
+
+.card.speed.safe {
+    background: #2E7D32 !important;
+    border-color: #4CAF50;
+}
+
+/* Карточка расстояния до цели */
+.card.distance {
+    min-height: 70px;
+    padding: 10px 12px;
+    background: #1e2633;
+    border-color: #2f3a4a;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    min-width: 120px;
+    position: relative;
+    overflow: hidden;
+}
+
+.card.distance .distance-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    border-radius: 14px;
+    background-color: #2e7d32;
+    transition: width 0.3s ease;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.card.distance .distance-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    position: relative;
+    z-index: 2;
+}
+
+.card.distance .distance-label {
+    font-size: 13px;
+    text-transform: uppercase;
+    color: #c0c0c0;
+    font-weight: 500;
+}
+
+.card.distance .distance-flag {
+    font-size: 22px;
+    margin-left: auto;
+}
+
+.card.distance .distance-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: 4px;
+    z-index: 2;
+}
+
+.card.distance .distance-time {
+    font-size: 18px;
+    font-weight: 600;
+    color: #eee;
+}
+
+.card.distance .distance-status {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+    background: #1a6b3c;
+    color: #8bffb0;
+}
+
+.card.distance .distance-status.late {
+    background: #6b1a1a;
+    color: #ff8a8a;
+}
+
+.card.distance .distance-status.hurry {
+    background: #6b5a1a;
+    color: #ffd966;
+}
+
+/* Карточка задания */
+.card.job {
+    min-height: 70px;
+    padding: 10px 12px;
+    background: #1e2633;
+    border-color: #2f3a4a;
+    min-width: 120px;
+}
+
+.card.job .value {
+    font-size: 26px;
+}
+
+/* Цвета значений */
+.card.fuel .value {
+    color: #66ff99;
+}
+
+.card.rest .value {
+    color: #ffaa66;
+}
+
+.card.job .value {
+    color: #ff9966;
+}
+
+.card.job.blink {
+    animation: blinkRed 2s infinite;
+}
+
+@keyframes blinkRed {
+    0% { background-color: rgba(198, 40, 40, 0.3); }
+    50% { background-color: rgba(198, 40, 40, 0.8); }
+    100% { background-color: rgba(198, 40, 40, 0.3); }
+}
+
+/* Полоса чувствительности Arduino */
+.range-bar {
+    margin: 12px 0 10px;
+    background: #1e2633;
+    border-radius: 30px;
+    height: 30px;
+    overflow: hidden;
+    border: 1px solid #2f3a4a;
+    position: relative;
+}
+
+.range-bar .fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 30px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+    background-color: #4caf50;
+}
+
+.range-bar .label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 500;
+    color: #ddd;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    z-index: 2;
+    pointer-events: none;
+    letter-spacing: 0.5px;
+}
+
+/* ===== Адаптивность ===== */
+@media (max-width: 700px) {
+    .main-row {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .left-group,
+    .right-group {
+        flex: 1 1 40%;
+        gap: 10px;
+        justify-content: center;
+    }
+    .card.speed {
+        flex: 0 0 100%;
+        order: -1;
+        min-height: 100px;
+        border-radius: 30px 30px 10px 10px;
+    }
+    .card.speed .value {
+        font-size: 36px;
+    }
+    .card .value {
+        font-size: 22px;
+    }
+    .card.distance,
+    .card.job {
+        min-height: 60px;
+        padding: 8px 10px;
+        min-width: 80px;
+    }
+    .card.fuel,
+    .card.rest {
+        min-height: 70px;
+    }
+    .card.distance .distance-time {
+        font-size: 16px;
+    }
+    .speed-icon,
+    .indicator {
+        width: 26px;
+        height: 26px;
+        font-size: 12px;
+    }
+    .range-bar .label {
+        font-size: 14px;
+    }
+}
+
+.speed-indicators{position:absolute!important;inset:0!important;z-index:40!important;pointer-events:none!important;display:block!important;}
+.speed-indicators .indicator{position:absolute!important;bottom:6px!important;top:auto!important;width:32px!important;height:32px!important;margin:0!important;}
+.speed-indicators #trailerIndicator{left:6px!important;right:auto!important;}
+.speed-indicators #lightsIndicator{right:6px!important;left:auto!important;}
+
+.speed-indicators #brakeIndicator{left:50%!important;right:auto!important;transform:translateX(-50%)!important;}
+.speed-indicators #brakeIndicator.active{background:#c62828!important;color:#fff!important;box-shadow:0 0 8px rgba(198,40,40,.55)!important;}

@@ -1,0 +1,506 @@
+/* ================================================================
+   map.css – Стили для веб-карты (web_pda_map.html)
+   ================================================================ */
+
+/* Сброс отступов и базовые настройки */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Основной фон страницы – прозрачный (оверлей) */
+body {
+    background: transparent !important;
+    color: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 12px;
+    overflow: hidden;
+}
+
+/* Главный контейнер приложения */
+.app {
+    max-width: 900px;
+    width: 100%;
+    background: transparent !important;
+    border-radius: 32px;
+    padding: 20px 24px 30px;
+    box-shadow: none !important;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+}
+
+/* Обёртка для карты и элементов управления */
+.minimap-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+    width: 100%;
+}
+
+/* Контейнер карты – основная область */
+.minimap-container {
+    position: relative;
+    width: 100%;
+    max-width: 450px;
+    aspect-ratio: 1 / 1;
+    background: #0f1217;
+    border-radius: 18px;
+    border: 2px solid #4e5a6a;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 5px #6a7e8e, 0 2px 10px rgba(0, 0, 0, 1), 0 0 0 1px #2a3545;
+    cursor: grab;
+    opacity: 0;
+    transform: translateY(70px);
+    transition: opacity 1s ease, transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Видимое состояние (добавляется через JS) */
+.minimap-container.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Canvas внутри контейнера – занимает всю область */
+.minimap-container canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* При перетаскивании карты */
+.minimap-container.dragging {
+    cursor: grabbing;
+}
+
+/* Слой для HTML-меток (города, цели, POI) */
+#labelLayer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 10;
+}
+
+/* Отдельная метка – позиционируется через JavaScript */
+.label-item {
+    position: absolute;
+    white-space: nowrap;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: #c8ddee;
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px rgba(0, 0, 0, 0.9);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    user-select: none;
+    letter-spacing: 0.2px;
+    z-index: 10;
+}
+
+/* Активная цель (более крупная) */
+.label-item.target-active {
+    font-size: 13px;
+    font-weight: 700;
+    z-index: 20;
+}
+
+/* Неактивная цель */
+.label-item.target-inactive {
+    font-size: 10px;
+    font-weight: 500;
+    z-index: 15;
+}
+
+/* Городская метка */
+.label-item.city-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #c8ddee;
+    z-index: 5;
+}
+
+/* Слой загрузки – скрыт, но оставлен для совместимости */
+.loading-overlay {
+    display: none;
+}
+
+/* Панель управления зумом */
+.minimap-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: 14px;
+    color: #b0c0d0;
+}
+
+.minimap-controls .zoom-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.minimap-controls button {
+    background: #2a3545;
+    border: none;
+    color: #d0def0;
+    border-radius: 8px;
+    padding: 4px 14px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    line-height: 1.4;
+}
+
+.minimap-controls button:hover {
+    background: #3a4a5a;
+}
+
+.minimap-controls .zoom-label {
+    color: #8fa0b9;
+    font-size: 13px;
+}
+
+/* Блок управления целями */
+.target-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+    background: #1e2633;
+    border-radius: 18px;
+    padding: 14px 18px;
+    border: 1px solid #2f3a4a;
+}
+
+.target-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.target-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #8fa0b9;
+    letter-spacing: 0.4px;
+}
+
+.target-group .coords {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.target-group .coords input {
+    flex: 1;
+    min-width: 50px;
+    background: #0c1016;
+    border: 1px solid #2f3845;
+    border-radius: 8px;
+    padding: 6px 8px;
+    color: #e0e9f5;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+}
+
+.target-group .coords input:focus {
+    border-color: #5f8aff;
+    box-shadow: 0 0 0 2px rgba(95, 138, 255, 0.2);
+}
+
+.target-group .status {
+    font-size: 11px;
+    color: #6a7b94;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* Индикатор подключения телеметрии */
+.dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #3dd68c;
+}
+
+/* Шаг перемещения цели */
+.step-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 2px;
+}
+
+.step-controls label {
+    font-size: 12px;
+    color: #8fa0b9;
+}
+
+.step-controls input[type="number"] {
+    width: 60px;
+    background: #0c1016;
+    border: 1px solid #2f3845;
+    border-radius: 6px;
+    padding: 4px 6px;
+    color: #e0e9f5;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+}
+
+.step-controls input[type="number"]:focus {
+    border-color: #5f8aff;
+}
+
+/* Кнопки-действия (копировать, вставить и т.п.) */
+.btn-clipboard {
+    background: #2a3545;
+    border: none;
+    color: #d0def0;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: 0.2s;
+    white-space: nowrap;
+}
+
+.btn-clipboard:hover {
+    background: #3a4a5a;
+}
+
+.btn-action {
+    background: #2a3545;
+    border: none;
+    color: #d0def0;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: 0.2s;
+    white-space: nowrap;
+}
+
+.btn-action:hover {
+    background: #3a4a5a;
+}
+
+/* Навигационные кнопки (восемь направлений) */
+.nav-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.nav-row-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.nav-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    border: none;
+    background: #1f2833;
+    color: #d0def0;
+    font-size: 24px;
+    font-weight: 300;
+    cursor: pointer;
+    transition: 0.15s;
+    box-shadow: 0 4px 0 #0b0f14, 0 6px 12px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.nav-btn:hover {
+    background: #2c3848;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #0b0f14, 0 10px 18px rgba(0, 0, 0, 0.4);
+}
+
+.nav-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #0b0f14, 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.nav-btn .arrow {
+    font-size: 28px;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.step-info {
+    font-size: 13px;
+    color: #7e8fa8;
+    margin-top: 6px;
+    background: #141a21;
+    padding: 4px 18px;
+    border-radius: 40px;
+    border: 1px solid #2d3643;
+}
+
+/* Отображение сырого heading */
+.raw-heading-display {
+    text-align: center;
+    font-size: 12px;
+    color: #6a7b94;
+    padding: 4px 0;
+    border-top: 1px solid #2f3a4a;
+    margin-top: 4px;
+}
+
+.raw-heading-display span {
+    color: #ffc857;
+    font-weight: 600;
+}
+
+/* Дополнительные действия с целями */
+.target-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 2px;
+}
+
+/* ===== Режим дебаг (скрываем лишние элементы) ===== */
+.hide-ui .target-controls,
+.hide-ui .nav-buttons,
+.hide-ui .raw-heading-display,
+.hide-ui .minimap-controls {
+    display: none !important;
+}
+
+.hide-ui .app {
+    padding: 0 0 25px 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+.hide-ui .minimap-wrapper {
+    gap: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.hide-ui .minimap-container {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    border-radius: 8px !important;
+    border: 2px solid #4e5a6a !important;
+    width: 100% !important;
+    height: 100% !important;
+    aspect-ratio: auto !important;
+    max-width: none !important;
+    box-shadow: inset 0 0 0 5px #6a7e8e, 0 2px 10px rgba(0, 0, 0, 1), 0 0 0 1px #2a3545 !important;
+}
+
+.hide-ui .loading-overlay {
+    display: none !important;
+}
+
+.hide-ui body {
+    padding: 0 !important;
+}
+
+/* ===== Адаптивность ===== */
+@media (max-width: 700px) {
+    .app {
+        padding: 12px;
+    }
+    .target-controls {
+        grid-template-columns: 1fr;
+    }
+    .nav-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+    .nav-btn .arrow {
+        font-size: 22px;
+    }
+    .minimap-container {
+        max-width: 320px;
+    }
+    .step-controls input[type="number"] {
+        width: 50px;
+    }
+}
+
+@media (max-width: 420px) {
+    .nav-btn {
+        width: 42px;
+        height: 42px;
+        font-size: 16px;
+    }
+    .nav-btn .arrow {
+        font-size: 18px;
+    }
+    .minimap-container {
+        max-width: 260px;
+    }
+    .target-controls {
+        padding: 10px 12px;
+    }
+}
+
+/* ===== Toast-уведомления ===== */
+#toastContainer {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    pointer-events: none;
+    text-align: center;
+    width: 80%;
+    max-width: 400px;
+}
+
+.toast {
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    display: inline-block;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    border: 1px solid #4a5a6a;
+    backdrop-filter: blur(4px);
+}
+
+.toast.show {
+    opacity: 1;
+}

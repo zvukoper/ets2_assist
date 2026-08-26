@@ -1,6 +1,7 @@
-namespace ETS2_Assist_GUI;
-
-internal static class BuildInfo
+namespace ETS2_Assist_GUI
 {
-    public const string Version = "1.0.27-FRESH-SYNC-2026.08.25-1820";
+    internal static class BuildInfo
+    {
+        public const string Version = "1.0.32-MAP-DATA-APPDATA-2026.08.26-1150";
+    }
 }

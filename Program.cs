@@ -27,7 +27,6 @@ namespace ETS2_Assist_GUI
                 File.AppendAllText("crash.log", $"{DateTime.Now}: {msg}\n");
             };
 
-            try { SetProcessDpiAwarenessContext(new IntPtr(-4)); } catch { }
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
@@ -49,7 +48,5 @@ namespace ETS2_Assist_GUI
                 File.AppendAllText("crash.log", $"{DateTime.Now}: {msg}\n");
             }
         }
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
     }
 }

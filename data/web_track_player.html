@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ETS2 Track Player</title>
+<style>
+    body { margin:0; background:#0a0c10; color:#e0e0e0; font-family:'Segoe UI',sans-serif; overflow:hidden; }
+    #mapCanvas { display:block; width:100vw; height:calc(100vh - 120px); background:#111; cursor:grab; }
+    #controls { position:fixed; bottom:0; left:0; right:0; background:#1a1f26; padding:10px 20px; border-top:1px solid #333; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    #controls button, #controls input { background:#2a3545; border:1px solid #4a5a6a; color:#d0def0; border-radius:6px; padding:6px 14px; font-size:14px; cursor:pointer; }
+    #controls button:hover { background:#3a4a5a; }
+    #timeSlider { flex:1; min-width:200px; }
+    #speedLabel { font-size:13px; color:#8fa0b9; }
+    #info { position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.7); padding:6px 12px; border-radius:6px; font-size:12px; color:#ccc; }
+</style>
+</head>
+<body>
+<div id="info">ETS2 Track Player</div>
+<canvas id="mapCanvas"></canvas>
+<div id="controls">
+    <button id="playBtn">▶</button>
+    <button id="speedDownBtn">−</button>
+    <span id="speedLabel">1×</span>
+    <button id="speedUpBtn">+</button>
+    <input type="range" id="timeSlider" min="0" max="1000" value="0" style="flex:1;">
+    <label><input type="checkbox" id="followCheck" checked> Следить</label>
+    <span id="timeDisplay" style="font-size:13px; color:#aabbcc;">0:00 / 0:00</span>
+</div>
+<script>
+    // Загрузка данных трека из URL-параметра или из файла
+    const urlParams = new URLSearchParams(window.location.search);
+    const dataUrl = urlParams.get('data') || 'track.json';
+    
+    let trailData = null;
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+    let W, H;
+    
+    function resize() {
+        W = canvas.width = canvas.clientWidth = window.innerWidth;
+        H = canvas.height = canvas.clientHeight = window.innerHeight - 120;
+        drawMap();
+    }
+    window.addEventListener('resize', resize);
+    
+    let trailPoints = [];
+    let events = [];
+    let cities = [];
+    let roads = [];
+    let centerX = 0, centerZ = 0, scale = 1;
+    let playing = false;
+    let speedFactor = 1;
+    let currentIndex = 0;
+    let follow = true;
+    let totalSeconds = 0;
+    
+    function loadData() {
+        fetch(dataUrl)
+            .then(res => res.json())
+            .then(data => {
+                trailData = data;
+                trailPoints = data.trail || [];
+                events = data.events || [];
+                cities = data.mapData?.cities || [];
+                roads = data.mapData?.roads || [];
+                fitMap();
+                drawMap();
+                updateTimeDisplay();
+                document.getElementById('info').textContent = 'Трек загружен: ' + (data.finishTime || '');
+            })
+            .catch(err => {
+                document.getElementById('info').textContent = 'Ошибка загрузки трека: ' + err.message;
+            });
+    }
+    
+    function fitMap() {
+        if (trailPoints.length < 2) return;
+        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+        for (const p of trailPoints) {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.z < minZ) minZ = p.z;
+            if (p.z > maxZ) maxZ = p.z;
+        }
+        centerX = (minX + maxX) / 2;
+        centerZ = (minZ + maxZ) / 2;
+        const rangeX = maxX - minX;
+        const rangeZ = maxZ - minZ;
+        const range = Math.max(rangeX, rangeZ, 1);
+        const margin = 0.15;
+        scale = (Math.min(W, H) * 0.85) / (range * (1 + margin));
+    }
+    
+    function worldToScreen(wx, wz) {
+        const dx = (wx - centerX) * scale;
+        const dz = (wz - centerZ) * scale;
+        return { x: W/2 + dx, y: H/2 - dz };
+    }
+    
+    function drawMap() {
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#0f1217';
+        ctx.fillRect(0, 0, W, H);
+        
+        // Сетка
+        const gridStep = 200 / scale;
+        ctx.strokeStyle = '#2a3545';
+        ctx.lineWidth = 0.5;
+        ctx.setLineDash([4, 6]);
+        for (let x = -W/2; x < W/2; x += gridStep) {
+            const p = worldToScreen(centerX + x, centerZ);
+            ctx.beginPath(); ctx.moveTo(p.x, 0); ctx.lineTo(p.x, H); ctx.stroke();
+        }
+        for (let z = -H/2; z < H/2; z += gridStep) {
+            const p = worldToScreen(centerX, centerZ + z);
+            ctx.beginPath(); ctx.moveTo(0, p.y); ctx.lineTo(W, p.y); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        
+        // Дороги
+        for (const r of roads) {
+            const p1 = worldToScreen(r.x1, r.z1);
+            const p2 = worldToScreen(r.x2, r.z2);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = '#5a7a8a';
+            ctx.lineWidth = 1.5;
+            ctx.globalAlpha = 0.6;
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        
+        // Города
+        for (const c of cities) {
+            const p = worldToScreen(c.x, c.z);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4, 0, 2*Math.PI);
+            ctx.fillStyle = '#ffdd88';
+            ctx.shadowColor = '#ffdd8844';
+            ctx.shadowBlur = 6;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.font = '10px "Segoe UI"';
+            ctx.fillStyle = '#c8ddee';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(c.name, p.x, p.y - 6);
+        }
+        
+        // Шлейф
+        if (trailPoints.length > 1) {
+            for (let i = 1; i < trailPoints.length; i++) {
+                const p1 = worldToScreen(trailPoints[i-1].x, trailPoints[i-1].z);
+                const p2 = worldToScreen(trailPoints[i].x, trailPoints[i].z);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = '#4488ff';
+                ctx.lineWidth = 2.5;
+                ctx.globalAlpha = 0.8;
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+        }
+        
+        // События
+        for (const e of events) {
+            const p = worldToScreen(e.x, e.z);
+            if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) continue;
+            const size = 10;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            if (e.type === 'parking') {
+                const r = 3;
+                ctx.moveTo(-size + r, -size);
+                ctx.lineTo(size - r, -size);
+                ctx.quadraticCurveTo(size, -size, size, -size + r);
+                ctx.lineTo(size, size - r);
+                ctx.quadraticCurveTo(size, size, size - r, size);
+                ctx.lineTo(-size + r, size);
+                ctx.quadraticCurveTo(-size, size, -size, size - r);
+                ctx.lineTo(-size, -size + r);
+                ctx.quadraticCurveTo(-size, -size, -size + r, -size);
+                ctx.closePath();
+            } else {
+                ctx.arc(0, 0, size, 0, 2*Math.PI);
+            }
+            ctx.fillStyle = e.color || '#ffffff';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px "Segoe UI"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(e.label || '?', 0, -1);
+            if (e.subtext) {
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 3;
+                ctx.font = '7px "Segoe UI"';
+                ctx.textBaseline = 'top';
+                ctx.fillText(e.subtext, 0, size + 2);
+                ctx.shadowBlur = 0;
+            }
+            ctx.restore();
+        }
+        
+        // Текущая позиция грузовика
+        if (currentIndex < trailPoints.length) {
+            const p = worldToScreen(trailPoints[currentIndex].x, trailPoints[currentIndex].z);
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.beginPath();
+            ctx.moveTo(0, -14);
+            ctx.lineTo(-9, 9);
+            ctx.lineTo(0, 3);
+            ctx.lineTo(9, 9);
+            ctx.closePath();
+            ctx.fillStyle = '#ff4d4d';
+            ctx.shadowColor = '#ff4d4d88';
+            ctx.shadowBlur = 12;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+    
+    function updateTimeDisplay() {
+        const total = trailPoints.length;
+        const idx = Math.min(currentIndex, total-1);
+        const percent = total > 1 ? idx / (total - 1) : 0;
+        document.getElementById('timeSlider').value = percent * 1000;
+        const totalSec = total > 1 ? Math.floor((total-1) * 0.5) : 0;
+        const curSec = Math.floor(idx * 0.5);
+        const format = (s) => {
+            const m = Math.floor(s / 60);
+            const sec = s % 60;
+            return m + ':' + (sec < 10 ? '0' : '') + sec;
+        };
+        document.getElementById('timeDisplay').textContent = format(curSec) + ' / ' + format(totalSec);
+    }
+    
+    function playStep() {
+        if (!playing) return;
+        if (currentIndex < trailPoints.length - 1) {
+            currentIndex += speedFactor;
+            if (currentIndex > trailPoints.length - 1) currentIndex = trailPoints.length - 1;
+            if (follow) {
+                const p = trailPoints[currentIndex];
+                centerX = p.x;
+                centerZ = p.z;
+            }
+            drawMap();
+            updateTimeDisplay();
+            requestAnimationFrame(playStep);
+        } else {
+            playing = false;
+            document.getElementById('playBtn').textContent = '▶';
+        }
+    }
+    
+    document.getElementById('playBtn').addEventListener('click', () => {
+        playing = !playing;
+        document.getElementById('playBtn').textContent = playing ? '⏸' : '▶';
+        if (playing) {
+            if (currentIndex >= trailPoints.length - 1) {
+                currentIndex = 0;
+                if (follow) { const p = trailPoints[0]; centerX = p.x; centerZ = p.z; }
+            }
+            playStep();
+        }
+    });
+    
+    document.getElementById('speedDownBtn').addEventListener('click', () => {
+        speedFactor = Math.max(0.5, speedFactor / 1.5);
+        document.getElementById('speedLabel').textContent = speedFactor.toFixed(1) + '×';
+    });
+    
+    document.getElementById('speedUpBtn').addEventListener('click', () => {
+        speedFactor = Math.min(5, speedFactor * 1.5);
+        document.getElementById('speedLabel').textContent = speedFactor.toFixed(1) + '×';
+    });
+    
+    document.getElementById('timeSlider').addEventListener('input', () => {
+        const val = parseFloat(document.getElementById('timeSlider').value);
+        const idx = Math.floor(val / 1000 * (trailPoints.length - 1));
+        currentIndex = Math.min(idx, trailPoints.length - 1);
+        if (follow) {
+            const p = trailPoints[currentIndex];
+            centerX = p.x;
+            centerZ = p.z;
+        }
+        drawMap();
+        updateTimeDisplay();
+    });
+    
+    document.getElementById('followCheck').addEventListener('change', () => {
+        follow = document.getElementById('followCheck').checked;
+        if (follow && currentIndex < trailPoints.length) {
+            const p = trailPoints[currentIndex];
+            centerX = p.x;
+            centerZ = p.z;
+            drawMap();
+        }
+    });
+    
+    // Загрузка данных при старте
+    loadData();
+    resize();
+</script>
+</body>
+</html>

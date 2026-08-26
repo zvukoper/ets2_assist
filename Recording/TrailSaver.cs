@@ -189,7 +189,15 @@ function parseTrail(data) {
                 fuel: parseFloat(parts[5]),
                 damage: parseFloat(parts[6]),
                 pitch: parseFloat(parts[7] || 0),
-                roll: parseFloat(parts[8] || 0)
+                roll: parseFloat(parts[8] || 0),
+                lights: parts[9] || '{}',
+                gameTime: parseFloat(parts[10] || 0),
+                localScale: parseFloat(parts[11] || 1),
+                steering: parseFloat(parts[12] || 0),
+                throttle: parseFloat(parts[13] || 0),
+                brake: parseFloat(parts[14] || 0),
+                odometer: parseFloat(parts[15] || 0),
+                headOffset: (parts[16] || '0,0,0,0,0,0').split(',').map(Number)
             };
             dataPoints.push(dp);
             debugLines.push('[DEBUG] D: t=' + dp.t + ', pitch=' + dp.pitch + ', roll=' + dp.roll);
@@ -220,10 +228,21 @@ const events = parsed.events;
 const meta = parsed.meta;
 
 // Данные карты
-const cities = mapData?.cities || [];
-const roads = mapData?.roads || [];
-const customTargets = mapData?.customTargets || [];
-console.log('[DEBUG] Cities:', cities.length, 'Roads:', roads.length, 'Targets:', customTargets.length);
+const cities = Array.isArray(mapData?.cities) ? mapData.cities : [];
+const roads = Array.isArray(mapData?.roads) ? mapData.roads : [];
+const pois = Array.isArray(mapData?.pois) ? mapData.pois : [];
+const poiCategories = Array.isArray(mapData?.poiCategories) ? mapData.poiCategories : [];
+const poiCategoryCounts = mapData?.poiCategoryCounts || {};
+const customTargets = Array.isArray(mapData?.customTargets) ? mapData.customTargets : [];
+const staticMapReady = roads.length > 0 || cities.length > 0 || pois.length > 0;
+console.log('[PLAYBACK] Embedded static snapshot only:', { cities: cities.length, roads: roads.length, pois: pois.length, categories: poiCategories.length, targets: customTargets.length });
+if (!staticMapReady) console.warn('[PLAYBACK] Static snapshot missing or empty. This track predates static-snapshot recording.');
+
+const POI_COLORS = {
+    Company:'#5ec8ff', Ferry:'#ff9f43', Garage:'#a678ff', Fuel:'#35d07f', BusStop:'#ffd166',
+    Overlay:'#ff6b6b', Parking:'#8be9fd', Recruitment:'#f1fa8c', Service:'#ff79c6', Train:'#bd93f9',
+    TruckDealer:'#50fa7b', WeightStation:'#ffb86c', default:'#c8ddee'
+};
 
 // Playback diagnostics + defensive timeline normalization.
 const rawTimes = trailPoints.map(p => Number(p.t));
@@ -243,7 +262,7 @@ const times = trailPoints.map((p, i) => {
     return i / 10;
 });
 
-console.log('[ETS2 ASSIST BUILD] 1.0.13-FIX-2026.08.25-1400');
+console.log('[ETS2 ASSIST BUILD] 1.0.32-MAP-DATA-APPDATA-2026.08.26-1150');
 console.groupCollapsed('[PLAYBACK] Timeline diagnostics');
 console.log('trailPoints:', trailPoints.length);
 console.log('dataPoints:', dataPoints.length);
@@ -296,6 +315,91 @@ function worldToScreen(wx, wz) {
     const dx = (wx - centerX) * scale;
     const dz = (wz - centerZ) * scale;
     return { x: W/2 + dx, y: H/2 - dz };
+}
+
+function dataPointForTime(t) {
+    if (!dataPoints.length) return null;
+    let lo = 0, hi = dataPoints.length - 1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (Number(dataPoints[mid].t) <= t) lo = mid + 1; else hi = mid - 1;
+    }
+    return dataPoints[Math.max(0, Math.min(dataPoints.length - 1, hi))];
+}
+
+function drawMap() {
+    if (!ctx || !W || !H) return;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0b0e13'; ctx.fillRect(0,0,W,H);
+    const p = trailPoints[currentIndex] || trailPoints[0];
+    if (!p) return;
+    if (follow) { centerX = p.x; centerZ = p.z; }
+
+    // Static snapshot: no HTTP/file fetch. It comes exclusively from mapData embedded into the HTML.
+    ctx.strokeStyle='#4d6878'; ctx.globalAlpha=.75;
+    for (const r of roads) {
+        const a=worldToScreen(r.x1,r.z1), b=worldToScreen(r.x2,r.z2);
+        if ((a.x<-50&&b.x<-50)||(a.x>W+50&&b.x>W+50)||(a.y<-50&&b.y<-50)||(a.y>H+50&&b.y>H+50)) continue;
+        ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineWidth=1.1; ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+    for (const c of cities) {
+        const q=worldToScreen(c.x,c.z); if(q.x<-40||q.x>W+40||q.y<-30||q.y>H+30) continue;
+        ctx.fillStyle='#e7d38a'; ctx.beginPath(); ctx.arc(q.x,q.y,3,0,Math.PI*2); ctx.fill();
+        ctx.font='10px ""Segoe UI""'; ctx.fillStyle='#c8ddee'; ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.fillText(`${c.name || c.gameName || '?'}`,q.x,q.y-6);
+    }
+    for (const poi of pois) {
+        const q=worldToScreen(poi.x,poi.z); if(q.x<-30||q.x>W+30||q.y<-25||q.y>H+25) continue;
+        const color=POI_COLORS[poi.type]||POI_COLORS.default;
+        ctx.fillStyle=color; ctx.beginPath(); ctx.arc(q.x,q.y,3,0,Math.PI*2); ctx.fill();
+        ctx.font='9px ""Segoe UI""'; ctx.fillStyle='#dbe7f3'; ctx.fillText(poi.type || 'POI', q.x, q.y-5);
+    }
+    for (const target of customTargets) {
+        if (!target || target.x === undefined || target.z === undefined) continue;
+        const q=worldToScreen(Number(target.x), Number(target.z));
+        if(q.x<-40||q.x>W+40||q.y<-40||q.y>H+40) continue;
+        const color=target.color && target.color !== 'default' ? target.color : '#ffc857';
+        ctx.fillStyle=color; ctx.strokeStyle='#000'; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.moveTo(q.x,q.y-8); ctx.lineTo(q.x+7,q.y+6); ctx.lineTo(q.x-7,q.y+6); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.font='10px ""Segoe UI""'; ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.fillStyle=color;
+        ctx.fillText(target.name || 'Цель', q.x, q.y-10);
+    }
+
+    // Trail up to current frame, coloured by recorded speed.
+    ctx.lineWidth=4;
+    for(let i=1;i<=currentIndex&&i<trailPoints.length;i++){
+        const a=trailPoints[i-1], b=trailPoints[i]; const pa=worldToScreen(a.x,a.z), pb=worldToScreen(b.x,b.z);
+        ctx.strokeStyle=getTrailColor(Number(b.speed)||0); ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+    }
+
+    const t=trailPoints[currentIndex]; const tp=worldToScreen(t.x,t.z);
+    const dp=dataPointForTime(currentTime) || {};
+    const headOffset=Array.isArray(dp.headOffset)?dp.headOffset:[0,0,0,0,0,0];
+    const rawHead=((Number(headOffset[3])||0)%1+1)%1;
+    const headDeg=rawHead*360;
+    const signedHead=headDeg<=180?headDeg:headDeg-360;
+
+    // Head view cone relative to truck direction.
+    ctx.save(); ctx.translate(tp.x,tp.y); ctx.rotate(-signedHead*Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,-20); ctx.lineTo(-13,13); ctx.lineTo(13,13); ctx.closePath();
+    ctx.fillStyle='rgba(245,248,255,.20)'; ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=1; ctx.fill(); ctx.stroke(); ctx.restore();
+
+    // Mirror the truck marker vertically, as requested.
+    ctx.save(); ctx.translate(tp.x,tp.y); ctx.rotate(-(Number(t.heading)||0)); ctx.scale(1,-1);
+    ctx.beginPath(); ctx.moveTo(0,-18); ctx.lineTo(-10,12); ctx.lineTo(0,6); ctx.lineTo(10,12); ctx.closePath();
+    ctx.fillStyle='#ff4d4d'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); ctx.restore();
+
+    const currentSpeed=Number(t.speed)||0;
+    const fuel=Number(dp.fuel)||0;
+    const localScale=Number(dp.localScale)||1;
+    const steer=(Number(dp.steering)||0)*100;
+    const throttle=(Number(dp.throttle)||0)*100;
+    const brake=(Number(dp.brake)||0)*100;
+    const panel=document.getElementById('playbackTelemetry');
+    if(panel) panel.innerHTML=`Speed: ${currentSpeed.toFixed(0)} km/h | Fuel: ${fuel.toFixed(0)}%<br>Head: ${signedHead.toFixed(1)}° | Scale: ${localScale.toFixed(2)}×<br>Steer: ${steer.toFixed(0)}% | Throttle: ${throttle.toFixed(0)}% | Brake: ${brake.toFixed(0)}%<br>POI: ${pois.length} / ${poiCategories.length} cat. | Cities: ${cities.length} | Roads: ${roads.length} | Targets: ${customTargets.length}`;
+
+    const debug=document.getElementById('debugLog'); if(debug) debug.textContent=playbackStatusText(`roads ${roads.length} | cities ${cities.length} | poi ${pois.length}`);
 }
 
 function getTrailColor(speed) {
@@ -501,56 +605,15 @@ window.addEventListener('resize', () => { resize(); fitMap(); drawMap(); });
         // ================================================================
         // МЕТОД ГЕНЕРАЦИИ СТРАНИЦЫ СПИСКА ТРЕКОВ (trail_player.html)
         // ================================================================
-        private string GenerateTrailPlayerHtml()
+        private string GenerateTrailPlayerHtml(IEnumerable<string> trackNames)
         {
-            return @"<!DOCTYPE html>
+            var names = trackNames.Where(n => !string.IsNullOrWhiteSpace(n)).OrderByDescending(n => n).ToList();
+            var items = string.Join("\n", names.Select(name => $"<li><a href='./{Uri.EscapeDataString(name)}.html' target='_blank'>{System.Net.WebUtility.HtmlEncode(name)}</a></li>"));
+            return $@"<!DOCTYPE html>
 <html>
-<head>
-<meta charset='utf-8'/>
-<title>ETS2 Trail Player</title>
-<style>
-    body { background:#0a0c10; color:#e0e0e0; font-family:'Segoe UI',sans-serif; margin:20px; }
-    #trackList { display:flex; flex-direction:column; gap:6px; max-width:500px; margin:20px auto; }
-    .track-item { background:#1a1f26; padding:10px 16px; border:1px solid #333; border-radius:6px; cursor:pointer; transition:0.2s; }
-    .track-item:hover { background:#2a3545; }
-    #playerContainer { margin-top:20px; }
-    iframe { width:100%; height:600px; border:none; background:#111; border-radius:8px; }
-</style>
-</head>
-<body>
-<h1 style='text-align:center;'>ETS2 Trail Player</h1>
-<div id='trackList'>Загрузка...</div>
-<div id='playerContainer'></div>
-<script>
-async function loadTracks() {
-    try {
-        const res = await fetch('http://localhost:8083/list_tracks');
-        const data = await res.json();
-        const list = document.getElementById('trackList');
-        list.innerHTML = '';
-        if (data.files.length === 0) {
-            list.innerHTML = '<div style=""color:#666;"">Нет сохранённых треков</div>';
-            return;
-        }
-        for (const file of data.files) {
-            const div = document.createElement('div');
-            div.className = 'track-item';
-            const name = file.replace('.json', '');
-            div.textContent = name;
-            div.addEventListener('click', () => {
-                const container = document.getElementById('playerContainer');
-                container.innerHTML = `<iframe src='http://localhost:8082/saved_tracks/${name}.html'></iframe>`;
-            });
-            list.appendChild(div);
-        }
-    } catch (e) {
-        document.getElementById('trackList').innerHTML = 'Ошибка загрузки списка: ' + e.message;
-    }
-}
-loadTracks();
-</script>
-</body>
-</html>";
+<head><meta charset='utf-8'/><title>ETS2 Trail Player</title>
+<style>body{{background:#0a0c10;color:#e0e0e0;font-family:'Segoe UI',sans-serif;margin:20px}}a{{color:#d8e6f5;text-decoration:none}}a:hover{{text-decoration:underline}}#trackList{{max-width:800px;margin:20px auto}}li{{background:#1a1f26;padding:8px 12px;margin:6px 0;border:1px solid #333;border-radius:6px;list-style:none}}</style>
+</head><body><h1 style='text-align:center;'>ETS2 Trail Player</h1><ul id='trackList'>{items}</ul></body></html>";
         }
     }
 }

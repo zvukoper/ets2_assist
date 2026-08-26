@@ -1,0 +1,7411 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          119730.44,
+          -53535.074
+        ]
+      },
+      "properties": {
+        "uid": "0x4CE0D26428400000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          119299.22,
+          -55894.78
+        ]
+      },
+      "properties": {
+        "uid": "0x4F8A833FDD800000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          118643.234,
+          -57324.305
+        ]
+      },
+      "properties": {
+        "uid": "0x5158C7C615000001",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          119963.35,
+          -57609.973
+        ]
+      },
+      "properties": {
+        "uid": "0x5158C847E8800000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          118777.84,
+          -57904.48
+        ]
+      },
+      "properties": {
+        "uid": "0x5158C88C7B800000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          119900.57,
+          -58810.18
+        ]
+      },
+      "properties": {
+        "uid": "0x5158C8B2CE000000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          122174.23,
+          -53954.89
+        ]
+      },
+      "properties": {
+        "uid": "0x4A2B19F820000001",
+        "name": "laishevo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121654.36,
+          -54327.133
+        ]
+      },
+      "properties": {
+        "uid": "0x4A515A8CA5000000",
+        "name": "laishevo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120244.98,
+          -53276.492
+        ]
+      },
+      "properties": {
+        "uid": "0x4B89A8445F800001",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121220.59,
+          -55917.49
+        ]
+      },
+      "properties": {
+        "uid": "0x5158C92F73000000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          121311.95,
+          -55126.69
+        ]
+      },
+      "properties": {
+        "uid": "0x5158C99310000000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120618.76,
+          -54608.4
+        ]
+      },
+      "properties": {
+        "uid": "0x5158C9BB91000000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120164.56,
+          -54429.344
+        ]
+      },
+      "properties": {
+        "uid": "0x5158C9C45A000000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120890.586,
+          -59335.496
+        ]
+      },
+      "properties": {
+        "uid": "0x50711E9E0D800001",
+        "name": "arsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120706.17,
+          -57219.133
+        ]
+      },
+      "properties": {
+        "uid": "0x5158C914BC800000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          120697.58,
+          -56550.59
+        ]
+      },
+      "properties": {
+        "uid": "0x5158C96FE5800000",
+        "name": "kazan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          126772.91,
+          -54992.555
+        ]
+      },
+      "properties": {
+        "uid": "0x49436D9874800001",
+        "name": "chistopol"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          131233.9,
+          -55319.996
+        ]
+      },
+      "properties": {
+        "uid": "0x494326A40F000001",
+        "name": "almetevsk2"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          131554.1,
+          -55476.332
+        ]
+      },
+      "properties": {
+        "uid": "0x4943279436800000",
+        "name": "almetevsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          131505.05,
+          -55249.09
+        ]
+      },
+      "properties": {
+        "uid": "0x494327BCB4400000",
+        "name": "almetevsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          131694.1,
+          -54983.824
+        ]
+      },
+      "properties": {
+        "uid": "0x494327CCE1400000",
+        "name": "almetevsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          130025.76,
+          -53592.773
+        ]
+      },
+      "properties": {
+        "uid": "0x64390B10C3000001",
+        "name": "tatn_azs1"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          135365.61,
+          -54025.664
+        ]
+      },
+      "properties": {
+        "uid": "0x44904C3C8A400001",
+        "name": "bugulma"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          133015.98,
+          -54976.613
+        ]
+      },
+      "properties": {
+        "uid": "0x4502F9244A800000",
+        "name": "almetevsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          133371.47,
+          -54817.203
+        ]
+      },
+      "properties": {
+        "uid": "0x64394B0AAE800001",
+        "name": "tatn_azs2"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          136625.2,
+          -52988.19
+        ]
+      },
+      "properties": {
+        "uid": "0x4488C08866C00001",
+        "name": "bavly"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          137460.72,
+          -53861.09
+        ]
+      },
+      "properties": {
+        "uid": "0x44BD58A443400001",
+        "name": "oktyabrskiy"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          139551.39,
+          -57269.08
+        ]
+      },
+      "properties": {
+        "uid": "0x4493F41428800001",
+        "name": "ufa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          142485.4,
+          -56673.55
+        ]
+      },
+      "properties": {
+        "uid": "0x422B64D808400001",
+        "name": "ufa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          142359.72,
+          -57626.547
+        ]
+      },
+      "properties": {
+        "uid": "0x43FA903422C00000",
+        "name": "ufa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          142224.16,
+          -57732.55
+        ]
+      },
+      "properties": {
+        "uid": "0x43FA9098C2800000",
+        "name": "ufa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          141292.47,
+          -59064.027
+        ]
+      },
+      "properties": {
+        "uid": "0x4424ED68F5800000",
+        "name": "ufa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          143302.34,
+          -59764.336
+        ]
+      },
+      "properties": {
+        "uid": "0x451E2508C9800001",
+        "name": "shaksha"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          141400.16,
+          -57625.06
+        ]
+      },
+      "properties": {
+        "uid": "0x452EEA7CE5000000",
+        "name": "ufa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          142667.23,
+          -60515.734
+        ]
+      },
+      "properties": {
+        "uid": "0x451E25B410400000",
+        "name": "shaksha"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          144611.12,
+          -43392.668
+        ]
+      },
+      "properties": {
+        "uid": "0x5F955E98CE000001",
+        "name": "orenburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147216.81,
+          -46021.19
+        ]
+      },
+      "properties": {
+        "uid": "0x5E2AA27ED000022D",
+        "name": "orenburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147205.95,
+          -45143.285
+        ]
+      },
+      "properties": {
+        "uid": "0x60E18556A6000000",
+        "name": "orenburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147536.95,
+          -51988.59
+        ]
+      },
+      "properties": {
+        "uid": "0x4096625CAF400000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147506.95,
+          -51982.46
+        ]
+      },
+      "properties": {
+        "uid": "0x409662604AC00000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147404.86,
+          -52118.188
+        ]
+      },
+      "properties": {
+        "uid": "0x409660ECDF000001",
+        "name": "salavat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147716.94,
+          -52163.746
+        ]
+      },
+      "properties": {
+        "uid": "0x409661C007800001",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147686.42,
+          -52203.51
+        ]
+      },
+      "properties": {
+        "uid": "0x409662108BC00000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147647.1,
+          -52244.164
+        ]
+      },
+      "properties": {
+        "uid": "0x409662144A400000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147603.44,
+          -52295.086
+        ]
+      },
+      "properties": {
+        "uid": "0x4096621877400000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147560.33,
+          -52343.05
+        ]
+      },
+      "properties": {
+        "uid": "0x4096622842400000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147531.9,
+          -52379.133
+        ]
+      },
+      "properties": {
+        "uid": "0x4096622CACC00000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147608.12,
+          -52050.105
+        ]
+      },
+      "properties": {
+        "uid": "0x4096624466000000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147566.02,
+          -52025.934
+        ]
+      },
+      "properties": {
+        "uid": "0x4096625804400000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147618.53,
+          -52275.484
+        ]
+      },
+      "properties": {
+        "uid": "0x40C8FB885E800000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147188.95,
+          -52357.824
+        ]
+      },
+      "properties": {
+        "uid": "0x4102FB3070C00000",
+        "name": "salavat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147631.56,
+          -54434.004
+        ]
+      },
+      "properties": {
+        "uid": "0x41F0A6F45C400001",
+        "name": "sterlitamak"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          146597.95,
+          -53651.65
+        ]
+      },
+      "properties": {
+        "uid": "0x41F0A83033000000",
+        "name": "sterlitamak"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          146277.16,
+          -55166.88
+        ]
+      },
+      "properties": {
+        "uid": "0x42317E40C4000000",
+        "name": "sterlitamak"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          146108.86,
+          -62556.164
+        ]
+      },
+      "properties": {
+        "uid": "0x456C99AC44C00001",
+        "name": "asha"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          145937.62,
+          -62051.92
+        ]
+      },
+      "properties": {
+        "uid": "0x4572BC9C77C00000",
+        "name": "asha"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147591.3,
+          -63151.844
+        ]
+      },
+      "properties": {
+        "uid": "0x46C93C9CADC00001",
+        "name": "sim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          145609.3,
+          -75672.2
+        ]
+      },
+      "properties": {
+        "uid": "0x4C43066090800001",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          146400.62,
+          -75688.78
+        ]
+      },
+      "properties": {
+        "uid": "0x4C43072078400000",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          146954.67,
+          -75970.25
+        ]
+      },
+      "properties": {
+        "uid": "0x4C43073863000000",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147576.58,
+          -78309.625
+        ]
+      },
+      "properties": {
+        "uid": "0x47EF69D064000001",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          145096.2,
+          -79941.484
+        ]
+      },
+      "properties": {
+        "uid": "0x4BEE880C79400001",
+        "name": "daugavpils"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          146257.11,
+          -80573.5
+        ]
+      },
+      "properties": {
+        "uid": "0x4C4307582A400000",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          146372.42,
+          -81237.34
+        ]
+      },
+      "properties": {
+        "uid": "0x4C430774DCC00000",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          146948.6,
+          -81543.53
+        ]
+      },
+      "properties": {
+        "uid": "0x4C4307940C400000",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147511.44,
+          -81205.11
+        ]
+      },
+      "properties": {
+        "uid": "0x4C4307B06B400000",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          147514.25,
+          -80463.586
+        ]
+      },
+      "properties": {
+        "uid": "0x4C4307D073400000",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          148379.38,
+          -44493.336
+        ]
+      },
+      "properties": {
+        "uid": "0x5E2A37359D000001",
+        "name": "orenburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          148574.84,
+          -45504.746
+        ]
+      },
+      "properties": {
+        "uid": "0x62ABB429AE000001",
+        "name": "orenburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150750.75,
+          -49889.742
+        ]
+      },
+      "properties": {
+        "uid": "0x3F05BB449D000001",
+        "name": "tulgan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150536.9,
+          -59520.176
+        ]
+      },
+      "properties": {
+        "uid": "0x42AA7E74B4800000",
+        "name": "inzer"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150936.47,
+          -63221.03
+        ]
+      },
+      "properties": {
+        "uid": "0x471A81A828000001",
+        "name": "ustkatav"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150733.75,
+          -62670.824
+        ]
+      },
+      "properties": {
+        "uid": "0x477F950822400000",
+        "name": "ustkatav"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          151193.88,
+          -62625.7
+        ]
+      },
+      "properties": {
+        "uid": "0x477F955894400000",
+        "name": "ustkatav"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          151954.17,
+          -62838.93
+        ]
+      },
+      "properties": {
+        "uid": "0x477F95681CC00000",
+        "name": "ustkatav"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          148186.19,
+          -63057.203
+        ]
+      },
+      "properties": {
+        "uid": "0x477F95E8C0000000",
+        "name": "sim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          149413.16,
+          -62768.26
+        ]
+      },
+      "properties": {
+        "uid": "0x477F96A4B6800000",
+        "name": "ustkatav"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          148862.5,
+          -67306.984
+        ]
+      },
+      "properties": {
+        "uid": "0x46C940A4DA800001",
+        "name": "zlatoust"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          148615.0,
+          -67602.734
+        ]
+      },
+      "properties": {
+        "uid": "0x46C9DB2008800001",
+        "name": "zlatoust"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150857.1,
+          -65508.03
+        ]
+      },
+      "properties": {
+        "uid": "0x477F97C876C00000",
+        "name": "uruzan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150267.58,
+          -66960.66
+        ]
+      },
+      "properties": {
+        "uid": "0x477F980C49000000",
+        "name": "uruzan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150589.56,
+          -67238.66
+        ]
+      },
+      "properties": {
+        "uid": "0x477F98709B400000",
+        "name": "uruzan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150710.53,
+          -75797.234
+        ]
+      },
+      "properties": {
+        "uid": "0x4852F3D083C00001",
+        "name": "sysert"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150404.75,
+          -76317.33
+        ]
+      },
+      "properties": {
+        "uid": "0x48CD6A18E6800001",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150516.12,
+          -78447.516
+        ]
+      },
+      "properties": {
+        "uid": "0x48CD6A9045400000",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150604.8,
+          -77970.625
+        ]
+      },
+      "properties": {
+        "uid": "0x48CD6AD0DF400000",
+        "name": "ekat"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          148475.88,
+          -81223.22
+        ]
+      },
+      "properties": {
+        "uid": "0x4C4307F466800000",
+        "name": "berezovsky"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150786.56,
+          -82597.97
+        ]
+      },
+      "properties": {
+        "uid": "0x4E9D49BC18000001",
+        "name": "asbest"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          150035.39,
+          -83361.09
+        ]
+      },
+      "properties": {
+        "uid": "0x4E9D4A0C7C800001",
+        "name": "asbest"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          149478.12,
+          -83870.66
+        ]
+      },
+      "properties": {
+        "uid": "0x4E9D4AA0A5000000",
+        "name": "asbest"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          152983.47,
+          -49106.133
+        ]
+      },
+      "properties": {
+        "uid": "0x3EA59E5CB4800001",
+        "name": "isyang"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          152574.2,
+          -48920.37
+        ]
+      },
+      "properties": {
+        "uid": "0x3EA59ED4CA800000",
+        "name": "isyang"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          154547.9,
+          -55892.266
+        ]
+      },
+      "properties": {
+        "uid": "0x3ADAC69CEF400001",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          154614.86,
+          -55972.797
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B3A81A400000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155765.0,
+          -56468.25
+        ]
+      },
+      "properties": {
+        "uid": "0x3AD727F009C00001",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          154707.8,
+          -58762.844
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B01CCD800001",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155110.88,
+          -58934.773
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B0A039C00000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155958.1,
+          -56057.38
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B1E00BC00000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155839.45,
+          -56320.71
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B1F017400000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155323.66,
+          -56362.742
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B1F8C6400000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          154996.25,
+          -56647.227
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B2104D400000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          154835.72,
+          -57133.87
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B2243E000000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          154729.11,
+          -57486.145
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B2303D800000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          154405.69,
+          -58457.5
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B26029C00000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          154959.03,
+          -56136.04
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B39CDBC00000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          153032.53,
+          -59006.105
+        ]
+      },
+      "properties": {
+        "uid": "0x42AA6C9CB8400001",
+        "name": "beloretsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155068.03,
+          -66812.695
+        ]
+      },
+      "properties": {
+        "uid": "0x466E64347E000001",
+        "name": "miass"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          153163.55,
+          -64089.098
+        ]
+      },
+      "properties": {
+        "uid": "0x471A587CFCC00001",
+        "name": "uruzan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          152766.4,
+          -64111.965
+        ]
+      },
+      "properties": {
+        "uid": "0x477F96E8B4400000",
+        "name": "uruzan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          152942.75,
+          -64431.69
+        ]
+      },
+      "properties": {
+        "uid": "0x477F9750FAC00000",
+        "name": "uruzan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          152440.81,
+          -64703.06
+        ]
+      },
+      "properties": {
+        "uid": "0x477F978829800000",
+        "name": "uruzan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          152330.08,
+          -67140.3
+        ]
+      },
+      "properties": {
+        "uid": "0x477F98C89CC00000",
+        "name": "uruzan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          153677.39,
+          -66071.06
+        ]
+      },
+      "properties": {
+        "uid": "0x477F992C0A400000",
+        "name": "uruzan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155158.27,
+          -66108.66
+        ]
+      },
+      "properties": {
+        "uid": "0x477F99645A000000",
+        "name": "miass"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155328.88,
+          -66235.97
+        ]
+      },
+      "properties": {
+        "uid": "0x477F99F04C000000",
+        "name": "miass"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155429.47,
+          -66423.94
+        ]
+      },
+      "properties": {
+        "uid": "0x477F9A045AC00000",
+        "name": "miass"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155627.03,
+          -66530.06
+        ]
+      },
+      "properties": {
+        "uid": "0x477F9A1C0FC00000",
+        "name": "miass"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155884.34,
+          -66884.19
+        ]
+      },
+      "properties": {
+        "uid": "0x477F9A3454000000",
+        "name": "miass"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155916.25,
+          -69802.59
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF88C18400000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155566.62,
+          -70945.375
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF8C0F9000000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155585.94,
+          -71401.49
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF8D03C400000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          153951.86,
+          -70821.59
+        ]
+      },
+      "properties": {
+        "uid": "0x507B2669A9000001",
+        "name": "argayash"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155615.56,
+          -77886.57
+        ]
+      },
+      "properties": {
+        "uid": "0x5114B5B75E000001",
+        "name": "kamenskur"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          154747.72,
+          -78326.6
+        ]
+      },
+      "properties": {
+        "uid": "0x5114B5FCEA800000",
+        "name": "kamenskur"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          153539.5,
+          -82230.44
+        ]
+      },
+      "properties": {
+        "uid": "0x4E2D7F282EC00001",
+        "name": "bogdanovich"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          152158.75,
+          -81709.55
+        ]
+      },
+      "properties": {
+        "uid": "0x4E47E9B4FD800001",
+        "name": "beloyarskiy"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          155809.78,
+          -87576.45
+        ]
+      },
+      "properties": {
+        "uid": "0x56B4032493800001",
+        "name": "tumena"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159621.38,
+          -47771.184
+        ]
+      },
+      "properties": {
+        "uid": "0x3B560FC869400001",
+        "name": "gay"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159839.3,
+          -49954.965
+        ]
+      },
+      "properties": {
+        "uid": "0x3B19BFC897800000",
+        "name": "akyar"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156802.42,
+          -51512.902
+        ]
+      },
+      "properties": {
+        "uid": "0x3B7E93D45B400001",
+        "name": "baymak"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159589.28,
+          -51486.617
+        ]
+      },
+      "properties": {
+        "uid": "0x405619B894800001",
+        "name": "urgaza"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          158963.62,
+          -52981.74
+        ]
+      },
+      "properties": {
+        "uid": "0x3AF01CB453000001",
+        "name": "sibai"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157154.64,
+          -55967.562
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B18CBAC00000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156208.23,
+          -55711.34
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B1CCBA800000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156793.94,
+          -57466.086
+        ]
+      },
+      "properties": {
+        "uid": "0x3892D2B8D6400001",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159291.7,
+          -58967.95
+        ]
+      },
+      "properties": {
+        "uid": "0x38B27108BC800001",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157659.36,
+          -59142.14
+        ]
+      },
+      "properties": {
+        "uid": "0x38B2729CCB400000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156088.22,
+          -59194.69
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B0B040C00000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156845.48,
+          -59158.754
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B0C0B0800000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157528.06,
+          -58961.66
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B0D044C00000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157971.95,
+          -58677.035
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B0DCDE000000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          158189.94,
+          -58398.164
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B0F008000000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159096.7,
+          -57699.21
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B10089000000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          158736.72,
+          -57369.25
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B11C99800000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          158422.78,
+          -56964.117
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B14054000000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157731.34,
+          -56812.2
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B15008000000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157602.38,
+          -56082.53
+        ]
+      },
+      "properties": {
+        "uid": "0x3B65B17494000000",
+        "name": "magnitogorsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156237.97,
+          -58016.21
+        ]
+      },
+      "properties": {
+        "uid": "0x3CD3FF047E800001",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156200.89,
+          -57855.035
+        ]
+      },
+      "properties": {
+        "uid": "0x3CD40148DB800000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156190.58,
+          -57812.816
+        ]
+      },
+      "properties": {
+        "uid": "0x3CD4015831400000",
+        "name": "liepaja"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156113.94,
+          -61522.906
+        ]
+      },
+      "properties": {
+        "uid": "0x38E58C68EC800001",
+        "name": "verhneuralsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159205.5,
+          -67213.484
+        ]
+      },
+      "properties": {
+        "uid": "0x35E44A642EC00001",
+        "name": "uzhnouralsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156120.2,
+          -66754.586
+        ]
+      },
+      "properties": {
+        "uid": "0x477F9A6487C00000",
+        "name": "miass"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157250.97,
+          -71213.15
+        ]
+      },
+      "properties": {
+        "uid": "0x3512E5E84BC00001",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          158986.9,
+          -68188.78
+        ]
+      },
+      "properties": {
+        "uid": "0x3AE1292815000001",
+        "name": "formachevo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159826.94,
+          -70872.4
+        ]
+      },
+      "properties": {
+        "uid": "0x3F2984B466400001",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157886.66,
+          -69929.484
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF78879000000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157644.69,
+          -69670.945
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF7A0A3C00000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157342.48,
+          -69397.39
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF7D026C00000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157180.95,
+          -69929.06
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF7DC26800000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156397.66,
+          -69647.93
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF87842800000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159084.22,
+          -71661.14
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF998EE400000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159763.53,
+          -70625.234
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBFA304B400000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159427.84,
+          -70437.984
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBFA4012C00000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156241.78,
+          -72113.516
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF8F02A000000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156709.48,
+          -72720.984
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF8FCD4000000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156848.78,
+          -73147.07
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF90C4D400000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157537.78,
+          -72345.016
+        ]
+      },
+      "properties": {
+        "uid": "0x46C9DEE452400001",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159478.0,
+          -73179.08
+        ]
+      },
+      "properties": {
+        "uid": "0x531E120DDE000001",
+        "name": "miasskoe"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159684.25,
+          -78717.77
+        ]
+      },
+      "properties": {
+        "uid": "0x51C24F7F61000000",
+        "name": "shadrinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156212.84,
+          -83416.94
+        ]
+      },
+      "properties": {
+        "uid": "0x4DF231E0AE000001",
+        "name": "pyshma"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159059.62,
+          -86854.1
+        ]
+      },
+      "properties": {
+        "uid": "0x4CC8A58C6FC00001",
+        "name": "tumen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159119.34,
+          -87535.91
+        ]
+      },
+      "properties": {
+        "uid": "0x4CC8A664CC400000",
+        "name": "tumen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159350.19,
+          -86520.336
+        ]
+      },
+      "properties": {
+        "uid": "0x4CCDB44842C00001",
+        "name": "tumenr"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159311.78,
+          -86465.78
+        ]
+      },
+      "properties": {
+        "uid": "0x4CCDB4846A000000",
+        "name": "tumenv"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159154.34,
+          -86179.25
+        ]
+      },
+      "properties": {
+        "uid": "0x4CD680F830400001",
+        "name": "tumenr"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156117.25,
+          -86784.64
+        ]
+      },
+      "properties": {
+        "uid": "0x56755D203C800001",
+        "name": "tumena"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          158677.66,
+          -87092.875
+        ]
+      },
+      "properties": {
+        "uid": "0x577124D032800000",
+        "name": "tumen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          158124.52,
+          -87164.58
+        ]
+      },
+      "properties": {
+        "uid": "0x57712507BD000000",
+        "name": "tumen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          156678.06,
+          -87613.664
+        ]
+      },
+      "properties": {
+        "uid": "0x5771252106000000",
+        "name": "tumen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          159336.23,
+          -88524.58
+        ]
+      },
+      "properties": {
+        "uid": "0x4AD1A418D9C00001",
+        "name": "tumen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          157373.33,
+          -88291.05
+        ]
+      },
+      "properties": {
+        "uid": "0x5771256D1E800000",
+        "name": "tumen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          162377.88,
+          -47758.723
+        ]
+      },
+      "properties": {
+        "uid": "0x3B215C4018800000",
+        "name": "orsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          161781.31,
+          -46280.215
+        ]
+      },
+      "properties": {
+        "uid": "0x3B215C9C1D800001",
+        "name": "novotroitsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          163971.4,
+          -46902.973
+        ]
+      },
+      "properties": {
+        "uid": "0x3B24D2889D000001",
+        "name": "orsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          161115.73,
+          -47348.03
+        ]
+      },
+      "properties": {
+        "uid": "0x3B30CF1452000000",
+        "name": "orsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          161852.75,
+          -66068.72
+        ]
+      },
+      "properties": {
+        "uid": "0x3522BF3CB3000001",
+        "name": "troitsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          160676.55,
+          -67798.08
+        ]
+      },
+      "properties": {
+        "uid": "0x5695A0A002800001",
+        "name": "uvelsky"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          160008.72,
+          -71466.33
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF9D0E9000000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          160459.64,
+          -71493.2
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBF9E0AD800000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          160651.28,
+          -70982.31
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBFA1404000000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          160189.22,
+          -70826.83
+        ]
+      },
+      "properties": {
+        "uid": "0x3FFBFA2486800000",
+        "name": "chelyabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          163268.5,
+          -75677.78
+        ]
+      },
+      "properties": {
+        "uid": "0x40C3AC18F2C00001",
+        "name": "mishkino"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          160107.61,
+          -73757.91
+        ]
+      },
+      "properties": {
+        "uid": "0x40C3ADA84D800001",
+        "name": "planoviy"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          162968.66,
+          -73707.41
+        ]
+      },
+      "properties": {
+        "uid": "0x571F9B7504800001",
+        "name": "shumikha"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          160073.5,
+          -78713.12
+        ]
+      },
+      "properties": {
+        "uid": "0x5114AFACFA800000",
+        "name": "shadrinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          163799.61,
+          -79681.42
+        ]
+      },
+      "properties": {
+        "uid": "0x5114BAF27F000001",
+        "name": "kargapolie"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          160508.77,
+          -78935.766
+        ]
+      },
+      "properties": {
+        "uid": "0x51C24F10A6800000",
+        "name": "shadrinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          161284.95,
+          -83309.68
+        ]
+      },
+      "properties": {
+        "uid": "0x511E335D2D800001",
+        "name": "barkhatovo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          161134.86,
+          -81276.13
+        ]
+      },
+      "properties": {
+        "uid": "0x5158CA889F000000",
+        "name": "barkhatovo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          161951.03,
+          -80208.234
+        ]
+      },
+      "properties": {
+        "uid": "0x517443E65F800001",
+        "name": "shadrinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          162172.77,
+          -84161.65
+        ]
+      },
+      "properties": {
+        "uid": "0x4ADCB31041400001",
+        "name": "isetskoe"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          161671.47,
+          -86209.266
+        ]
+      },
+      "properties": {
+        "uid": "0x4B6E48E0EA800001",
+        "name": "chervishevo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          162368.27,
+          -86085.94
+        ]
+      },
+      "properties": {
+        "uid": "0x4B6E4A10E5400001",
+        "name": "chervishevo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          160538.28,
+          -87412.086
+        ]
+      },
+      "properties": {
+        "uid": "0x4C824F4463C00000",
+        "name": "tumen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          160406.33,
+          -89371.375
+        ]
+      },
+      "properties": {
+        "uid": "0x4C824F0CD5000000",
+        "name": "tumen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          163830.9,
+          -88388.33
+        ]
+      },
+      "properties": {
+        "uid": "0x54B4FEFFED000000",
+        "name": "bogandinsky"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          165946.97,
+          -78821.484
+        ]
+      },
+      "properties": {
+        "uid": "0x4118A0645E000001",
+        "name": "kurgan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          165511.12,
+          -79290.625
+        ]
+      },
+      "properties": {
+        "uid": "0x4167E7307D000001",
+        "name": "kurgan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          165512.33,
+          -79782.125
+        ]
+      },
+      "properties": {
+        "uid": "0x4167E788B1800000",
+        "name": "kurgan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          166905.62,
+          -79811.625
+        ]
+      },
+      "properties": {
+        "uid": "0x41AC1B9033800000",
+        "name": "kurgan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          165467.06,
+          -78430.7
+        ]
+      },
+      "properties": {
+        "uid": "0x41B2F5F4BB800001",
+        "name": "k_scania"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          165603.22,
+          -80352.49
+        ]
+      },
+      "properties": {
+        "uid": "0x41AC1A904E400000",
+        "name": "kurgan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          166144.77,
+          -80538.39
+        ]
+      },
+      "properties": {
+        "uid": "0x41AC1A9CF2C00000",
+        "name": "kurgan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          167082.05,
+          -80848.19
+        ]
+      },
+      "properties": {
+        "uid": "0x41AC1AB434400000",
+        "name": "kurgan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          167398.6,
+          -81195.98
+        ]
+      },
+      "properties": {
+        "uid": "0x41AC1ABC1C400000",
+        "name": "kurgan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          167460.16,
+          -80777.734
+        ]
+      },
+      "properties": {
+        "uid": "0x41AC1AC86C000000",
+        "name": "kurgan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          167598.97,
+          -87344.984
+        ]
+      },
+      "properties": {
+        "uid": "0x5533CA23D1800000",
+        "name": "zavodoukovsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          165500.08,
+          -88657.766
+        ]
+      },
+      "properties": {
+        "uid": "0x54B4FD6639000001",
+        "name": "yalutorovsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          171859.78,
+          -86009.42
+        ]
+      },
+      "properties": {
+        "uid": "0x48202E5850000001",
+        "name": "chastoozerie"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          170723.94,
+          -90019.16
+        ]
+      },
+      "properties": {
+        "uid": "0x540BD69F58800001",
+        "name": "golishmanovo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          172832.42,
+          -82490.03
+        ]
+      },
+      "properties": {
+        "uid": "0x4649483CE0000001",
+        "name": "makushino"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174796.88,
+          -83091.53
+        ]
+      },
+      "properties": {
+        "uid": "0x47F9BF9889800001",
+        "name": "petuhovo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          172495.12,
+          -87635.445
+        ]
+      },
+      "properties": {
+        "uid": "0x4D20428804400001",
+        "name": "berduzhie"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          172774.28,
+          -87850.56
+        ]
+      },
+      "properties": {
+        "uid": "0x4D2042C40DC00000",
+        "name": "berduzhie"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173339.84,
+          -90104.695
+        ]
+      },
+      "properties": {
+        "uid": "0x4E918318F8C00001",
+        "name": "ishim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173253.62,
+          -91256.83
+        ]
+      },
+      "properties": {
+        "uid": "0x4EA2E658A5800000",
+        "name": "ishim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173579.25,
+          -91854.18
+        ]
+      },
+      "properties": {
+        "uid": "0x4F48840CFD000000",
+        "name": "ishim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173859.3,
+          -90816.19
+        ]
+      },
+      "properties": {
+        "uid": "0x4F48845CA0400000",
+        "name": "ishim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          175372.97,
+          -88915.63
+        ]
+      },
+      "properties": {
+        "uid": "0x618011EF57000001",
+        "name": "kazanskoe"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          174554.98,
+          -92089.984
+        ]
+      },
+      "properties": {
+        "uid": "0x4DD91D8C8D400001",
+        "name": "ishim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          173389.97,
+          -92840.766
+        ]
+      },
+      "properties": {
+        "uid": "0x545033448C000001",
+        "name": "ishim2"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          175179.06,
+          -94640.875
+        ]
+      },
+      "properties": {
+        "uid": "0x58B55683CC800001",
+        "name": "abatskoe"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          176086.88,
+          -82648.3
+        ]
+      },
+      "properties": {
+        "uid": "0x579CF74C36800001",
+        "name": "mamlut"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          179731.53,
+          -85591.7
+        ]
+      },
+      "properties": {
+        "uid": "0x606E45630F000001",
+        "name": "petropavl"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          179562.42,
+          -87011.86
+        ]
+      },
+      "properties": {
+        "uid": "0x606E472C18000001",
+        "name": "petropavl"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          179571.3,
+          -96556.22
+        ]
+      },
+      "properties": {
+        "uid": "0x58B55E63A9800001",
+        "name": "krutinka"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          183385.4,
+          -89919.18
+        ]
+      },
+      "properties": {
+        "uid": "0x5BEF52EBDF800001",
+        "name": "isilkul"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          182451.39,
+          -97671.61
+        ]
+      },
+      "properties": {
+        "uid": "0x58B55F04A2800001",
+        "name": "tukalinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          184335.34,
+          -91795.36
+        ]
+      },
+      "properties": {
+        "uid": "0x5BEF515EC1800001",
+        "name": "moskalenky"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          189250.33,
+          -95251.92
+        ]
+      },
+      "properties": {
+        "uid": "0x5BEF4F670C800001",
+        "name": "luzino"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          190832.8,
+          -94460.195
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20A39D1800001",
+        "name": "omsk2"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          190344.53,
+          -94566.21
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20A9D31000000",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          191022.12,
+          -94845.92
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20B159B000000",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          191537.61,
+          -95327.75
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20B4F2C800000",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          189787.8,
+          -99033.016
+        ]
+      },
+      "properties": {
+        "uid": "0x58B5612EE8000001",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          192117.03,
+          -95662.38
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20B6B0A800000",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          192371.22,
+          -96236.37
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20BACBB000000",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          192524.23,
+          -96786.3
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20BCE88000000",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          192851.64,
+          -97252.875
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20BF9A9800000",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          193182.44,
+          -97667.34
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20C1325000000",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          193844.9,
+          -98328.99
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20C4C77000000",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          194370.4,
+          -98338.055
+        ]
+      },
+      "properties": {
+        "uid": "0x62C20C7678800000",
+        "name": "omsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          193766.67,
+          -103028.42
+        ]
+      },
+      "properties": {
+        "uid": "0x638F502417000001",
+        "name": "kalachinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          194397.47,
+          -102963.81
+        ]
+      },
+      "properties": {
+        "uid": "0x6486B2B2D5800001",
+        "name": "kalachinsk2"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          194596.47,
+          -103168.2
+        ]
+      },
+      "properties": {
+        "uid": "0x6486B4677C000001",
+        "name": "kalachinsk3"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          194662.1,
+          -105820.21
+        ]
+      },
+      "properties": {
+        "uid": "0x6355358152800001",
+        "name": "tatarsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          196148.38,
+          -107450.16
+        ]
+      },
+      "properties": {
+        "uid": "0x643D8AC3C4000001",
+        "name": "chany"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          196718.77,
+          -107981.09
+        ]
+      },
+      "properties": {
+        "uid": "0x64422A3DF9000001",
+        "name": "ozerokarachi"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          197841.47,
+          -109963.62
+        ]
+      },
+      "properties": {
+        "uid": "0x6355344615000001",
+        "name": "barabinsk"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          1849.2383,
+          6498.6797
+        ]
+      },
+      "properties": {
+        "uid": "0x49CE229801CF10DA",
+        "name": "nurnberg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          956.3711,
+          5098.6055
+        ]
+      },
+      "properties": {
+        "uid": "0x4AED3808666C0A84",
+        "name": "nurnberg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          1664.7148,
+          7847.8203
+        ]
+      },
+      "properties": {
+        "uid": "0x4B0EDD58B96C0E05",
+        "name": "nurnberg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          512.3672,
+          4815.4844
+        ]
+      },
+      "properties": {
+        "uid": "0x4BBD5980D02C0000",
+        "name": "nurnberg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3977.4023,
+          13228.512
+        ]
+      },
+      "properties": {
+        "uid": "0x573123A56E8F15DD",
+        "name": "munchen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3782.2344,
+          14627.109
+        ]
+      },
+      "properties": {
+        "uid": "0x573123A5770F024F",
+        "name": "munchen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2594.5,
+          13185.008
+        ]
+      },
+      "properties": {
+        "uid": "0x573123A5F00F0A59",
+        "name": "munchen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          1425.2109,
+          18967.719
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29DCDF8F1A65",
+        "name": "innsbruck"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2510.9531,
+          19582.555
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29DCEDCF2051",
+        "name": "innsbruck"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          39.109375,
+          29433.324
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE37D07B68",
+        "name": "verona"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2824.1758,
+          -2032.9492
+        ]
+      },
+      "properties": {
+        "uid": "0x49CDB580784F07D3",
+        "name": "erfurt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          1612.1133,
+          -2940.7617
+        ]
+      },
+      "properties": {
+        "uid": "0x49CDB5808C0F06E4",
+        "name": "erfurt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2798.8945,
+          -7426.0625
+        ]
+      },
+      "properties": {
+        "uid": "0x54CE4BDF048F0B68",
+        "name": "magdeburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          1267.0586,
+          -15050.891
+        ]
+      },
+      "properties": {
+        "uid": "0x4CEAF944D5330001",
+        "name": "winsen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3057.457,
+          -19172.871
+        ]
+      },
+      "properties": {
+        "uid": "0x4CD14DE48CE67933",
+        "name": "travemunde"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          1137.4805,
+          -21609.145
+        ]
+      },
+      "properties": {
+        "uid": "0x4CD14DE429A65124",
+        "name": "kiel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          7493.59,
+          19209.375
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29DC694F573E",
+        "name": "salzburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          7538.0938,
+          18605.36
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29DCDA8F51F3",
+        "name": "salzburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          5089.883,
+          30058.93
+        ]
+      },
+      "properties": {
+        "uid": "0x013F019060000018",
+        "name": "venezia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          7116.6562,
+          -2735.496
+        ]
+      },
+      "properties": {
+        "uid": "0x5731AB8AB38FCBAF",
+        "name": "leipzig"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          7000.5195,
+          -3592.1016
+        ]
+      },
+      "properties": {
+        "uid": "0x5731AB8BA88FC199",
+        "name": "leipzig"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6201.215,
+          -3696.8008
+        ]
+      },
+      "properties": {
+        "uid": "0x5731AB8BB28FBB96",
+        "name": "leipzig"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6511.258,
+          -4133.5547
+        ]
+      },
+      "properties": {
+        "uid": "0x5731AB8A028F0776",
+        "name": "leipzig"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          7091.7227,
+          -4016.543
+        ]
+      },
+      "properties": {
+        "uid": "0x5731AB8B190F093C",
+        "name": "leipzig"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4798.789,
+          -4855.246
+        ]
+      },
+      "properties": {
+        "uid": "0x573E229E588F0001",
+        "name": "leipzig"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4449.2383,
+          -8186.25
+        ]
+      },
+      "properties": {
+        "uid": "0x54CE4BDD848F0F3C",
+        "name": "magdeburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4409.9414,
+          -9125.066
+        ]
+      },
+      "properties": {
+        "uid": "0x54CE85A1930F0001",
+        "name": "magdeburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6554.91,
+          -19032.887
+        ]
+      },
+      "properties": {
+        "uid": "0x4CD14DE43C66A480",
+        "name": "rostock"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4039.1719,
+          -18848.938
+        ]
+      },
+      "properties": {
+        "uid": "0x4CD14DE453E68892",
+        "name": "travemunde"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          6271.1055,
+          -22020.328
+        ]
+      },
+      "properties": {
+        "uid": "0x01051F2869A1002A",
+        "name": "gedser"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          5985.5,
+          -22715.719
+        ]
+      },
+      "properties": {
+        "uid": "0x03B69687DF1B0001",
+        "name": "gedser"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          7131.9453,
+          -20568.68
+        ]
+      },
+      "properties": {
+        "uid": "0x4CD14DE487E6B9AB",
+        "name": "rostock"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4390.914,
+          -53430.543
+        ]
+      },
+      "properties": {
+        "uid": "0x026265CA0176005B",
+        "name": "oslo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          5623.074,
+          -52558.79
+        ]
+      },
+      "properties": {
+        "uid": "0x03A810C30A410001",
+        "name": "oslo"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          11051.09,
+          2276.8555
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEF1B048AE",
+        "name": "prague"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          9591.578,
+          14541.25
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29DC3D0F6AFA",
+        "name": "salzburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          9344.8125,
+          15156.371
+        ]
+      },
+      "properties": {
+        "uid": "0x438FB608862A0000",
+        "name": "salzburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          9146.371,
+          16019.605
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29DC2C8F5195",
+        "name": "salzburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          10585.668,
+          19915.574
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29DCD6CF83E6",
+        "name": "salzburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          9583.32,
+          22516.34
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29DC7A0FB454",
+        "name": "klagenfurt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          9432.207,
+          20900.43
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29DCBF8F8E06",
+        "name": "klagenfurt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          10593.785,
+          27546.762
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCA8460C23",
+        "name": "trieste"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          11233.906,
+          29436.66
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCC0FC614B5",
+        "name": "koper"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          11634.922,
+          -1861.875
+        ]
+      },
+      "properties": {
+        "uid": "0x5731AB8B698F7A33",
+        "name": "dresden"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          10711.699,
+          -2227.789
+        ]
+      },
+      "properties": {
+        "uid": "0x573E21B41A0F0001",
+        "name": "dresden"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          11228.738,
+          -10046.09
+        ]
+      },
+      "properties": {
+        "uid": "0x5731AB88978FA447",
+        "name": "berlin"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          10070.25,
+          -9794.414
+        ]
+      },
+      "properties": {
+        "uid": "0x5731AB8A850F2AA7",
+        "name": "berlin"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          11234.828,
+          -11179.355
+        ]
+      },
+      "properties": {
+        "uid": "0x5731AB8B8A0F9A4D",
+        "name": "berlin"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14299.707,
+          3958.9727
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE1A504D2F",
+        "name": "prague"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15578.039,
+          1784.3672
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEA970BF8F",
+        "name": "prague"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14833.3125,
+          13705.77
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0130F4A46",
+        "name": "linz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13636.391,
+          13905.488
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0EFCF332E",
+        "name": "linz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14513.152,
+          15085.16
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0F84F1A9D",
+        "name": "linz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15598.164,
+          17384.25
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0030FE769",
+        "name": "graz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14047.105,
+          23287.672
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29DC3F0FAB7A",
+        "name": "klagenfurt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15470.723,
+          22650.145
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0C28F3AA4",
+        "name": "klagenfurt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15398.098,
+          25945.21
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCC21463966",
+        "name": "ljubljana"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14690.762,
+          26742.523
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCC64639DA",
+        "name": "ljubljana"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          12727.258,
+          24280.328
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCD403461E05",
+        "name": "ljubljana"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          12042.07,
+          26905.21
+        ]
+      },
+      "properties": {
+        "uid": "0x4DB389E44B060001",
+        "name": "trieste"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15524.949,
+          29257.258
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCD546125F",
+        "name": "rijeka"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14366.27,
+          30216.262
+        ]
+      },
+      "properties": {
+        "uid": "0x4CDF99EC1967043B",
+        "name": "rijeka"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          12058.4375,
+          28023.832
+        ]
+      },
+      "properties": {
+        "uid": "0x4DB38A940B060000",
+        "name": "trieste"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          12725.398,
+          -9846.473
+        ]
+      },
+      "properties": {
+        "uid": "0x5731AB8B658F8F7C",
+        "name": "berlin"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          15052.66,
+          -15069.766
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE4B30322C",
+        "name": "szczecin"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          16068.648,
+          14793.57
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0080F5166",
+        "name": "linz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17024.05,
+          18361.32
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0A68F6025",
+        "name": "graz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17949.766,
+          19204.363
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0BA4F70EA",
+        "name": "graz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18938.812,
+          20984.137
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E01ECF8566",
+        "name": "graz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          17818.434,
+          21449.816
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E04A4F7CFE",
+        "name": "graz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18665.082,
+          20391.824
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0ABCF81BC",
+        "name": "graz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          18694.504,
+          23190.309
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCA1C61572",
+        "name": "maribor"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          22068.957,
+          1327.0117
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE0C7048B0",
+        "name": "wroclaw"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          21976.219,
+          9955.59
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE50103F1F",
+        "name": "brno"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          22273.84,
+          8944.949
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE68503F89",
+        "name": "brno"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          20840.363,
+          8061.6055
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE74204CBF",
+        "name": "brno"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          20504.984,
+          11854.41
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E06F4F9B15",
+        "name": "wien"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          22038.758,
+          15952.102
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0A68FCA82",
+        "name": "wien"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          20824.758,
+          13966.031
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0A74F9CA0",
+        "name": "wien"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          20951.137,
+          16498.098
+        ]
+      },
+      "properties": {
+        "uid": "0x42BF29E0934F91A0",
+        "name": "wien"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          22472.02,
+          -663.5
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE2B706A81",
+        "name": "wroclaw"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          23502.898,
+          -1970.9805
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE5ED0343F",
+        "name": "wroclaw"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          22863.402,
+          -9132.199
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE15003316",
+        "name": "poznan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          21907.387,
+          -55809.55
+        ]
+      },
+      "properties": {
+        "uid": "0x5502A155BE180001",
+        "name": "gavle"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          24710.402,
+          12104.43
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE15B0C2A7",
+        "name": "bratislava"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          24823.297,
+          14811.02
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE91E03DDF",
+        "name": "bratislava"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          24082.195,
+          -10230.0
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DFA920F2A2",
+        "name": "poznan"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          24017.145,
+          -52175.723
+        ]
+      },
+      "properties": {
+        "uid": "0x5A28AA344CA00001",
+        "name": "uppsala"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          31042.582,
+          29642.418
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCBC06084B",
+        "name": "osijek"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          31379.555,
+          28698.71
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCD4C60E8E",
+        "name": "osijek"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          35945.64,
+          24458.04
+        ]
+      },
+      "properties": {
+        "uid": "0x014FF8EDA21000F7",
+        "name": "szeged"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          35038.234,
+          27512.082
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCD0EEC64763",
+        "name": "novi_sad"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          36880.72,
+          24545.7
+        ]
+      },
+      "properties": {
+        "uid": "0x0142EB1DDD100018",
+        "name": "szeged"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          43990.36,
+          29134.582
+        ]
+      },
+      "properties": {
+        "uid": "0x2C74B6FCBD160001",
+        "name": "resita"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          40798.812,
+          28989.7
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCC0C60CC3",
+        "name": "beograd"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          42085.605,
+          30234.133
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCCA060767",
+        "name": "beograd"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          40443.95,
+          30122.922
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCD8DA86A533",
+        "name": "beograd"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          40293.93,
+          -23627.305
+        ]
+      },
+      "properties": {
+        "uid": "0x2738E91C4BC10001",
+        "name": "kaliningrad"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          45505.96,
+          36170.55
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCC80460142",
+        "name": "kragujevac"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          46703.21,
+          39660.418
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCA7C61334",
+        "name": "nis"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          45301.258,
+          39644.18
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCBC06158E",
+        "name": "nis"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          46230.11,
+          40325.754
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCC9D0602E4",
+        "name": "nis"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          45138.33,
+          43948.55
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCD4F9C64319",
+        "name": "nis"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          45663.895,
+          47198.33
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCC06C6131C",
+        "name": "skopje"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          45069.074,
+          52764.633
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCC54C60C2E",
+        "name": "bitola"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          44082.812,
+          52820.508
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCCCA2C620D2",
+        "name": "bitola"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          45488.117,
+          52294.543
+        ]
+      },
+      "properties": {
+        "uid": "0x4A12BCD45446734A",
+        "name": "bitola"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          45080.887,
+          52213.754
+        ]
+      },
+      "properties": {
+        "uid": "0x4D591080812F0000",
+        "name": "bitola"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          48776.25,
+          -60428.95
+        ]
+      },
+      "properties": {
+        "uid": "0x219D99CC68070000",
+        "name": "kouvola"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          49863.887,
+          -60658.594
+        ]
+      },
+      "properties": {
+        "uid": "0x26CE07981E8A0001",
+        "name": "kouvola"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          51044.652,
+          -62215.465
+        ]
+      },
+      "properties": {
+        "uid": "0x594BD36F33A00001",
+        "name": "lappeenranta"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          54465.266,
+          -60241.81
+        ]
+      },
+      "properties": {
+        "uid": "0x219D99B072070000",
+        "name": "vyborg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          55547.914,
+          -61386.086
+        ]
+      },
+      "properties": {
+        "uid": "0x243BC50057C60000",
+        "name": "vyborg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          52869.613,
+          -61911.08
+        ]
+      },
+      "properties": {
+        "uid": "0x4F72913590370100",
+        "name": "lappeenranta"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          52720.695,
+          -63252.15
+        ]
+      },
+      "properties": {
+        "uid": "0x4F7291376DB70594",
+        "name": "lappeenranta"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          54037.996,
+          -62406.8
+        ]
+      },
+      "properties": {
+        "uid": "0x4F729137E4B70374",
+        "name": "lappeenranta"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          59264.96,
+          51741.277
+        ]
+      },
+      "properties": {
+        "uid": "0x52C03083BF065FC0",
+        "name": "kavala"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56422.08,
+          -42888.387
+        ]
+      },
+      "properties": {
+        "uid": "0x26FE9C9843490000",
+        "name": "pskov"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56968.324,
+          -44022.367
+        ]
+      },
+      "properties": {
+        "uid": "0x219D98B4ABC70000",
+        "name": "pskov"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58295.883,
+          -44580.418
+        ]
+      },
+      "properties": {
+        "uid": "0x26DEE88CBE090001",
+        "name": "pskov"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          57568.01,
+          -44983.164
+        ]
+      },
+      "properties": {
+        "uid": "0x26DEE978F8090000",
+        "name": "pskov"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60123.348,
+          51776.13
+        ]
+      },
+      "properties": {
+        "uid": "0x52C03083438658F0",
+        "name": "kavala"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60046.453,
+          -50065.168
+        ]
+      },
+      "properties": {
+        "uid": "0x219D990494070000",
+        "name": "luga"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60139.88,
+          -51164.645
+        ]
+      },
+      "properties": {
+        "uid": "0x267F4B080C410001",
+        "name": "luga"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          63988.223,
+          -51856.65
+        ]
+      },
+      "properties": {
+        "uid": "0x348D1F9C950A0001",
+        "name": "v_novgorod"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          61549.605,
+          -54978.14
+        ]
+      },
+      "properties": {
+        "uid": "0x29676FF8268D03D7",
+        "name": "petersburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60844.633,
+          -56794.68
+        ]
+      },
+      "properties": {
+        "uid": "0x26BA267CFB860000",
+        "name": "petersburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          61557.227,
+          -57331.707
+        ]
+      },
+      "properties": {
+        "uid": "0x26BA28B429060000",
+        "name": "petersburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          62621.33,
+          -57804.684
+        ]
+      },
+      "properties": {
+        "uid": "0x26BA2AC09DC60000",
+        "name": "petersburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          63804.707,
+          -58244.266
+        ]
+      },
+      "properties": {
+        "uid": "0x26BA2B84DF460000",
+        "name": "petersburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          65919.875,
+          -59661.957
+        ]
+      },
+      "properties": {
+        "uid": "0x348D21949D0A0001",
+        "name": "volkhov"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          65984.484,
+          -58634.176
+        ]
+      },
+      "properties": {
+        "uid": "0x3D3D6AEC96CA0000",
+        "name": "volkhov"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          65064.965,
+          -58514.46
+        ]
+      },
+      "properties": {
+        "uid": "0x3D3D6B54A64A0000",
+        "name": "volkhov"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          64572.18,
+          -56595.73
+        ]
+      },
+      "properties": {
+        "uid": "0x3DE08B24E4160000",
+        "name": "kirishi"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          65738.81,
+          -56543.75
+        ]
+      },
+      "properties": {
+        "uid": "0x420FBBA887D60AC6",
+        "name": "kirishi"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -1332.1328,
+          27936.688
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE3B207E2C",
+        "name": "verona"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -539.5078,
+          31465.379
+        ]
+      },
+      "properties": {
+        "uid": "0x07A0AF909BEB0000",
+        "name": "suzzara"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -3419.832,
+          -3747.418
+        ]
+      },
+      "properties": {
+        "uid": "0x54CE36001D8F27EB",
+        "name": "kassel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -2149.3555,
+          -3435.0898
+        ]
+      },
+      "properties": {
+        "uid": "0x54CE82BA2F0F0001",
+        "name": "kassel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -2003.6211,
+          -9085.238
+        ]
+      },
+      "properties": {
+        "uid": "0x456B66B00E6C2F1A",
+        "name": "hannover"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -1635.4961,
+          -10301.25
+        ]
+      },
+      "properties": {
+        "uid": "0x456B66B01A2C3680",
+        "name": "hannover"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -740.8281,
+          -9610.68
+        ]
+      },
+      "properties": {
+        "uid": "0x456B66B074AC2122",
+        "name": "hannover"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -146.20703,
+          -8880.602
+        ]
+      },
+      "properties": {
+        "uid": "0x456B66B0E6AC2257",
+        "name": "hannover"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -2693.8594,
+          -13278.176
+        ]
+      },
+      "properties": {
+        "uid": "0x54CE8843B70F0001",
+        "name": "bremen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -1689.9375,
+          -16355.496
+        ]
+      },
+      "properties": {
+        "uid": "0x4CD14DE4EDA60388",
+        "name": "hamburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -5583.6133,
+          2497.1719
+        ]
+      },
+      "properties": {
+        "uid": "0x49CE0DE45FCF190D",
+        "name": "frankfurt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -7901.418,
+          3289.1172
+        ]
+      },
+      "properties": {
+        "uid": "0x49CE0DE4EFCF0EB8",
+        "name": "frankfurt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -7840.4805,
+          6897.6953
+        ]
+      },
+      "properties": {
+        "uid": "0x573D1A1CF22C1CEF",
+        "name": "mannheim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -7936.7383,
+          5981.176
+        ]
+      },
+      "properties": {
+        "uid": "0x573D1A1E832C0B76",
+        "name": "mannheim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -5853.164,
+          7759.4297
+        ]
+      },
+      "properties": {
+        "uid": "0x573D1A1ECEAC0F37",
+        "name": "mannheim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6726.715,
+          6890.2773
+        ]
+      },
+      "properties": {
+        "uid": "0x59D4BD5FB32C0000",
+        "name": "mannheim"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -4725.125,
+          11656.691
+        ]
+      },
+      "properties": {
+        "uid": "0x49CDD6B4250F2EE0",
+        "name": "stuttgart"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -4636.6523,
+          10039.008
+        ]
+      },
+      "properties": {
+        "uid": "0x49CDD6B4428F24C7",
+        "name": "stuttgart"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -4810.8984,
+          21024.805
+        ]
+      },
+      "properties": {
+        "uid": "0x4E41131CDF4F02C8",
+        "name": "zurich"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -7363.4766,
+          27550.684
+        ]
+      },
+      "properties": {
+        "uid": "0x07A9D40C2C2B0010",
+        "name": "milano"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -5152.078,
+          29546.008
+        ]
+      },
+      "properties": {
+        "uid": "0x076E863436B60000",
+        "name": "milano"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -6816.4453,
+          29418.688
+        ]
+      },
+      "properties": {
+        "uid": "0x076E8717D0A60000",
+        "name": "milano"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -4452.258,
+          32244.836
+        ]
+      },
+      "properties": {
+        "uid": "0x07794BF639BB0001",
+        "name": "parma"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -7015.8086,
+          55215.53
+        ]
+      },
+      "properties": {
+        "uid": "0x2C4FBD9C7A870000",
+        "name": "olbia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -7930.883,
+          -9765.773
+        ]
+      },
+      "properties": {
+        "uid": "0x54CE5D90578F0DE2",
+        "name": "osnabruck"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -5184.582,
+          -14038.434
+        ]
+      },
+      "properties": {
+        "uid": "0x54CE15892E0F0B31",
+        "name": "bremen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -4911.3086,
+          -16802.484
+        ]
+      },
+      "properties": {
+        "uid": "0x54CE15887B0F1ECC",
+        "name": "bremen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -5491.5,
+          -17060.438
+        ]
+      },
+      "properties": {
+        "uid": "0x54CE1588930F1B21",
+        "name": "bremen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -8635.547,
+          3360.293
+        ]
+      },
+      "properties": {
+        "uid": "0x49CE0DE4280F0647",
+        "name": "frankfurt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -8442.77,
+          3657.5938
+        ]
+      },
+      "properties": {
+        "uid": "0x49CE0DE431CF0844",
+        "name": "frankfurt"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -10786.945,
+          11178.672
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEBAD04393",
+        "name": "strasbourg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -9210.43,
+          14786.699
+        ]
+      },
+      "properties": {
+        "uid": "0x4E4113209D0F095F",
+        "name": "zurich"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -9250.246,
+          16252.895
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411320664F0FE0",
+        "name": "zurich"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -8744.934,
+          17623.09
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411320BB0F4A66",
+        "name": "zurich"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -9649.223,
+          18544.473
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411320C48F57B7",
+        "name": "zurich"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -11173.922,
+          23663.055
+        ]
+      },
+      "properties": {
+        "uid": "0x4E41132468CF080E",
+        "name": "bern"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -8389.516,
+          28873.242
+        ]
+      },
+      "properties": {
+        "uid": "0x0778D0AE95F60000",
+        "name": "milano"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -9161.695,
+          28285.7
+        ]
+      },
+      "properties": {
+        "uid": "0x0778D0CCDEB60000",
+        "name": "milano"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -8032.254,
+          35376.1
+        ]
+      },
+      "properties": {
+        "uid": "0x076E9D6BFB9B0001",
+        "name": "genova"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -11553.789,
+          55189.49
+        ]
+      },
+      "properties": {
+        "uid": "0x2C4FADE0DFC70000",
+        "name": "sassari"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -11178.531,
+          55319.16
+        ]
+      },
+      "properties": {
+        "uid": "0x2C4FB09CD0470000",
+        "name": "sassari"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -10565.125,
+          55551.594
+        ]
+      },
+      "properties": {
+        "uid": "0x2C4FB21CE5070000",
+        "name": "sassari"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -8248.746,
+          53172.293
+        ]
+      },
+      "properties": {
+        "uid": "0x2C4FBC04BE870000",
+        "name": "olbia"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -8469.77,
+          52234.94
+        ]
+      },
+      "properties": {
+        "uid": "0x2F99EB34DD070001",
+        "name": "bonifacio"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -10883.449,
+          -6398.832
+        ]
+      },
+      "properties": {
+        "uid": "0x4E20E168D84F23C1",
+        "name": "dortmund"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -9247.227,
+          -12720.352
+        ]
+      },
+      "properties": {
+        "uid": "0x456B2570E7D102BC",
+        "name": "werlte"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -14644.66,
+          13297.5
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE17205F32",
+        "name": "strasbourg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -13721.02,
+          19762.488
+        ]
+      },
+      "properties": {
+        "uid": "0x4E4113204F4F6D43",
+        "name": "bern"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -12303.961,
+          20468.105
+        ]
+      },
+      "properties": {
+        "uid": "0x4E4113208B8F7146",
+        "name": "bern"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -13160.406,
+          22643.336
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411324418F3500",
+        "name": "bern"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -12697.25,
+          30912.008
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411320B40FF83F",
+        "name": "torino"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -12337.73,
+          29306.363
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411320F44FC09B",
+        "name": "torino"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -12291.277,
+          54583.848
+        ]
+      },
+      "properties": {
+        "uid": "0x2C4FACBCDD070000",
+        "name": "sassari"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -12548.582,
+          -2454.2422
+        ]
+      },
+      "properties": {
+        "uid": "0x4E20E164148F26F0",
+        "name": "koln"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -13576.793,
+          -4618.6914
+        ]
+      },
+      "properties": {
+        "uid": "0x4E20E164360F3F5B",
+        "name": "dusseldorf"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -13801.535,
+          -6486.6406
+        ]
+      },
+      "properties": {
+        "uid": "0x4E20E1685ACF0CD3",
+        "name": "duisburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -14134.91,
+          -7936.828
+        ]
+      },
+      "properties": {
+        "uid": "0x4E20E168BB0F1059",
+        "name": "duisburg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -12386.598,
+          -4351.1094
+        ]
+      },
+      "properties": {
+        "uid": "0x4ECF58B4C4AA0000",
+        "name": "dusseldorf"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -12662.059,
+          -15720.68
+        ]
+      },
+      "properties": {
+        "uid": "0x574DC28C54110209",
+        "name": "groningen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -13913.578,
+          -15712.34
+        ]
+      },
+      "properties": {
+        "uid": "0x59BA6114AFAA0001",
+        "name": "groningen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -15642.1875,
+          -15677.77
+        ]
+      },
+      "properties": {
+        "uid": "0x59BA61BA592A0000",
+        "name": "groningen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -13929.289,
+          -12366.953
+        ]
+      },
+      "properties": {
+        "uid": "0x5B272FC992020001",
+        "name": "groningen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -15706.695,
+          -13467.078
+        ]
+      },
+      "properties": {
+        "uid": "0x5DAA4CD3691A00AF",
+        "name": "groningen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -16345.3125,
+          3645.3008
+        ]
+      },
+      "properties": {
+        "uid": "0x574DDFABA3110393",
+        "name": "luxembourg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -17109.293,
+          700.40234
+        ]
+      },
+      "properties": {
+        "uid": "0x59BA6914FD450001",
+        "name": "liege"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -19721.254,
+          1465.7344
+        ]
+      },
+      "properties": {
+        "uid": "0x59BA70F0ECC50001",
+        "name": "liege"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -17033.215,
+          2735.0078
+        ]
+      },
+      "properties": {
+        "uid": "0x5B226EED10820001",
+        "name": "luxembourg"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -17392.777,
+          6803.254
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE3BB0634F",
+        "name": "metz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -16294.5,
+          7443.715
+        ]
+      },
+      "properties": {
+        "uid": "0x34188D7839010000",
+        "name": "metz"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -16286.957,
+          19727.012
+        ]
+      },
+      "properties": {
+        "uid": "0x4E4113205A0F5E6F",
+        "name": "bern"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -18246.879,
+          22933.566
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411320574F89BE",
+        "name": "geneve"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -16215.719,
+          22253.672
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411320B7CF997F",
+        "name": "geneve"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -17433.754,
+          23839.098
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411320EC8FEBC6",
+        "name": "geneve"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -18910.96,
+          24031.152
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411320F9CFA2A1",
+        "name": "geneve"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -17144.406,
+          -864.0664
+        ]
+      },
+      "properties": {
+        "uid": "0x574DDD82A7110BBD",
+        "name": "liege"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -17554.516,
+          -6888.133
+        ]
+      },
+      "properties": {
+        "uid": "0x574DD7C761110179",
+        "name": "eindhoven"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -16867.488,
+          -7093.8164
+        ]
+      },
+      "properties": {
+        "uid": "0x5A1EB2DFCAAA0000",
+        "name": "eindhoven"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -16658.957,
+          -6101.465
+        ]
+      },
+      "properties": {
+        "uid": "0x5B226D64B5020001",
+        "name": "eindhoven"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -18991.98,
+          -9475.926
+        ]
+      },
+      "properties": {
+        "uid": "0x574DCC1772910483",
+        "name": "rotterdam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -18113.375,
+          -11372.145
+        ]
+      },
+      "properties": {
+        "uid": "0x582F28F57D020000",
+        "name": "amsterdam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -18813.582,
+          -11294.512
+        ]
+      },
+      "properties": {
+        "uid": "0x582F29AB63820000",
+        "name": "amsterdam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -19042.082,
+          -11328.297
+        ]
+      },
+      "properties": {
+        "uid": "0x58B2DE6BB6820000",
+        "name": "amsterdam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -16784.727,
+          -10958.922
+        ]
+      },
+      "properties": {
+        "uid": "0x5B212FBB23820001",
+        "name": "amsterdam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -18618.227,
+          -12202.73
+        ]
+      },
+      "properties": {
+        "uid": "0x574DFA1D7F91030B",
+        "name": "amsterdam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -21634.25,
+          2990.9883
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE82C0590F",
+        "name": "reims"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -22520.254,
+          5514.2305
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DED5F0586A",
+        "name": "reims"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -23971.957,
+          6067.207
+        ]
+      },
+      "properties": {
+        "uid": "0x06DD15F786E10000",
+        "name": "reims"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -21000.238,
+          17222.422
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE78305E2E",
+        "name": "dijon"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -22470.027,
+          16635.5
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEDEC05DAC",
+        "name": "dijon"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -23877.828,
+          25558.027
+        ]
+      },
+      "properties": {
+        "uid": "0x40C8C804640F249C",
+        "name": "lyon"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -22226.371,
+          25750.477
+        ]
+      },
+      "properties": {
+        "uid": "0x40C8C80485CF1175",
+        "name": "lyon"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -22842.254,
+          25797.594
+        ]
+      },
+      "properties": {
+        "uid": "0x40C8C804B80F109B",
+        "name": "lyon"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -21243.887,
+          26426.29
+        ]
+      },
+      "properties": {
+        "uid": "0x4E411320740F7BB8",
+        "name": "lyon"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -22100.25,
+          -2435.1484
+        ]
+      },
+      "properties": {
+        "uid": "0x574DEBDB7D9100ED",
+        "name": "brussel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -22864.078,
+          -6198.914
+        ]
+      },
+      "properties": {
+        "uid": "0x574DEDEE109101F8",
+        "name": "antwerp"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -23639.414,
+          -7652.6445
+        ]
+      },
+      "properties": {
+        "uid": "0x5844F83735C10001",
+        "name": "rotterdam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -21700.676,
+          -5700.7656
+        ]
+      },
+      "properties": {
+        "uid": "0x605C790A85330001",
+        "name": "antwerp"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -22081.82,
+          -9311.363
+        ]
+      },
+      "properties": {
+        "uid": "0x61CD711ACFB30000",
+        "name": "rotterdam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -20186.246,
+          -8930.078
+        ]
+      },
+      "properties": {
+        "uid": "0x61CD809097330001",
+        "name": "rotterdam"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -24054.766,
+          5660.1406
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEBF304C28",
+        "name": "reims"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -27817.035,
+          4837.742
+        ]
+      },
+      "properties": {
+        "uid": "0x054915D964E10001",
+        "name": "paris"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -24395.785,
+          23895.059
+        ]
+      },
+      "properties": {
+        "uid": "0x40C8C804B30F1A8A",
+        "name": "lyon"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -26539.39,
+          -2480.2812
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE35A04E43",
+        "name": "lille"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -30427.348,
+          6866.199
+        ]
+      },
+      "properties": {
+        "uid": "0x054913A897D10001",
+        "name": "paris"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -29527.05,
+          5130.16
+        ]
+      },
+      "properties": {
+        "uid": "0x054914A3E7110000",
+        "name": "paris"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -30340.402,
+          -5005.6406
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE36E08520",
+        "name": "calais"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -31664.559,
+          -13857.219
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE9040A233",
+        "name": "felixstowe"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -32234.176,
+          5001.7734
+        ]
+      },
+      "properties": {
+        "uid": "0x064728FA49950119",
+        "name": "paris"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -33321.95,
+          -7904.3555
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEC7E0A983",
+        "name": "dover"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -32531.434,
+          -7299.0703
+        ]
+      },
+      "properties": {
+        "uid": "0x026265508ED60055",
+        "name": "dover"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -32721.988,
+          -13000.699
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE7710B71F",
+        "name": "harwich"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -35761.81,
+          -29075.922
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE4ED0BE84",
+        "name": "hull"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -39546.867,
+          -11584.215
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEDA109B05",
+        "name": "london"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -36822.688,
+          -16139.398
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE53B09738",
+        "name": "cambridge"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -36117.9,
+          -26595.184
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEDDA0B2E1",
+        "name": "grimsby"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -38348.0,
+          -39558.68
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE07E0B19D",
+        "name": "newcastle"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -39778.043,
+          -38807.72
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEE390B00A",
+        "name": "newcastle"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -38846.668,
+          -55290.344
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DED2D0A364",
+        "name": "aberdeen"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -42688.754,
+          -26707.566
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE2D909FD5",
+        "name": "sheffield"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -43388.08,
+          -25347.793
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DECBA09EF2",
+        "name": "sheffield"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -46338.742,
+          -7543.246
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEB0809D1C",
+        "name": "southampton"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -46952.953,
+          -8079.992
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE5CC09CCB",
+        "name": "southampton"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -45951.125,
+          -20443.0
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE3CD0A16B",
+        "name": "birmingham"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -45548.652,
+          -27835.02
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE85B09C50",
+        "name": "manchester"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -45889.176,
+          -39593.477
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE8B8097F2",
+        "name": "carlisle"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -44900.742,
+          -47239.67
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEFB50A3E9",
+        "name": "edinburgh"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -48268.914,
+          -27850.367
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEF4309D96",
+        "name": "liverpool"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -48871.734,
+          -29111.832
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE6EC09DED",
+        "name": "liverpool"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -50384.7,
+          -48491.62
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE9E40A043",
+        "name": "glasgow"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -49730.688,
+          -51448.402
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEE8A0A5F3",
+        "name": "glasgow"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -54005.277,
+          -14718.445
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DEE060A6E7",
+        "name": "cardiff"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -53082.324,
+          -16855.422
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE9AF09FF2",
+        "name": "cardiff"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -56896.004,
+          -16901.945
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE3F70996F",
+        "name": "swansea"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -60041.375,
+          -7902.3203
+        ]
+      },
+      "properties": {
+        "uid": "0x002935DE3F80AECF",
+        "name": "plymouth"
+      }
+    }
+  ]
+}

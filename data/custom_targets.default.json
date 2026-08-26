@@ -1,0 +1,24 @@
+{
+  "customTargets": [
+    {
+      "gameName": "stash1",
+      "realName": "Тайник",
+      "coords": "160927.64, 101.55, -88459.47",
+      "status": "",
+      "icon": "default",
+      "color": "default",
+      "targetMapOverview": false,
+      "isRandom": false
+    },
+    {
+      "gameName": "courier2",
+      "realName": "Связной",
+      "coords": "160767.98, 101.55, -88647.89",
+      "status": "",
+      "icon": "info",
+      "color": "lime",
+      "targetMapOverview": false,
+      "isRandom": false
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>ETS2 Telemetry</title>
+    <link rel="stylesheet" href="css/hybrid_ui.css">
+</head>
+<body>
+<div class="dashboard" id="dashboard">
+    <div class="dashboard-content">
+        <div class="main-row">
+            <div class="left-group">
+                <div class="card distance" id="distanceCard" style="display:none;">
+                    <div class="distance-progress" id="distanceProgress" style="width:0%;"></div>
+                    <div class="distance-top">
+                        <span class="distance-label" id="distanceLabel">DESTINATION</span>
+                        <span class="distance-flag" id="distanceFlag">🏁</span>
+                    </div>
+                    <div class="distance-bottom">
+                        <span class="distance-time" id="distanceTime">--</span>
+                        <span class="distance-status" id="distanceStatus">✅ On time</span>
+                    </div>
+                </div>
+                <div class="card fuel" id="fuelCard">
+                    <div class="progress-bg" id="fuelProgress"></div>
+                    <div class="label" data-i18n="fuel">Fuel</div>
+                    <div class="value"><span id="fuelValue">--</span><span class="unit">%</span></div>
+                </div>
+            </div>
+
+            <div class="card speed" id="speedCard">
+                <div class="label" data-i18n="speed">Speed</div>
+                <div class="value"><span id="speedValue">0</span><span class="unit">km/h</span></div>
+                <div class="speed-icon engine-icon engine-inactive" id="engineIcon">E</div>
+                <div class="speed-icon parking-icon parking-inactive" id="parkingIcon">P</div>
+                <div class="speed-indicators">
+                    <div class="indicator trailer" id="trailerIndicator">T</div>
+                    <div class="indicator brake" id="brakeIndicator">B</div>
+                    <div class="indicator lights" id="lightsIndicator">L</div>
+                </div>
+            </div>
+
+            <div class="right-group">
+                <div class="card rest" id="restCard">
+                    <div class="progress-bg" id="restProgress"></div>
+                    <div class="label" data-i18n="rest">Rest in</div>
+                    <div class="value"><span id="restValue">--</span><span class="unit"></span></div>
+                </div>
+                <div class="card job" id="jobCard" style="display:none;">
+                    <div class="progress-bg" id="jobProgress"></div>
+                    <div class="label" data-i18n="job">Job deadline</div>
+                    <div class="value"><span id="jobValue">--</span><span class="unit"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin: 6px 0 4px;" id="rangeBarWrap">
+            <div class="range-bar">
+                <div class="fill" id="rangeFill" style="width:0%;"></div>
+                <div class="label" id="rangeLabel">Arduino steering sensitivity: MODE 0-30 km/h</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/hybrid_ui_config.js"></script>
+<script src="js/hybrid_ui_state.js"></script>
+<script src="js/hybrid_ui_dom.js"></script>
+<script src="js/hybrid_ui_http.js"></script>
+<script src="js/hybrid_ui_websocket.js"></script>
+<script src="js/hybrid_ui_update.js"></script>
+<script src="js/hybrid_ui_init.js"></script>
+<div id="ets2AssistBuildBadge" style="position:fixed;right:8px;top:8px;z-index:99999;pointer-events:none;color:#fff;background:rgba(0,0,0,.20);padding:2px 6px;border-radius:3px;font:700 13px/1.15 Segoe UI,Arial,sans-serif;-webkit-text-stroke:.35px #000;text-shadow:-.7px -.7px 0 #000,.7px -.7px 0 #000,-.7px .7px 0 #000,.7px .7px 0 #000;">BUILD 1.0.32-MAP-DATA-APPDATA-2026.08.26-1150</div></body>
+</html>

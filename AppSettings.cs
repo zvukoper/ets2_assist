@@ -6,7 +6,7 @@ namespace ETS2_Assist_GUI
 {
     public static class AppSettings
     {
-        private static readonly string SettingsFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
+        private static readonly string SettingsFile = Path.Combine(AppDataPaths.UserDataDirectory, "appsettings.json");
 
         public static bool DebugMode { get; set; } = false;
         public static string Language { get; set; } = "en";
@@ -20,7 +20,11 @@ namespace ETS2_Assist_GUI
         public static int? WindowWidth { get; set; }
         public static int? WindowHeight { get; set; }
 
-        static AppSettings() => Load();
+        static AppSettings()
+        {
+            AppDataPaths.EnsureUserData();
+            Load();
+        }
 
         public static void Load()
         {

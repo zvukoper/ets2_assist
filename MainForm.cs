@@ -47,11 +47,16 @@ namespace ETS2_Assist_GUI
         private Button btnRefreshTracks = null!;
         private Button btnRandomTarget = null!;
         private Button btnTestPause = null!;
+        private Button btnResetRecordingOrigin = null!;
+        private Button btnOpenTrack = null!;
+        private Button btnDeleteTracks = null!;
+        private Button btnOpenTracksFolder = null!;
         private Button btnShowMap = null!;
         private Button btnShowHybrid = null!;
 
         private RichTextBox logConsole = null!;
         private Panel indicatorsPanel = null!;
+        private Panel trackActionsPanel = null!;
         private ListBox listTracks = null!;
 
         private Label indicatorEts2Assist = null!;
@@ -105,6 +110,7 @@ namespace ETS2_Assist_GUI
 
         // ========== WEBSOCKET-СЕРВЕР ДЛЯ СОХРАНЕНИЯ ТРЕКОВ (порт 8084) ==========
         private WebSocketSharp.Server.WebSocketServer? _wsSaveServer;
+        private long _saveRequestsReceived;
         private bool _wsSaveRunning = false;
 
         // Local static file server for WebOverlay. It disables browser caching so stable URLs
@@ -133,6 +139,7 @@ namespace ETS2_Assist_GUI
 
         public MainForm()
         {
+            AppDataPaths.EnsureUserData();
             try
             {
                 var version = Application.ProductVersion ?? "0.0.0";
@@ -170,7 +177,7 @@ namespace ETS2_Assist_GUI
                 RegisterHotKey(this.Handle, HOTKEY_MARKER, MOD_CONTROL | MOD_SHIFT, (uint)Keys.N.GetHashCode());
                 RegisterHotKey(this.Handle, HOTKEY_TEST, MOD_CONTROL | MOD_SHIFT, (uint)Keys.T.GetHashCode());
                 hotKeyRegistered = true;
-                AppendLog("Hotkeys registered: S (save), R (start rec), X (stop rec), N (marker), T (test)");
+                AppendLog("Hotkeys registered: S (save+pause), R (start/reset rec), X (stop rec), N (marker), T (test)");
             }
             catch (Exception ex)
             {
@@ -308,9 +315,19 @@ namespace ETS2_Assist_GUI
                     ? "[SCS] Команда PAUSE подтверждена."
                     : "[SCS] Команда PAUSE не подтверждена. Проверить ets2_assist_input.dll и ETS2.");
             };
-            // Если кнопка не нужна, можно её не добавлять или скрыть.
+            btnResetRecordingOrigin = new Button
+            {
+                Text = "Сбросить начало\nзаписи трека",
+                Location = new Point(leftX, topY + 440),
+                Size = new Size(120, 42),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            btnResetRecordingOrigin.Click += (s, e) => {
+                AppendLog("[REC] Запрошен сброс начала записи трека.");
+                SendCommandToMap("reset_recording_origin");
+            };
 
-            int consoleLeft = leftX + 140;
+            int consoleLeft = leftX + 185;
             int consoleWidth = 400;
             logConsole = new RichTextBox
             {
@@ -325,7 +342,9 @@ namespace ETS2_Assist_GUI
             logConsole.DoubleClick += (s, e) => OpenLogFolder();
 
             int listLeft = consoleLeft + consoleWidth + 10;
-            int listWidth = this.ClientSize.Width - listLeft - 200;
+            int actionsWidth = 125;
+            int indicatorsWidth = 180;
+            int listWidth = Math.Max(180, this.ClientSize.Width - listLeft - actionsWidth - indicatorsWidth - 30);
             listTracks = new ListBox
             {
                 Location = new Point(listLeft, topY),
@@ -333,12 +352,49 @@ namespace ETS2_Assist_GUI
                 BackColor = Color.FromArgb(20, 25, 35),
                 ForeColor = Color.LightGray,
                 Font = new Font("Segoe UI", 9),
+                SelectionMode = SelectionMode.MultiExtended,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
             listTracks.DoubleClick += (s, e) => OpenSelectedTrack();
             listTracks.KeyPress += (s, e) => { if (e.KeyChar == (char)Keys.Enter) OpenSelectedTrack(); };
 
-            int indicatorLeft = listLeft + listWidth + 10;
+            int actionsLeft = listLeft + listWidth + 10;
+            trackActionsPanel = new Panel
+            {
+                Location = new Point(actionsLeft, topY),
+                Size = new Size(actionsWidth, this.ClientSize.Height - topY - 40),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right
+            };
+
+            btnOpenTrack = new Button
+            {
+                Text = "Открыть",
+                Location = new Point(5, 10),
+                Size = new Size(actionsWidth - 10, 32),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            btnOpenTrack.Click += (s, e) => OpenSelectedTrack();
+
+            btnDeleteTracks = new Button
+            {
+                Text = "Удалить",
+                Location = new Point(5, 48),
+                Size = new Size(actionsWidth - 10, 32),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            btnDeleteTracks.Click += (s, e) => DeleteSelectedTracks();
+
+            btnOpenTracksFolder = new Button
+            {
+                Text = "Открыть папку",
+                Location = new Point(5, 86),
+                Size = new Size(actionsWidth - 10, 46),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            btnOpenTracksFolder.Click += (s, e) => OpenTracksFolder();
+            trackActionsPanel.Controls.AddRange(new Control[] { btnOpenTrack, btnDeleteTracks, btnOpenTracksFolder });
+
+            int indicatorLeft = actionsLeft + actionsWidth + 10;
             indicatorsPanel = new Panel
             {
                 Location = new Point(indicatorLeft, topY),
@@ -384,8 +440,8 @@ namespace ETS2_Assist_GUI
 
             this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
-                btnShowMap, btnShowHybrid, btnTestPause,
-                logConsole, listTracks, indicatorsPanel, buildVersionLabel, mainMenu
+                btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin,
+                logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu
             });
             PositionBuildLabel();
         }
@@ -429,7 +485,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "config.json");
+                string configPath = AppDataPaths.ConfigFile;
                 JObject config;
                 if (File.Exists(configPath))
                 {
@@ -595,7 +651,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+                string dataDir = AppDataPaths.UserDataDirectory;
                 if (!Directory.Exists(dataDir))
                 {
                     AppendLog("[TRIGGER] Папка data не найдена, очистка старых триггеров не требуется.");
@@ -633,7 +689,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string publishData = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+                string publishData = AppDataPaths.StaticDataDirectory;
                 Directory.CreateDirectory(publishData);
                 var required = new[]
                 {
@@ -646,6 +702,11 @@ namespace ETS2_Assist_GUI
                 if (complete)
                 {
                     AppendLog("[STATIC] Map static data is present in publish\\data.");
+                    foreach (string rel in required)
+                    {
+                        string fp = Path.Combine(publishData, rel);
+                        AppendLog($"[STATIC] File {rel}: {new FileInfo(fp).Length} bytes");
+                    }
                     return;
                 }
 
@@ -774,7 +835,7 @@ namespace ETS2_Assist_GUI
                 if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/check_trigger")
                 {
                     string file = request.QueryString["file"] ?? "save_trail.trigger";
-                    string triggerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", file);
+                    string triggerPath = Path.Combine(AppDataPaths.UserDataDirectory, Path.GetFileName(file));
                     bool exists = File.Exists(triggerPath);
                     bool paused = false;
 
@@ -802,7 +863,7 @@ namespace ETS2_Assist_GUI
                 else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/delete_trigger")
                 {
                     string file = request.QueryString["file"] ?? "save_trail.trigger";
-                    string triggerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", file);
+                    string triggerPath = Path.Combine(AppDataPaths.UserDataDirectory, Path.GetFileName(file));
                     if (File.Exists(triggerPath)) File.Delete(triggerPath);
                     string json = JsonConvert.SerializeObject(new { success = true });
                     byte[] buffer = Encoding.UTF8.GetBytes(json);
@@ -813,10 +874,11 @@ namespace ETS2_Assist_GUI
                 }
                 else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/list_tracks")
                 {
-                    string tracksDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "saved_tracks");
+                    string tracksDir = AppDataPaths.SavedTracksDirectory;
                     if (!Directory.Exists(tracksDir)) Directory.CreateDirectory(tracksDir);
-                    var files = Directory.GetFiles(tracksDir, "*.json")
-                        .Select(f => Path.GetFileName(f))
+                    var files = Directory.GetFiles(tracksDir, "track_*.html")
+                        .Select(f => Path.GetFileNameWithoutExtension(f))
+                        .OrderByDescending(f => f)
                         .ToList();
                     var list = new { files = files };
                     string json = JsonConvert.SerializeObject(list);
@@ -829,7 +891,7 @@ namespace ETS2_Assist_GUI
                 else if (request.HttpMethod == "GET" && request.Url.AbsolutePath.StartsWith("/get_track/"))
                 {
                     string fileName = request.Url.AbsolutePath.Substring("/get_track/".Length);
-                    string tracksDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "saved_tracks");
+                    string tracksDir = AppDataPaths.SavedTracksDirectory;
                     string filePath = Path.Combine(tracksDir, fileName);
                     if (File.Exists(filePath))
                     {
@@ -852,7 +914,7 @@ namespace ETS2_Assist_GUI
                     try
                     {
                         var targets = JArray.Parse(body);
-                        string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "custom_targets.json");
+                        string filePath = AppDataPaths.CustomTargetsFile;
                         var json = new JObject { ["customTargets"] = targets };
                         File.WriteAllText(filePath, json.ToString(Formatting.Indented));
                         AppendLog("[HTTP] custom_targets.json обновлён.");
@@ -1061,8 +1123,9 @@ namespace ETS2_Assist_GUI
         {
             try
             {
+                Interlocked.Increment(ref _saveRequestsReceived);
                 AppendLog("[SAVE] Сервер получил запрос сохранения трека.");
-                string tracksDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "saved_tracks");
+                string tracksDir = AppDataPaths.SavedTracksDirectory;
                 if (!Directory.Exists(tracksDir))
                     Directory.CreateDirectory(tracksDir);
 
@@ -1125,15 +1188,19 @@ namespace ETS2_Assist_GUI
                 File.WriteAllText(htmlFile, html);
 
                 string playerPath = Path.Combine(tracksDir, "trail_player.html");
-                if (!File.Exists(playerPath))
-                    File.WriteAllText(playerPath, GenerateTrailPlayerHtml());
+                var localTrackNames = Directory.GetFiles(tracksDir, "track_*.html")
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .OrderByDescending(n => n)
+                    .ToList();
+                File.WriteAllText(playerPath, GenerateTrailPlayerHtml(localTrackNames!));
 
                 AppendDataLog($"track_saved baseName={baseName} compactChars={compactData.Length}");
                 AppendLog($"[SAVE] Трек сохранён: {baseName}.track/.meta.json/.map.json/.html");
                 trayIcon.ShowBalloonTip(2000, "ETS2 Assist", $"Трек сохранён: {baseName}.html", ToolTipIcon.Info);
 
                 RefreshTrackList();
-                Process.Start(new ProcessStartInfo($"http://localhost:8082/saved_tracks/{baseName}.html") { UseShellExecute = true });
+                Process.Start(new ProcessStartInfo(htmlFile) { UseShellExecute = true });
             }
             catch (Exception ex)
             {
@@ -1155,7 +1222,7 @@ namespace ETS2_Assist_GUI
 
             try
             {
-                string tracksDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "saved_tracks");
+                string tracksDir = AppDataPaths.SavedTracksDirectory;
                 if (!Directory.Exists(tracksDir))
                 {
                     listTracks.Items.Clear();
@@ -1188,18 +1255,95 @@ namespace ETS2_Assist_GUI
 
         private void OpenSelectedTrack()
         {
-            if (listTracks.SelectedItem == null) return;
-            string? selected = listTracks.SelectedItem.ToString();
-            if (string.IsNullOrEmpty(selected) || selected.StartsWith("(")) return;
-            string url = $"http://localhost:8082/saved_tracks/{selected}.html";
+            string? selected = listTracks.SelectedItems.Count > 0
+                ? listTracks.SelectedItems[0]?.ToString()
+                : null;
+            if (string.IsNullOrEmpty(selected) || selected.StartsWith("(") || !selected.StartsWith("track_", StringComparison.Ordinal)) return;
+            string tracksDir = AppDataPaths.SavedTracksDirectory;
+            string baseName = Path.GetFileName(selected);
+            string htmlPath = Path.Combine(tracksDir, baseName + ".html");
             try
             {
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-                AppendLog($"Открыт трек: {selected}.html");
+                if (!File.Exists(htmlPath))
+                {
+                    AppendLog($"Файл трека не найден: {htmlPath}");
+                    return;
+                }
+                Process.Start(new ProcessStartInfo(htmlPath) { UseShellExecute = true });
+                AppendLog($"Открыт локальный трек: {htmlPath}");
             }
             catch (Exception ex)
             {
                 AppendLog($"Ошибка открытия трека: {ex.Message}");
+            }
+        }
+
+        private void OpenTracksFolder()
+        {
+            try
+            {
+                Directory.CreateDirectory(AppDataPaths.SavedTracksDirectory);
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = AppDataPaths.SavedTracksDirectory,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Ошибка открытия папки треков: {ex.Message}");
+            }
+        }
+
+        private void DeleteSelectedTracks()
+        {
+            var selectedNames = listTracks.SelectedItems
+                .Cast<object>()
+                .Select(item => item?.ToString())
+                .Where(name => !string.IsNullOrWhiteSpace(name) && name.StartsWith("track_", StringComparison.Ordinal))
+                .Select(name => Path.GetFileName(name!))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            if (selectedNames.Count == 0) return;
+
+            string message = selectedNames.Count == 1
+                ? "Удалить выбранную запись трека?"
+                : $"Удалить выбранные записи треков ({selectedNames.Count})?";
+            if (MessageBox.Show(message, "Удаление записей", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
+
+            try
+            {
+                string tracksDir = AppDataPaths.SavedTracksDirectory;
+                string[] extensions = { ".html", ".track", ".meta.json", ".map.json" };
+                int deleted = 0;
+
+                foreach (string baseName in selectedNames)
+                {
+                    foreach (string extension in extensions)
+                    {
+                        string path = Path.Combine(tracksDir, baseName + extension);
+                        if (!File.Exists(path)) continue;
+                        File.Delete(path);
+                        deleted++;
+                    }
+                }
+
+                var remainingTracks = Directory.GetFiles(tracksDir, "track_*.html")
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .OrderByDescending(name => name)
+                    .ToList();
+                File.WriteAllText(Path.Combine(tracksDir, "trail_player.html"), GenerateTrailPlayerHtml(remainingTracks!));
+
+                AppendLog($"Удалено файлов записей: {deleted}.");
+                RefreshTrackList();
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Ошибка удаления записей: {ex.Message}");
+                MessageBox.Show($"Не удалось удалить записи:\n{ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1434,10 +1578,17 @@ namespace ETS2_Assist_GUI
                     string urlPath = Uri.UnescapeDataString(context.Request.Url?.AbsolutePath ?? "/");
                     if (urlPath == "/") urlPath = "/web_ui_hybrid.html";
                     urlPath = urlPath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
-                    string rootFull = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-                    string filePath = Path.GetFullPath(Path.Combine(root, urlPath));
+                     string rootFull = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                     string? userFilePath = urlPath switch
+                     {
+                         "custom_targets.json" => AppDataPaths.CustomTargetsFile,
+                         "web_data.json" => AppDataPaths.WebDataFile,
+                         _ => null
+                     };
+                     string filePath = userFilePath ?? Path.GetFullPath(Path.Combine(root, urlPath));
 
-                    if (!filePath.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase) || !File.Exists(filePath))
+                     bool isUserFile = userFilePath != null;
+                     if ((!isUserFile && !filePath.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase)) || !File.Exists(filePath))
                     {
                         context.Response.StatusCode = 404;
                         context.Response.ContentType = "text/plain; charset=utf-8";
@@ -1655,7 +1806,7 @@ namespace ETS2_Assist_GUI
                 if (port.HasValue)
                 {
                     AppendLog($"[TruckTel] Найден порт через активные соединения: {port.Value}");
-                    string webDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+                    string webDataPath = AppDataPaths.WebDataFile;
                     JObject webData;
                     if (File.Exists(webDataPath))
                     {
@@ -1667,6 +1818,7 @@ namespace ETS2_Assist_GUI
                         webData = new JObject();
                     }
                     webData["wsPort"] = port.Value;
+                    Directory.CreateDirectory(AppDataPaths.UserDataDirectory);
                     File.WriteAllText(webDataPath, webData.ToString(Formatting.Indented));
                     AppendLog($"[TruckTel] web_data.json обновлён, wsPort = {port.Value}");
                 }
@@ -1753,8 +1905,8 @@ namespace ETS2_Assist_GUI
                 switch (id)
                 {
                     case HOTKEY_SAVE:
-                        AppendLog("Hotkey save (Shift+Ctrl+S) pressed.");
-                        TriggerTrailSave();
+                        AppendLog("Hotkey save (Shift+Ctrl+S) pressed: requesting pause, then saving.");
+                        _ = TriggerTrailSaveAsync();
                         break;
                     case HOTKEY_START_REC:
                         AppendLog("Hotkey start recording (Shift+Ctrl+R)");
@@ -1811,32 +1963,56 @@ namespace ETS2_Assist_GUI
             return false;
         }
 
-        private void TriggerTrailSave()
+        private async Task TriggerTrailSaveAsync()
         {
             try
             {
-                if (!IsGamePaused())
+                bool paused = await IsGamePausedAsync();
+                if (!paused)
                 {
-                    AppendLog("[SAVE] Сохранение трека отклонено: ETS2 не находится на паузе.");
-                    trayIcon.ShowBalloonTip(2500, "ETS2 Assist", "Сначала поставьте игру на паузу.", ToolTipIcon.Warning);
+                    AppendLog("[SAVE] ETS2 не на паузе. Отправляем PAUSE через SCS SDK и ждём фактическую паузу.");
+                    if (!SCSController.SetPause(true))
+                    {
+                        AppendLog("[SAVE] Команда PAUSE не подтверждена. Сохранение отменено.");
+                        trayIcon.ShowBalloonTip(2500, "ETS2 Assist", "Не удалось поставить ETS2 на паузу.", ToolTipIcon.Error);
+                        return;
+                    }
+
+                    DateTime deadline = DateTime.UtcNow.AddSeconds(4);
+                    while (DateTime.UtcNow < deadline)
+                    {
+                        await Task.Delay(100);
+                        if (await IsGamePausedAsync())
+                        {
+                            paused = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!paused)
+                {
+                    AppendLog("[SAVE] Фактическая пауза не подтверждена за 4 с. Сохранение отменено.");
+                    trayIcon.ShowBalloonTip(2500, "ETS2 Assist", "ETS2 не подтвердил паузу.", ToolTipIcon.Error);
                     return;
                 }
 
-                if (TryBroadcastMapCommand("save_trail"))
+                string saveRequestId = $"save_{DateTime.UtcNow:yyyyMMddHHmmssfff}";
+                if (TryBroadcastMapCommand("save_trail", new JObject { ["requestId"] = saveRequestId }))
                 {
-                    AppendLog("[SAVE] Команда save_trail отправлена напрямую на карту (игра на паузе).");
+                    AppendLog($"[SAVE] Команда save_trail отправлена на карту после подтверждения паузы (requestId={saveRequestId}).");
                     trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Начало сохранения трека.", ToolTipIcon.Info);
                     return;
                 }
 
-                string triggerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "save_trail.trigger");
-                File.WriteAllText(triggerPath, "trigger");
+                string triggerPath = AppDataPaths.TriggerFile;
+                File.WriteAllText(triggerPath, saveRequestId);
                 AppendLog($"[SAVE] Карта не подключена — создан fallback trigger: {triggerPath}");
                 trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Начало сохранения трека (fallback).", ToolTipIcon.Info);
             }
             catch (Exception ex)
             {
-                AppendLog($"[SAVE] Trail save trigger error: {ex.Message}");
+                AppendLog($"[SAVE] Trail save error: {ex.Message}");
             }
         }
 
@@ -2114,7 +2290,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+                string jsonPath = AppDataPaths.WebDataFile;
                 if (!File.Exists(jsonPath)) return false;
                 var json = File.ReadAllText(jsonPath);
                 var obj = JObject.Parse(json);
@@ -2127,7 +2303,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+                string jsonPath = AppDataPaths.WebDataFile;
                 if (!File.Exists(jsonPath)) return false;
                 var lastWrite = File.GetLastWriteTime(jsonPath);
                 return (DateTime.Now - lastWrite).TotalSeconds < 5;
@@ -2139,7 +2315,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+                string jsonPath = AppDataPaths.WebDataFile;
                 if (!File.Exists(jsonPath)) return -1;
                 var json = File.ReadAllText(jsonPath);
                 var obj = JObject.Parse(json);
@@ -2155,7 +2331,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "web_data.json");
+                string jsonPath = AppDataPaths.WebDataFile;
                 if (!File.Exists(jsonPath)) return false;
                 var json = File.ReadAllText(jsonPath);
                 var obj = JObject.Parse(json);

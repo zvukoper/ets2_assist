@@ -1,0 +1,12 @@
+{
+  "build": "1.0.32-MAP-DATA-APPDATA-2026.08.26-1150",
+  "static_data_policy": "preserve-existing",
+  "required_static": [
+    "GeoJson/roads.geojson",
+    "GeoJson/cities.geojson",
+    "Overlays.json",
+    "localized_cities/cities_sibirmap.json"
+  ],
+  "mode": "track-static-snapshot",
+  "playbackStaticFetch": false
+}
