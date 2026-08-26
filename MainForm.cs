@@ -46,6 +46,8 @@ namespace ETS2_Assist_GUI
         private Button btnExit = null!;
         private Button btnRefreshTracks = null!;
         private Button btnRandomTarget = null!;
+        private Button btnRandomTarget2 = null!;
+        private Button btnRandomTarget3 = null!;
         private Button btnTestPause = null!;
         private Button btnResetRecordingOrigin = null!;
         private Button btnOpenTrack = null!;
@@ -324,20 +326,26 @@ namespace ETS2_Assist_GUI
             btnRandomTarget = new Button { Text = "Случайная цель", Location = new Point(leftX, topY + 260), Size = new Size(120, 30) };
             btnRandomTarget.Click += BtnRandomTarget_Click;
 
-            btnShowMap = new Button { Text = "Показать карту", Location = new Point(leftX, topY + 310), Size = new Size(120, 30) };
+            btnRandomTarget2 = new Button { Text = "Случайная цель 2", Location = new Point(leftX, topY + 290), Size = new Size(120, 30) };
+            btnRandomTarget2.Click += BtnRandomTarget2_Click;
+
+            btnRandomTarget3 = new Button { Text = "Случайная цель 100м", Location = new Point(leftX, topY + 320), Size = new Size(120, 30) };
+            btnRandomTarget3.Click += BtnRandomTarget3_Click;
+
+            btnShowMap = new Button { Text = "Показать карту", Location = new Point(leftX, topY + 360), Size = new Size(120, 30) };
             btnShowMap.Click += (s, e) => {
                 AppendLog("Debug: Show map button clicked");
                 SendCommandToMap("show_ui");
             };
 
-            btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 350), Size = new Size(120, 30) };
+            btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 400), Size = new Size(120, 30) };
             btnShowHybrid.Click += (s, e) => {
                 AppendLog("Debug: Show hybrid button clicked");
                 SendCommandToMap("show_ui");
             };
 
             // Тест паузы через тот же Named Pipe, который используется при достижении цели.
-            btnTestPause = new Button { Text = "Тест паузы SDK", Location = new Point(leftX, topY + 400), Size = new Size(135, 30) };
+            btnTestPause = new Button { Text = "Тест паузы SDK", Location = new Point(leftX, topY + 440), Size = new Size(135, 30) };
             btnTestPause.Click += (s, e) => {
                 AppendLog("=== ТЕСТ ПАУЗЫ SDK ===");
                 bool ok = SCSController.SetPause(true);
@@ -348,7 +356,7 @@ namespace ETS2_Assist_GUI
             btnResetRecordingOrigin = new Button
             {
                 Text = "Сбросить начало\nзаписи трека",
-                Location = new Point(leftX, topY + 440),
+                Location = new Point(leftX, topY + 480),
                 Size = new Size(120, 42),
                 TextAlign = ContentAlignment.MiddleCenter
             };
@@ -481,7 +489,7 @@ namespace ETS2_Assist_GUI
 
             this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
-                btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin,
+                btnRandomTarget2, btnRandomTarget3, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin,
                 logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu
             });
             PositionBuildLabel();
@@ -592,6 +600,8 @@ namespace ETS2_Assist_GUI
             btnExit.Text = lang.Get("ui_exit") ?? "Exit";
             btnRefreshTracks.Text = "Обновить список";
             btnRandomTarget.Text = "Случайная цель";
+            btnRandomTarget2.Text = "Случайная цель 2";
+            btnRandomTarget3.Text = "Случайная цель 100м";
             fileMenu.Text = lang.Get("ui_file") ?? "File";
             settingsMenu.Text = lang.Get("ui_settings") ?? "Settings";
             helpMenu.Text = lang.Get("ui_help") ?? "Help";

@@ -8,6 +8,9 @@ async function loadCustomTargets() {
             const data = await res.json();
             state.targetMapOverview = false;
             state.zoomOnMapTargets = [];
+            // Сохраняем случайные цели, созданные в памяти, чтобы перезагрузка
+            // файла (или неудачный POST сохранения) их не стёрла из состояния.
+            const inMemoryRandoms = state.customTargets.filter(t => t && t.isRandom);
             state.customTargets = [];
             const targetList = Array.isArray(data) ? data : data.customTargets;
             if (Array.isArray(targetList)) {
@@ -49,6 +52,21 @@ async function loadCustomTargets() {
                 if (random) {
                     randomTarget = random;
                     randomTargetReachedSent = false;
+                    focusTargetOnMap(random.x, random.z);
+                } else if (inMemoryRandoms.length > 0) {
+                    // Файл не содержит случайную цель (например, POST сохранения не дошёл) —
+                    // возвращаем последнюю созданную в памяти, чтобы она оставалась на карте.
+                    const memRandom = inMemoryRandoms[inMemoryRandoms.length - 1];
+                    state.customTargets.push(memRandom);
+                    randomTarget = memRandom;
+                    randomTargetReachedSent = false;
+                    focusTargetOnMap(memRandom.x, memRandom.z);
+                    targetX.value = memRandom.x.toFixed(2);
+                    targetY.value = memRandom.y.toFixed(2);
+                    targetZ.value = memRandom.z.toFixed(2);
+                    state.target.x = memRandom.x;
+                    state.target.y = memRandom.y;
+                    state.target.z = memRandom.z;
                 }
             }
         }
@@ -90,37 +108,27 @@ async function saveTargetsToFile() {
 // ================================================================
 // ГЕНЕРАЦИЯ СЛУЧАЙНОЙ ЦЕЛИ (улучшенная)
 // ================================================================
-function generateRandomTarget() {
+function focusTargetOnMap(x, z) {
+    // Гарантируем, что цель попадёт в поле зрения миникарты (авто-приближение).
+    state.targetMapOverview = true;
+    state.zoomOnMapTargets = [{ x, z }];
+}
+
+function generateRandomTarget(options) {
     removeRandomTarget();
 
     const truckX = state.truck.x;
     const truckZ = state.truck.z;
-    const radiusM = 2000;
-    const maxAttempts = 300;
-    const maxDistanceToRoad = 10;
-    const maxDistanceToPOI = 50;
+    const opts = options || {};
+    const nearTruck = opts.nearTruck !== false;
+    const requirePoi = opts.requirePoi === true;
+    const radiusM = nearTruck ? (Number(opts.radiusM) || 2000) : Infinity;
+    const distanceM = opts.distanceM ? Number(opts.distanceM) : 0;
+    const maxDistanceToRoad = 15;
+    const maxDistanceToPOI = 60;
+    const name = opts.name || 'Случайная цель';
 
     let targetPoint = null;
-
-    // 1. Найти ближайший POI
-    function findNearestPOI(x, z) {
-        let minDist = Infinity;
-        let nearest = null;
-        for (const city of state.cities) {
-            const d = Math.hypot(city.x - x, city.z - z);
-            if (d < minDist) { minDist = d; nearest = city; }
-        }
-        for (const poi of state.pois) {
-            const d = Math.hypot(poi.x - x, poi.z - z);
-            if (d < minDist) { minDist = d; nearest = poi; }
-        }
-        for (const t of state.customTargets) {
-            if (t.isRandom) continue;
-            const d = Math.hypot(t.x - x, t.z - z);
-            if (d < minDist) { minDist = d; nearest = t; }
-        }
-        return nearest;
-    }
 
     function findNearestRoadDistance(x, z) {
         let minDist = Infinity;
@@ -139,66 +147,77 @@ function generateRandomTarget() {
         return minDist;
     }
 
-    // Стратегия 1: ищем точку около POI, на дороге, в радиусе 2 км
-    if (state.roads.length > 0 && state.pois.length > 0) {
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            const poiIdx = Math.floor(Math.random() * state.pois.length);
-            const poi = state.pois[poiIdx];
-            const angle = Math.random() * 2 * Math.PI;
-            const dist = Math.random() * maxDistanceToPOI;
-            const x = poi.x + Math.cos(angle) * dist;
-            const z = poi.z + Math.sin(angle) * dist;
-            const distToTruck = Math.hypot(x - truckX, z - truckZ);
-            if (distToTruck > radiusM) continue;
-            const distToRoad = findNearestRoadDistance(x, z);
-            if (distToRoad <= maxDistanceToRoad) {
-                targetPoint = { x, z };
-                break;
-            }
-        }
-    }
-
-    // Стратегия 2: ищем на любой дороге в радиусе 2 км и отодвигаем на 10 м
-    if (!targetPoint && state.roads.length > 0) {
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            const roadIdx = Math.floor(Math.random() * state.roads.length);
-            const road = state.roads[roadIdx];
-            const t = Math.random();
-            const x = road.x1 + (road.x2 - road.x1) * t;
-            const z = road.z1 + (road.z2 - road.z1) * t;
-            const distToTruck = Math.hypot(x - truckX, z - truckZ);
-            if (distToTruck > radiusM) continue;
-            const distToRoad = findNearestRoadDistance(x, z);
-            if (distToRoad <= maxDistanceToRoad) {
-                // Смещаем на 10 м в сторону от дороги
-                const dx = road.x2 - road.x1;
-                const dz = road.z2 - road.z1;
-                const len = Math.hypot(dx, dz);
-                if (len > 0) {
-                    const nx = -dz / len;
-                    const nz = dx / len;
-                    const side = Math.random() > 0.5 ? 1 : -1;
-                    targetPoint = { x: x + nx * side * 10, z: z + nz * side * 10 };
-                    break;
-                }
-            }
-        }
-    }
-
-    // Стратегия 3: последняя попытка – случайная дорога + 10 м
-    if (!targetPoint && state.roads.length > 0) {
-        const road = state.roads[Math.floor(Math.random() * state.roads.length)];
-        const t = Math.random();
+    function offsetFromRoad(road, t) {
         const x = road.x1 + (road.x2 - road.x1) * t;
         const z = road.z1 + (road.z2 - road.z1) * t;
         const dx = road.x2 - road.x1;
         const dz = road.z2 - road.z1;
         const len = Math.hypot(dx, dz);
-        if (len > 0) {
-            const nx = -dz / len;
-            const nz = dx / len;
-            const side = Math.random() > 0.5 ? 1 : -1;
-            targetPoint = { x: x + nx * side * 10, z: z + nz * side * 10 };
+        if (len <= 0) return { x, z };
+        const nx = -dz / len;
+        const nz = dx / len;
+        const side = Math.random() > 0.5 ? 1 : -1;
+        return { x: x + nx * side * 10, z: z + nz * side * 10 };
+    }
+
+    // Режим: цель на заданном расстоянии (~distanceM) от фуры — гарантированно в зоне видимости
+    if (distanceM > 0) {
+        for (let attempt = 0; attempt < 400 && !targetPoint; attempt++) {
+            const ang = Math.random() * 2 * Math.PI;
+            const dist = distanceM * (0.85 + Math.random() * 0.3);
+            const x = truckX + Math.cos(ang) * dist;
+            const z = truckZ + Math.sin(ang) * dist;
+            if (findNearestRoadDistance(x, z) <= maxDistanceToRoad) targetPoint = { x, z };
+        }
+        if (!targetPoint) {
+            const ang = Math.random() * 2 * Math.PI;
+            const dist = distanceM;
+            targetPoint = { x: truckX + Math.cos(ang) * dist, z: truckZ + Math.sin(ang) * dist };
+        }
+    }
+
+    // Кнопка 1: случайная цель в радиусе фуры (рандомная дистанция до radiusM), рядом с дорогой
+    if (!targetPoint && nearTruck) {
+        if (state.roads.length > 0) {
+            const candidates = [];
+            for (const road of state.roads) {
+                const dx = road.x2 - road.x1;
+                const dz = road.z2 - road.z1;
+                const lenSq = dx*dx + dz*dz;
+                let t = lenSq ? ((truckX - road.x1) * dx + (truckZ - road.z1) * dz) / lenSq : 0;
+                t = Math.max(0, Math.min(1, t));
+                const cx = road.x1 + t * dx;
+                const cz = road.z1 + t * dz;
+                if (Math.hypot(truckX - cx, truckZ - cz) <= radiusM + maxDistanceToRoad) candidates.push(road);
+            }
+            if (candidates.length > 0) {
+                const road = candidates[Math.floor(Math.random() * candidates.length)];
+                targetPoint = offsetFromRoad(road, Math.random());
+            }
+        }
+        // Запасной вариант: случайная точка в радиусе рядом с дорогой
+        for (let attempt = 0; attempt < 600 && !targetPoint; attempt++) {
+            const ang = Math.random() * 2 * Math.PI;
+            const dist = Math.random() * radiusM;
+            const x = truckX + Math.cos(ang) * dist;
+            const z = truckZ + Math.sin(ang) * dist;
+            if (findNearestRoadDistance(x, z) <= maxDistanceToRoad) targetPoint = { x, z };
+        }
+    }
+
+    // Кнопка 2: случайная цель рядом с POI и дорогой, на любом расстоянии
+    if (!targetPoint && requirePoi) {
+        if (state.pois.length > 0 && state.roads.length > 0) {
+            for (let attempt = 0; attempt < 2000 && !targetPoint; attempt++) {
+                const poi = state.pois[Math.floor(Math.random() * state.pois.length)];
+                if (findNearestRoadDistance(poi.x, poi.z) <= maxDistanceToPOI) {
+                    targetPoint = { x: poi.x, z: poi.z };
+                }
+            }
+        }
+        if (!targetPoint && state.roads.length > 0) {
+            const road = state.roads[Math.floor(Math.random() * state.roads.length)];
+            targetPoint = offsetFromRoad(road, Math.random());
         }
     }
 
@@ -212,7 +231,7 @@ function generateRandomTarget() {
         x: targetPoint.x,
         y: 0,
         z: targetPoint.z,
-        name: 'Случайная цель',
+        name: name,
         active: true,
         color: '#ff0000',
         icon: 'default',
@@ -245,8 +264,9 @@ function generateRandomTarget() {
         console.log('[TRIGGER] Отправлена команда target_created на сервер');
     }
 
+    focusTargetOnMap(newTarget.x, newTarget.z);
     updateAll();
-    showToast('Случайная цель добавлена', 3000);
+    showToast(name + ' добавлена', 3000);
     saveTargetsToFile();
 }
 

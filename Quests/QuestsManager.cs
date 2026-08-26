@@ -115,6 +115,38 @@ namespace ETS2_Assist_GUI
             trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Случайная цель создана.", ToolTipIcon.Info);
         }
 
+        private void BtnRandomTarget2_Click(object sender, EventArgs e)
+        {
+            if (!_wsSaveRunning || _wsSaveServer == null)
+            {
+                AppendLog("WebSocket сервер не запущен. Невозможно создать цель.");
+                MessageBox.Show("WebSocket сервер не запущен. Запустите систему.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            SendCommandToMap("add_random_target_2");
+            _randomTargetActive = true;
+            _randomTargetReached = false;
+            AppendLog("Отправлена команда на создание случайной цели 2.");
+            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Случайная цель 2 создана.", ToolTipIcon.Info);
+        }
+
+        private void BtnRandomTarget3_Click(object sender, EventArgs e)
+        {
+            if (!_wsSaveRunning || _wsSaveServer == null)
+            {
+                AppendLog("WebSocket сервер не запущен. Невозможно создать цель.");
+                MessageBox.Show("WebSocket сервер не запущен. Запустите систему.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            SendCommandToMap("add_random_target_100");
+            _randomTargetActive = true;
+            _randomTargetReached = false;
+            AppendLog("Отправлена команда на создание случайной цели 100м.");
+            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Случайная цель 100м создана.", ToolTipIcon.Info);
+        }
+
         private void OnClientCommand(JObject data)
         {
             var command = data["command"]?.Value<string>();

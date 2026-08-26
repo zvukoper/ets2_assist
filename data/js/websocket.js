@@ -20,7 +20,13 @@ function connectSaveWebSocket() {
                     console.log('[WS] Received command:', data.command);
                     switch (data.command) {
                         case 'add_random_target':
-                            generateRandomTarget();
+                            generateRandomTarget({ nearTruck: true, radiusM: 2000, name: 'Случайная цель' });
+                            break;
+                        case 'add_random_target_2':
+                            generateRandomTarget({ nearTruck: false, requirePoi: true, name: 'Случайная цель 2' });
+                            break;
+                        case 'add_random_target_100':
+                            generateRandomTarget({ nearTruck: true, distanceM: 100, name: 'Случайная цель 100м' });
                             break;
                         case 'save_trail':
                             console.log('[WS] save_trail command received');

@@ -263,7 +263,7 @@ const times = trailPoints.map((p, i) => {
     return i / 10;
 });
 
-console.log('[ETS2 ASSIST BUILD] 1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-1532');
+            console.log('[ETS2 ASSIST BUILD] 1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3');
 console.groupCollapsed('[PLAYBACK] Timeline diagnostics');
 console.log('trailPoints:', trailPoints.length);
 console.log('dataPoints:', dataPoints.length);
