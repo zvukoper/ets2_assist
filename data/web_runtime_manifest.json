@@ -1,5 +1,5 @@
 {
-  "build": "1.0.32-MAP-DATA-APPDATA-2026.08.26-1150",
+  "build": "1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-1532",
   "static_data_policy": "preserve-existing",
   "required_static": [
     "GeoJson/roads.geojson",

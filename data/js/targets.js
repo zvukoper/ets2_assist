@@ -3,7 +3,7 @@
 // ================================================================
 async function loadCustomTargets() {
     try {
-        const res = await fetch(withRnd('custom_targets.json'));
+        const res = await fetch(withRnd('/custom_targets.json'), { cache: 'no-store' });
         if (res.ok) {
             const data = await res.json();
             state.targetMapOverview = false;

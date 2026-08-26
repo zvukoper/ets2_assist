@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ETS2 Assist — Telemetry Inspector</title>
+<link rel="icon" href="ets2_assist.ico">
+<style>
+body{margin:0;background:#0b0e14;color:#d9e4f2;font:13px Consolas,monospace;padding:16px}h1{font:700 20px Segoe UI;margin:0 0 8px}.status{color:#7fda9b;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}.card{background:#151d28;border:1px solid #33465d;border-radius:6px;padding:10px}.card h2{font:700 14px Segoe UI;color:#ffc857;margin:0 0 7px}.row{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #263444;padding:4px 0}.row:first-of-type{border-top:0}.key{color:#91a7c1}.value{color:#fff;word-break:break-all;text-align:right}
+</style>
+</head>
+<body>
+<h1>ETS2 telemetry inspector</h1><div id="status" class="status">Подключение к ws://localhost:8080...</div><div id="grid" class="grid"></div>
+<script>
+const used=['truck.world.placement','truck.speed','truck.fuel.amount','truck.fuel.capacity','truck.fuel','truck.engine.enabled','truck.engine.on','truck.head.offset','truck.effective.steering','truck.effective.throttle','truck.effective.brake','truck.odometer','game.time','local.scale','rest.stop','truck.brake.parking'];
+const names={'truck.world.placement':'Позиция / heading','truck.speed':'Скорость','truck.fuel.amount':'Топливо','truck.fuel.capacity':'Ёмкость топлива','truck.fuel':'Топливо %','truck.engine.enabled':'Двигатель','truck.engine.on':'Двигатель (legacy)','truck.head.offset':'Head offset','truck.effective.steering':'Руль','truck.effective.throttle':'Газ','truck.effective.brake':'Тормоз','truck.odometer':'Одометр','game.time':'Игровое время','local.scale':'Масштаб','rest.stop':'Отдых','truck.brake.parking':'Ручник'};
+let latest={};let ws;
+function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(){const usedRows=used.map(k=>[k,latest[k]]).filter(([,v])=>v!==undefined);const other=Object.keys(latest).filter(k=>!used.includes(k)).sort();const card=(title,rows)=>`<section class="card"><h2>${title}</h2>${rows.map(([k,v])=>`<div class="row"><span class="key">${esc(names[k]||k)}</span><span class="value">${esc(typeof v==='object'?JSON.stringify(v):v)}</span></div>`).join('')||'<div class="row">нет данных</div>'}</section>`;document.getElementById('grid').innerHTML=card('Используется проектом',usedRows)+card('Остальная доступная telemetry',other.map(k=>[k,latest[k]]));}
+function connect(){ws=new WebSocket('ws://localhost:8080/api/ws/delta/flat/?throttle=50');ws.onopen=()=>document.getElementById('status').textContent='Подключено; полей: '+Object.keys(latest).length;ws.onmessage=e=>{try{Object.assign(latest,JSON.parse(e.data));render();document.getElementById('status').textContent='Подключено; кадров обновлено: '+new Date().toLocaleTimeString()+'; полей: '+Object.keys(latest).length}catch(err){}};ws.onclose=()=>{document.getElementById('status').textContent='Соединение потеряно, повтор через 1 с';setTimeout(connect,1000)}}connect();render();
+</script>
+</body></html>

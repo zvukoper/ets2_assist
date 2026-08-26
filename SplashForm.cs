@@ -152,7 +152,9 @@ namespace ETS2_Assist_GUI
                 var area = new RectangleF(2, source.Height + 2, source.Width - 4, captionHeight - 3);
                 using var path = new GraphicsPath();
                 path.AddString(version, font.FontFamily, (int)font.Style, graphics.DpiY * font.Size / 72f, area, format);
-                using var outline = new Pen(Color.FromArgb(220, Color.Black), 2f) { LineJoin = LineJoin.Round };
+                using var shadow = new Pen(Color.FromArgb(110, Color.Black), 2.5f) { LineJoin = LineJoin.Round };
+                graphics.DrawPath(shadow, path);
+                using var outline = new Pen(Color.FromArgb(150, Color.Black), 1f) { LineJoin = LineJoin.Round };
                 graphics.DrawPath(outline, path);
                 using var fill = new SolidBrush(Color.White);
                 graphics.FillPath(fill, path);

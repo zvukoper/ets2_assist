@@ -1,14 +1,41 @@
 using System;
 using System.Windows.Forms;
 using System.IO;
+using System.Threading;
 
 namespace ETS2_Assist_GUI
 {
     internal static class Program
     {
+        private const string InstanceMutexName = "Local\\ETS2_Assist_MainInstance";
+        private const string InstanceSignalName = "Local\\ETS2_Assist_MainWindowSignal";
+        private static Mutex? _instanceMutex;
+        internal static EventWaitHandle? InstanceSignal { get; private set; }
+
+        internal static void SignalExistingInstance()
+        {
+            try
+            {
+                using var signal = EventWaitHandle.OpenExisting(InstanceSignalName);
+                signal.Set();
+            }
+            catch (WaitHandleCannotBeOpenedException)
+            {
+            }
+        }
+
         [STAThread]
         static void Main()
         {
+            _instanceMutex = new Mutex(true, InstanceMutexName, out bool createdNew);
+            if (!createdNew)
+            {
+                SignalExistingInstance();
+                return;
+            }
+
+            InstanceSignal = new EventWaitHandle(false, EventResetMode.AutoReset, InstanceSignalName);
+
             // Лог запуска
             File.AppendAllText("startup.log", $"{DateTime.Now}: Application started BUILD={BuildInfo.Version}\n");
 

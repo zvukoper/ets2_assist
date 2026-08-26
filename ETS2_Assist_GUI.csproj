@@ -13,13 +13,14 @@
     <!-- <PublishTrimmed>false</PublishTrimmed> (по умолчанию false) -->
     <!-- Можно ускорить запуск (опционально) -->
     <PublishReadyToRun>true</PublishReadyToRun>
-    <VersionPrefix>1.0.32</VersionPrefix>
+    <VersionPrefix>1.0.34</VersionPrefix>
 <VersionSuffix>$([System.String]::Format("{0}{1}{2}{3}", $([System.DateTime]::Now.Month), $([System.DateTime]::Now.Day), $([System.DateTime]::Now.Hour), $([System.DateTime]::Now.Minute)))</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
     <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
     <AssemblyInformationalVersion>$(Version)</AssemblyInformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>data\ets2_assist.ico</ApplicationIcon>
 </PropertyGroup>
 <ItemGroup>
     <None Remove="data\**\*" />

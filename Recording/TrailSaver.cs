@@ -24,6 +24,7 @@ namespace ETS2_Assist_GUI
             sb.AppendLine("<head>");
             sb.AppendLine("    <meta charset=\"utf-8\"/>");
             sb.AppendLine("    <title>ETS2 Trail Viewer</title>");
+            sb.AppendLine("    <link rel=\"icon\" href=\"/ets2_assist.ico\"/>");
             sb.AppendLine("    <style>");
             sb.AppendLine("        body { margin:0; background:#0a0c10; color:#e0e0e0; font-family:'Segoe UI',sans-serif; overflow:hidden; }");
             sb.AppendLine("        #mapCanvas { display:block; width:100vw; height:calc(100vh - 150px); background:#111; cursor:grab; }");
@@ -262,7 +263,7 @@ const times = trailPoints.map((p, i) => {
     return i / 10;
 });
 
-console.log('[ETS2 ASSIST BUILD] 1.0.32-MAP-DATA-APPDATA-2026.08.26-1150');
+console.log('[ETS2 ASSIST BUILD] 1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-1532');
 console.groupCollapsed('[PLAYBACK] Timeline diagnostics');
 console.log('trailPoints:', trailPoints.length);
 console.log('dataPoints:', dataPoints.length);
@@ -327,12 +328,49 @@ function dataPointForTime(t) {
     return dataPoints[Math.max(0, Math.min(dataPoints.length - 1, hi))];
 }
 
+function interpolateValue(a, b, factor) {
+    return Number(a || 0) + (Number(b || 0) - Number(a || 0)) * factor;
+}
+
+function trailPointForTime(t) {
+    const current = trailPoints[currentIndex] || trailPoints[0];
+    if (!current || !interpolate || currentIndex >= trailPoints.length - 1) return current;
+    const next = trailPoints[currentIndex + 1];
+    const start = Number(times[currentIndex] || current.t || 0);
+    const end = Number(times[currentIndex + 1] || next.t || start);
+    const factor = end > start ? Math.max(0, Math.min(1, (t - start) / (end - start))) : 0;
+    let deltaHeading = Number(next.heading || 0) - Number(current.heading || 0);
+    while (deltaHeading > Math.PI) deltaHeading -= Math.PI * 2;
+    while (deltaHeading < -Math.PI) deltaHeading += Math.PI * 2;
+    return {
+        x: interpolateValue(current.x, next.x, factor),
+        z: interpolateValue(current.z, next.z, factor),
+        heading: Number(current.heading || 0) + deltaHeading * factor,
+        speed: interpolateValue(current.speed, next.speed, factor)
+    };
+}
+
+function interpolatedDataPoint(t) {
+    const current = dataPointForTime(t);
+    if (!current || !interpolate || dataPoints.length < 2) return current || {};
+    const index = dataPoints.indexOf(current);
+    if (index < 0 || index >= dataPoints.length - 1) return current;
+    const next = dataPoints[index + 1];
+    const start = Number(current.t || 0), end = Number(next.t || start);
+    const factor = end > start ? Math.max(0, Math.min(1, (t - start) / (end - start))) : 0;
+    const result = { ...current };
+    for (const key of ['fuel','damage','pitch','roll','gameTime','localScale','steering','throttle','brake','odometer'])
+        result[key] = interpolateValue(current[key], next[key], factor);
+    result.headOffset = (Array.isArray(current.headOffset) ? current.headOffset : [0,0,0,0,0,0]).map((v, i) => interpolateValue(v, (next.headOffset || [])[i], factor));
+    return result;
+}
+
 function drawMap() {
     if (!ctx || !W || !H) return;
     ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,W,H);
     ctx.fillStyle='#0b0e13'; ctx.fillRect(0,0,W,H);
-    const p = trailPoints[currentIndex] || trailPoints[0];
+    const p = trailPointForTime(currentTime);
     if (!p) return;
     if (follow) { centerX = p.x; centerZ = p.z; }
 
@@ -373,24 +411,34 @@ function drawMap() {
         ctx.strokeStyle=getTrailColor(Number(b.speed)||0); ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
     }
 
-    const t=trailPoints[currentIndex]; const tp=worldToScreen(t.x,t.z);
-    const dp=dataPointForTime(currentTime) || {};
+    const t=p; const tp=worldToScreen(t.x,t.z);
+    const dp=interpolatedDataPoint(currentTime) || {};
     const headOffset=Array.isArray(dp.headOffset)?dp.headOffset:[0,0,0,0,0,0];
     const rawHead=((Number(headOffset[3])||0)%1+1)%1;
     const headDeg=rawHead*360;
     const signedHead=headDeg<=180?headDeg:headDeg-360;
 
     // Head view cone relative to truck direction.
-    ctx.save(); ctx.translate(tp.x,tp.y); ctx.rotate(-signedHead*Math.PI/180);
+    ctx.save(); ctx.translate(tp.x,tp.y); ctx.rotate(-((Number(t.heading || 0) * 180 / Math.PI) + signedHead)*Math.PI/180);
     ctx.beginPath(); ctx.moveTo(0,-20); ctx.lineTo(-13,13); ctx.lineTo(13,13); ctx.closePath();
     ctx.fillStyle='rgba(245,248,255,.20)'; ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=1; ctx.fill(); ctx.stroke(); ctx.restore();
 
-    // Mirror the truck marker vertically, as requested.
-    ctx.save(); ctx.translate(tp.x,tp.y); ctx.rotate(-(Number(t.heading)||0)); ctx.scale(1,-1);
+    // Mirror the truck marker horizontally.
+    ctx.save(); ctx.translate(tp.x,tp.y); ctx.rotate(-(Number(t.heading)||0)); ctx.scale(-1,1);
     ctx.beginPath(); ctx.moveTo(0,-18); ctx.lineTo(-10,12); ctx.lineTo(0,6); ctx.lineTo(10,12); ctx.closePath();
     ctx.fillStyle='#ff4d4d'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); ctx.restore();
 
     const currentSpeed=Number(t.speed)||0;
+    const pitchDeg=Number(dp.pitch||0)*360*PITCH_CALIBRATION_FACTOR;
+    const rollDeg=Number(dp.roll||0)*360*ROLL_CALIBRATION_FACTOR;
+    const body=document.getElementById('truck3dBody');
+    if(body) body.style.transform=`scaleX(-1) rotateX(${pitchDeg.toFixed(2)}deg) rotateZ(${rollDeg.toFixed(2)}deg)`;
+    const pitchFill=document.getElementById('pitchFill'), rollFill=document.getElementById('rollFill');
+    if(pitchFill) pitchFill.style.width=Math.max(0,Math.min(100,50+pitchDeg/1.8))+'%';
+    if(rollFill) rollFill.style.width=Math.max(0,Math.min(100,50+rollDeg/3.6))+'%';
+    const pitchLabel=document.getElementById('pitchLabel'), rollLabel=document.getElementById('rollLabel');
+    if(pitchLabel) pitchLabel.textContent=pitchDeg.toFixed(1)+'°';
+    if(rollLabel) rollLabel.textContent=rollDeg.toFixed(1)+'°';
     const fuel=Number(dp.fuel)||0;
     const localScale=Number(dp.localScale)||1;
     const steer=(Number(dp.steering)||0)*100;
@@ -611,7 +659,7 @@ window.addEventListener('resize', () => { resize(); fitMap(); drawMap(); });
             var items = string.Join("\n", names.Select(name => $"<li><a href='./{Uri.EscapeDataString(name)}.html' target='_blank'>{System.Net.WebUtility.HtmlEncode(name)}</a></li>"));
             return $@"<!DOCTYPE html>
 <html>
-<head><meta charset='utf-8'/><title>ETS2 Trail Player</title>
+<head><meta charset='utf-8'/><link rel='icon' href='/ets2_assist.ico'/><title>ETS2 Trail Player</title>
 <style>body{{background:#0a0c10;color:#e0e0e0;font-family:'Segoe UI',sans-serif;margin:20px}}a{{color:#d8e6f5;text-decoration:none}}a:hover{{text-decoration:underline}}#trackList{{max-width:800px;margin:20px auto}}li{{background:#1a1f26;padding:8px 12px;margin:6px 0;border:1px solid #333;border-radius:6px;list-style:none}}</style>
 </head><body><h1 style='text-align:center;'>ETS2 Trail Player</h1><ul id='trackList'>{items}</ul></body></html>";
         }

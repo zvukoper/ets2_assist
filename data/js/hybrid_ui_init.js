@@ -34,6 +34,7 @@ function initHybridUI() {
         fetchHttpData();
         hydrateHybridSnapshot();
         setInterval(fetchHttpData, HTTP_UPDATE_INTERVAL);
+        setInterval(hydrateHybridSnapshot, 1000);
         setTimeout(() => connectWebSocket(), 2000);
         setTimeout(() => connectCommandWebSocket(), 2500);
     });

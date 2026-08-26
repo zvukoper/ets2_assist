@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -9,6 +10,8 @@ namespace ETS2_Assist_GUI
     public partial class MainForm
     {
         private bool _debugMode = false;
+        private bool? _lastUiVisible;
+        private bool? _lastPauseLogoVisible;
 
         private void StartPauseCheck()
         {
@@ -50,13 +53,16 @@ namespace ETS2_Assist_GUI
             }
 
             bool paused = await IsGamePausedAsync();
-            if (paused != _lastPauseState)
+            bool gameFocused = IsGameFocused();
+            bool uiVisible = !paused && gameFocused;
+            if (uiVisible != _lastUiVisible)
             {
+                _lastUiVisible = uiVisible;
                 _lastPauseState = paused;
-                if (paused)
+                if (!uiVisible)
                 {
                     SendCommandToMap("hide_ui");
-                    AppendLog("[UI] Отправлена команда hide_ui (быстрый фейд-аут)");
+                    AppendLog("[UI] Отправлена команда hide_ui (пауза или потеря фокуса)");
                 }
                 else
                 {
@@ -73,6 +79,29 @@ namespace ETS2_Assist_GUI
                     }
                 }
             }
+
+            bool showPauseLogo = paused && gameFocused;
+            if (showPauseLogo != _lastPauseLogoVisible)
+            {
+                _lastPauseLogoVisible = showPauseLogo;
+                SendCommandToMap(showPauseLogo ? "show_pause_logo" : "hide_pause_logo");
+            }
+        }
+
+        private static bool IsGameFocused()
+        {
+            IntPtr foreground = GetForegroundWindow();
+            if (foreground == IntPtr.Zero) return false;
+            foreach (var process in Process.GetProcessesByName("eurotrucks2"))
+            {
+                try
+                {
+                    if (process.MainWindowHandle == foreground) return true;
+                }
+                catch { }
+                finally { process.Dispose(); }
+            }
+            return false;
         }
 
         private async Task<bool> IsGamePausedAsync()

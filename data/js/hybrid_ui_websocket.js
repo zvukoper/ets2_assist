@@ -141,6 +141,8 @@ function showHybridUIFirst() {
     content.style.transition = 'transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease-in';
     content.style.transform = 'scale(1)';
     content.style.opacity = '1';
+    const badge = document.getElementById('ets2AssistBuildBadge');
+    if (badge) badge.style.opacity = '0.9';
     hybridState.dataShown = true;
 }
 
@@ -152,6 +154,8 @@ function showHybridUIFast() {
     content.style.opacity = '1';
     content.style.transform = 'scale(1)';
     hybridState.dataShown = true;
+    const badge = document.getElementById('ets2AssistBuildBadge');
+    if (badge) badge.style.opacity = '0.9';
 }
 
 function hideHybridUIFast() {
@@ -159,4 +163,6 @@ function hideHybridUIFast() {
     if (!content) return;
     content.style.transition = 'opacity 0.15s ease-out';
     content.style.opacity = '0';
+    const badge = document.getElementById('ets2AssistBuildBadge');
+    if (badge) badge.style.opacity = '0';
 }

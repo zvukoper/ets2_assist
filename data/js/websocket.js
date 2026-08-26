@@ -54,6 +54,9 @@ function connectSaveWebSocket() {
                         case 'hide_ui':
                             hideUIFast();
                             break;
+                        case 'show_pause_logo':
+                        case 'hide_pause_logo':
+                            break;
                         default:
                             console.log('[WS] Unknown command:', data.command);
                     }
@@ -95,6 +98,8 @@ function showUIWithAnimation() {
     container.style.transition = 'transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease-in';
     container.style.transform = 'scale(1) translateY(0)';
     container.style.opacity = '1';
+    const badge = document.getElementById('mapBuildBadge');
+    if (badge) badge.style.opacity = '0.9';
 }
 
 function showUIFast() {
@@ -103,6 +108,8 @@ function showUIFast() {
     container.style.transition = 'opacity 0.15s ease-in';
     container.style.opacity = '1';
     container.style.transform = 'scale(1) translateY(0)';
+    const badge = document.getElementById('mapBuildBadge');
+    if (badge) badge.style.opacity = '0.9';
 }
 
 function hideUIFast() {
@@ -110,6 +117,8 @@ function hideUIFast() {
     if (!container) return;
     container.style.transition = 'opacity 0.15s ease-out';
     container.style.opacity = '0';
+    const badge = document.getElementById('mapBuildBadge');
+    if (badge) badge.style.opacity = '0';
 }
 
 // ================================================================
@@ -131,7 +140,7 @@ async function hydrateTelemetrySnapshot() {
     ];
     for (const path of paths) {
         try {
-            const res = await fetch(base + path);
+            const res = await fetch(base + path, { cache: 'no-store' });
             if (!res.ok) continue;
             const snap = await res.json();
             if (typeof applyTelemetryDelta === 'function') applyTelemetryDelta(snap);

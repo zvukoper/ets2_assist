@@ -10,8 +10,11 @@ function generateCompactTrail() {
     }
 
     const now = new Date();
-    const startLabel = trackTitleSuffix || `Запись ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
-    const desc = trackDescription || '';
+    const nearest = Array.isArray(state.nearbyCities) && state.nearbyCities.length > 0 ? state.nearbyCities[0] : null;
+    const nearestDistance = nearest && Number.isFinite(nearest.distSq) ? Math.sqrt(nearest.distSq) : 0;
+    const cityName = nearest?.name || 'неизвестный город';
+    const startLabel = trackTitleSuffix || `Запись ${cityName} ${formatDistance(nearestDistance)} ${now.toLocaleString()}`;
+    const desc = trackDescription || `Диагностика: городов ${state.cities.length}, дорог ${state.roads.length}, POI ${state.pois.length}, категорий POI ${state.poiCategories.length}, целей ${state.customTargets.length}, точек шлейфа ${state.trail.length}, точек данных ${state.dataPoints.length}.`;
 
     const meta = {
         version: 2,
@@ -82,13 +85,14 @@ async function saveTrail(requestId = "") {
         poiCategoryCounts: state.poiCategoryCounts || {},
         customTargets: Array.isArray(state.customTargets) ? state.customTargets : []
     };
+    const compactMeta = JSON.parse(compactData.split('\n', 1)[0]);
 
     const payload = {
         format: 'compact_v2',
         data: compactData,
         meta: {
-            title: trackTitleSuffix || 'Без названия',
-            description: trackDescription || '',
+            title: compactMeta.title,
+            description: compactMeta.description,
             startTime: state.trailStartTime ? new Date(state.trailStartTime).toISOString() : new Date().toISOString(),
             durationMs: state.elapsedSeconds * 1000,
             totalDistance: state.totalRealDistance,

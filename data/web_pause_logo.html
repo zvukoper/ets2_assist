@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ETS2 Assist pause</title>
+<link rel="icon" href="ets2_assist.ico">
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;pointer-events:none}
+#pauseLogo{position:fixed;left:14px;top:14px;display:flex;flex-direction:column;align-items:flex-start;opacity:0;transform:translateY(-4px);transition:opacity 150ms ease,transform 150ms ease}
+#pauseLogo.visible{opacity:1;transform:translateY(0)}
+#pauseLogo img{width:150px;height:auto;filter:drop-shadow(0 2px 4px rgba(0,0,0,.85))}
+#pauseVersion{margin-top:2px;padding:1px 5px;color:#fff;background:rgba(0,0,0,.55);border-radius:3px;font:700 12px/1.2 Segoe UI,Arial,sans-serif;text-shadow:0 1px 3px #000}
+</style>
+</head>
+<body>
+<div id="pauseLogo"><img src="ets2a_logo.png" alt="ETS2 Assist"><span id="pauseVersion">v.1.0.34-0000</span></div>
+<script>
+const logo=document.getElementById('pauseLogo');
+fetch('ets2_assist_build.txt?_='+Date.now()).then(r=>r.text()).then(v=>{const p=v.trim().split('-');if(p.length>=3)document.getElementById('pauseVersion').textContent=`v.${p[0]}-${p[p.length-1]}`;}).catch(()=>{});
+function setLogo(visible){logo.classList.toggle('visible',visible)}
+let ws;
+function connect(){try{ws=new WebSocket('ws://localhost:8084/');ws.onmessage=e=>{try{const d=JSON.parse(e.data);if(d.command==='show_pause_logo')setLogo(true);if(d.command==='hide_pause_logo')setLogo(false)}catch{}};ws.onclose=()=>setTimeout(connect,1000)}catch{setTimeout(connect,1000)}}
+connect();
+</script>
+</body>
+</html>

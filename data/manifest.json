@@ -1,7 +1,7 @@
 {
   "name": "ETS2 Telemetry",
   "short_name": "ETS2 Dash",
-  "start_url": "/web_ui.html",
+  "start_url": "/web_ui_hybrid.html",
   "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#0b0e14",
