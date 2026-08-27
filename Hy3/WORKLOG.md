@@ -1,10 +1,10 @@
-# ETS2_Assist_GUI — заметки сессии (Hy3)
+﻿# ETS2_Assist_GUI — заметки сессии (Hy3)
 
 > Папка для памяти между сессиями. Обновляется вручную в конце каждой сессии.
 
 ## Как собрать и опубликовать EXE
 - VS MCP (`vs-mcp_LoadSolution`) НЕ умеет грузить `.slnx` (падает с `E_ABORT`).
-  Используем dotnet CLI напрямую из `D:\repo\ets2_assist`:
+  Используем dotnet CLI напрямую из `F:\repo\ets2_assist`:
   ```
   dotnet publish ETS2_Assist_GUI.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
   ```
@@ -84,7 +84,7 @@
 ### Сборка
 - Обычный `dotnet publish` в `publish\` падает на бандлере: запущенный EXE заблокирован
   (пользователь тестирует, PID живой). Поэтому опубликовано во временную папку
-  `D:\repo\ets2_assist\publish_test\` (single-file, win-x64, Release). Чтобы обновить основной
+  `F:\repo\ets2_assist\publish_test\` (single-file, win-x64, Release). Чтобы обновить основной
   exe — закрыть запущенный экземпляр и пересобрать в `publish\`.
 - Правки C# (MainForm.cs, QuestsManager.cs) и JS (targets.js, websocket.js, map_draw.js)
   прошли: `node --check` OK, компиляция C# OK (только CS0414-варнинги).
@@ -341,4 +341,125 @@
 ### Что проверить у пользователя (после запуска свежего EXE)
 - Первая строка лога: `BUILD_VERSION=1.0.36-APP-FILE-BROKER-2026.08.27-RND5`, НЕТ `reload_custom_targets`.
 - Кнопка №3 → лог `[TARGETS] Цель добавлена в файл...` и файл `custom_targets.json` меняется.
-- Pending: геометрия кнопок 1/2/4 (road/POI) — только №3 добавляет цель; глюк авто-зумa (кнопка №2).
+  - Pending: геометрия кнопок 1/2/4 (road/POI) — только №3 добавляет цель; глюк авто-зумa (кнопка №2).
+
+---
+
+## Сессия 8 (27.08.2026) — синхронизация data при публикации + debug-лог целей + локализация
+
+### Контекст от пользователя
+- После очистки publish-папки удалилась папка `language` → интерфейс потерял локализацию.
+  Пользователь перенёс `en.csv`/`ru.csv` в `data\language\` (исходники).
+- После запуска миникарта БЕСКОНЕЧНО проигрывает анимацию появления (каждые 3-5 сек);
+  кнопки случайной цели не дают эффекта. Гипотеза: папка `data` в publish УСТАРЕЛА.
+- Просьба: изменить проект так, чтобы после билда/публикации исходная `data` копировалась
+  поверх publish (актуальные веб-файлы). Запомнить: «чистый билд» = publish-папка полностью
+  удаляется/очищается перед созданием exe.
+- Просьба: подробный debug-лог записи `custom_targets.json` (путь + что пишется + перечитка
+  содержимого), чтобы понять, почему связной/тайник есть, а случайные цели «улетают в никуда».
+
+### Что сделано
+- **Синхронизация data (`ETS2_Assist_GUI.csproj`):** добавлен Target `SyncDataToPublish`
+  (`AfterTargets="Publish"`). Он удаляет `publish\data\` целиком и копирует заново
+  исходную `data\` (388 файлов). Это устраняет рассинхрон и устаревшие файлы в publish.
+  Локализация: добавлена папка `language\**\*` как Content (рядом с `data\**\*`), поэтому
+  `BaseDirectory/language` и `BaseDirectory/data/language` обе присутствуют в publish.
+  `LanguageManager.cs` уже резолвит оба пути.
+- **Debug-лог целей (`Quests/QuestsManager.cs`):** добавлен `LogTargetsFileDump(label,path)` —
+  логирует путь файла и ПЕРЕЧИТЫВАЕТ его содержимое. Вызывается после записи/удаления цели
+  (`AddTargetToFile`, `RemoveTargetFromFile`) и в `SendTargetsToMap` (путь + число точек).
+  В `AddTargetToFile` логируется сам `entry` (JSON) и счётчики до/после добавления.
+- **Версия:** `1.0.36-APP-FILE-BROKER-2026.08.27-RND5` → **`1.0.37-TARGET-DEBUG-DATASYNC-2026.08.27-RND6`**
+  (`BuildInfo.cs`, `VersionPrefix` csproj → 1.0.37, `data/ets2_assist_build.txt`,
+  `data/web_runtime_manifest.json`).
+
+### Сборка
+- `dotnet publish` (Release, win-x64, self-contained, single-file) — SUCCESS, БЕЗ `error CS`.
+- В выводе: `SyncDataToPublish: скопировано 388 файлов data -> ...publish\data`.
+- EXE: `bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist_GUI.exe`.
+- Проверено: `publish\data\language\{en,ru}.csv` и `publish\language\{en,ru}.csv` на месте.
+
+### Что проверить у пользователя
+- Запустить новый EXE (1.0.37). Анимация появления миникарты — ОДИН раз (не цикл).
+  Интерфейс на русском (локализация восстановлена).
+- Нажать кнопки 1/2/3/4 → в логе (`publish\Logs`) искать `[TARGETS][DEBUG] ЗАПИСЬ цели...`
+  с путём файла, `entry=...`, и `[TARGETS][DEBUG] ПОСЛЕ ЗАПИСИ ЦЕЛИ: содержимое={...}`.
+  Это покажет, реально ли цель попадает в `custom_targets.json`.
+- «Проверка точек» → `[TARGETS] Отправлено точек... (путь файла=...)`.
+- Если цель в логе пишется, но на карте не видна — значит баг в `applyTargetsData`
+  (data/js/targets.js) или отрисовке; если НЕ пишется — баг в доставке команды `add_target`
+  от миникарты (websocket.js). Лог это разделит.
+- Pending (старые): глюк авто-зумa (кнопка №2); геометрия кнопок 1/2/4.
+
+### ИНЦИДЕНТ (после публикации 1.0.37): потеряна папка data\bin
+- **Симптом:** после публикации пропали `WebOverlay.exe` и `ets2c.exe` — нет ни оверлея,
+  ни начисления наград. Лог `app_workflow.log` показал старый `BUILD_VERSION=1.0.36` и
+  ошибку `Language file 'en.csv' not found!` (arduino.ps1). Причина: таргет `SyncDataToPublish`
+  изначально делал `RemoveDir publish\data\` ЦЕЛИКОМ — стёр `data\bin`, которого не было
+  в исходниках (бинарники жили только в publish).
+- **Фикс:** пользователь скопировал `ets2c.exe`+`WebOverlay.exe` в `data\bin\` (корень
+  проекта) — теперь это авторитетный источник. Таргет переписан: НЕ удаляет `publish\data\`
+  целиком, а копирует исходную `data\` ПОВЕРХ и удаляет-пересоздаёт только ТОП-папки,
+  присутствующие в исходниках (js/css/GeoJson/language/bin/...). Runtime-файлы (web_data.json)
+  сохраняются. Повторный `dotnet publish` → `publish\data\bin\{ets2c.exe,WebOverlay.exe}` на месте,
+  390 файлов скопировано. Записано в INSTRUCTIONS.md (урок: не RemoveDir всю publish\data).
+
+---
+
+## Сессия 9 (27.08.2026) — РАЗБЛОКИРОВКА СБОРКИ + фикс версионирования
+
+### Симптом
+- `dotnet restore`/`dotnet publish` падали мгновенно (66-92 мс) с
+  `error MSB4181: The "RestoreTask" task returned false but did not log an error.`
+  без каких-либо других ошибок. `obj/project.assets.json` оказался без таргета
+  `net10.0-windows` (после неудачного restore).
+
+### КОРЕНЬ (два независимых момента)
+1. **`<Version>` содержал НЕвалидный SemVer.** Раньше строка версии
+  (`1.0.38-TARGETS-FILE-2026.08.27-2110`) клалась в `<Version>` (пакетный номер NuGet,
+  используемый restore). Точки ВНУТРИ prerelease-сегмента (`2026.08.27`) — недопустимы по
+  SemVer, и restore падал именно с этим «безымянным» RestoreTask-эррором (очень сбивает:
+  ошибка не логируется). Проверено бисекцией: минимальный WinForms-проект восстанавливается
+  нормально, мой csproj падал ровно из-за `<Version>$(DescriptiveVersion)</Version>`.
+2. **Офлайн-восстановление.** У `dotnet` на сборочной машине НЕТ выхода до NuGet-фида
+  (обычный сетевой egress есть, но `dotnet restore`/`workload install` не доходят).
+  Все нужные пакеты УЖЕ в глоб. кэше (`%USERPROFILE%\.nuget\packages`). Рабочий обходняк:
+  собрать плоский offline-фид из кэша (`Get-ChildItem ...\.nuget\packages -Recurse -Filter *.nupkg
+  | Copy-Item` в одну папку) и `dotnet restore ... --source <feed>`. После этого publish с
+  `--no-restore`. НЕ пытаться лечить сеть — restore упадёт без лога.
+  (Windows Desktop workload при этом НЕ нужен: пак `Microsoft.WindowsDesktop.App.Ref` уже в
+  `C:\Program Files\dotnet\packs`, минимальный WinForms восстанавливается/строится офлайн.)
+
+### Исправления (файлы)
+- `ETS2_Assist_GUI.csproj`:
+  - `<Version>` = `$(VersionPrefix)` (чистый SemVer) — раньше было `$(DescriptiveVersion)`.
+  - `<InformationalVersion>` = `$(DescriptiveVersion)` (НОВОЕ свойство) — именно из него SDK
+    берёт `AssemblyInformationalVersionAttribute`. `<AssemblyInformationalVersion>` сам по себе
+    атрибут НЕ формирует (SDK смотрит на `$(InformationalVersion)`)!
+  - `<_EpochMod>` = `$([MSBuild]::Modulo($([System.DateTimeOffset]::Now.ToUnixTimeSeconds()), 65536))`
+    — 4-я цифра `AssemblyVersion`/`FileVersion` = секунды UNIX mod 65536.
+  - `<AssemblyVersion>`/`<FileVersion>` = `$(VersionPrefix).$(_EpochMod)`.
+- `BuildInfo.cs`: добавлен `using System.Reflection;` (иначе `GetCustomAttribute<T>` — extension,
+  CS1061; без ImplicitUsings в проекте он не в области видимости). `BuildInfo.Version` читает
+  `AssemblyInformationalVersionAttribute` → теперь это описательная строка.
+
+### Правило версионирования (обновлено, 27.08.2026)
+- Формат строки: `A.B.CCCC-DESC-YYYY.MM.DD-HHmm` (БЕЗ `RND`; последний блок = дата+время билда).
+- `CCCC` — счётчик билда, повышается ВРУЧНУЮ на 1 ПОСЛЕ каждого билда (в `VersionPrefix`).
+- 4-я цифра EXE = epoch mod 65536 (уникальна на каждый билд).
+- Строка версии автосинхронизирована с csproj через `InformationalVersion` (не дублируем вручную).
+- Бейдж-строка дублируется в `data/ets2_assist_build.txt` и `data/web_runtime_manifest.json`.
+
+### Сборка (успех)
+- Offline-restore из локального фида + `dotnet publish ... --no-restore` → SUCCESS, БЕЗ `error CS`.
+- EXE: `bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist_GUI.exe`.
+- Проверено: `ProductVersion` = `1.0.38-TARGETS-FILE-2026.08.27-2135` (читается `BuildInfo.Version`);
+  `FileVersion` = `1.0.38.26470` (4-я цифра = epoch mod 65536); `publish\data\bin\{ets2c.exe,WebOverlay.exe}`
+  на месте (390 файлов скопировано таргетом `SyncDataToPublish`).
+- ВАЖНО: `obj\` был удалён в процессе отладки restore — после успешного offline-restore он
+  валиден; для последующих билдов достаточно `dotnet publish ... --no-restore` (или restore из фида).
+
+### Что проверить у пользователя
+- Запустить свежий EXE (1.0.38-TARGETS-FILE-...). В заголовке/логах `BUILD_VERSION` = новая строка.
+- Свойства exe (Подробно) → 4-я цифра FileVersion меняется каждый билд (epoch mod 65536).
+- Старые pending: глюк авто-зумa (кнопка №2); геометрия кнопок 1/2/4 — НЕ правили в этой сессии.

@@ -1,12 +1,12 @@
-{
-  "build": "1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-1532",
-  "static_data_policy": "preserve-existing",
-  "required_static": [
-    "GeoJson/roads.geojson",
-    "GeoJson/cities.geojson",
-    "Overlays.json",
-    "localized_cities/cities_sibirmap.json"
-  ],
-  "mode": "track-static-snapshot",
-  "playbackStaticFetch": false
+﻿{
+    "static_data_policy":  "preserve-existing",
+    "required_static":  [
+                            "GeoJson/roads.geojson",
+                            "GeoJson/cities.geojson",
+                            "Overlays.json",
+                            "localized_cities/cities_sibirmap.json"
+                        ],
+    "build":  "1.0.38-TARGETS-FILE-2026.08.27-2135",
+    "mode":  "track-static-snapshot",
+    "playbackStaticFetch":  false
 }

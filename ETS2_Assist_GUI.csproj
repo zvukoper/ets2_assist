@@ -13,22 +13,67 @@
     <!-- <PublishTrimmed>false</PublishTrimmed> (по умолчанию false) -->
     <!-- Можно ускорить запуск (опционально) -->
     <PublishReadyToRun>true</PublishReadyToRun>
-    <VersionPrefix>1.0.34</VersionPrefix>
-<VersionSuffix>$([System.String]::Format("{0}{1}{2}{3}", $([System.DateTime]::Now.Month), $([System.DateTime]::Now.Day), $([System.DateTime]::Now.Hour), $([System.DateTime]::Now.Minute)))</VersionSuffix>
-    <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
-    <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
-    <AssemblyInformationalVersion>$(Version)</AssemblyInformationalVersion>
+    <!--
+      ВЕРСИОНИРОВАНИЕ (правило с 27.08.2026):
+      - Формат человекочитаемой версии: A.B.CCCC-DESC-YYYY.MM.DD-HHmm
+        (без RND; последний блок — дата и время сборки).
+      - Счётчик билда = третья цифра CCCC, повышается вручную ПОСЛЕ каждого билда.
+      - 4-я цифра EXE (FileVersion/AssemblyVersion) = секунды UNIX-эпохи mod 65536
+        (WORD в VERSIONINFO вмещает 0..65535). Так в свойствах exe виден уникальный
+        идентификатор сборки.
+      - Описание (DESC) и дата-время формируются в csproj; BuildInfo.Version берёт
+        AssemblyInformationalVersion, поэтому синхронизировано автоматически.
+    -->
+    <VersionPrefix>1.0.38</VersionPrefix>
+    <BuildTag>$([System.DateTime]::Now.ToString('yyyy.MM.dd-HHmm'))</BuildTag>
+    <DescriptiveVersion>$(VersionPrefix)-TARGETS-FILE-$(BuildTag)</DescriptiveVersion>
+    <_EpochMod>$([MSBuild]::Modulo($([System.DateTimeOffset]::Now.ToUnixTimeSeconds()), 65536))</_EpochMod>
+    <Version>$(VersionPrefix)</Version>
+    <AssemblyVersion>$(VersionPrefix).$(_EpochMod)</AssemblyVersion>
+    <FileVersion>$(VersionPrefix).$(_EpochMod)</FileVersion>
+    <AssemblyInformationalVersion>$(DescriptiveVersion)</AssemblyInformationalVersion>
+    <InformationalVersion>$(DescriptiveVersion)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>data\ets2_assist.ico</ApplicationIcon>
 </PropertyGroup>
-<ItemGroup>
+  <ItemGroup>
     <None Remove="data\**\*" />
     <Content Include="data\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+    <!-- Локализация (резервный путь BaseDirectory/language; основной — data/language) -->
+    <Content Include="language\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
+
+  <!--
+    Синхронизация исходной папки data поверх папки публикации ПОСЛЕ билда.
+    Копируем исходную data ПОВЕРХ publish\data (как просил пользователь), перезаписывая
+    файлы. Чтобы не оставлять устаревшие файлы внутри исходных папок, для каждой
+    ТОП-УРОВНЕВОЙ папки, которая ЕСТЬ в исходниках (js, css, GeoJson, language, bin, ...),
+    сначала удаляем её копию в publish и копируем заново. ВАЖНО: целиком publish\data мы НЕ
+    удаляем — поэтому runtime-артефакты, которых нет в исходниках (напр. web_data.json,
+    сгенерированный приложением), и прочие внешние файлы сохраняются. Папка data\bin
+    (ets2c.exe, WebOverlay.exe) теперь есть в исходниках, поэтому тоже копируется и при
+    чистом билде не теряется.
+  -->
+  <Target Name="SyncDataToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_SourceTopDirs Include="data\*\">
+        <_PublishPath>$(PublishDir)%(Identity)</_PublishPath>
+      </_SourceTopDirs>
+      <_DataSourceFiles Include="data\**\*" />
+    </ItemGroup>
+    <RemoveDir Directories="@(_SourceTopDirs->'$(PublishDir)%(Identity)')" />
+    <Copy SourceFiles="@(_DataSourceFiles)"
+          DestinationFiles="@(_DataSourceFiles->'$(PublishDir)data\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="false" />
+    <Message Text="SyncDataToPublish: скопировано @(_DataSourceFiles->Count()) файлов data -> $(PublishDir)data" Importance="high" />
+  </Target>
 
   <ItemGroup>
   <None Include=".github\copilot-instructions.md" />

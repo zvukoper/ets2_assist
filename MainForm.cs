@@ -118,6 +118,10 @@ namespace ETS2_Assist_GUI
         // ========== УПРАВЛЕНИЕ UI И ПАУЗОЙ ==========
         private bool _uiShown = false;
         private bool? _lastPauseState = null;
+        // Последнее «намерение» приложения по паузе. SetGamePause(true/false) выставляет
+        // его. Используется как запасной источник детекции паузы, когда телеметрия
+        // (TruckTel /api/rest/single/frame/paused) недоступна или отдаёт неразбираемый ответ.
+        private bool _pausedIntent = false;
         private System.Windows.Forms.Timer _pauseCheckTimer = null!;
 
         // ========== WEBSOCKET-СЕРВЕР ДЛЯ СОХРАНЕНИЯ ТРЕКОВ (порт 8084) ==========
@@ -1074,7 +1078,7 @@ namespace ETS2_Assist_GUI
                 TrailBehavior.SetOnTrail(data => SaveTrailFromWebSocket(data));
                 TrailBehavior.SetPlaySoundAction(PlaySound);
                 TrailBehavior.SetOnCommand(data => OnClientCommand(data));
-                TrailBehavior.SetUiSync(() => _lastPauseState == true ? "hide_ui" : "show_ui_first");
+                TrailBehavior.SetUiSync(() => _lastPauseState == true ? "hide_ui" : "show_ui");
 
                 _wsSaveServer = new WebSocketSharp.Server.WebSocketServer($"ws://localhost:8084");
                 _wsSaveServer.AddWebSocketService<TrailBehavior>("/");
@@ -2027,9 +2031,9 @@ namespace ETS2_Assist_GUI
                     if (response.IsSuccessStatusCode)
                     {
                         var json = response.Content.ReadAsStringAsync().Result.Trim();
-                        if (bool.TryParse(json, out bool paused)) return paused;
-                        var token = JToken.Parse(json);
-                        if (token.Type == JTokenType.Boolean) return token.Value<bool>();
+                        var parsed = ParsePausedResponse(json);
+                        if (parsed.HasValue) return parsed.Value;
+                        return _pausedIntent;
                     }
                 }
             }
@@ -2037,7 +2041,33 @@ namespace ETS2_Assist_GUI
             {
                 AppendLog($"IsGamePaused error: {ex.Message}");
             }
-            return false;
+            return _pausedIntent;
+        }
+
+        // Универсальный разбор ответа эндпоинта паузы. Поддерживает:
+        // "true"/true, "false"/false, {"paused":...}, числовое значение.
+        // Возвращает null, если ответ вообще недоступен (вызывающий решает сам).
+        private static bool? ParsePausedResponse(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            string s = json.Trim();
+            if (s.Length >= 2 && s[0] == '"' && s[s.Length - 1] == '"')
+                s = s.Substring(1, s.Length - 2);
+            if (bool.TryParse(s, out bool b)) return b;
+            try
+            {
+                var t = JToken.Parse(json.Trim());
+                if (t.Type == JTokenType.Boolean) return t.Value<bool>();
+                if (t.Type == JTokenType.String && bool.TryParse(t.Value<string>(), out b)) return b;
+                if (t.Type == JTokenType.Integer) return t.Value<int>() != 0;
+                if (t.Type == JTokenType.Object)
+                {
+                    var p = t["paused"] ?? t["pause"] ?? t["isPaused"];
+                    if (p != null) return ParsePausedResponse(p.ToString());
+                }
+            }
+            catch { }
+            return null;
         }
 
         private async Task TriggerTrailSaveAsync()

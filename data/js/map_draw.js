@@ -345,6 +345,7 @@ function drawMinimap() {
     }
     // Неактивные цели
     for (const target of allTargets) {
+        if (target === randomTarget) continue;
         if (target.active) continue;
         const tPos = { x: target.x, z: target.z };
         const distReal = Math.sqrt((tPos.x - truckPos.x)**2 + (tPos.z - truckPos.z)**2);
@@ -430,6 +431,7 @@ function drawMinimap() {
     }
     // Активные цели
     for (const target of allTargets) {
+        if (target === randomTarget) continue;
         if (!target.active) continue;
         const tPos = { x: target.x, z: target.z };
         const distReal = Math.sqrt((tPos.x - truckPos.x)**2 + (tPos.z - truckPos.z)**2);

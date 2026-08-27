@@ -115,9 +115,12 @@ namespace ETS2_Assist_GUI
                     if (response.IsSuccessStatusCode)
                     {
                         var json = (await response.Content.ReadAsStringAsync()).Trim();
-                        if (bool.TryParse(json, out bool paused)) return paused;
-                        var token = JToken.Parse(json);
-                        if (token.Type == JTokenType.Boolean) return token.Value<bool>();
+                        // TruckTel может вернуть булево в разных видах ("true", true,
+                        // {"paused":true}...). ParsePausedResponse разбирает всё; при
+                        // неудаче разбора доверяем намерению приложения (_pausedIntent).
+                        var parsed = ParsePausedResponse(json);
+                        if (parsed.HasValue) return parsed.Value;
+                        return _pausedIntent;
                     }
                 }
             }
@@ -125,7 +128,8 @@ namespace ETS2_Assist_GUI
             {
                 // ignored
             }
-            return false;
+            // Телеметрия недоступна — используем последнее известное намерение приложения.
+            return _pausedIntent;
         }
     }
 }

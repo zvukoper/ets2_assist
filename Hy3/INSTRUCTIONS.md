@@ -3,6 +3,20 @@
 > Этот файл — для меня (агента). В НОВОЙ сессии пользователь даст команду прочитать
 > `Hy3/INSTRUCTIONS.md` и `Hy3/WORKLOG.md`. Прочитав их, я сразу вспомню контекст
 > и продолжаю работу без повторного разбора.
+>
+> ⚠️ **ОБЯЗАТЕЛЬНОЕ ПРЕДУПРЕЖДЕНИЕ ПЕРЕД ЛЮБОЙ ПРАВКОЙ .md (УРОК СЕССИИ 9, 27.08.2026):**
+> файлы памяти — UTF-8 **С BOM**. Read/Edit-инструменты среды читают UTF-8 корректно
+> ТОЛЬКО при наличии BOM; **без BOM кириллица показывается как mojibake** (`Ð Ď Ň ...`),
+> а Edit падает с «oldString not found». Причина, с которой я споткнулся: PowerShell
+> `Set-Content -Encoding utf8` (и `Out-File`) в PS 5.1 пишет UTF-8 **БЕЗ BOM** и ломает файл.
+> **КАК НЕ ПОВТОРИТЬ:**
+> 1. Правь .md ТОЛЬКО через Edit-инструмент — он сохраняет BOM и кириллицу корректно.
+> 2. Если нужна пакетная правка в PowerShell — пиши СТРОГО С BOM:
+>    `[System.IO.File]::WriteAllText($p, $t, [System.Text.UTF8Encoding]::new($true))`
+>    (НЕ `Set-Content -Encoding utf8` и НЕ `Out-File` по умолчанию).
+> 3. Увидел mojibake в read/edit — СТОП. Не дописывай поверх битого. Восстанови
+>    `git checkout -- Hy3/INSTRUCTIONS.md` (и/или `Hy3/WORKLOG.md`) и переапликай правки
+>    через Edit. Файлы git-tracked, оригинал всегда цел.
 
 ## Стоящие команды пользователя («запомни» / «учти»)
 - Любая фраза «запомни …» или «учти …» означает: кратко записать факт в память
@@ -27,7 +41,7 @@
   — в реальном времени видны почти все данные от WebSocket TruckTel.
 
 ## Статус памяти между сессиями
-Память живёт ТОЛЬКО в папке `D:\repo\ets2_assist\Hy3\` (файлы `WORKLOG.md` и `INSTRUCTIONS.md`).
+Память живёт ТОЛЬКО в папке `F:\repo\ets2_assist\Hy3\` (файлы `WORKLOG.md` и `INSTRUCTIONS.md`).
 Системная память (memory-*) может быть неполной — всегда сверяйся с этими файлами первыми.
 
 ## Что сделать в начале каждой сессии (по запросу пользователя)
@@ -37,31 +51,64 @@
 
 ## Как собирать и публиковать EXE
 - VS MCP (`vs-mcp_LoadSolution`) НЕ грузит `.slnx` (падает `E_ABORT`). Не трать время на него.
-- Использовать dotnet CLI из `D:\repo\ets2_assist`:
+- Использовать dotnet CLI из `F:\repo\ets2_assist`:
   ```
   dotnet publish ETS2_Assist_GUI.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
   ```
 - Результат: `bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist_GUI.exe` (~130 МБ).
 - JS-файлы в `data/` не компилируются — правки копируются при публикации как Content.
   Перед публикацией желательно `node --check` на изменённых `.js`.
+- **OFFLINE-БИЛД (машина без egress в NuGet; 27.08.2026, СЕССИЯ 9):**
+  `dotnet` на этой машине НЕ имеет доступа к NuGet-фиду → `dotnet restore` падает МОЛЧА:
+  `error MSB4181: The "RestoreTask" task returned false but did not log an error.`
+  Все нужные пакеты УЖЕ есть в глобальном кэше `%USERPROFILE%\.nuget\packages`.
+  Рецепт:
+  1. Скопировать все `*.nupkg` из `%USERPROFILE%\.nuget\packages` в плоскую папку
+     (напр. `C:\Users\Admin\AppData\Local\Temp\opencode\offlinefeed`):
+     `Get-ChildItem "$env:USERPROFILE\.nuget\packages" -Recurse -Filter *.nupkg | Copy-Item -Destination <flatfeed>`
+  2. `dotnet restore ETS2_Assist_GUI.csproj --source <flatfeed>`
+  3. `dotnet publish ETS2_Assist_GUI.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true --no-restore`
+  - Windows Desktop workload НЕ нужен: `Microsoft.WindowsDesktop.App.Ref` уже лежит в
+    `C:\Program Files\dotnet\packs`, минимальный WinForms восстанавливается/билдится офлайн нормально.
+- **ЛОВУШКА SEMVER (27.08.2026, СЕССИЯ 9):** `<Version>` (NuGet-версия, используемая restore)
+  ДОЛЖНА быть ЧИСТЫМ SemVer. Если в `<Version>` положить составную пре-версию вроде
+  `1.0.38-TARGETS-FILE-2026.08.27-2110` — restore падает ТАК ЖЕ молча (`RestoreTask returned false`).
+  Описательную строку класть ТОЛЬКО в `<InformationalVersion>` (SDK генерит
+  `AssemblyInformationalVersionAttribute` из `$(InformationalVersion)`; `<AssemblyInformationalVersion>`
+  в одиночку атрибут НЕ генерит). `<Version>` оставлять чистой (`1.0.38`). Это ПРАВИЛО — иначе билд не соберётся.
 
-## Версионирование (правило «запомни», 27.08.2026)
-- **ПЕРЕД КАЖДЫМ БИЛДОМ повышаем версию проекта!** Формат:
-  `A.B.CCCC-DESC-DATE-BUILD`
-  - `A` — поколение проекта. Меняется только при полном релизе предыдущего поколения
-    со всем запланированным функционалом (очень редко). Сейчас `A=1`.
-  - `B` — ключевой этап разработки (важный набор фичей). Повышение = важное развитие
-    функционала. Сейчас `B=0`.
-  - `C` (CCCC) — порядковый номер очередного изменения/исправления. **Сбрасывается в 0**
-    при повышении `B`. Инкрементируется на 1 при каждом билде. Сейчас `C=35`
-    (в `BuildInfo.cs` на момент фиксации правила).
-  - `DESC` — очень кратко, **2–3 английских слова** через дефис, суть изменений билда
-    (напр. `TARGET-POINTERS`).
-  - `DATE` — дата билда `YYYY.MM.DD`.
-  - `BUILD` — просто номер сборки (напр. `RND4`), инкрементируется.
-- Место хранения строки версии: `BuildInfo.cs` → `BuildInfo.Version` (используется в заголовке
-  окна, логах и HTTP-заголовке `X-ETS2-Assist-Build`). Сама сборка (dotnet publish) версию
-  строки не меняет — правим вручную перед публикацией.
+## Версионирование (правило «запомни», ИЗМЕНЕНО в сессии 9, 27.08.2026)
+- **ПЕРЕД КАЖДЫМ БИЛДОМ повышаем версию проекта!** Новый формат строки:
+  `A.B.CCCC-DESC-YYYY.MM.DD-HHmm`
+  - `A` — поколение проекта (сейчас `A=1`).
+  - `B` — ключевой этап разработки (сейчас `B=0`).
+  - `C` (CCCC) — порядковый счётчик билда. **Инкрементируется вручную на 1 ПОСЛЕ каждого
+    билда** (1.0.38 → 1.0.39 → ...). НЕ содержит RND и НЕ авто-генерится.
+  - `DESC` — кратко, английские слова через дефис, суть билда (напр. `TARGETS-FILE`).
+  - `YYYY.MM.DD-HHmm` — дата+время сборки (генерится из `$([System.DateTime]::Now.ToString(...))`).
+- **НЕТ RND** в имени версии (убрано по просьбе пользователя).
+- **4-я цифра EXE-версии** (`FileVersion`/`AssemblyVersion` = `A.B.C.<N>`) где
+  `<N> = unix-epoch-seconds mod 65536` (генерится в csproj через `$([MSBuild]::Modulo(...))`).
+- Место хранения строки версии: `BuildInfo.cs` → `BuildInfo.Version` читает
+  `AssemblyInformationalVersion` (нужен `using System.Reflection;`), fallback
+  `"1.0.38-TARGETS-FILE"`. Строка прилетает из csproj-свойства
+  `<InformationalVersion>` (НЕ `<AssemblyInformationalVersion>` в одиночку — см. ловушку SemVer
+  выше). `BuildInfo.Version` используется в заголовке окна, логах и HTTP-заголовке
+  `X-ETS2-Assist-Build`.
+- Конкретные csproj-свойства (рабочий вариант, сессия 9):
+  ```
+  <VersionPrefix>1.0.38</VersionPrefix>
+  <BuildTag>$([System.DateTime]::Now.ToString('yyyy.MM.dd-HHmm'))</BuildTag>
+  <DescriptiveVersion>$(VersionPrefix)-TARGETS-FILE-$(BuildTag)</DescriptiveVersion>
+  <_EpochMod>$([MSBuild]::Modulo($([System.DateTimeOffset]::Now.ToUnixTimeSeconds()), 65536))</_EpochMod>
+  <Version>$(VersionPrefix)</Version>
+  <AssemblyVersion>$(VersionPrefix).$(_EpochMod)</AssemblyVersion>
+  <FileVersion>$(VersionPrefix).$(_EpochMod)</FileVersion>
+  <AssemblyInformationalVersion>$(DescriptiveVersion)</AssemblyInformationalVersion>
+  <InformationalVersion>$(DescriptiveVersion)</InformationalVersion>
+  ```
+- Бейджи билда (в `data/ets2_assist_build.txt` и `data/web_runtime_manifest.json`) тоже
+  выставлять в `A.B.CCCC-DESC-YYYY.MM.DD-HHmm` вручную.
 
 ## Обязательные команды (всегда!)
 ПОСЛЕ КАЖДОГО изменения в проекте:
@@ -146,6 +193,19 @@
 - [ ] Проверить, что логи цели пишутся (создание + дистанция; кнопка «Проверка точек»).
 - [ ] (опционально) Почистить неиспользуемые поля/`nullability`-предупреждения в MainForm.cs.
 - [ ] (исследовать) Перенести рисование ВСЕХ целей на надёжный источник, а не `state.customTargets`.
+- [ ] **ВЕРИФИЦИРОВАТЬ ИСПРАВЛЕНИЯ СЕССИЙ 1-9 В РАНТАЙМЕ (у пользователя):**
+  - Пауза/оверлей: карта и гибрид СКРЫВАЮТСЯ на паузе ETS2; `web_pause_logo` показывается;
+    хоткей CTRL+SHIFT+S не висит 4с (подтверждение паузы срабатывает). Код готов
+    (MainForm `_pausedIntent` + `ParsePausedResponse`, WebUIManager `IsGamePausedAsync`,
+    скрытие map/hybrid на паузе), НЕ проверено на практике.
+  - Replay-анимация миникарты: `SetUiSync` теперь шлёт `show_ui` (не `show_ui_first`) —
+    анимация играет ОДИН раз, не каждые ~3с. НЕ проверено.
+  - Двойная случайная цель: `map_draw.js` больше не рисует `randomTarget` дважды
+    (пропуск в циклах inactive/active). НЕ проверено.
+  - Все 4 кнопки случайной цели идут через file-write (`add_target` → `AddTargetToFile`) —
+    подтверждено в коде, НЕ проверено в рантайме.
+- [ ] **После каждого билда повышать `VersionPrefix` на 1** (1.0.38 → 1.0.39, ...) —
+  правило версионирования (4-я цифра EXE = epoch mod 65536; строка = `A.B.CCCC-DESC-YYYY.MM.DD-HHmm`).
 
 ## Нереализованные прототипы / идеи
 - (пока нет зафиксированных; добавлять сюда наброски и отложенные правки)
@@ -160,6 +220,19 @@
   истины (файл как источник) + консистентная отрисовка всех целей из него, без
   рассинхрона между файлом, `state.customTargets` и `randomTarget`. НЕ делать в текущей
   задаче — это отдельная крупная работа.
+- **[В ПЛАНЫ] Чистка корня проекта от патч-ноутов в формате `.md` (второстепенная задача, 27.08.2026).**
+  Изучить содержимое ВСЕХ `*.md` в корне проекта (кроме `АРХИТЕКТУРА ПРОЕКТА.md` и `README.md`,
+  а также памяти `Hy3\`), кратко резюмировать проделанную работу: только ПОЛЕЗНОЕ, удачные
+  исправления; ОСОБОЕ внимание — сформированные пользователем задачи, которые в итоге были
+  забыты/не сделаны; искать успешные реализации задач. Свести всё в ОДИН общий файл
+  **`Отработано ChatGPT`** (создать в корне проекта). Кандидаты (корень, исключая
+  архитектуру/readme/Hy3): `MINIMAP_ARCHITECTURE_1.0.18.md`, `MINIMAP_ARCHITECTURE_1.0.19.md`,
+  `MIGRATION_2026-08-25.md`, `WEB_RUNTIME_SYNC_1.0.24.md`, `VERSION_FIX.md`, `PATCH_INSTRUCTIONS.md`,
+  `RELEASE_NOTES_1.0.30.md`, `RELEASE_NOTES_1.0.31.md`, `RELEASE_NOTES_1.0.32.md`,
+  `PATCH_1.0.20_NOTES.md`, `PATCH_1.0.21_NOTES.md`, `PATCH_1.0.22_NOTES.md`, `PATCH_1.0.23_NOTES.md`,
+  `PATCH_1.0.29_NOTES.md`, `BUILD_1.0.15_NOTES.md`, `SPLASH_REGRESSION_FIX_1.0.29.md`,
+  `SPLASH_FOCUS_FIX_2026-08-25.md`, `FULL_SYNC_1.0.25.md`, `FULL_REFRESH_1.0.26.md`,
+  `FULL_REFRESH_1.0.27.md`, `PUBLISH_DATA_RULE.md` (плюс `data/MAP_RUNTIME_FIX.md`).
 
 ## Заметки по стилю работы с пользователем
 - Отвечать на русском языке.

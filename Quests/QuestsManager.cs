@@ -267,6 +267,27 @@ namespace ETS2_Assist_GUI
         // Приложение — единственный, кто читает и пишет custom_targets.json.
         // Миникарта файл не трогает: получает targets_data и только рисует.
 
+        // Подробная отладка записи в файл целей: путь + содержимое файла после
+        // операции (перечитываем то, что реально лежит на диске).
+        private void LogTargetsFileDump(string label, string path)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    AppendLog($"[TARGETS][DEBUG] {label}: файл НЕ существует: {path}");
+                    return;
+                }
+                string content = File.ReadAllText(path);
+                AppendLog($"[TARGETS][DEBUG] {label}: путь={path}");
+                AppendLog($"[TARGETS][DEBUG] {label}: содержимое={content}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[TARGETS][DEBUG] {label}: ошибка чтения файла {path}: {ex.Message}");
+            }
+        }
+
         private void SendTargetsToMap()
         {
             try
@@ -284,7 +305,7 @@ namespace ETS2_Assist_GUI
                 }
                 var payload = new JObject { ["targets"] = targets };
                 SendCommandToMap("targets_data", payload);
-                AppendLog($"[TARGETS] Отправлено точек на миникарту: {targets.Count}");
+                AppendLog($"[TARGETS] Отправлено точек на миникарту: {targets.Count} (путь файла={filePath})");
             }
             catch (Exception ex)
             {
@@ -333,8 +354,12 @@ namespace ETS2_Assist_GUI
                     ["isRandom"] = true
                 };
                 arr.Add(entry);
+                AppendLog($"[TARGETS][DEBUG] ЗАПИСЬ цели в файл: путь={filePath}");
+                AppendLog($"[TARGETS][DEBUG] ЗАПИСЬ цели: добавляем entry={entry.ToString(Formatting.None)}");
+                AppendLog($"[TARGETS][DEBUG] ЗАПИСЬ цели: всего в массиве до записи={arr.Count - 1} (после добавления={arr.Count})");
                 File.WriteAllText(filePath, root.ToString(Formatting.Indented));
                 AppendLog($"[TARGETS] Цель добавлена в файл: {name} ({x:F1}, {z:F1})");
+                LogTargetsFileDump("ПОСЛЕ ЗАПИСИ ЦЕЛИ", filePath);
                 SendTargetsToMap();
             }
             catch (Exception ex)
@@ -371,7 +396,9 @@ namespace ETS2_Assist_GUI
                     if (Math.Abs(ix - x) < 0.5 && Math.Abs(iz - z) < 0.5) toRemove.Add(item);
                 }
                 foreach (var r in toRemove) arr.Remove(r);
+                AppendLog($"[TARGETS][DEBUG] УДАЛЕНИЕ цели: путь={filePath}, убрано={toRemove.Count}, осталось={arr.Count}");
                 File.WriteAllText(filePath, root.ToString(Formatting.Indented));
+                LogTargetsFileDump("ПОСЛЕ УДАЛЕНИЯ ЦЕЛИ", filePath);
                 AppendLog($"[TARGETS] Цель удалена из файла: ({x:F1}, {z:F1}), осталось {arr.Count}");
             }
             catch (Exception ex)
@@ -408,6 +435,9 @@ namespace ETS2_Assist_GUI
         private bool SetGamePause(bool enabled)
         {
             AppendLog($"[SCS] SetGamePause({enabled})");
+            // Фиксируем намерение приложения — используется как запасной детектор паузы,
+            // если телеметрия не отдаёт корректный статус paused.
+            this._pausedIntent = enabled;
             bool ok = SCSController.SetPause(enabled);
             AppendLog(ok
                 ? $"[SCS] Игра {(enabled ? "поставлена на паузу" : "снята с паузы")} через SDK."

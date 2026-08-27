@@ -1,0 +1,94 @@
+﻿key,text
+# Common
+app_title,ETS2 Assist
+language,Language
+
+# UI
+ui_file,File
+ui_start,Start ETS2 Assist
+ui_stop,Stop
+ui_starting,Starting...
+ui_settings,Settings
+ui_exit,Exit
+ui_check_updates,Check Updates
+ui_help,Help
+ui_minimize,Minimize
+ui_restart_overlay,Restart Overlay
+
+# Tray
+tray_start,Start System
+tray_stop,Stop System
+tray_check_updates,Check Updates
+tray_exit,Exit
+tray_minimized,Minimized to tray
+
+# Exit
+exit_confirm,Are you sure you want to exit?
+exit_title,Exit confirmation
+
+# Settings
+settings_title,Settings
+settings_language,Language
+settings_debug,Debug Mode (show script window)
+settings_autostart,Auto start system on launch
+settings_startminimized,Start minimized to tray
+settings_checkupdates,Check updates on start
+settings_save,Save
+settings_cancel,Cancel
+settings_saved,Settings saved. Some changes may take effect after restart.
+
+# Help
+help_title,Help
+help_error,Failed to open help.
+
+# Update
+update_check_title,Check Updates
+update_check_error,Failed to check for updates
+update_available,New version {0} is available. Current version: {1}. Open download page?
+update_no_updates,You have the latest version ({0}).
+
+# Plugins
+plugins_missing_title,Plugins Missing
+plugins_missing_prompt,Some plugins are missing. Install them now?
+
+# Statuses
+status_on,ON
+status_off,OFF
+status_running,RUNNING
+status_not_running,NOT RUNNING
+status_installed,INSTALLED
+status_not_installed,NOT INSTALLED
+status_no_data,NO DATA
+status_receiving,RECEIVING
+status_connected,CONNECTED
+status_none,NONE
+btn_stop,Started
+
+# Web UI keys (must match map in ps1)
+web_speed,Speed
+web_fuel,Fuel
+web_rest,Rest in
+web_job,Job deadline
+web_parking,Parking
+web_engine,Engine
+web_mode,Mode
+web_destination,Destination
+web_steering_sensitivity,Steering sensitivity
+web_data_updates,Data updates
+web_powered_by,Powered by
+web_status_active,Active
+web_status_waiting,Waiting
+web_status_error,Error
+web_ontime,On time
+web_hurry,Hurry
+web_late,Late
+web_max,Max
+web_up_to_30,0-30
+web_up_to_60,30-60
+web_up_to_80,60-80
+web_up_to_100,80-100
+web_up_to_140,100-140
+web_over_140,140+
+web_range_min,Min range
+web_range_max,Max range
+web_destination_label,DESTINATION
