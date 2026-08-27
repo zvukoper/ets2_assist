@@ -1,109 +1,83 @@
 // ================================================================
-// ЗАГРУЗКА ЦЕЛЕЙ ИЗ custom_targets.json
+// ПРИЁМ ЦЕЛЕЙ ОТ ПРИЛОЖЕНИЯ (минимапта НЕ читает файл сама)
 // ================================================================
-async function loadCustomTargets() {
+// Миникарта больше не обращается к custom_targets.json напрямую — файл
+// является собственностью приложения (C#). Приложение читает файл (один раз
+// при старте, а также при добавлении/удалении цели и по «Проверке точек»)
+// и шлёт содержимое командой targets_data. Здесь мы только принимаем данные
+// и перестраиваем состояние отрисовки.
+function normalizeTarget(t) {
+    let x = 0, y = 0, z = 0;
+    if (Array.isArray(t.coords)) {
+        x = Number(t.coords[0]) || 0;
+        y = Number(t.coords[1]) || 0;
+        z = Number(t.coords[2]) || 0;
+    } else if (typeof t.coords === 'string') {
+        const parts = t.coords.split(',').map(s => s.trim());
+        if (parts.length >= 3) {
+            x = parseFloat(parts[0]) || 0;
+            y = parseFloat(parts[1]) || 0;
+            z = parseFloat(parts[2]) || 0;
+        }
+    } else if (typeof t.x === 'number') {
+        x = Number(t.x) || 0;
+        y = Number(t.y) || 0;
+        z = Number(t.z) || 0;
+    }
+    return {
+        x, y, z,
+        name: t.realName || t.gameName || t.name || 'Цель',
+        active: t.status === 'active',
+        gameName: t.gameName || '',
+        icon: t.icon || 'default',
+        color: t.color || 'default',
+        zoomOnMap: t.targetMapOverview === true,
+        isRandom: t.isRandom || false
+    };
+}
+
+function applyTargetsData(targetArray) {
     try {
-        const res = await fetch(withRnd('/custom_targets.json'), { cache: 'no-store' });
-        if (res.ok) {
-            const data = await res.json();
-            state.targetMapOverview = false;
-            state.zoomOnMapTargets = [];
-            // Сохраняем случайные цели, созданные в памяти, чтобы перезагрузка
-            // файла (или неудачный POST сохранения) их не стёрла из состояния.
-            const inMemoryRandoms = state.customTargets.filter(t => t && t.isRandom);
-            state.customTargets = [];
-            const targetList = Array.isArray(data) ? data : data.customTargets;
-            if (Array.isArray(targetList)) {
-                state.customTargets = targetList.map(t => {
-                    let x = 0, y = 0, z = 0;
-                    if (Array.isArray(t.coords)) {
-                        x = Number(t.coords[0]) || 0;
-                        y = Number(t.coords[1]) || 0;
-                        z = Number(t.coords[2]) || 0;
-                    } else if (typeof t.coords === 'string') {
-                        const parts = t.coords.split(',').map(s => s.trim());
-                        if (parts.length >= 3) {
-                            x = parseFloat(parts[0]) || 0;
-                            y = parseFloat(parts[1]) || 0;
-                            z = parseFloat(parts[2]) || 0;
-                        }
-                    }
-                    return {
-                        x, y, z,
-                        name: t.realName || t.gameName || 'Цель',
-                        active: t.status === 'active',
-                        gameName: t.gameName || '',
-                        icon: t.icon || 'default',
-                        color: t.color || 'default',
-                        zoomOnMap: t.targetMapOverview === true,
-                        isRandom: t.isRandom || false
-                    };
-                });
-                const active = state.customTargets.find(t => t.active);
-                if (active) {
-                    targetX.value = active.x.toFixed(2);
-                    targetY.value = active.y.toFixed(2);
-                    targetZ.value = active.z.toFixed(2);
-                    state.target.x = active.x;
-                    state.target.y = active.y;
-                    state.target.z = active.z;
-                }
-                const random = state.customTargets.find(t => t.isRandom);
-                if (random) {
-                    randomTarget = random;
-                    randomTargetReachedSent = false;
-                    focusTargetOnMap(random.x, random.z);
-                } else if (inMemoryRandoms.length > 0) {
-                    // Файл не содержит случайную цель (например, POST сохранения не дошёл) —
-                    // возвращаем последнюю созданную в памяти, чтобы она оставалась на карте.
-                    const memRandom = inMemoryRandoms[inMemoryRandoms.length - 1];
-                    state.customTargets.push(memRandom);
-                    randomTarget = memRandom;
-                    randomTargetReachedSent = false;
-                    focusTargetOnMap(memRandom.x, memRandom.z);
-                    targetX.value = memRandom.x.toFixed(2);
-                    targetY.value = memRandom.y.toFixed(2);
-                    targetZ.value = memRandom.z.toFixed(2);
-                    state.target.x = memRandom.x;
-                    state.target.y = memRandom.y;
-                    state.target.z = memRandom.z;
-                }
-            }
+        const list = Array.isArray(targetArray) ? targetArray : [];
+        state.customTargets = list.map(normalizeTarget);
+        // Активная случайная цель — последняя с isRandom (одна за раз),
+        // иначе первая с active. Миникарта лишь рисует то, что прислало приложение.
+        const randoms = state.customTargets.filter(t => t.isRandom);
+        const active = randoms.length
+            ? randoms[randoms.length - 1]
+            : state.customTargets.find(t => t.active);
+        if (active) {
+            randomTarget = active;
+            randomTargetReachedSent = false;
+            targetX.value = active.x.toFixed(2);
+            targetY.value = active.y.toFixed(2);
+            targetZ.value = active.z.toFixed(2);
+            state.target.x = active.x;
+            state.target.y = active.y;
+            state.target.z = active.z;
+            focusTargetOnMap(active.x, active.z);
+        } else {
+            randomTarget = null;
+            randomTargetReachedSent = false;
+            targetX.value = '0.00';
+            targetY.value = '0.00';
+            targetZ.value = '0.00';
+            state.target.x = 0;
+            state.target.y = 0;
+            state.target.z = 0;
         }
     } catch (e) {
-        console.warn('[TARGETS] Ошибка загрузки custom_targets.json:', e?.message || e);
+        console.warn('[TARGETS] Ошибка приёма целей от приложения:', e?.message || e);
     }
 }
 
 // ================================================================
-// СОХРАНЕНИЕ ЦЕЛЕЙ В ФАЙЛ
+// СОХРАНЕНИЕ ЦЕЛЕЙ В ФАЙЛ — БОЛЬШЕ НЕ ДЕЛАЕТСЯ ИЗ МИНИКАРТЫ
 // ================================================================
-async function saveTargetsToFile() {
-    try {
-        const targets = state.customTargets.map(t => ({
-            gameName: t.gameName || t.name,
-            realName: t.name,
-            coords: `${t.x.toFixed(2)}, ${t.y.toFixed(2)}, ${t.z.toFixed(2)}`,
-            status: t.active ? "active" : "",
-            icon: t.icon || "default",
-            color: t.color || "default",
-            targetMapOverview: t.zoomOnMap || false,
-            isRandom: t.isRandom || false
-        }));
-        const response = await fetch('http://localhost:8083/update_targets', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(targets)
-        });
-        if (!response.ok) {
-            console.warn('[saveTargets] Ошибка сохранения:', await response.text());
-        } else {
-            console.log('[saveTargets] Цели сохранены в custom_targets.json');
-        }
-    } catch (e) {
-        console.warn('[saveTargets] Ошибка:', e);
-    }
-}
+// Миникарта не пишет и не читает custom_targets.json. Все изменения
+// файла выполняет приложение (C#): оно дописывает созданную цель по
+// команде add_target и удаляет по достижении, затем шлёт targets_data.
+// Поэтому функция saveTargetsToFile удалена.
 
 // ================================================================
 // ГЕНЕРАЦИЯ СЛУЧАЙНОЙ ЦЕЛИ (улучшенная)
@@ -114,7 +88,7 @@ function focusTargetOnMap(x, z) {
     state.zoomOnMapTargets = [{ x, z }];
 }
 
-function generateRandomTarget(options) {
+async function generateRandomTarget(options) {
     removeRandomTarget();
 
     const truckX = state.truck.x;
@@ -160,6 +134,21 @@ function generateRandomTarget(options) {
         return { x: x + nx * side * 10, z: z + nz * side * 10 };
     }
 
+    function nearestPointOnRoad(x, z) {
+        let best = { x, z };
+        let bestDist = Infinity;
+        for (const road of state.roads) {
+            const dx = road.x2 - road.x1, dz = road.z2 - road.z1;
+            const lenSq = dx*dx + dz*dz;
+            let t = lenSq ? ((x - road.x1) * dx + (z - road.z1) * dz) / lenSq : 0;
+            t = Math.max(0, Math.min(1, t));
+            const px = road.x1 + dx * t, pz = road.z1 + dz * t;
+            const dist = Math.hypot(x - px, z - pz);
+            if (dist < bestDist) { bestDist = dist; best = { x: px, z: pz }; }
+        }
+        return best;
+    }
+
     // Режим: цель на заданном расстоянии (~distanceM) от фуры — гарантированно в зоне видимости
     if (distanceM > 0) {
         for (let attempt = 0; attempt < 400 && !targetPoint; attempt++) {
@@ -173,6 +162,31 @@ function generateRandomTarget(options) {
             const ang = Math.random() * 2 * Math.PI;
             const dist = distanceM;
             targetPoint = { x: truckX + Math.cos(ang) * dist, z: truckZ + Math.sin(ang) * dist };
+        }
+    }
+
+    // Режим: строго НА ДОРОГЕ, в радиусе [minDistM, maxDistM] от фуры (кнопка №4)
+    if (!targetPoint && requireRoad) {
+        const minD = Number(opts.minDistM) || 51;
+        const maxD = Number(opts.maxDistM) || 60;
+        if (state.roads.length > 0) {
+            for (let attempt = 0; attempt < 5000 && !targetPoint; attempt++) {
+                const road = state.roads[Math.floor(Math.random() * state.roads.length)];
+                const tt = Math.random();
+                const x = road.x1 + (road.x2 - road.x1) * tt;
+                const z = road.z1 + (road.z2 - road.z1) * tt;
+                const d = Math.hypot(x - truckX, z - truckZ);
+                if (d >= minD && d <= maxD) targetPoint = { x, z };
+            }
+        }
+        if (!targetPoint) {
+            // Запасной вариант: точка в нужном радиусе, привязанная к ближайшей дороге
+            const ang = Math.random() * 2 * Math.PI;
+            const d = minD + Math.random() * (maxD - minD);
+            const px = truckX + Math.cos(ang) * d;
+            const pz = truckZ + Math.sin(ang) * d;
+            targetPoint = state.roads.length > 0 ? nearestPointOnRoad(px, pz) : { x: px, z: pz };
+            console.warn('[generateRandomTarget] requireRoad: точная привязка к радиусу не найдена, использован запасной вариант');
         }
     }
 
@@ -221,10 +235,19 @@ function generateRandomTarget(options) {
         }
     }
 
+    // ГАРАНТИРОВАННЫЙ ЗАПАСНОЙ ВАРИАНТ: случайная точка около фуры без
+    // привязки к дорогам/POI. Нужен, если статические данные карты (roads/POI)
+    // не загружены — иначе цель просто не создавалась и не появлялась на карте.
     if (!targetPoint) {
-        showToast('Не удалось найти подходящее место для случайной цели.', 4000);
-        console.warn('[generateRandomTarget] Не найдено подходящей точки.');
-        return;
+        const fallbackDist = distanceM > 0
+            ? distanceM
+            : (radiusM !== Infinity ? radiusM * (0.4 + Math.random() * 0.6) : 1500);
+        const ang = Math.random() * 2 * Math.PI;
+        targetPoint = {
+            x: truckX + Math.cos(ang) * fallbackDist,
+            z: truckZ + Math.sin(ang) * fallbackDist
+        };
+        console.log('[generateRandomTarget] Использован запасной спавн без дорог/POI, дист=' + Math.round(fallbackDist));
     }
 
     const newTarget = {
@@ -252,22 +275,37 @@ function generateRandomTarget(options) {
     state.target.y = newTarget.y;
     state.target.z = newTarget.z;
 
+    // Диагностика: снимок хранилища точек сразу после добавления кнопкой
     if (saveWs && saveWs.readyState === WebSocket.OPEN) {
+        const distToTruck = Math.round(Math.hypot(newTarget.x - state.truck.x, newTarget.z - state.truck.z));
+        // Уведомляем приложение о создании цели (лог/награда)...
         saveWs.send(JSON.stringify({
             command: 'target_created',
             target: {
                 x: newTarget.x,
                 z: newTarget.z,
-                name: newTarget.name
+                name: newTarget.name,
+                dist: distToTruck
             }
         }));
-        console.log('[TRIGGER] Отправлена команда target_created на сервер');
+        // ...и просим приложение записать цель в custom_targets.json и
+        // прислать обновлённые данные (targets_data). Сама миникарта файл не трогает.
+        saveWs.send(JSON.stringify({
+            command: 'add_target',
+            target: {
+                x: newTarget.x,
+                z: newTarget.z,
+                name: newTarget.name,
+                color: newTarget.color,
+                isRandom: true
+            }
+        }));
+        console.log('[TRIGGER] Отправлены target_created + add_target, дист. до фуры=' + distToTruck + 'м');
     }
 
     focusTargetOnMap(newTarget.x, newTarget.z);
     updateAll();
     showToast(name + ' добавлена', 3000);
-    saveTargetsToFile();
 }
 
 function removeRandomTarget() {
@@ -286,6 +324,36 @@ function removeRandomTarget() {
         }
         updateAll();
         showToast('Случайная цель удалена', 3000);
-        saveTargetsToFile();
+        // Запись в файл выполняет приложение (команда remove_random_target ->
+        // C# удаляет цель из custom_targets.json и шлёт targets_data).
     }
 }
+
+// Список всех созданных точек -> отправка в C# для записи в лог (команда list_targets)
+function listTargets() {
+    try {
+        const items = [];
+        const tX = state.truck.x, tZ = state.truck.z;
+        for (const t of state.customTargets) {
+            const d = Math.round(Math.hypot((t.x || 0) - tX, (t.z || 0) - tZ));
+            items.push({ name: t.name || 'Цель', x: (t.x || 0).toFixed(2), z: (t.z || 0).toFixed(2), dist: d });
+        }
+        if (randomTarget && !items.some(it => Math.abs(parseFloat(it.x) - randomTarget.x) < 0.1 && Math.abs(parseFloat(it.z) - randomTarget.z) < 0.1)) {
+            const d = Math.round(Math.hypot(randomTarget.x - tX, randomTarget.z - tZ));
+            items.push({ name: randomTarget.name || 'Случайная цель', x: randomTarget.x.toFixed(2), z: randomTarget.z.toFixed(2), dist: d });
+        }
+        if (saveWs && saveWs.readyState === WebSocket.OPEN) {
+            saveWs.send(JSON.stringify({ command: 'targets_list', targets: items }));
+            console.log('[TARGETS] Отправлен список точек (' + items.length + ')');
+        } else {
+            console.warn('[TARGETS] Невозможно отправить список: saveWs не подключён');
+        }
+        showToast('Список точек отправлен в лог (' + items.length + ')', 2500);
+    } catch (e) {
+        console.warn('[TARGETS] Ошибка listTargets:', e?.message || e);
+    }
+}
+
+// Диагностика хранилища точек теперь ведётся на стороне приложения
+// (команда «Проверка точек» принудительно перечитывает custom_targets.json
+// и шлёт targets_data). Функция reportTargetsSnapshot удалена.

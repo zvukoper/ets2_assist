@@ -517,6 +517,66 @@ function drawMinimap() {
         }
     }
 
+    // ---- ГАРАНТИРОВАННАЯ отрисовка случайной цели (randomTarget) ----
+    // Рисуем напрямую из глобальной переменной, минуя цепочку customTargets,
+    // чтобы точка всегда была видна (и на карте, и стрелка за её пределами).
+    if (randomTarget) {
+        const rp = { x: randomTarget.x, z: randomTarget.z };
+        const rDist = Math.sqrt((rp.x - truckPos.x) ** 2 + (rp.z - truckPos.z) ** 2);
+        const rScreen = worldToScreen2(rp.x, rp.z);
+        const rVisible = Math.abs(rScreen.x - cx) < w / 2 - 8 && Math.abs(rScreen.y - cy) < h / 2 - 8;
+        const rColor = (randomTarget.color && randomTarget.color !== 'default') ? randomTarget.color : '#ff2d2d';
+        ctx.save();
+        if (rVisible) {
+            ctx.beginPath();
+            ctx.arc(rScreen.x, rScreen.y, 7, 0, 2 * Math.PI);
+            ctx.fillStyle = rColor;
+            ctx.shadowColor = rColor;
+            ctx.shadowBlur = 14;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(rScreen.x - 13, rScreen.y);
+            ctx.lineTo(rScreen.x + 13, rScreen.y);
+            ctx.moveTo(rScreen.x, rScreen.y - 13);
+            ctx.lineTo(rScreen.x, rScreen.y + 13);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        } else {
+            const dx = rScreen.x - cx, dy = rScreen.y - cy;
+            const len = Math.sqrt(dx * dx + dy * dy) || 1;
+            const nx = dx / len, ny = dy / len;
+            const ax = cx + nx * (radius - 6), ay = cy + ny * (radius - 6);
+            ctx.translate(ax, ay);
+            ctx.rotate(Math.atan2(ny, nx));
+            ctx.beginPath();
+            ctx.moveTo(11, 0);
+            ctx.lineTo(-7, -7);
+            ctx.lineTo(-7, 7);
+            ctx.closePath();
+            ctx.fillStyle = rColor;
+            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+            ctx.shadowBlur = 5;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        ctx.restore();
+        const rLabel = `${randomTarget.name || 'Цель'}: ${formatDistance(rDist)}`;
+        labelsData.push({
+            x: rScreen.x, y: rScreen.y - 16,
+            text: rLabel, color: rColor, isActive: true, isCity: false,
+            w: Math.min(rLabel.length * 7 + 22, 230), h: 18, priority: 6
+        });
+    }
+
     // Города за пределами карты (ближайшие 4)
     if (state.nearbyCities.length > 0) {
         for (const city of state.nearbyCities) {

@@ -12,6 +12,11 @@ function connectSaveWebSocket() {
         saveWs.onopen = () => {
             saveWsConnected = true;
             console.log('[WS] Connected to save server');
+            // Сообщаем приложению, что миникарта готова — оно даст команду
+            // перечитать цели из файла (миникарта сама файл не опрашивает).
+            if (saveWs.readyState === WebSocket.OPEN) {
+                saveWs.send(JSON.stringify({ command: 'map_ready' }));
+            }
         };
         saveWs.onmessage = (e) => {
             try {
@@ -27,6 +32,12 @@ function connectSaveWebSocket() {
                             break;
                         case 'add_random_target_100':
                             generateRandomTarget({ nearTruck: true, distanceM: 100, name: 'Случайная цель 100м' });
+                            break;
+                        case 'add_random_target_near':
+                            generateRandomTarget({ nearTruck: true, minDistM: 51, maxDistM: 60, requireRoad: true, name: 'Ближайшая цель' });
+                            break;
+                        case 'list_targets':
+                            listTargets();
                             break;
                         case 'save_trail':
                             console.log('[WS] save_trail command received');
@@ -50,6 +61,11 @@ function connectSaveWebSocket() {
                         case 'reset_target_reached':
                             randomTargetReachedSent = false;
                             console.log('[WS] Сброшен флаг достижения цели');
+                            break;
+                        case 'targets_data':
+                            // Приложение прислало актуальные цели из custom_targets.json.
+                            // Миникарта сама файл не читает — только рисует то, что прислали.
+                            applyTargetsData(data.targets);
                             break;
                         case 'show_ui_first':
                             showUIWithAnimation();
@@ -172,7 +188,8 @@ async function fetchHttpData() {
         state.jobDestination = data.job?.destinationCity || '';
         state.estimatedDistance = data.job?.estimatedDistance || 0;
         await hydrateTelemetrySnapshot();
-        await loadCustomTargets();
+        // Миникарта не опрашивает файл целей сама — приложение шлёт targets_data
+        // по готовности (map_ready) и при каждом изменении файла.
     } catch (e) { console.warn('[WS] web_data fetch:', e); }
 }
 

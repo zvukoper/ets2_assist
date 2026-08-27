@@ -48,6 +48,8 @@ namespace ETS2_Assist_GUI
         private Button btnRandomTarget = null!;
         private Button btnRandomTarget2 = null!;
         private Button btnRandomTarget3 = null!;
+        private Button btnRandomTarget4 = null!;
+        private Button btnCheckTargets = null!;
         private Button btnTestPause = null!;
         private Button btnResetRecordingOrigin = null!;
         private Button btnOpenTrack = null!;
@@ -332,20 +334,26 @@ namespace ETS2_Assist_GUI
             btnRandomTarget3 = new Button { Text = "Случайная цель 100м", Location = new Point(leftX, topY + 320), Size = new Size(120, 30) };
             btnRandomTarget3.Click += BtnRandomTarget3_Click;
 
-            btnShowMap = new Button { Text = "Показать карту", Location = new Point(leftX, topY + 360), Size = new Size(120, 30) };
+            btnRandomTarget4 = new Button { Text = "Ближайшая цель", Location = new Point(leftX, topY + 350), Size = new Size(120, 30) };
+            btnRandomTarget4.Click += BtnRandomTarget4_Click;
+
+            btnCheckTargets = new Button { Text = "Проверка точек", Location = new Point(leftX, topY + 380), Size = new Size(120, 30) };
+            btnCheckTargets.Click += BtnCheckTargets_Click;
+
+            btnShowMap = new Button { Text = "Показать карту", Location = new Point(leftX, topY + 410), Size = new Size(120, 30) };
             btnShowMap.Click += (s, e) => {
                 AppendLog("Debug: Show map button clicked");
                 SendCommandToMap("show_ui");
             };
 
-            btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 400), Size = new Size(120, 30) };
+            btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 440), Size = new Size(120, 30) };
             btnShowHybrid.Click += (s, e) => {
                 AppendLog("Debug: Show hybrid button clicked");
                 SendCommandToMap("show_ui");
             };
 
             // Тест паузы через тот же Named Pipe, который используется при достижении цели.
-            btnTestPause = new Button { Text = "Тест паузы SDK", Location = new Point(leftX, topY + 440), Size = new Size(135, 30) };
+            btnTestPause = new Button { Text = "Тест паузы SDK", Location = new Point(leftX, topY + 470), Size = new Size(135, 30) };
             btnTestPause.Click += (s, e) => {
                 AppendLog("=== ТЕСТ ПАУЗЫ SDK ===");
                 bool ok = SCSController.SetPause(true);
@@ -356,7 +364,7 @@ namespace ETS2_Assist_GUI
             btnResetRecordingOrigin = new Button
             {
                 Text = "Сбросить начало\nзаписи трека",
-                Location = new Point(leftX, topY + 480),
+                Location = new Point(leftX, topY + 510),
                 Size = new Size(120, 42),
                 TextAlign = ContentAlignment.MiddleCenter
             };
@@ -489,7 +497,7 @@ namespace ETS2_Assist_GUI
 
             this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
-                btnRandomTarget2, btnRandomTarget3, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin,
+                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin,
                 logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu
             });
             PositionBuildLabel();
@@ -602,6 +610,8 @@ namespace ETS2_Assist_GUI
             btnRandomTarget.Text = "Случайная цель";
             btnRandomTarget2.Text = "Случайная цель 2";
             btnRandomTarget3.Text = "Случайная цель 100м";
+            btnRandomTarget4.Text = "Ближайшая цель";
+            btnCheckTargets.Text = "Проверка точек";
             fileMenu.Text = lang.Get("ui_file") ?? "File";
             settingsMenu.Text = lang.Get("ui_settings") ?? "Settings";
             helpMenu.Text = lang.Get("ui_help") ?? "Help";
@@ -882,19 +892,6 @@ namespace ETS2_Assist_GUI
                     response.OutputStream.Close();
                     return;
                 }
-
-                if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/custom_targets.json")
-                {
-                    string filePath = AppDataPaths.CustomTargetsFile;
-                    string json = File.Exists(filePath)
-                        ? File.ReadAllText(filePath)
-                        : "{\"customTargets\":[]}";
-                    byte[] buffer = Encoding.UTF8.GetBytes(json);
-                    response.ContentType = "application/json";
-                    response.ContentLength64 = buffer.Length;
-                    response.OutputStream.Write(buffer, 0, buffer.Length);
-                    response.OutputStream.Close();
-                }
                 else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/check_trigger")
                 {
                     string file = request.QueryString["file"] ?? "save_trail.trigger";
@@ -967,32 +964,6 @@ namespace ETS2_Assist_GUI
                     else
                     {
                         response.StatusCode = 404;
-                    }
-                    response.OutputStream.Close();
-                }
-                else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/update_targets")
-                {
-                    using var reader = new StreamReader(request.InputStream);
-                    var body = reader.ReadToEnd();
-                    try
-                    {
-                        var targets = JArray.Parse(body);
-                        string filePath = AppDataPaths.CustomTargetsFile;
-                        var json = new JObject { ["customTargets"] = targets };
-                        File.WriteAllText(filePath, json.ToString(Formatting.Indented));
-                        AppendLog("[HTTP] custom_targets.json обновлён.");
-                        response.StatusCode = 200;
-                        byte[] buffer = Encoding.UTF8.GetBytes("{\"success\":true}");
-                        response.ContentLength64 = buffer.Length;
-                        response.OutputStream.Write(buffer, 0, buffer.Length);
-                    }
-                    catch (Exception ex)
-                    {
-                        AppendLog($"[HTTP] Ошибка обновления custom_targets.json: {ex.Message}");
-                        response.StatusCode = 500;
-                        byte[] buffer = Encoding.UTF8.GetBytes($"{{\"error\":\"{ex.Message}\"}}");
-                        response.ContentLength64 = buffer.Length;
-                        response.OutputStream.Write(buffer, 0, buffer.Length);
                     }
                     response.OutputStream.Close();
                 }
@@ -1679,7 +1650,6 @@ namespace ETS2_Assist_GUI
                 string tracksFull = Path.GetFullPath(AppDataPaths.SavedTracksDirectory).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
                 string? userFilePath = urlPath switch
                 {
-                    "custom_targets.json" => AppDataPaths.CustomTargetsFile,
                     "web_data.json" => AppDataPaths.WebDataFile,
                     _ => null
                 };

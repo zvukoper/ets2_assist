@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace ETS2_Assist_GUI
@@ -147,6 +150,36 @@ namespace ETS2_Assist_GUI
             trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Случайная цель 100м создана.", ToolTipIcon.Info);
         }
 
+        private void BtnRandomTarget4_Click(object sender, EventArgs e)
+        {
+            if (!_wsSaveRunning || _wsSaveServer == null)
+            {
+                AppendLog("WebSocket сервер не запущен. Невозможно создать цель.");
+                MessageBox.Show("WebSocket сервер не запущен. Запустите систему.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            SendCommandToMap("add_random_target_near");
+            _randomTargetActive = true;
+            _randomTargetReached = false;
+            AppendLog("Отправлена команда на создание ближайшей случайной цели (51-60м, строго на дороге).");
+            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Ближайшая случайная цель создана.", ToolTipIcon.Info);
+        }
+
+        private void BtnCheckTargets_Click(object sender, EventArgs e)
+        {
+            if (!_wsSaveRunning || _wsSaveServer == null)
+            {
+                AppendLog("WebSocket сервер не запущен. Невозможно проверить точки.");
+                return;
+            }
+
+            // Отладка: принудительно перечитываем custom_targets.json и шлём на миникарту.
+            SendTargetsToMap();
+            LogCustomTargetsFromFile();
+            AppendLog("Проверка точек: файл принудительно перечитан и отправлен на карту.");
+        }
+
         private void OnClientCommand(JObject data)
         {
             var command = data["command"]?.Value<string>();
@@ -168,6 +201,43 @@ namespace ETS2_Assist_GUI
                     AppendDataLog($"target_created x={createdTarget?["x"]} z={createdTarget?["z"]}");
                     HandleTargetCreated(data);
                     break;
+                case "targets_list":
+                    AppendLog("=== Список созданных точек ===");
+                    if (data["targets"] is JArray list)
+                    {
+                        for (int i = 0; i < list.Count; i++)
+                        {
+                            var t = list[i];
+                            AppendLog($"  [{i + 1}] name={t["name"]} x={t["x"]} z={t["z"]} дист. до фуры={t["dist"]}м");
+                        }
+                        AppendLog($"=== всего точек: {list.Count} ===");
+                    }
+                    else
+                    {
+                        AppendLog("  список точек пуст или не получен.");
+                    }
+                    break;
+                case "targets_snapshot":
+                    // Устаревшая диагностика: миникарта больше не шлёт снимки хранилища.
+                    // Отладка теперь ведётся командой «Проверка точек» (чтение файла).
+                    AppendLog("[WS] targets_snapshot проигнорирован (устарело).");
+                    break;
+                case "map_ready":
+                    // Миникарта готова — приложение читает custom_targets.json (один раз
+                    // при старте) и шлёт актуальные цели командой targets_data.
+                    AppendLog("[WS] Миникарта готова -> отправляем цели из файла");
+                    SendTargetsToMap();
+                    break;
+                case "request_reload_custom_targets":
+                    // На всякий случай (если миникарта ещё шлёт эту команду).
+                    SendTargetsToMap();
+                    break;
+                case "add_target":
+                    // Миникарта сгенерировала случайную цель и просит приложение
+                    // записать её в custom_targets.json, затем разослать targets_data.
+                    AppendLog($"[WS] add_target x={data["target"]?["x"]} z={data["target"]?["z"]}");
+                    AddTargetToFile(data["target"]);
+                    break;
                 default:
                     AppendLog($"[WS Command] Неизвестная команда: {command}");
                     break;
@@ -184,7 +254,151 @@ namespace ETS2_Assist_GUI
                 _randomTargetName = target["name"]?.Value<string>() ?? "Случайная цель";
                 _randomTargetActive = true;
                 _randomTargetReached = false;
-                AppendLog($"[WS] Случайная цель создана на координатах ({_randomTargetX}, {_randomTargetZ})");
+                var dist = target["dist"]?.Value<double>();
+                var distStr = dist.HasValue ? $", дистанция до фуры = {Math.Round(dist.Value)} м" : "";
+                AppendLog($"[WS] Точка создана: x={_randomTargetX}, z={_randomTargetZ}{distStr}");
+                AppendDataLog($"target_created_logged x={_randomTargetX} z={_randomTargetZ} dist={dist}");
+            }
+        }
+
+        // ============================================================
+        // РАБОТА С ФАЙЛОМ ЦЕЛЕЙ (custom_targets.json) — ЕДИНСТВЕННЫЙ ВЛАДЕЛЕЦ
+        // ============================================================
+        // Приложение — единственный, кто читает и пишет custom_targets.json.
+        // Миникарта файл не трогает: получает targets_data и только рисует.
+
+        private void SendTargetsToMap()
+        {
+            try
+            {
+                string filePath = AppDataPaths.CustomTargetsFile;
+                JArray targets;
+                if (File.Exists(filePath))
+                {
+                    var root = JObject.Parse(File.ReadAllText(filePath));
+                    targets = root["customTargets"] as JArray ?? new JArray();
+                }
+                else
+                {
+                    targets = new JArray();
+                }
+                var payload = new JObject { ["targets"] = targets };
+                SendCommandToMap("targets_data", payload);
+                AppendLog($"[TARGETS] Отправлено точек на миникарту: {targets.Count}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[TARGETS] Ошибка отправки целей на миникарту: {ex.Message}");
+            }
+        }
+
+        private void AddTargetToFile(JToken target)
+        {
+            try
+            {
+                if (target == null) return;
+                double x = target["x"]?.Value<double>() ?? 0;
+                double z = target["z"]?.Value<double>() ?? 0;
+                string name = target["name"]?.Value<string>() ?? target["realName"]?.Value<string>() ?? "Случайная цель";
+                string color = target["color"]?.Value<string>() ?? "default";
+
+                string filePath = AppDataPaths.CustomTargetsFile;
+                JObject root;
+                string existing = File.Exists(filePath) ? File.ReadAllText(filePath) : "";
+                if (!string.IsNullOrWhiteSpace(existing))
+                {
+                    try { root = JObject.Parse(existing); }
+                    catch { root = new JObject(); }
+                }
+                else
+                {
+                    root = new JObject();
+                }
+                var arr = root["customTargets"] as JArray;
+                if (arr == null) { arr = new JArray(); root["customTargets"] = arr; }
+
+                // Одна активная случайная цель за раз: удаляем предыдущие isRandom.
+                var toRemove = arr.Where(i => (i["isRandom"]?.Value<bool>() ?? false)).ToList();
+                foreach (var r in toRemove) arr.Remove(r);
+
+                var entry = new JObject
+                {
+                    ["gameName"] = target["gameName"]?.Value<string>() ?? "random",
+                    ["realName"] = name,
+                    ["coords"] = $"{x.ToString("F2", CultureInfo.InvariantCulture)}, 0.00, {z.ToString("F2", CultureInfo.InvariantCulture)}",
+                    ["status"] = "active",
+                    ["icon"] = target["icon"]?.Value<string>() ?? "default",
+                    ["color"] = color,
+                    ["targetMapOverview"] = false,
+                    ["isRandom"] = true
+                };
+                arr.Add(entry);
+                File.WriteAllText(filePath, root.ToString(Formatting.Indented));
+                AppendLog($"[TARGETS] Цель добавлена в файл: {name} ({x:F1}, {z:F1})");
+                SendTargetsToMap();
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[TARGETS] Ошибка записи цели в файл: {ex.Message}");
+            }
+        }
+
+        private void RemoveTargetFromFile(double x, double z)
+        {
+            try
+            {
+                string filePath = AppDataPaths.CustomTargetsFile;
+                if (!File.Exists(filePath)) return;
+                var root = JObject.Parse(File.ReadAllText(filePath));
+                var arr = root["customTargets"] as JArray;
+                if (arr == null) return;
+                var toRemove = new List<JToken>();
+                foreach (var item in arr)
+                {
+                    double ix = 0, iz = 0;
+                    var coords = item["coords"]?.Value<string>() ?? "";
+                    var parts = coords.Split(',');
+                    if (parts.Length >= 3)
+                    {
+                        double.TryParse(parts[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out ix);
+                        double.TryParse(parts[2].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out iz);
+                    }
+                    else
+                    {
+                        ix = item["x"]?.Value<double>() ?? 0;
+                        iz = item["z"]?.Value<double>() ?? 0;
+                    }
+                    if (Math.Abs(ix - x) < 0.5 && Math.Abs(iz - z) < 0.5) toRemove.Add(item);
+                }
+                foreach (var r in toRemove) arr.Remove(r);
+                File.WriteAllText(filePath, root.ToString(Formatting.Indented));
+                AppendLog($"[TARGETS] Цель удалена из файла: ({x:F1}, {z:F1}), осталось {arr.Count}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[TARGETS] Ошибка удаления цели из файла: {ex.Message}");
+            }
+        }
+
+        private void LogCustomTargetsFromFile()
+        {
+            try
+            {
+                string filePath = AppDataPaths.CustomTargetsFile;
+                if (!File.Exists(filePath)) { AppendLog("[TARGETS] Файл целей отсутствует."); return; }
+                var root = JObject.Parse(File.ReadAllText(filePath));
+                var arr = root["customTargets"] as JArray ?? new JArray();
+                AppendLog($"=== Проверка точек (из файла): {arr.Count} ===");
+                for (int i = 0; i < arr.Count; i++)
+                {
+                    var t = arr[i];
+                    AppendLog($"  [{i + 1}] name={t["realName"] ?? t["gameName"]} coords={t["coords"]} isRandom={t["isRandom"]} status={t["status"]}");
+                }
+                AppendLog("=== конец проверки точек ===");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[TARGETS] Ошибка чтения файла целей: {ex.Message}");
             }
         }
 
@@ -358,6 +572,17 @@ namespace ETS2_Assist_GUI
                     if (result == DialogResult.Yes)
                     {
                         AppendLog("[QUEST] Игрок подтвердил завершение случайного задания.");
+                        // Удаляем достигнутую цель из файла (приложение — владелец файла)
+                        // и рассылаем обновлённые данные на миникарту.
+                        double reachedX = _randomTargetX, reachedZ = _randomTargetZ;
+                        var reachedTarget = data["target"];
+                        if (reachedTarget != null)
+                        {
+                            reachedX = reachedTarget["x"]?.Value<double>() ?? _randomTargetX;
+                            reachedZ = reachedTarget["z"]?.Value<double>() ?? _randomTargetZ;
+                        }
+                        RemoveTargetFromFile(reachedX, reachedZ);
+                        SendTargetsToMap();
                         string ets2cPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "ets2c.exe");
                         if (File.Exists(ets2cPath))
                         {

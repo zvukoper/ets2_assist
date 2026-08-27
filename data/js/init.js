@@ -162,7 +162,8 @@ async function loadData() {
         console.log(`[STATIC] POI loaded: ${state.pois.length}; categories: ${state.poiCategories.length}`);
         console.log('[STATIC] categoryCounts:', state.poiCategoryCounts);
 
-        await loadCustomTargets();
+        // Цели больше не грузим сами — приложение шлёт targets_data
+        // (на старте по map_ready, далее при изменении файла и по «Проверке точек»).
         if (typeof updateRuntimeDebugOverlay === 'function') updateRuntimeDebugOverlay();
         if (typeof drawMinimap === 'function') drawMinimap();
     } catch (e) {

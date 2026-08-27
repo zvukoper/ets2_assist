@@ -142,22 +142,47 @@ namespace ETS2_Assist_GUI
             result.SetResolution(96F, 96F);
 
             using (var graphics = Graphics.FromImage(result))
-            using (var font = new Font("Segoe UI", 7.5f, FontStyle.Regular, GraphicsUnit.Point))
-            using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Near })
+            using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
             {
                 graphics.Clear(Color.Transparent);
                 graphics.DrawImageUnscaled(source, 0, 0);
-                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
-                var area = new RectangleF(2, source.Height + 2, source.Width - 4, captionHeight - 3);
-                using var path = new GraphicsPath();
-                path.AddString(version, font.FontFamily, (int)font.Style, graphics.DpiY * font.Size / 72f, area, format);
-                using var shadow = new Pen(Color.FromArgb(110, Color.Black), 2.5f) { LineJoin = LineJoin.Round };
-                graphics.DrawPath(shadow, path);
-                using var outline = new Pen(Color.FromArgb(150, Color.Black), 1f) { LineJoin = LineJoin.Round };
-                graphics.DrawPath(outline, path);
-                using var fill = new SolidBrush(Color.White);
-                graphics.FillPath(fill, path);
+                // Center of the caption band. With point + center alignment, the
+                // point is the text anchor.
+                float cx = source.Width / 2f;
+                float cy = source.Height + captionHeight / 2f;
+
+                // Auto-shrink so the long version string never gets clipped at edges.
+                float maxWidth = source.Width - 6f;
+                float sizePt = 8.5f;
+                Font font;
+                while (true)
+                {
+                    font = new Font("Segoe UI", sizePt, FontStyle.Bold, GraphicsUnit.Point);
+                    var measured = graphics.MeasureString(version, font, (int)maxWidth, format);
+                    if (measured.Width <= maxWidth || sizePt <= 6f) break;
+                    font.Dispose();
+                    sizePt -= 0.5f;
+                }
+
+                // Thick black outline drawn as an offset ring (radius 2px). No path
+                // stroke, which produced jagged artifacts on small glyphs.
+                using var black = new SolidBrush(Color.Black);
+                using var white = new SolidBrush(Color.White);
+                const int ring = 2; // outline thickness in px
+                for (int dx = -ring; dx <= ring; dx++)
+                {
+                    for (int dy = -ring; dy <= ring; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        graphics.DrawString(version, font, black, cx + dx, cy + dy, format);
+                    }
+                }
+
+                // White fill on top.
+                graphics.DrawString(version, font, white, cx, cy, format);
+                font.Dispose();
             }
 
             source.Dispose();
