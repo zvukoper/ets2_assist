@@ -47,22 +47,48 @@ namespace ETS2_Assist_GUI
                 {
                     _uiShown = true;
                     SendCommandToMap("show_ui_first");
+                    SendCommandToMap("minimap_show");
                     AppendLog("[UI] Отправлена команда show_ui_first (debug mode)");
                 }
                 return;
             }
 
+            bool gameRunning = IsGameRunning();
             bool paused = await IsGamePausedAsync();
             bool gameFocused = IsGameFocused();
-            bool uiVisible = !paused && gameFocused;
-            if (uiVisible != _lastUiVisible)
+
+            // В фокусе = игра запущена И окно игры активно. Только в фокусе показываем
+            // что-либо; ВНЕ фокуса СКРЫВАЕМ ВСЕ оверлеи (включая пауз-лого).
+            bool inFocusNow = gameRunning && gameFocused;
+
+            // Гистерезис по фокусу: фиксируем смену только после 2 устойчивых тиков (~1с),
+            // чтобы кратковременная потеря фокуса не мигала оверлеями.
+            if (inFocusNow != _committedActive)
             {
-                _lastUiVisible = uiVisible;
+                _activeMismatch++;
+                if (_activeMismatch < 2) return;
+                _committedActive = inFocusNow;
+                _activeMismatch = 0;
+            }
+            else
+            {
+                _activeMismatch = 0;
+            }
+
+            bool focused = _committedActive;
+            // В фокусе и НЕ на паузе -> карта + гибрид. В фокусе и на паузе -> только пауз-лого.
+            bool showMapHybrid = focused && !paused;
+            bool showPause = focused && paused;
+
+            // Гибрид: показываем только когда в фокусе и не на паузе.
+            if (showMapHybrid != _lastUiVisible)
+            {
+                _lastUiVisible = showMapHybrid;
                 _lastPauseState = paused;
-                if (!uiVisible)
+                if (!showMapHybrid)
                 {
                     SendCommandToMap("hide_ui");
-                    AppendLog("[UI] Отправлена команда hide_ui (пауза или потеря фокуса)");
+                    AppendLog("[UI] Отправлена команда hide_ui (пауза / потеря фокуса / игра не запущена)");
                 }
                 else
                 {
@@ -80,11 +106,25 @@ namespace ETS2_Assist_GUI
                 }
             }
 
-            bool showPauseLogo = paused && gameFocused;
-            if (showPauseLogo != _lastPauseLogoVisible)
+            // Пауз-лого: показываем ТОЛЬКО в фокусе и на паузе. Вне фокуса — скрываем.
+            if (showPause != _lastPauseLogoVisible)
             {
-                _lastPauseLogoVisible = showPauseLogo;
-                SendCommandToMap(showPauseLogo ? "show_pause_logo" : "hide_pause_logo");
+                _lastPauseLogoVisible = showPause;
+                SendCommandToMap(showPause ? "show_pause_logo" : "hide_pause_logo");
+                AppendLog(showPause ? "[UI] Пауз-лого показан (в фокусе, пауза)" : "[UI] Пауз-лого скрыт (в фокусе и не на паузе / вне фокуса)");
+            }
+
+            // Миникарта: как гибрид, но с учётом ручного тоггла (кнопка «Показать карту»).
+            bool minimapVisible = showMapHybrid && _minimapAutoLogic;
+            if (minimapVisible != _lastMinimapVisible)
+            {
+                _lastMinimapVisible = minimapVisible;
+                SendCommandToMap(minimapVisible ? "minimap_show" : "minimap_hide");
+            }
+            if (_minimapAutoLogic != _lastMinimapAuto)
+            {
+                _lastMinimapAuto = _minimapAutoLogic;
+                SendCommandToMap("minimap_auto", new JObject { ["enabled"] = _minimapAutoLogic });
             }
         }
 

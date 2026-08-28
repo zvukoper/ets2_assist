@@ -113,6 +113,10 @@ function drawMinimap() {
     const useOverview = state.targetMapOverview === true;
 
     if (useOverview) {
+        // Обзор охватывает ВСЕ активные цели (stash с active:false исключается).
+        state.zoomOnMapTargets = state.customTargets.concat(state.randomTargets)
+            .filter(t => t.active !== false)
+            .map(t => ({ x: t.x, z: t.z }));
         const zoomTargets = state.zoomOnMapTargets;
         if (zoomTargets.length > 0) {
             let maxDist = 0;
@@ -345,7 +349,7 @@ function drawMinimap() {
     }
     // Неактивные цели
     for (const target of allTargets) {
-        if (target === randomTarget) continue;
+        if (state.randomTargets && state.randomTargets.includes(target)) continue;
         if (target.active) continue;
         const tPos = { x: target.x, z: target.z };
         const distReal = Math.sqrt((tPos.x - truckPos.x)**2 + (tPos.z - truckPos.z)**2);
@@ -431,7 +435,7 @@ function drawMinimap() {
     }
     // Активные цели
     for (const target of allTargets) {
-        if (target === randomTarget) continue;
+        if (state.randomTargets && state.randomTargets.includes(target)) continue;
         if (!target.active) continue;
         const tPos = { x: target.x, z: target.z };
         const distReal = Math.sqrt((tPos.x - truckPos.x)**2 + (tPos.z - truckPos.z)**2);
@@ -519,64 +523,76 @@ function drawMinimap() {
         }
     }
 
-    // ---- ГАРАНТИРОВАННАЯ отрисовка случайной цели (randomTarget) ----
-    // Рисуем напрямую из глобальной переменной, минуя цепочку customTargets,
-    // чтобы точка всегда была видна (и на карте, и стрелка за её пределами).
-    if (randomTarget) {
-        const rp = { x: randomTarget.x, z: randomTarget.z };
-        const rDist = Math.sqrt((rp.x - truckPos.x) ** 2 + (rp.z - truckPos.z) ** 2);
-        const rScreen = worldToScreen2(rp.x, rp.z);
-        const rVisible = Math.abs(rScreen.x - cx) < w / 2 - 8 && Math.abs(rScreen.y - cy) < h / 2 - 8;
-        const rColor = (randomTarget.color && randomTarget.color !== 'default') ? randomTarget.color : '#ff2d2d';
-        ctx.save();
-        if (rVisible) {
-            ctx.beginPath();
-            ctx.arc(rScreen.x, rScreen.y, 7, 0, 2 * Math.PI);
-            ctx.fillStyle = rColor;
-            ctx.shadowColor = rColor;
-            ctx.shadowBlur = 14;
-            ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#ffffff';
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(rScreen.x - 13, rScreen.y);
-            ctx.lineTo(rScreen.x + 13, rScreen.y);
-            ctx.moveTo(rScreen.x, rScreen.y - 13);
-            ctx.lineTo(rScreen.x, rScreen.y + 13);
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        } else {
-            const dx = rScreen.x - cx, dy = rScreen.y - cy;
-            const len = Math.sqrt(dx * dx + dy * dy) || 1;
-            const nx = dx / len, ny = dy / len;
-            const ax = cx + nx * (radius - 6), ay = cy + ny * (radius - 6);
-            ctx.translate(ax, ay);
-            ctx.rotate(Math.atan2(ny, nx));
-            ctx.beginPath();
-            ctx.moveTo(11, 0);
-            ctx.lineTo(-7, -7);
-            ctx.lineTo(-7, 7);
-            ctx.closePath();
-            ctx.fillStyle = rColor;
-            ctx.shadowColor = 'rgba(0,0,0,0.6)';
-            ctx.shadowBlur = 5;
-            ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // ---- ГАРАНТИРОВАННАЯ отрисовка ВСЕХ случайных целей (state.randomTargets) ----
+    // Рисуем напрямую из массива, минуя цепочку customTargets, чтобы точки всегда были видны.
+    if (state.randomTargets && state.randomTargets.length) {
+        for (const rt of state.randomTargets) {
+            // Перекус скрыт на 5 мин после активации — не рисуем и не показываем указатель.
+            if (rt.hiddenUntil && Date.now() < rt.hiddenUntil) continue;
+            // Скрытая цель (hidden=1) — не рисуем, но триггер зоны в trail.js остаётся активным.
+            if (rt.hidden) continue;
+            const rp = { x: rt.x, z: rt.z };
+            const rDist = Math.sqrt((rp.x - truckPos.x) ** 2 + (rp.z - truckPos.z) ** 2);
+            const rScreen = worldToScreen2(rp.x, rp.z);
+            const rVisible = Math.abs(rScreen.x - cx) < w / 2 - 8 && Math.abs(rScreen.y - cy) < h / 2 - 8;
+            // Метка: рядом с точкой, если видима; у стрелки-указателя, если за пределами карты.
+            let labelX = rScreen.x, labelY = rScreen.y - 16;
+            // Тайник (active=false) не имеет указателя за пределами карты — вне экрана не рисуем.
+            if (!rVisible && rt.active === false) continue;
+            // Цель «армирована» (игрок в зоне) — зелёная, иначе красная.
+            const rColor = rt.armed ? '#22dd55' : ((rt.color && rt.color !== 'default') ? rt.color : '#ff2d2d');
+            ctx.save();
+            if (rVisible) {
+                ctx.beginPath();
+                ctx.arc(rScreen.x, rScreen.y, 7, 0, 2 * Math.PI);
+                ctx.fillStyle = rColor;
+                ctx.shadowColor = rColor;
+                ctx.shadowBlur = 14;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(rScreen.x - 13, rScreen.y);
+                ctx.lineTo(rScreen.x + 13, rScreen.y);
+                ctx.moveTo(rScreen.x, rScreen.y - 13);
+                ctx.lineTo(rScreen.x, rScreen.y + 13);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            } else {
+                const dx = rScreen.x - cx, dy = rScreen.y - cy;
+                const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                const nx = dx / len, ny = dy / len;
+                const ax = cx + nx * (radius - 6), ay = cy + ny * (radius - 6);
+                ctx.translate(ax, ay);
+                ctx.rotate(Math.atan2(ny, nx));
+                ctx.beginPath();
+                ctx.moveTo(11, 0);
+                ctx.lineTo(-7, -7);
+                ctx.lineTo(-7, 7);
+                ctx.closePath();
+                ctx.fillStyle = rColor;
+                ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                ctx.shadowBlur = 5;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                // Метка у стрелки-указателя (в правильном направлении от центра карты).
+                labelX = ax; labelY = ay - 16;
+            }
+            ctx.restore();
+            const rLabel = `${rt.name || 'Цель'}${rt.armed ? ' [в зоне]' : ''}: ${formatDistance(rDist)}`;
+            labelsData.push({
+                x: labelX, y: labelY,
+                text: rLabel, color: rColor, isActive: true, isCity: false,
+                w: Math.min(rLabel.length * 7 + 22, 230), h: 18, priority: 6
+            });
         }
-        ctx.restore();
-        const rLabel = `${randomTarget.name || 'Цель'}: ${formatDistance(rDist)}`;
-        labelsData.push({
-            x: rScreen.x, y: rScreen.y - 16,
-            text: rLabel, color: rColor, isActive: true, isCity: false,
-            w: Math.min(rLabel.length * 7 + 22, 230), h: 18, priority: 6
-        });
     }
 
     // Города за пределами карты (ближайшие 4)

@@ -5,6 +5,8 @@ let saveWs = null;
 let saveWsConnected = false;
 let saveInProgress = false;
 let saveStartedAt = 0;
+let minimapAutoOff = false;   // true = ручной тоггл выключил авто-показ миникарты
+let minimapShownOnce = false; // первый показ с анимацией — только один раз
 
 function connectSaveWebSocket() {
     try {
@@ -24,17 +26,23 @@ function connectSaveWebSocket() {
                 if (data.command) {
                     console.log('[WS] Received command:', data.command);
                     switch (data.command) {
-                        case 'add_random_target':
-                            generateRandomTarget({ nearTruck: true, radiusM: 2000, name: 'Случайная цель' });
+                        case 'quest_courier':
+                            // Курьер: синяя точка, 100м от фуры, на дороге у ближайшей POI.
+                            generateRandomTarget({ nearTruck: true, distanceM: 100, requirePoi: true, requireRoad: true, questType: 'courier_pickup', color: '#2d7dff', active: true, name: 'Курьер: забрать документы', radius: 50 });
                             break;
-                        case 'add_random_target_2':
-                            generateRandomTarget({ nearTruck: false, requirePoi: true, name: 'Случайная цель 2' });
+                        case 'quest_stash':
+                            // Тайник: жёлтая точка, 200м, на POI рядом с дорогой, НЕ активна (без указателя за пределами).
+                            // Разовая цель: удаляется навсегда после выполнения (delete_on_complete=1).
+                            generateRandomTarget({ nearTruck: true, distanceM: 200, requirePoi: true, requireRoad: true, questType: 'stash', color: '#ffd400', active: false, name: 'Тайник', radius: 30, deleteOnComplete: 1 });
                             break;
-                        case 'add_random_target_100':
-                            generateRandomTarget({ nearTruck: true, distanceM: 100, name: 'Случайная цель 100м' });
+                        case 'quest_snack':
+                            // Перекус: зелёная точка, 400м, на POI у дороги. После выполнения
+                            // уходит на кулдаун (5 мин) и снова появляется (cooldown=5).
+                            generateRandomTarget({ nearTruck: true, distanceM: 400, requirePoi: true, requireRoad: true, questType: 'snack', color: '#22dd55', active: true, name: 'Перекус', radius: 50, cooldown: 5 });
                             break;
-                        case 'add_random_target_near':
-                            generateRandomTarget({ nearTruck: true, minDistM: 51, maxDistM: 60, requireRoad: true, name: 'Ближайшая цель' });
+                        case 'quest_courier_dropoff':
+                            // Промежуточная точка квеста Курьер (создаётся после принятия задания).
+                            generateRandomTarget({ nearTruck: true, distanceM: data.distanceM ? Number(data.distanceM) : 1000, requirePoi: true, requireRoad: true, questType: 'courier_dropoff', color: '#a64dff', active: true, name: 'Доставить документы', radius: 35 });
                             break;
                         case 'list_targets':
                             listTargets();
@@ -56,7 +64,24 @@ function connectSaveWebSocket() {
                             console.log('[REC] stop_recording acknowledged. Existing data preserved until reset.');
                             break;
                         case 'remove_random_target':
-                            removeRandomTarget();
+                            removeRandomTarget(data.id);
+                            break;
+                        case 'remove_target':
+                            // Приложение завершило цель (вышли из зоны после входа) —
+                            // убираем её из миникарты.
+                            removeRandomTarget(data.id);
+                            break;
+                        case 'set_overview':
+                            // Обзор целей управляется ТОЛЬКО приложением (тоггл).
+                            state.targetMapOverview = data.enabled === true;
+                            console.log('[WS] Обзор целей ' + (state.targetMapOverview ? 'ВКЛ' : 'ВЫКЛ'));
+                            break;
+                        case 'hide_target':
+                            // Скрыть цель на время (Перекус: 5 мин невидимости).
+                            if (data.id) {
+                                const t = state.randomTargets && state.randomTargets.find(r => r.id === data.id);
+                                if (t) { t.hiddenUntil = Date.now() + (Number(data.durationMs) || 300000); console.log('[WS] Цель скрыта до ' + t.hiddenUntil); }
+                            }
                             break;
                         case 'reset_target_reached':
                             randomTargetReachedSent = false;
@@ -67,14 +92,21 @@ function connectSaveWebSocket() {
                             // Миникарта сама файл не читает — только рисует то, что прислали.
                             applyTargetsData(data.targets);
                             break;
-                        case 'show_ui_first':
-                            showUIWithAnimation();
+                        case 'minimap_show':
+                            // Миникарта показывается только когда авто-логика включена.
+                            if (!minimapAutoOff) {
+                                if (!minimapShownOnce) { showUIWithAnimation(); minimapShownOnce = true; }
+                                else showUIFast();
+                            }
                             break;
-                        case 'show_ui':
-                            showUIFast();
-                            break;
-                        case 'hide_ui':
+                        case 'minimap_hide':
                             hideUIFast();
+                            break;
+                        case 'minimap_auto':
+                            // Ручной тоггл (кнопка «Показать карту»): false = скрыть миникарту
+                            // и не показывать её автоматически, пока не включат обратно.
+                            minimapAutoOff = data.enabled === false;
+                            if (minimapAutoOff) hideUIFast();
                             break;
                         case 'show_pause_logo':
                         case 'hide_pause_logo':

@@ -32,7 +32,14 @@ function normalizeTarget(t) {
         icon: t.icon || 'default',
         color: t.color || 'default',
         zoomOnMap: t.targetMapOverview === true,
-        isRandom: t.isRandom || false
+        isRandom: t.isRandom || false,
+        id: t.id || '',
+        questType: t.questType || null,
+        radius: Number(t.radius) || 50,
+        hidden: Number(t.hidden) || 0,
+        cooldown: Number(t.cooldown) || 0,
+        currentCooldown: Number(t.current_cooldown) || 0,
+        deleteOnComplete: Number(t.delete_on_complete) || 0
     };
 }
 
@@ -40,25 +47,24 @@ function applyTargetsData(targetArray) {
     try {
         const list = Array.isArray(targetArray) ? targetArray : [];
         state.customTargets = list.map(normalizeTarget);
-        // Активная случайная цель — последняя с isRandom (одна за раз),
-        // иначе первая с active. Миникарта лишь рисует то, что прислало приложение.
-        const randoms = state.customTargets.filter(t => t.isRandom);
-        const active = randoms.length
-            ? randoms[randoms.length - 1]
-            : state.customTargets.find(t => t.active);
-        if (active) {
-            randomTarget = active;
-            randomTargetReachedSent = false;
-            targetX.value = active.x.toFixed(2);
-            targetY.value = active.y.toFixed(2);
-            targetZ.value = active.z.toFixed(2);
-            state.target.x = active.x;
-            state.target.y = active.y;
-            state.target.z = active.z;
-            focusTargetOnMap(active.x, active.z);
+        // Все случайные цели — в отдельный массив (поддержка нескольких одновременно).
+        // state.target фокусируется на последней; inZone/armed сбрасываем (каждый кадр
+        // trail.js переопределит по фактической близости).
+        if (!state.randomTargets) state.randomTargets = [];
+        state.randomTargets = state.customTargets.filter(t => t.isRandom);
+        state.randomTargets.forEach(t => { t.inZone = false; t.armed = false; });
+        if (state.randomTargets.length) {
+            const last = state.randomTargets[state.randomTargets.length - 1];
+            randomTarget = last;
+            targetX.value = last.x.toFixed(2);
+            targetY.value = last.y.toFixed(2);
+            targetZ.value = last.z.toFixed(2);
+            state.target.x = last.x;
+            state.target.y = last.y;
+            state.target.z = last.z;
+            focusTargetOnMap(last.x, last.z);
         } else {
             randomTarget = null;
-            randomTargetReachedSent = false;
             targetX.value = '0.00';
             targetY.value = '0.00';
             targetZ.value = '0.00';
@@ -83,14 +89,11 @@ function applyTargetsData(targetArray) {
 // ГЕНЕРАЦИЯ СЛУЧАЙНОЙ ЦЕЛИ (улучшенная)
 // ================================================================
 function focusTargetOnMap(x, z) {
-    // Гарантируем, что цель попадёт в поле зрения миникарты (авто-приближение).
-    state.targetMapOverview = true;
+    // Обзор целей управляется ТОЛЬКО приложением (тоггл). Здесь только фокус основной цели.
     state.zoomOnMapTargets = [{ x, z }];
 }
 
 async function generateRandomTarget(options) {
-    removeRandomTarget();
-
     const truckX = state.truck.x;
     const truckZ = state.truck.z;
     const opts = options || {};
@@ -250,21 +253,49 @@ async function generateRandomTarget(options) {
         console.log('[generateRandomTarget] Использован запасной спавн без дорог/POI, дист=' + Math.round(fallbackDist));
     }
 
+    const id = (opts && opts.id) || ('rt_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e4).toString(36));
+    const radius = Number(opts && opts.radius) || 50;
+
     const newTarget = {
+        id: id,
         x: targetPoint.x,
         y: 0,
         z: targetPoint.z,
         name: name,
-        active: true,
-        color: '#ff0000',
+        active: opts.active !== false,
+        color: opts.color || '#ff0000',
+        questType: opts.questType || null,
         icon: 'default',
         gameName: 'random',
         zoomOnMap: false,
-        isRandom: true
+        isRandom: true,
+        radius: radius,
+        hidden: opts.hidden ? 1 : 0,
+        cooldown: opts.cooldown || 0,
+        deleteOnComplete: opts.deleteOnComplete || 0,
+        inZone: false,
+        armed: false
     };
 
-    state.customTargets.forEach(t => t.active = false);
+    // ДЕДУП ПО ТИПУ: случайная цель каждого questType может быть только одна.
+    // Удаляем предыдущую цель того же типа (защита от флаппинга WS / повторных
+    // нажатий кнопки), чтобы не плодились двойники в разных местах.
+    if (opts && opts.questType) {
+        const sameType = (state.randomTargets || []).filter(t => t.questType === opts.questType);
+        sameType.forEach(old => {
+            if (old.id === id) return;
+            state.randomTargets = (state.randomTargets || []).filter(t => t !== old);
+            state.customTargets = (state.customTargets || []).filter(t => t !== old);
+            if (saveWs && saveWs.readyState === WebSocket.OPEN) {
+                saveWs.send(JSON.stringify({ command: 'remove_target', id: old.id }));
+                console.log('[TARGETS] Удалён дубликат типа ' + opts.questType + ' (id=' + old.id + ')');
+            }
+        });
+    }
+
     state.customTargets.push(newTarget);
+    if (!state.randomTargets) state.randomTargets = [];
+    state.randomTargets.push(newTarget);
     randomTarget = newTarget;
     randomTargetReachedSent = false;
 
@@ -282,9 +313,13 @@ async function generateRandomTarget(options) {
         saveWs.send(JSON.stringify({
             command: 'target_created',
             target: {
+                id: newTarget.id,
                 x: newTarget.x,
                 z: newTarget.z,
                 name: newTarget.name,
+                color: newTarget.color,
+                questType: newTarget.questType,
+                active: newTarget.active,
                 dist: distToTruck
             }
         }));
@@ -293,10 +328,17 @@ async function generateRandomTarget(options) {
         saveWs.send(JSON.stringify({
             command: 'add_target',
             target: {
+                id: newTarget.id,
                 x: newTarget.x,
                 z: newTarget.z,
                 name: newTarget.name,
                 color: newTarget.color,
+                questType: newTarget.questType,
+                active: newTarget.active,
+                radius: newTarget.radius,
+                hidden: newTarget.hidden,
+                cooldown: newTarget.cooldown,
+                delete_on_complete: newTarget.deleteOnComplete,
                 isRandom: true
             }
         }));
@@ -308,25 +350,33 @@ async function generateRandomTarget(options) {
     showToast(name + ' добавлена', 3000);
 }
 
-function removeRandomTarget() {
-    if (randomTarget) {
+function removeRandomTarget(id) {
+    if (!id && randomTarget) id = randomTarget.id;
+    if (state.randomTargets && state.randomTargets.length) {
+        const t = state.randomTargets.find(r => r.id === id);
+        if (t) {
+            state.randomTargets = state.randomTargets.filter(r => r !== t);
+            state.customTargets = state.customTargets.filter(c => c !== t);
+        }
+    } else if (randomTarget) {
         state.customTargets = state.customTargets.filter(t => t !== randomTarget);
+    }
+    if (!state.randomTargets || state.randomTargets.length === 0) {
         randomTarget = null;
         randomTargetReachedSent = false;
-        const hasActive = state.customTargets.some(t => t.active);
-        if (!hasActive) {
-            targetX.value = '0.00';
-            targetY.value = '0.00';
-            targetZ.value = '0.00';
-            state.target.x = 0;
-            state.target.y = 0;
-            state.target.z = 0;
-        }
-        updateAll();
-        showToast('Случайная цель удалена', 3000);
-        // Запись в файл выполняет приложение (команда remove_random_target ->
-        // C# удаляет цель из custom_targets.json и шлёт targets_data).
+        targetX.value = '0.00';
+        targetY.value = '0.00';
+        targetZ.value = '0.00';
+        state.target.x = 0;
+        state.target.y = 0;
+        state.target.z = 0;
+    } else {
+        randomTarget = state.randomTargets[state.randomTargets.length - 1];
     }
+    updateAll();
+    showToast('Случайная цель удалена', 3000);
+    // Запись в файл выполняет приложение (команда remove_target ->
+    // C# удаляет цель из custom_targets.json и шлёт targets_data).
 }
 
 // Список всех созданных точек -> отправка в C# для записи в лог (команда list_targets)

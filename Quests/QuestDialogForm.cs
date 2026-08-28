@@ -1,17 +1,19 @@
 using System;
 using System.Drawing;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace ETS2_Assist_GUI
 {
     internal sealed class QuestDialogForm : Form
     {
-        private readonly Label _messageLabel;
+        private readonly RichTextBox _messageBox;
         private readonly Button _primaryButton;
         private readonly Button _secondaryButton;
         private readonly bool _isSuccess;
 
-        public QuestDialogForm(string title, string message, bool isSuccess)
+        public QuestDialogForm(string title, string message, bool isSuccess,
+            string primaryText = "", string secondaryText = "")
         {
             _isSuccess = isSuccess;
 
@@ -25,16 +27,20 @@ namespace ETS2_Assist_GUI
             TopMost = true;
             AutoScaleMode = AutoScaleMode.Dpi;
             Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point);
-            ClientSize = new Size(isSuccess ? 430 : 500, isSuccess ? 170 : 190);
+            ClientSize = new Size(isSuccess ? 430 : 500, isSuccess ? 180 : 200);
 
-            _messageLabel = new Label
+            _messageBox = new RichTextBox
             {
-                AutoSize = false,
-                Text = message,
-                TextAlign = ContentAlignment.MiddleCenter,
+                ReadOnly = true,
+                BorderStyle = BorderStyle.None,
                 Dock = DockStyle.Fill,
-                Padding = new Padding(20, 18, 20, 10)
+                BackColor = SystemColors.Control,
+                Font = new Font("Segoe UI", 10.5F, FontStyle.Regular, GraphicsUnit.Point),
+                Text = message,
+                DetectUrls = false,
+                Margin = new Padding(20, 16, 20, 8)
             };
+            ColorRewardLines(_messageBox, message);
 
             var buttons = new FlowLayoutPanel
             {
@@ -49,7 +55,7 @@ namespace ETS2_Assist_GUI
             {
                 _primaryButton = new Button
                 {
-                    Text = "OK",
+                    Text = string.IsNullOrEmpty(primaryText) ? "OK" : primaryText,
                     DialogResult = DialogResult.OK,
                     AutoSize = true,
                     MinimumSize = new Size(90, 30)
@@ -63,14 +69,14 @@ namespace ETS2_Assist_GUI
             {
                 _primaryButton = new Button
                 {
-                    Text = "Да",
+                    Text = string.IsNullOrEmpty(primaryText) ? "Да" : primaryText,
                     DialogResult = DialogResult.Yes,
                     AutoSize = true,
                     MinimumSize = new Size(90, 30)
                 };
                 _secondaryButton = new Button
                 {
-                    Text = "Нет",
+                    Text = string.IsNullOrEmpty(secondaryText) ? "Нет" : secondaryText,
                     DialogResult = DialogResult.No,
                     AutoSize = true,
                     MinimumSize = new Size(90, 30)
@@ -82,7 +88,7 @@ namespace ETS2_Assist_GUI
                 buttons.Controls.Add(_primaryButton);
             }
 
-            Controls.Add(_messageLabel);
+            Controls.Add(_messageBox);
             Controls.Add(buttons);
 
             Shown += (_, _) =>
@@ -90,6 +96,37 @@ namespace ETS2_Assist_GUI
                 TopMost = true;
                 _primaryButton.Focus();
             };
+        }
+
+        // Подсвечивает строки с наградой жирным зелёным: +XXXXX руб. / +XXXXX опыта.
+        private static void ColorRewardLines(RichTextBox box, string message)
+        {
+            try
+            {
+                var lines = message.Split('\n');
+                for (int i = 0; i < lines.Length && i < box.Lines.Length; i++)
+                {
+                    if (IsRewardLine(lines[i]))
+                    {
+                        int start = box.GetFirstCharIndexFromLine(i);
+                        int len = box.Lines[i].Length;
+                        if (start < 0 || len <= 0) continue;
+                        box.Select(start, len);
+                        box.SelectionColor = Color.FromArgb(0, 150, 40);
+                        box.SelectionFont = new Font(box.Font, FontStyle.Bold);
+                    }
+                }
+                box.Select(0, 0);
+            }
+            catch { }
+        }
+
+        private static bool IsRewardLine(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line)) return false;
+            if (line.Contains("руб") || line.Contains("опыта") || line.Contains("опыт") || line.Contains("Награда"))
+                return true;
+            return Regex.IsMatch(line, @"[+\-]\s*\d");
         }
     }
 }

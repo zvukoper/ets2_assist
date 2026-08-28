@@ -83,6 +83,9 @@ const state = {
 // Дополнительные переменные для случайной цели
 let randomTarget = null;
 let randomTargetReachedSent = false;
+// Массив ВСЕХ активных случайных целей (поддержка нескольких одновременно).
+// Каждая: { id, x, y, z, name, color, icon, isRandom, radius, inZone, armed }
+state.randomTargets = [];
 
 const TRAIL_LENGTH = -1;
 

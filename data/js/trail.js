@@ -378,27 +378,29 @@ function updateTrail(speed, pos, engineOn, fuel, damage, gameTime, heading, pitc
         }
     }
 
-    // ---- ОТСЛЕЖИВАНИЕ ДОСТИЖЕНИЯ СЛУЧАЙНОЙ ЦЕЛИ (с защитой от дублей) ----
-    if (randomTarget && !targetReachedSending) {
-        const distToTarget = Math.sqrt((tX - randomTarget.x)**2 + (tZ - randomTarget.z)**2);
-        if (distToTarget < 50) {
-            // Блокируем повторные отправки
-            targetReachedSending = true;
-            if (saveWs && saveWs.readyState === WebSocket.OPEN) {
-                saveWs.send(JSON.stringify({
-                    command: 'target_reached',
-                    target: {
-                        x: randomTarget.x,
-                        z: randomTarget.z,
-                        name: randomTarget.name
-                    }
-                }));
-                console.log('[TRIGGER] Отправлена команда target_reached (флаг установлен)');
-            } else {
-                // Если WebSocket не открыт, снимаем блокировку через 2 секунды
-                setTimeout(() => {
-                    targetReachedSending = false;
-                }, 2000);
+    // ---- ОТСЛЕЖИВАНИЕ ЗОН ЦЕЛЕЙ: вход -> арм, выход (после входа) -> завершение ----
+    // Каждая цель живёт независимо. Триггер НЕ срабатывает постоянно: он ждёт выхода
+    // из зоны после входа. Повторный вход снова армит триггер и ждёт выхода.
+    if (Array.isArray(state.randomTargets)) {
+        for (const t of state.randomTargets) {
+            // Скрытая цель (Перекус) не триггерится.
+            if (t.hiddenUntil && Date.now() < t.hiddenUntil) continue;
+            const distToTarget = Math.sqrt((tX - t.x) ** 2 + (tZ - t.z) ** 2);
+            const radius = t.radius || 50;
+            if (distToTarget < radius && !t.inZone) {
+                t.inZone = true;
+                t.armed = true;
+                if (saveWs && saveWs.readyState === WebSocket.OPEN) {
+                    saveWs.send(JSON.stringify({ command: 'target_zone_enter', id: t.id, x: t.x, z: t.z, name: t.name }));
+                    console.log('[TRIGGER] target_zone_enter ' + (t.id || ''));
+                }
+            } else if (distToTarget >= radius && t.inZone) {
+                t.inZone = false;
+                t.armed = false; // сбрасываем арм — цель снова красная, триггер ждёт повторного входа
+                if (saveWs && saveWs.readyState === WebSocket.OPEN) {
+                    saveWs.send(JSON.stringify({ command: 'target_zone_leave', id: t.id, x: t.x, z: t.z, name: t.name }));
+                    console.log('[TRIGGER] target_zone_leave ' + (t.id || ''));
+                }
             }
         }
     }

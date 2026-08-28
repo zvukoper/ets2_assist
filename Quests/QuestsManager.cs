@@ -96,11 +96,23 @@ namespace ETS2_Assist_GUI
         [StructLayout(LayoutKind.Sequential)]
         struct HARDWAREINPUT { /* не используется */ }
 
-        private bool _randomTargetActive = false;
-        private bool _randomTargetReached = false;
-        private double _randomTargetX = 0;
-        private double _randomTargetZ = 0;
-        private string _randomTargetName = "Случайная цель";
+        // Состояние КАЖДОЙ активной случайной цели (поддержка нескольких одновременно).
+        // Ключ — уникальный id цели (генерится в миникарте).
+        private class RandomTargetState
+        {
+            public string Id = "";
+            public double X = 0;
+            public double Z = 0;
+            public string Name = "Случайная цель";
+            public double Radius = 50;
+            public string QuestType = ""; // courier_pickup / courier_dropoff / stash / snack
+            public string Color = "#ff0000";
+            public bool Active = true;    // участвует в обзоре целей / имеет указатель за пределами
+            public bool InZone = false;   // игрок находится в зоне цели
+            public bool Armed = false;    // вошёл в зону -> триггер взведён, ждём выхода
+        }
+        private Dictionary<string, RandomTargetState> _randomTargets = new Dictionary<string, RandomTargetState>();
+        private bool _overviewOn = false;
 
         private void BtnRandomTarget_Click(object sender, EventArgs e)
         {
@@ -111,11 +123,9 @@ namespace ETS2_Assist_GUI
                 return;
             }
 
-            SendCommandToMap("add_random_target");
-            _randomTargetActive = true;
-            _randomTargetReached = false;
-            AppendLog("Отправлена команда на создание случайной цели.");
-            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Случайная цель создана.", ToolTipIcon.Info);
+            SendCommandToMap("quest_courier");
+            AppendLog("Отправлена команда: Курьер (синяя точка, 100м у POI на дороге).");
+            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Курьер: точка создана.", ToolTipIcon.Info);
         }
 
         private void BtnRandomTarget2_Click(object sender, EventArgs e)
@@ -127,11 +137,9 @@ namespace ETS2_Assist_GUI
                 return;
             }
 
-            SendCommandToMap("add_random_target_2");
-            _randomTargetActive = true;
-            _randomTargetReached = false;
-            AppendLog("Отправлена команда на создание случайной цели 2.");
-            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Случайная цель 2 создана.", ToolTipIcon.Info);
+            SendCommandToMap("quest_stash");
+            AppendLog("Отправлена команда: Тайник (жёлтая точка, 200м на POI у дороги, неактивна).");
+            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Тайник: точка создана.", ToolTipIcon.Info);
         }
 
         private void BtnRandomTarget3_Click(object sender, EventArgs e)
@@ -143,27 +151,24 @@ namespace ETS2_Assist_GUI
                 return;
             }
 
-            SendCommandToMap("add_random_target_100");
-            _randomTargetActive = true;
-            _randomTargetReached = false;
-            AppendLog("Отправлена команда на создание случайной цели 100м.");
-            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Случайная цель 100м создана.", ToolTipIcon.Info);
+            SendCommandToMap("quest_snack");
+            AppendLog("Отправлена команда: Перекус (зелёная точка, 400м на POI у дороги).");
+            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Перекус: точка создана.", ToolTipIcon.Info);
         }
 
         private void BtnRandomTarget4_Click(object sender, EventArgs e)
         {
             if (!_wsSaveRunning || _wsSaveServer == null)
             {
-                AppendLog("WebSocket сервер не запущен. Невозможно создать цель.");
+                AppendLog("WebSocket сервер не запущен. Невозможно переключить обзор.");
                 MessageBox.Show("WebSocket сервер не запущен. Запустите систему.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            SendCommandToMap("add_random_target_near");
-            _randomTargetActive = true;
-            _randomTargetReached = false;
-            AppendLog("Отправлена команда на создание ближайшей случайной цели (51-60м, строго на дороге).");
-            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", "Ближайшая случайная цель создана.", ToolTipIcon.Info);
+            _overviewOn = !_overviewOn;
+            SendCommandToMap("set_overview", new JObject { ["enabled"] = _overviewOn });
+            AppendLog($"Обзор целей {( _overviewOn ? "ВКЛ" : "ВЫКЛ")} (охват всех активных точек).");
+            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", $"Обзор целей: {(_overviewOn ? "вкл" : "выкл")}", ToolTipIcon.Info);
         }
 
         private void BtnCheckTargets_Click(object sender, EventArgs e)
@@ -189,18 +194,72 @@ namespace ETS2_Assist_GUI
             switch (command)
             {
                 case "target_reached":
-                    var reachedTarget = data["target"];
-                    AppendDataLog($"target_reached x={reachedTarget?["x"]} z={reachedTarget?["z"]}");
-                    // ACK immediately so the map can stop retrying while the
-                    // modal quest dialog is open on the GUI thread.
-                    SendCommandToMap("target_reached_ack");
-                    HandleTargetReached(data);
+                    // УСТАРЕЛО: миникарта больше не шлёт target_reached (теперь
+                    // target_zone_enter / target_zone_leave). Оставлено для совместимости.
+                    AppendLog("[WS] target_reached проигнорирован (устарело, используется target_zone_*).");
                     break;
                 case "target_created":
                     var createdTarget = data["target"];
                     AppendDataLog($"target_created x={createdTarget?["x"]} z={createdTarget?["z"]}");
-                    HandleTargetCreated(data);
+                    RegisterTargetFromMap(data["target"]);
                     break;
+                case "target_zone_enter":
+                    {
+                        var zt = data["id"]?.Value<string>();
+                        if (zt != null && _randomTargets.TryGetValue(zt, out var st))
+                        {
+                            st.InZone = true;
+                            st.Armed = true;
+                            AppendLog($"[TRIGGER] Вход в зону цели {zt} ({st.Name}, тип={st.QuestType}) — диалог задания.");
+                            this.BeginInvoke((System.Windows.Forms.MethodInvoker)delegate
+                            {
+                                bool wasTop = this.TopMost;
+                                bool pausedByUs = false;
+                                try
+                                {
+                                    this.TopMost = true;
+                                    this.Show();
+                                    this.WindowState = FormWindowState.Normal;
+                                    this.Activate();
+                                    try { if (!IsGamePaused()) { SetGamePause(true); pausedByUs = true; } }
+                                    catch (Exception exP) { AppendLog($"[SCS] пауза не удалась: {exP.Message}"); }
+                                    ForceForegroundWindow(this.Handle, "before-quest-dialog");
+                                    HandleQuestEnter(st);
+                                }
+                                finally
+                                {
+                                    this.TopMost = wasTop;
+                                    try { if (pausedByUs && IsGamePaused()) SetGamePause(false); }
+                                    catch { }
+                                    ReturnFocusToGame();
+                                }
+                            });
+                        }
+                        break;
+                    }
+                case "target_zone_leave":
+                    {
+                        var zt = data["id"]?.Value<string>();
+                        if (zt != null && _randomTargets.TryGetValue(zt, out var st))
+                        {
+                            // Завершение — по кнопке в диалоге, а не по выходу. Выход лишь
+                            // сбрасывает арм, чтобы триггер реактивировался при повторном входе
+                            // (Курьер-выдача: «НЕТ» -> ждём повторного входа).
+                            st.InZone = false;
+                            st.Armed = false;
+                        }
+                        break;
+                    }
+                case "remove_target":
+                    {
+                        var rt = data["id"]?.Value<string>();
+                        if (rt != null)
+                        {
+                            AppendLog($"[WS] remove_target {rt} — удаляем из файла/словаря.");
+                            RemoveTargetById(rt);
+                        }
+                        break;
+                    }
                 case "targets_list":
                     AppendLog("=== Список созданных точек ===");
                     if (data["targets"] is JArray list)
@@ -244,21 +303,40 @@ namespace ETS2_Assist_GUI
             }
         }
 
-        private void HandleTargetCreated(JObject data)
+        // Регистрируем цель в словаре активных (по id). Миникарта присылает
+        // target_created сразу после генерации — здесь мы начинаем отслеживать цель.
+        private void RegisterTargetFromMap(JToken target)
         {
-            var target = data["target"];
-            if (target != null)
+            if (target == null) return;
+            string id = target["id"]?.Value<string>() ?? "";
+            if (string.IsNullOrEmpty(id)) return;
+            var st = new RandomTargetState
             {
-                _randomTargetX = target["x"]?.Value<double>() ?? 0;
-                _randomTargetZ = target["z"]?.Value<double>() ?? 0;
-                _randomTargetName = target["name"]?.Value<string>() ?? "Случайная цель";
-                _randomTargetActive = true;
-                _randomTargetReached = false;
-                var dist = target["dist"]?.Value<double>();
-                var distStr = dist.HasValue ? $", дистанция до фуры = {Math.Round(dist.Value)} м" : "";
-                AppendLog($"[WS] Точка создана: x={_randomTargetX}, z={_randomTargetZ}{distStr}");
-                AppendDataLog($"target_created_logged x={_randomTargetX} z={_randomTargetZ} dist={dist}");
+                Id = id,
+                X = target["x"]?.Value<double>() ?? 0,
+                Z = target["z"]?.Value<double>() ?? 0,
+                Name = target["name"]?.Value<string>() ?? "Случайная цель",
+                Radius = target["radius"]?.Value<double>() ?? 50,
+                QuestType = target["questType"]?.Value<string>() ?? "",
+                Color = target["color"]?.Value<string>() ?? "#ff0000",
+                Active = target["active"]?.Value<bool>() ?? true,
+                InZone = false,
+                Armed = false
+            };
+            _randomTargets[id] = st;
+            if (_randomTargets.TryGetValue(id, out var existing))
+            {
+                // Обновляем тип/цвет/активность, если цель уже зарегистрирована
+                // (target_created может прийти раньше add_target с полными полями).
+                existing.QuestType = st.QuestType;
+                existing.Color = st.Color;
+                existing.Active = st.Active;
+                existing.X = st.X; existing.Z = st.Z; existing.Name = st.Name; existing.Radius = st.Radius;
             }
+            var dist = target["dist"]?.Value<double>();
+            var distStr = dist.HasValue ? $", дистанция до фуры = {Math.Round(dist.Value)} м" : "";
+            AppendLog($"[WS] Точка создана/зарегистрирована: id={id}, x={st.X:F1}, z={st.Z:F1}{distStr} (всего активных: {_randomTargets.Count})");
+            AppendDataLog($"target_created_logged id={id} x={st.X} z={st.Z} dist={dist}");
         }
 
         // ============================================================
@@ -322,6 +400,10 @@ namespace ETS2_Assist_GUI
                 double z = target["z"]?.Value<double>() ?? 0;
                 string name = target["name"]?.Value<string>() ?? target["realName"]?.Value<string>() ?? "Случайная цель";
                 string color = target["color"]?.Value<string>() ?? "default";
+                string id = target["id"]?.Value<string>() ?? "";
+                string questType = target["questType"]?.Value<string>() ?? "";
+                bool active = target["active"]?.Value<bool>() ?? true;
+                double radius = target["radius"]?.Value<double>() ?? 50;
 
                 string filePath = AppDataPaths.CustomTargetsFile;
                 JObject root;
@@ -338,34 +420,198 @@ namespace ETS2_Assist_GUI
                 var arr = root["customTargets"] as JArray;
                 if (arr == null) { arr = new JArray(); root["customTargets"] = arr; }
 
-                // Одна активная случайная цель за раз: удаляем предыдущие isRandom.
-                var toRemove = arr.Where(i => (i["isRandom"]?.Value<bool>() ?? false)).ToList();
-                foreach (var r in toRemove) arr.Remove(r);
-
-                var entry = new JObject
+                // ЗАЩИТА ОТ ДУБЛЕЙ: каждый тип случайной цели (questType) может быть
+                // в файле ТОЛЬКО В ОДНОМ ЭКЗЕМПЛЯРЕ. Если уже есть isRandom-цель того же
+                // типа (другой id — например, при флаппинге WS или повторном нажатии),
+                // удаляем старую из файла и из словаря активных, чтобы не плодились копии.
+                if (!string.IsNullOrEmpty(questType) && target["isRandom"]?.Value<bool>() == true)
                 {
-                    ["gameName"] = target["gameName"]?.Value<string>() ?? "random",
-                    ["realName"] = name,
-                    ["coords"] = $"{x.ToString("F2", CultureInfo.InvariantCulture)}, 0.00, {z.ToString("F2", CultureInfo.InvariantCulture)}",
-                    ["status"] = "active",
-                    ["icon"] = target["icon"]?.Value<string>() ?? "default",
-                    ["color"] = color,
-                    ["targetMapOverview"] = false,
-                    ["isRandom"] = true
-                };
-                arr.Add(entry);
-                AppendLog($"[TARGETS][DEBUG] ЗАПИСЬ цели в файл: путь={filePath}");
-                AppendLog($"[TARGETS][DEBUG] ЗАПИСЬ цели: добавляем entry={entry.ToString(Formatting.None)}");
-                AppendLog($"[TARGETS][DEBUG] ЗАПИСЬ цели: всего в массиве до записи={arr.Count - 1} (после добавления={arr.Count})");
+                    var dupes = arr.OfType<JObject>()
+                        .Where(i => (i["isRandom"]?.Value<bool>() == true)
+                                 && (i["questType"]?.Value<string>() ?? "") == questType
+                                 && (i["id"]?.Value<string>() ?? "") != id)
+                        .ToList();
+                    foreach (var d in dupes)
+                    {
+                        string did = d["id"]?.Value<string>() ?? "";
+                        if (!string.IsNullOrEmpty(did)) _randomTargets.Remove(did);
+                        arr.Remove(d);
+                        AppendLog($"[TARGETS] Удалён дубликат типа {questType} (id={did}) перед записью новой цели.");
+                    }
+                }
+
+                // Если цель с таким id уже есть — обновляем её (защита от повторной записи).
+                JObject entry = null;
+                if (!string.IsNullOrEmpty(id))
+                {
+                    entry = arr.OfType<JObject>().FirstOrDefault(i => (i["id"]?.Value<string>() ?? "") == id);
+                }
+                if (entry == null)
+                {
+                    entry = new JObject();
+                    arr.Add(entry);
+                }
+                entry["id"] = id;
+                entry["gameName"] = target["gameName"]?.Value<string>() ?? "random";
+                entry["realName"] = name;
+                entry["coords"] = $"{x.ToString("F2", CultureInfo.InvariantCulture)}, 0.00, {z.ToString("F2", CultureInfo.InvariantCulture)}";
+                entry["status"] = active ? "active" : "inactive";
+                entry["icon"] = target["icon"]?.Value<string>() ?? "default";
+                entry["color"] = color;
+                entry["questType"] = questType;
+                entry["targetMapOverview"] = false;
+                entry["isRandom"] = true;
+                entry["radius"] = radius;
+
+                // Доп. параметры custom_targets (для кулдауна/скрытия/удаления).
+                int cooldown = target["cooldown"]?.Value<int>() ?? 0;
+                int currentCooldown = target["current_cooldown"]?.Value<int>() ?? 0;
+                int hidden = target["hidden"]?.Value<int>() ?? 0;
+                int deleteOnComplete = target["delete_on_complete"]?.Value<int>() ?? 0;
+                // Для только что сгенерированных целей (без явного кулдауна) ставим 0.
+                if (target["cooldown"] == null) cooldown = 0;
+                if (target["current_cooldown"] == null) currentCooldown = 0;
+                if (target["hidden"] == null) hidden = 0;
+                if (target["delete_on_complete"] == null) deleteOnComplete = 0;
+                entry["cooldown"] = cooldown;
+                entry["current_cooldown"] = currentCooldown;
+                entry["hidden"] = hidden;
+                entry["delete_on_complete"] = deleteOnComplete;
+
+                // Синхронизируем словарь активных целей (id может прийти только в add_target).
+                if (!string.IsNullOrEmpty(id) && !_randomTargets.ContainsKey(id))
+                {
+                    _randomTargets[id] = new RandomTargetState
+                    {
+                        Id = id, X = x, Z = z, Name = name, Radius = radius,
+                        QuestType = questType, Color = color, Active = active
+                    };
+                }
+
                 File.WriteAllText(filePath, root.ToString(Formatting.Indented));
-                AppendLog($"[TARGETS] Цель добавлена в файл: {name} ({x:F1}, {z:F1})");
+                AppendLog($"[TARGETS] Цель добавлена в файл: {name} ({x:F1}, {z:F1}) [id={id}]");
                 LogTargetsFileDump("ПОСЛЕ ЗАПИСИ ЦЕЛИ", filePath);
+                EnsureCooldownTimer();
                 SendTargetsToMap();
             }
             catch (Exception ex)
             {
                 AppendLog($"[TARGETS] Ошибка записи цели в файл: {ex.Message}");
             }
+        }
+
+        // ============================================================
+        // КУЛДАУН / СКРЫТИЕ / УДАЛЕНИЕ ЦЕЛЕЙ (параметры custom_targets)
+        // ============================================================
+        // cooldown (мин) — после выполнения цель неактивна N минут, затем
+        //   снова активируется (current_cooldown уменьшается на 1 каждую минуту
+        //   и пишется в файл; рассылка targets_data — только при сбросе в 0).
+        // hidden (0/1) — невидима на карте, но триггер зоны активен (в JS).
+        // delete_on_complete (0 — оставить, 1 — удалить навсегда, 2 — пересоздать
+        //   в >=3 км от старой точки той же логикой).
+        private System.Timers.Timer _cooldownTimer = null;
+        private void EnsureCooldownTimer()
+        {
+            if (_cooldownTimer != null) return;
+            try
+            {
+                _cooldownTimer = new System.Timers.Timer(60000) { AutoReset = true };
+                _cooldownTimer.Elapsed += (s, e) => DecrementCooldowns();
+                _cooldownTimer.Start();
+                AppendLog("[TARGETS] Таймер кулдауна целей запущен (1/мин).");
+            }
+            catch (Exception ex) { AppendLog($"[TARGETS] Ошибка запуска таймера кулдауна: {ex.Message}"); }
+        }
+
+        private void DecrementCooldowns()
+        {
+            try
+            {
+                string filePath = AppDataPaths.CustomTargetsFile;
+                if (!File.Exists(filePath)) return;
+                var root = JObject.Parse(File.ReadAllText(filePath));
+                var arr = root["customTargets"] as JArray;
+                if (arr == null || arr.Count == 0) return;
+                bool changed = false;
+                foreach (var item in arr.OfType<JObject>())
+                {
+                    int cur = item["current_cooldown"]?.Value<int>() ?? 0;
+                    if (cur > 0)
+                    {
+                        cur -= 1;
+                        item["current_cooldown"] = cur;
+                        if (cur <= 0)
+                        {
+                            item["current_cooldown"] = 0;
+                            item["status"] = "active"; // кулдаун истёк — цель снова активна
+                            AppendLog($"[TARGETS] Кулдаун цели '{item["realName"]}' истёк — цель снова активна.");
+                        }
+                        changed = true;
+                    }
+                }
+                if (changed)
+                {
+                    File.WriteAllText(filePath, root.ToString(Formatting.Indented));
+                    SendTargetsToMap(); // рассылка — только когда что-то изменилось (кулдаун сброшен)
+                }
+            }
+            catch (Exception ex) { AppendLog($"[TARGETS] Ошибка декремента кулдауна: {ex.Message}"); }
+        }
+
+        // Применяет параметры завершения цели: кулдаун / скрытие / удаление.
+        private void CompleteTargetById(string id)
+        {
+            try
+            {
+                string filePath = AppDataPaths.CustomTargetsFile;
+                if (!File.Exists(filePath)) { RemoveTargetById(id); return; }
+                var root = JObject.Parse(File.ReadAllText(filePath));
+                var arr = root["customTargets"] as JArray;
+                if (arr == null) { RemoveTargetById(id); return; }
+                var entry = arr.OfType<JObject>().FirstOrDefault(i => (i["id"]?.Value<string>() ?? "") == id);
+                if (entry == null) { RemoveTargetById(id); return; }
+
+                int doc = entry["delete_on_complete"]?.Value<int>() ?? 0;
+                int cooldown = entry["cooldown"]?.Value<int>() ?? 0;
+                string qType = entry["questType"]?.Value<string>() ?? "";
+
+                if (doc == 1)
+                {
+                    // Удалить навсегда (например, Тайник — разовая цель).
+                    RemoveTargetById(id);
+                    AppendLog($"[TARGETS] Цель '{entry["realName"]}' удалена навсегда (delete_on_complete=1).");
+                    return;
+                }
+                if (doc == 2)
+                {
+                    // Пересоздать: удаляем старую и просим миникарту сгенерировать новую
+                    // (та применит свой радиус/POI — будет в >=радиусе от фуры, иначе в новом месте).
+                    RemoveTargetById(id);
+                    if (!string.IsNullOrEmpty(qType))
+                    {
+                        string cmd = qType == "snack" ? "quest_snack"
+                                   : qType == "stash" ? "quest_stash"
+                                   : qType == "courier_dropoff" ? "quest_courier_dropoff"
+                                   : qType == "courier_pickup" ? "quest_courier"
+                                   : "";
+                        if (!string.IsNullOrEmpty(cmd))
+                        {
+                            SendCommandToMap(cmd);
+                            AppendLog($"[TARGETS] Цель '{entry["realName"]}' пересоздана (delete_on_complete=2).");
+                        }
+                    }
+                    return;
+                }
+
+                // delete_on_complete=0 (по умолчанию): оставляем цель, применяем кулдаун.
+                int cd = cooldown > 0 ? cooldown : 5; // запасной 5 мин, если кулдаун не задан
+                entry["current_cooldown"] = cd;
+                entry["status"] = "inactive";
+                File.WriteAllText(filePath, root.ToString(Formatting.Indented));
+                EnsureCooldownTimer();
+                AppendLog($"[TARGETS] Цель '{entry["realName"]}' скрыта на кулдаун {cd} мин.");
+            }
+            catch (Exception ex) { AppendLog($"[TARGETS] Ошибка завершения цели: {ex.Message}"); }
         }
 
         private void RemoveTargetFromFile(double x, double z)
@@ -404,6 +650,167 @@ namespace ETS2_Assist_GUI
             catch (Exception ex)
             {
                 AppendLog($"[TARGETS] Ошибка удаления цели из файла: {ex.Message}");
+            }
+        }
+
+        // Удаление цели из файла + словаря по id, с уведомлением миникарты.
+        private void RemoveTargetById(string id)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(id)) return;
+                _randomTargets.Remove(id);
+                string filePath = AppDataPaths.CustomTargetsFile;
+                if (!File.Exists(filePath)) { SendCommandToMap("remove_target", new JObject { ["id"] = id }); return; }
+                var root = JObject.Parse(File.ReadAllText(filePath));
+                var arr = root["customTargets"] as JArray;
+                if (arr == null) { SendCommandToMap("remove_target", new JObject { ["id"] = id }); return; }
+                var toRemove = arr.OfType<JObject>().Where(i => (i["id"]?.Value<string>() ?? "") == id).ToList();
+                foreach (var r in toRemove) arr.Remove(r);
+                File.WriteAllText(filePath, root.ToString(Formatting.Indented));
+                LogTargetsFileDump("ПОСЛЕ УДАЛЕНИЯ ЦЕЛИ (по id)", filePath);
+                AppendLog($"[TARGETS] Цель [id={id}] удалена из файла, осталось {arr.Count}");
+                SendCommandToMap("remove_target", new JObject { ["id"] = id });
+                SendTargetsToMap();
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[TARGETS] Ошибка удаления цели по id: {ex.Message}");
+            }
+        }
+
+        // Завершение цели: игрок вошёл в зону (armed) и вышел из неё.
+        // Убираем цель, начисляем награду, уведомляем миникарту.
+        private void CompleteRandomTarget(string id)
+        {
+            if (string.IsNullOrEmpty(id) || !_randomTargets.TryGetValue(id, out var st)) return;
+            AppendLog($"[QUEST] Цель завершена: id={id} ({st.Name}). Начисляем награду.");
+            RemoveTargetById(id);
+            try
+            {
+                string ets2cPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "ets2c.exe");
+                if (File.Exists(ets2cPath))
+                {
+                    var si = new ProcessStartInfo
+                    {
+                        FileName = ets2cPath,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        WindowStyle = ProcessWindowStyle.Hidden
+                    };
+                    si.Arguments = "-moneygive 3000"; Process.Start(si);
+                    si.Arguments = "-xpgive 150"; Process.Start(si);
+                    AppendLog("Начислено 3000 денег и 150 опыта.");
+                }
+                else AppendLog("ets2c.exe не найден — награда не начислена.");
+            }
+            catch (Exception ex) { AppendLog($"Ошибка ets2c: {ex.Message}"); }
+            trayIcon.ShowBalloonTip(2000, "ETS2 Assist", $"Цель выполнена: {st.Name}", ToolTipIcon.Info);
+        }
+
+        // Начисление награды через ets2c.exe. money может быть отрицательным (Перекус: -450р).
+        private void GiveReward(int money, int xp)
+        {
+            try
+            {
+                string ets2cPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "ets2c.exe");
+                if (File.Exists(ets2cPath))
+                {
+                    var si = new ProcessStartInfo
+                    {
+                        FileName = ets2cPath,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        WindowStyle = ProcessWindowStyle.Hidden
+                    };
+                    if (money > 0) { si.Arguments = $"-moneygive {money}"; Process.Start(si); }
+                    else if (money < 0) { si.Arguments = $"-moneytake {Math.Abs(money)}"; Process.Start(si); }
+                    if (xp != 0) { si.Arguments = $"-xpgive {xp}"; Process.Start(si); }
+                    AppendLog($"Начислено: денег {money}, опыта {xp}.");
+                }
+                else AppendLog("ets2c.exe не найден — награда не начислена.");
+            }
+            catch (Exception ex) { AppendLog($"Ошибка ets2c: {ex.Message}"); }
+        }
+
+        // Обработка входа в зону в зависимости от типа квеста. Вызывается из UI-потока (BeginInvoke).
+        private void HandleQuestEnter(RandomTargetState st)
+        {
+            switch (st.QuestType)
+            {
+                case "courier_pickup":
+                    {
+                        int dist = new Random().Next(400, 2001); // 400..2000 м
+                        using var dlg = new QuestDialogForm("Курьер",
+                            $"Доставить документы.\nНаграда: 1200р.\nРасстояние доставки: {dist} м",
+                            isSuccess: false, primaryText: "Начать выполнение", secondaryText: "Отказаться");
+                        dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
+                        var res = dlg.ShowDialog(this);
+                        st.Armed = false; // после диалога сбрасываем арм (повторный вход -> снова диалог)
+                        RemoveTargetById(st.Id); // любой выбор удаляет точку забора
+                        if (res == DialogResult.Yes)
+                        {
+                            SendCommandToMap("quest_courier_dropoff", new JObject { ["distanceM"] = dist });
+                            AppendLog($"[QUEST] Курьер принят. Точка выдачи создана на {dist} м.");
+                        }
+                        else
+                        {
+                            AppendLog("[QUEST] Курьер отклонён — точка забора удалена.");
+                        }
+                        break;
+                    }
+                case "courier_dropoff":
+                    {
+                        using var dlg = new QuestDialogForm("Курьер", "Выручить документы?", isSuccess: false, primaryText: "ДА", secondaryText: "НЕТ");
+                        dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
+                        var res = dlg.ShowDialog(this);
+                        st.Armed = false;
+                        if (res == DialogResult.Yes)
+                        {
+                            GiveReward(1200, 250);
+                            RemoveTargetById(st.Id);
+                            AppendLog("[QUEST] Курьер выполнен: +1200р, +250xp.");
+                        }
+                        else
+                        {
+                            AppendLog("[QUEST] Курьер: выдача отложена, ждём повторного входа.");
+                        }
+                        break;
+                    }
+                case "stash":
+                    {
+                        using var dlg = new QuestDialogForm("Тайник", "Вы нашли тайник.\n+3000р", isSuccess: true, primaryText: "ОК");
+                        dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
+                        var res = dlg.ShowDialog(this);
+                        st.Armed = false;
+                        if (res == DialogResult.OK)
+                        {
+                            GiveReward(3000, 0);
+                            RemoveTargetById(st.Id);
+                            AppendLog("[QUEST] Тайник: +3000р.");
+                        }
+                        break;
+                    }
+                case "snack":
+                    {
+                        using var dlg = new QuestDialogForm("Перекус", "Вы перекусили чем-то вкусным.", isSuccess: true, primaryText: "ОК");
+                        dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
+                        var res = dlg.ShowDialog(this);
+                        st.Armed = false;
+                        if (res == DialogResult.OK)
+                        {
+                            // -450р, +1000xp; цель уходит на кулдаун (current_cooldown), затем
+                            // снова появляется (логика в DecrementCooldowns).
+                            GiveReward(-450, 1000);
+                            CompleteTargetById(st.Id);
+                            AppendLog("[QUEST] Перекус: -450р, +1000xp. Скрыто на время кулдауна.");
+                        }
+                        break;
+                    }
+                default:
+                    AppendLog($"[TRIGGER] Неизвестный тип цели {st.QuestType} — игнорируем.");
+                    st.Armed = false;
+                    break;
             }
         }
 
@@ -518,163 +925,8 @@ namespace ETS2_Assist_GUI
             }
         }
 
-        private void HandleTargetReached(JObject data)
-        {
-            AppendLog("[WS] HandleTargetReached вызван");
-
-            if (!_randomTargetActive || _randomTargetReached)
-            {
-                AppendLog("[WS] Цель не активна или уже обработана. Игнорируем.");
-                return;
-            }
-
-            _randomTargetReached = true;
-
-            // Критически важно: сначала проверяем фактическую паузу.
-            // Команда PAUSE у проверенного SDK-плагина является toggle,
-            // поэтому нельзя отправлять её, если игра уже находится на паузе.
-            AppendLog("[SCS] Проверяем состояние ETS2 перед показом диалога...");
-            bool alreadyPaused = IsGamePaused();
-            if (alreadyPaused)
-            {
-                AppendLog("[SCS] ETS2 уже была на паузе — toggle PAUSE не отправляем.");
-            }
-            else
-            {
-                bool sent = SetGamePause(true);
-                AppendLog(sent
-                    ? "[SCS] Команда PAUSE отправлена. Проверяем фактическое состояние игры."
-                    : "[SCS] Не удалось отправить PAUSE через SDK.");
-            }
-
-            // Не используем ответ Named Pipe как критерий успеха:
-            // plugin уже показал, что команда может выполнить PAUSE без корректного ACK.
-            bool paused = false;
-            for (int attempt = 1; attempt <= 10; attempt++)
-            {
-                System.Threading.Thread.Sleep(100);
-                if (IsGamePaused())
-                {
-                    paused = true;
-                    AppendLog($"[SCS] Фактическое состояние подтверждено: ETS2 paused=true (попытка {attempt}).");
-                    break;
-                }
-            }
-
-            if (!paused)
-            {
-                _randomTargetReached = false;
-                AppendLog("[SCS] Игра не перешла в состояние paused=true. Диалог завершения задания НЕ показываем.");
-                SendCommandToMap("reset_target_reached");
-                return;
-            }
-
-            this.BeginInvoke((System.Windows.Forms.MethodInvoker)delegate
-            {
-                bool wasTopMost = this.TopMost;
-
-                try
-                {
-                    // Убираем фокус с ETS2 и делаем окно приложения владельцем диалога.
-                    this.TopMost = true;
-                    this.Show();
-                    this.WindowState = FormWindowState.Normal;
-                    this.Activate();
-                    ForceForegroundWindow(this.Handle, "before-quest-dialog");
-
-                    AppendLog($"[UI] Фокус передан окну ETS2 Assist перед диалогом. OwnerHandle=0x{this.Handle.ToInt64():X}, IsHandleCreated={this.IsHandleCreated}, Visible={this.Visible}, TopMost={this.TopMost}");
-
-                    // Используем собственную модальную форму вместо MessageBox.
-                    // У неё есть отдельный HWND, поэтому мы можем надёжно передать
-                    // foreground и mouse/keyboard focus от ETS2 к самому диалогу.
-                    using var dialog = new QuestDialogForm(
-                        "Достижение цели",
-                        "Вы достигли случайной цели. Завершить задание?",
-                        isSuccess: false);
-                    dialog.Shown += (_, _) =>
-                    {
-                        ForceForegroundWindow(dialog.Handle, "quest-completion-dialog");
-                        dialog.BringToFront();
-                        dialog.Activate();
-                    };
-                    var result = dialog.ShowDialog(this);
-
-                    if (result == DialogResult.Yes)
-                    {
-                        AppendLog("[QUEST] Игрок подтвердил завершение случайного задания.");
-                        // Удаляем достигнутую цель из файла (приложение — владелец файла)
-                        // и рассылаем обновлённые данные на миникарту.
-                        double reachedX = _randomTargetX, reachedZ = _randomTargetZ;
-                        var reachedTarget = data["target"];
-                        if (reachedTarget != null)
-                        {
-                            reachedX = reachedTarget["x"]?.Value<double>() ?? _randomTargetX;
-                            reachedZ = reachedTarget["z"]?.Value<double>() ?? _randomTargetZ;
-                        }
-                        RemoveTargetFromFile(reachedX, reachedZ);
-                        SendTargetsToMap();
-                        string ets2cPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "ets2c.exe");
-                        if (File.Exists(ets2cPath))
-                        {
-                            try
-                            {
-                                var startInfo = new ProcessStartInfo
-                                {
-                                    FileName = ets2cPath,
-                                    Arguments = "-moneygive 3000",
-                                    UseShellExecute = false,
-                                    CreateNoWindow = true,
-                                    WindowStyle = ProcessWindowStyle.Hidden
-                                };
-                                Process.Start(startInfo);
-
-                                startInfo.Arguments = "-xpgive 150";
-                                Process.Start(startInfo);
-                                AppendLog("Начислено 3000 денег и 150 опыта.");
-                            }
-                            catch (Exception ex)
-                            {
-                                AppendLog($"Ошибка ets2c: {ex.Message}");
-                            }
-                        }
-                        else
-                        {
-                            AppendLog("ets2c.exe не найден — награда не начислена.");
-                        }
-
-                        SendCommandToMap("remove_random_target");
-                        _randomTargetActive = false;
-                        _randomTargetReached = false;
-                        using var successDialog = new QuestDialogForm(
-                            "Успех",
-                            "Задание выполнено!",
-                            isSuccess: true);
-                        successDialog.Shown += (_, _) =>
-                        {
-                            ForceForegroundWindow(successDialog.Handle, "quest-success-dialog");
-                            successDialog.BringToFront();
-                            successDialog.Activate();
-                        };
-                        successDialog.ShowDialog(this);
-                    }
-                    else
-                    {
-                        AppendLog("[QUEST] Игрок отказался завершать случайное задание.");
-                        _randomTargetReached = false;
-                        SendCommandToMap("reset_target_reached");
-                        AppendLog("Пользователь отклонил задание.");
-                    }
-                }
-                finally
-                {
-                    this.TopMost = wasTopMost;
-
-                    // ВАЖНО: после завершения задания НЕ снимаем паузу автоматически.
-                    // Игрок сам возвращается в игру и снимает паузу, когда готов.
-                    AppendLog("[SCS] Игра оставлена на паузе. Автоматический UNPAUSE отключён.");
-                    ReturnFocusToGame();
-                }
-            });
-        }
+        // NOTE: HandleTargetReached удалён. Завершение цели теперь обрабатывается
+        // через события target_zone_enter / target_zone_leave (см. CompleteRandomTarget):
+        // вход в зону взводит триггер, выход из зоны после входа завершает цель.
     }
 }

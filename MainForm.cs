@@ -44,6 +44,7 @@ namespace ETS2_Assist_GUI
         private Button btnRestartOverlay = null!;
         private Button btnMinimize = null!;
         private Button btnExit = null!;
+        private Button btnTheme = null!;
         private Button btnRefreshTracks = null!;
         private Button btnRandomTarget = null!;
         private Button btnRandomTarget2 = null!;
@@ -57,6 +58,7 @@ namespace ETS2_Assist_GUI
         private Button btnOpenTracksFolder = null!;
         private Button btnShowMap = null!;
         private Button btnShowHybrid = null!;
+        private Button btnMapEditor = null!;
 
         private RichTextBox logConsole = null!;
         private Panel indicatorsPanel = null!;
@@ -124,6 +126,14 @@ namespace ETS2_Assist_GUI
         private bool _pausedIntent = false;
         private System.Windows.Forms.Timer _pauseCheckTimer = null!;
 
+        // Состояние показа оверлеев (карта/гибрид/пауз-лого) и тоггл авто-показа миникарты.
+        private bool _minimapAutoLogic = true;     // кнопка «Показать карту»: true = авто-логика включена
+        private bool _darkTheme = false;           // тёмная тема интерфейса (кнопка «Тема»)
+        private bool? _lastMinimapVisible;
+        private bool? _lastMinimapAuto;
+        private bool _committedActive = false;     // подтверждённое (с гистерезисом) состояние активности
+        private int _activeMismatch = 0;
+
         // ========== WEBSOCKET-СЕРВЕР ДЛЯ СОХРАНЕНИЯ ТРЕКОВ (порт 8084) ==========
         private WebSocketSharp.Server.WebSocketServer? _wsSaveServer;
         private long _saveRequestsReceived;
@@ -167,6 +177,9 @@ namespace ETS2_Assist_GUI
             {
                 this.Text = $"ETS2 Assist v{BuildInfo.Version}";
             }
+            // Минимальная ширина гарантирует, что правая панель индикаторов
+            // (список + действия + индикаторы) помещается и не обрезает текст.
+            this.MinimumSize = new Size(1180, 480);
             ApplySavedWindowBounds();
             this.FormClosing += (s, e) =>
             {
@@ -326,28 +339,39 @@ namespace ETS2_Assist_GUI
             btnExit = new Button { Text = "Exit", Location = new Point(leftX, topY + 160), Size = new Size(120, 30) };
             btnExit.Click += (s, e) => ConfirmExit();
 
+            btnTheme = new Button { Text = "Тема: светлая", Location = new Point(this.ClientSize.Width - 150, 4), Size = new Size(140, 26) };
+            btnTheme.Click += (s, e) => { _darkTheme = !_darkTheme; ApplyTheme(); };
+
             btnRefreshTracks = new Button { Text = "Обновить список", Location = new Point(leftX, topY + 210), Size = new Size(120, 30) };
             btnRefreshTracks.Click += (s, e) => RefreshTrackList();
 
-            btnRandomTarget = new Button { Text = "Случайная цель", Location = new Point(leftX, topY + 260), Size = new Size(120, 30) };
+            btnRandomTarget = new Button { Text = "Курьер 100 POI дорога т50 а.у.", Location = new Point(leftX, topY + 260), Size = new Size(230, 30) };
             btnRandomTarget.Click += BtnRandomTarget_Click;
 
-            btnRandomTarget2 = new Button { Text = "Случайная цель 2", Location = new Point(leftX, topY + 290), Size = new Size(120, 30) };
+            btnRandomTarget2 = new Button { Text = "Тайник 2 200м т30", Location = new Point(leftX, topY + 290), Size = new Size(230, 30) };
             btnRandomTarget2.Click += BtnRandomTarget2_Click;
 
-            btnRandomTarget3 = new Button { Text = "Случайная цель 100м", Location = new Point(leftX, topY + 320), Size = new Size(120, 30) };
+            btnRandomTarget3 = new Button { Text = "Перекус 400", Location = new Point(leftX, topY + 320), Size = new Size(230, 30) };
             btnRandomTarget3.Click += BtnRandomTarget3_Click;
 
-            btnRandomTarget4 = new Button { Text = "Ближайшая цель", Location = new Point(leftX, topY + 350), Size = new Size(120, 30) };
+            btnRandomTarget4 = new Button { Text = "Обзор целей", Location = new Point(leftX, topY + 350), Size = new Size(230, 30) };
             btnRandomTarget4.Click += BtnRandomTarget4_Click;
 
             btnCheckTargets = new Button { Text = "Проверка точек", Location = new Point(leftX, topY + 380), Size = new Size(120, 30) };
             btnCheckTargets.Click += BtnCheckTargets_Click;
 
-            btnShowMap = new Button { Text = "Показать карту", Location = new Point(leftX, topY + 410), Size = new Size(120, 30) };
+            btnShowMap = new Button { Text = "Показать карту ✔", Location = new Point(leftX, topY + 410), Size = new Size(130, 30) };
             btnShowMap.Click += (s, e) => {
-                AppendLog("Debug: Show map button clicked");
-                SendCommandToMap("show_ui");
+                _minimapAutoLogic = !_minimapAutoLogic;
+                btnShowMap.Text = _minimapAutoLogic ? "Показать карту ✔" : "Показать карту ✖";
+                AppendLog($"[UI] Авто-показ миникарты {( _minimapAutoLogic ? "ВКЛ" : "ВЫКЛ" )}");
+                // Применяем немедленно, не дожидаясь таймера.
+                bool activeNow = IsGameRunning() && !IsGamePaused() && IsGameFocused();
+                bool minimapVisible = activeNow && _minimapAutoLogic;
+                SendCommandToMap(minimapVisible ? "minimap_show" : "minimap_hide");
+                SendCommandToMap("minimap_auto", new JObject { ["enabled"] = _minimapAutoLogic });
+                _lastMinimapVisible = minimapVisible;
+                _lastMinimapAuto = _minimapAutoLogic;
             };
 
             btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 440), Size = new Size(120, 30) };
@@ -377,7 +401,13 @@ namespace ETS2_Assist_GUI
                 SendCommandToMap("reset_recording_origin");
             };
 
-            int consoleLeft = leftX + 185;
+            btnMapEditor = new Button { Text = "Редактор карты", Location = new Point(leftX, topY + 560), Size = new Size(230, 30) };
+            btnMapEditor.Click += (s, e) => {
+                try { new MapEditorForm().Show(); }
+                catch (Exception ex) { AppendLog($"[EDITOR] Ошибка открытия редактора: {ex.Message}"); }
+            };
+
+            int consoleLeft = leftX + 240;
             int consoleWidth = 400;
             logConsole = new RichTextBox
             {
@@ -392,9 +422,9 @@ namespace ETS2_Assist_GUI
             logConsole.DoubleClick += (s, e) => OpenLogFolder();
 
             int listLeft = consoleLeft + consoleWidth + 10;
-            int actionsWidth = 125;
-            int indicatorsWidth = 180;
-            int listWidth = Math.Max(180, this.ClientSize.Width - listLeft - actionsWidth - indicatorsWidth - 30);
+            int actionsWidth = 120;
+            int indicatorsWidth = 190;
+            int listWidth = Math.Max(150, this.ClientSize.Width - listLeft - actionsWidth - indicatorsWidth - 30);
             listTracks = new ListBox
             {
                 Location = new Point(listLeft, topY),
@@ -459,7 +489,7 @@ namespace ETS2_Assist_GUI
             indicatorsPanel = new Panel
             {
                 Location = new Point(indicatorLeft, topY),
-                Size = new Size(180, this.ClientSize.Height - topY - 40),
+                Size = new Size(190, this.ClientSize.Height - topY - 40),
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right
             };
 
@@ -501,10 +531,49 @@ namespace ETS2_Assist_GUI
 
             this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
-                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin,
-                logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu
+                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnMapEditor,
+                logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu, btnTheme
             });
             PositionBuildLabel();
+            ApplyTheme();
+        }
+
+        // ============================================================
+        // ТЁМНАЯ / СВЕТЛАЯ ТЕМА
+        // ============================================================
+        private void ApplyTheme()
+        {
+            Color back = _darkTheme ? Color.FromArgb(43, 43, 43) : SystemColors.Control;
+            Color fore = _darkTheme ? Color.FromArgb(232, 232, 232) : SystemColors.ControlText;
+            this.BackColor = back;
+            this.ForeColor = fore;
+            btnTheme.Text = _darkTheme ? "Тема: тёмная" : "Тема: светлая";
+            foreach (Control c in this.Controls) SetControlTheme(c, back, fore);
+        }
+
+        private static void SetControlTheme(Control c, Color back, Color fore)
+        {
+            switch (c)
+            {
+                case Button _:
+                case GroupBox _:
+                case Panel _:
+                    c.BackColor = back == SystemColors.Control ? SystemColors.Control : Color.FromArgb(60, 60, 60);
+                    c.ForeColor = fore;
+                    break;
+                case TextBox _:
+                case RichTextBox _:
+                case ListBox _:
+                case ComboBox _:
+                    c.BackColor = back == SystemColors.Control ? Color.White : Color.FromArgb(30, 30, 30);
+                    c.ForeColor = fore;
+                    break;
+                default:
+                    c.BackColor = back;
+                    c.ForeColor = fore;
+                    break;
+            }
+            foreach (Control cc in c.Controls) SetControlTheme(cc, back, fore);
         }
 
         private Label CreateIndicator(string labelText, int top)
@@ -513,7 +582,7 @@ namespace ETS2_Assist_GUI
             {
                 Text = labelText + ": OFF",
                 Location = new Point(5, top),
-                Size = new Size(170, 28),
+                Size = new Size(180, 28),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = new Font("Segoe UI", 8.5f),
                 ForeColor = Color.Gray
@@ -611,11 +680,14 @@ namespace ETS2_Assist_GUI
             btnMinimize.Text = lang.Get("ui_minimize") ?? "Minimize";
             btnExit.Text = lang.Get("ui_exit") ?? "Exit";
             btnRefreshTracks.Text = "Обновить список";
-            btnRandomTarget.Text = "Случайная цель";
-            btnRandomTarget2.Text = "Случайная цель 2";
-            btnRandomTarget3.Text = "Случайная цель 100м";
-            btnRandomTarget4.Text = "Ближайшая цель";
+            btnRandomTarget.Text = "Курьер 100 POI дорога т50 а.у.";
+            btnRandomTarget2.Text = "Тайник 2 200м т30";
+            btnRandomTarget3.Text = "Перекус 400";
+            btnRandomTarget4.Text = "Обзор целей";
             btnCheckTargets.Text = "Проверка точек";
+            btnShowMap.Text = _minimapAutoLogic ? "Показать карту ✔" : "Показать карту ✖";
+            btnShowHybrid.Text = "Показать hybrid";
+            btnMapEditor.Text = "Редактор карты";
             fileMenu.Text = lang.Get("ui_file") ?? "File";
             settingsMenu.Text = lang.Get("ui_settings") ?? "Settings";
             helpMenu.Text = lang.Get("ui_help") ?? "Help";
@@ -1783,6 +1855,106 @@ namespace ETS2_Assist_GUI
             };
         }
 
+        // ================================================================
+        // КОНФИГУРАЦИЯ ПОЗИЦИЙ ОВЕРЛЕЕВ (WebOverlay)
+        // При первом запуске системы, если файлов позиций ещё нет,
+        // вычисляем и создаём их для экрана, где показано окно игры.
+        // Формат файла (по weboverlay/Program.cs): X, Y, zoom, Width, Height.
+        // ================================================================
+        private Screen GetGameScreen()
+        {
+            try
+            {
+                foreach (var name in new[] { "eurotrucks2", "amtrucks2" })
+                {
+                    foreach (var p in Process.GetProcessesByName(name))
+                    {
+                        if (p.MainWindowHandle != IntPtr.Zero)
+                        {
+                            var s = Screen.FromHandle(p.MainWindowHandle);
+                            if (s != null) return s;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return Screen.PrimaryScreen;
+        }
+
+        private static string OverlayStateFileName(string url)
+        {
+            string safe = string.Join("_", url.Split(Path.GetInvalidFileNameChars()));
+            if (safe.Length > 200) safe = safe.Substring(0, 200);
+            return safe + ".txt";
+        }
+
+        private static void ComputeOverlayGeometry(string url, System.Drawing.Rectangle wa, out int x, out int y, out int w, out int h)
+        {
+            // Доля площади экрана от WorkingArea. Площадь ~ frac, значит сторона ~ sqrt(frac).
+            double frac;
+            string kind = url.Contains("web_pda_map") ? "map"
+                        : url.Contains("web_ui_hybrid") ? "hybrid"
+                        : url.Contains("web_pause_logo") ? "logo" : "map";
+            switch (kind)
+            {
+                case "map": // миникарта: левый нижний угол, квадрат, на 30% больше (~6% площади)
+                    frac = 0.06;
+                    int side = (int)Math.Round(Math.Min(wa.Width, wa.Height) * Math.Sqrt(frac) * 1.3);
+                    w = side;
+                    h = side;
+                    x = wa.X;
+                    y = wa.Bottom - h;
+                    break;
+                case "hybrid": // гибрид: по центру по горизонтали, на 15% ниже нижнего края
+                    frac = 0.20;
+                    w = (int)Math.Round(wa.Width * Math.Sqrt(frac));
+                    h = (int)Math.Round(wa.Height * Math.Sqrt(frac));
+                    x = wa.X + (wa.Width - w) / 2;
+                    y = wa.Bottom - h + (int)(wa.Height * 0.15);
+                    break;
+                default: // pause_logo: левый верхний угол, на 15% больше (~3% площади), квадрат
+                    frac = 0.03;
+                    int logoSide = (int)Math.Round(Math.Min(wa.Width, wa.Height) * Math.Sqrt(frac) * 1.15);
+                    w = logoSide;
+                    h = logoSide;
+                    x = wa.X;
+                    y = wa.Y;
+                    break;
+            }
+        }
+
+        private void EnsureOverlayWindowConfig()
+        {
+            try
+            {
+                string configDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "WebOverlay", "config");
+                var screen = GetGameScreen();
+                var wa = screen.WorkingArea;
+                var urls = new[]
+                {
+                    "http://localhost:8082/web_pda_map.html",
+                    "http://localhost:8082/web_ui_hybrid.html",
+                    "http://localhost:8082/web_pause_logo.html"
+                };
+                foreach (var url in urls)
+                {
+                    string path = Path.Combine(configDir, OverlayStateFileName(url));
+                    if (File.Exists(path)) continue;
+                    ComputeOverlayGeometry(url, wa, out int x, out int y, out int w, out int h);
+                    Directory.CreateDirectory(configDir);
+                    File.WriteAllLines(path, new[] { x.ToString(), y.ToString(), "1", w.ToString(), h.ToString() });
+                    AppendLog($"[OVERLAY] Создан файл позиции {Path.GetFileName(path)}: X={x}, Y={y}, {w}x{h} (экран {wa.Width}x{wa.Height})");
+                }
+                AppendLog("[OVERLAY] Конфигурация позиций оверлеев проверена/создана.");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[OVERLAY] Ошибка создания конфигурации позиций: {ex.Message}");
+            }
+        }
+
         private void StartWebOverlay()
         {
             string overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "WebOverlay.exe");
@@ -1795,6 +1967,9 @@ namespace ETS2_Assist_GUI
             }
             try
             {
+                // При первом запуске — создать файлы позиций оверлеев (если их нет).
+                EnsureOverlayWindowConfig();
+
                 // Remove stale overlay host processes so old URL instances cannot remain stacked.
                 foreach (var proc in Process.GetProcessesByName("WebOverlay"))
                 {
@@ -2504,7 +2679,7 @@ namespace ETS2_Assist_GUI
         // ================================================================
         private void ApplySavedWindowBounds()
         {
-            const int defaultWidth = 1100;
+            const int defaultWidth = 1180;
             const int defaultHeight = 700;
 
             var savedWidth = AppSettings.WindowWidth.GetValueOrDefault(defaultWidth);

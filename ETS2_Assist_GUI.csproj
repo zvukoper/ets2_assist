@@ -14,23 +14,34 @@
     <!-- Можно ускорить запуск (опционально) -->
     <PublishReadyToRun>true</PublishReadyToRun>
     <!--
-      ВЕРСИОНИРОВАНИЕ (правило с 27.08.2026):
-      - Формат человекочитаемой версии: A.B.CCCC-DESC-YYYY.MM.DD-HHmm
-        (без RND; последний блок — дата и время сборки).
-      - Счётчик билда = третья цифра CCCC, повышается вручную ПОСЛЕ каждого билда.
-      - 4-я цифра EXE (FileVersion/AssemblyVersion) = секунды UNIX-эпохи mod 65536
-        (WORD в VERSIONINFO вмещает 0..65535). Так в свойствах exe виден уникальный
-        идентификатор сборки.
-      - Описание (DESC) и дата-время формируются в csproj; BuildInfo.Version берёт
-        AssemblyInformationalVersion, поэтому синхронизировано автоматически.
+      ВЕРСИОНИРОВАНИЕ (НОВОЕ ПРАВИЛО с 28.08.2026, уточнено позже):
+      Формат человекочитаемой версии: A.B.C.D-DESC-MM.DD-Hmm
+        A — поколение проекта (1). Меняется редко.
+        B — ключевой этап (0). Повышается ПО КОМАНДЕ при внедрении существенного функционала.
+        C — номер текущего НАБОРА целей/проблем (38). НЕ меняется, пока не пофиксим и не
+            начнём использовать новый формат; потом сбрасывается и растёт по команде.
+        D — ИТЕРАЦИЯ (счётчик работ по задачам из C). БАМПИТСЯ АВТОМАТИЧЕСКИ агентом:
+            +1 при завершении работы по задаче И +1 при каждом тест-билде. A,B,C — только по команде.
+        DESC — краткое описание проблем, решаемых в текущей D (обновляется агентом вместе с D).
+        MM.DD — дата сборки (месяц.число, ведущие нули). Год не указываем (не нужен).
+        Hmm — время сборки: час БЕЗ ведущего нуля, минуты С ведущим нулём, без разделителей.
+              Пример: 9:22 -> 922, 13:47 -> 1347. UNIX-секунды убрали (слишком длинные).
+      - <Version> = A.B.C (ЧИСТЫЙ SemVer!) — для restore. 4-я цифра (D) НЕ в <Version>,
+        иначе restore падает молча (ловушка SemVer). D уходит только в FileVersion/AssemblyVersion
+        и в строку InformationalVersion.
+      - BuildInfo.Version берёт AssemblyInformationalVersion => синхронизировано автоматично.
     -->
-    <VersionPrefix>1.0.38</VersionPrefix>
-    <BuildTag>$([System.DateTime]::Now.ToString('yyyy.MM.dd-HHmm'))</BuildTag>
-    <DescriptiveVersion>$(VersionPrefix)-TARGETS-FILE-$(BuildTag)</DescriptiveVersion>
-    <_EpochMod>$([MSBuild]::Modulo($([System.DateTimeOffset]::Now.ToUnixTimeSeconds()), 65536))</_EpochMod>
-    <Version>$(VersionPrefix)</Version>
-    <AssemblyVersion>$(VersionPrefix).$(_EpochMod)</AssemblyVersion>
-    <FileVersion>$(VersionPrefix).$(_EpochMod)</FileVersion>
+    <VersionMajor>1</VersionMajor>
+    <VersionStage>0</VersionStage>
+    <VersionSet>38</VersionSet>
+    <VersionIter>24</VersionIter>
+    <VersionDesc>MAP-EDITOR-FIX</VersionDesc>
+    <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
+    <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
+    <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>
+    <Version>$(VersionMajor).$(VersionStage).$(VersionSet)</Version>
+    <AssemblyVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)</AssemblyVersion>
+    <FileVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)</FileVersion>
     <AssemblyInformationalVersion>$(DescriptiveVersion)</AssemblyInformationalVersion>
     <InformationalVersion>$(DescriptiveVersion)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>

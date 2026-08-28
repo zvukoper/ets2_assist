@@ -108,5 +108,8 @@
 <script src="js/map_controls.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/init.js"></script>
+<script>
+(function(){function upd(){fetch('ets2_assist_build.txt?_='+Date.now()).then(function(r){return r.text();}).then(function(v){var b=document.getElementById('mapBuildBadge');if(b)b.textContent='BUILD '+v.trim();}).catch(function(){});}upd();setInterval(upd,5000);})();
+</script>
 </body>
 </html>

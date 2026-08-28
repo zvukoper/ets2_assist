@@ -75,40 +75,68 @@
   `1.0.38-TARGETS-FILE-2026.08.27-2110` — restore падает ТАК ЖЕ молча (`RestoreTask returned false`).
   Описательную строку класть ТОЛЬКО в `<InformationalVersion>` (SDK генерит
   `AssemblyInformationalVersionAttribute` из `$(InformationalVersion)`; `<AssemblyInformationalVersion>`
-  в одиночку атрибут НЕ генерит). `<Version>` оставлять чистой (`1.0.38`). Это ПРАВИЛО — иначе билд не соберётся.
+  в одиночку атрибут НЕ генерит).    `<Version>` оставлять чистой (`1.0.38`). Это ПРАВИЛО — иначе билд не соберётся.
+- **ЛОВУШКА: exe ЗАЛОЧЕН при публикации (урок 28.08.2026, сессия 10, MAP-EDITOR):**
+   `dotnet publish` падает на шаге `GenerateBundle` с
+   `System.UnauthorizedAccessException: Access to the path '...publish\ETS2_Assist_GUI.exe' is denied`,
+   если этот exe **в данный момент запущен** (пользователь тестирует сборку). При этом цель
+   `SyncDataToPublish` (`AfterTargets="Publish"`) НЕ дорабатывает, и папка `publish\data`
+   ОСТАЁТСЯ ПУСТОЙ/неполной (пропадают js, css, GeoJson, language, localized_cities и т.д.) —
+   приложение потом падает/работает без данных. Признак: файл залочен = процесс жив.
+   **ПРАВИЛО (обязательное перед КАЖДОЙ публикацией):**
+   1. ПЕРЕД `dotnet publish` проверить, запущен ли `ETS2_Assist_GUI.exe` и/или залочен ли файл
+      (попытка `[System.IO.File]::Open(...,FileShare.None)`).
+   2. Если залочен/запущен — **ВЫДАТЬ ПОЛЬЗОВАТЕЛЮ ЗАПРОС** (question-инструмент) закрыть
+      запущенный exe (через Диспетчер задач / просто выйти из приложения) и только ПОСЛЕ
+      подтверждения продолжить публикацию. НЕ перезаписывать поверх живого процесса.
+   3. После успешной публикации ОБЯЗАТЕЛЬНО убедиться, что `publish\data` содержит ВСЕ папки
+      (js, css, GeoJson, language, localized_cities, bin, ...) и файлы локализации
+      (`data/language/ru.csv`, `en.csv`). Команда `SyncDataToPublish` логирует
+      `скопировано N файлов data` — N должно быть ~390.
+   4. Версия в `data/ets2_assist_build.txt` и `data/web_runtime_manifest.json` (`"build"`) ДОЛЖНА
+      совпадать с `ProductVersion` собранного exe (читается из
+      `bin\Release\...\publish\ETS2_Assist_GUI.exe` → VersionInfo.ProductVersion). Так как время
+      сборки `Hmm` генерится в момент билда, после публикации сверить и при расхождении
+      перезаписать оба файла в `publish\data` актуальной строкой.
 
-## Версионирование (правило «запомни», ИЗМЕНЕНО в сессии 9, 27.08.2026)
-- **ПЕРЕД КАЖДЫМ БИЛДОМ повышаем версию проекта!** Новый формат строки:
-  `A.B.CCCC-DESC-YYYY.MM.DD-HHmm`
-  - `A` — поколение проекта (сейчас `A=1`).
-  - `B` — ключевой этап разработки (сейчас `B=0`).
-  - `C` (CCCC) — порядковый счётчик билда. **Инкрементируется вручную на 1 ПОСЛЕ каждого
-    билда** (1.0.38 → 1.0.39 → ...). НЕ содержит RND и НЕ авто-генерится.
-  - `DESC` — кратко, английские слова через дефис, суть билда (напр. `TARGETS-FILE`).
-  - `YYYY.MM.DD-HHmm` — дата+время сборки (генерится из `$([System.DateTime]::Now.ToString(...))`).
-- **НЕТ RND** в имени версии (убрано по просьбе пользователя).
-- **4-я цифра EXE-версии** (`FileVersion`/`AssemblyVersion` = `A.B.C.<N>`) где
-  `<N> = unix-epoch-seconds mod 65536` (генерится в csproj через `$([MSBuild]::Modulo(...))`).
-- Место хранения строки версии: `BuildInfo.cs` → `BuildInfo.Version` читает
-  `AssemblyInformationalVersion` (нужен `using System.Reflection;`), fallback
-  `"1.0.38-TARGETS-FILE"`. Строка прилетает из csproj-свойства
-  `<InformationalVersion>` (НЕ `<AssemblyInformationalVersion>` в одиночку — см. ловушку SemVer
-  выше). `BuildInfo.Version` используется в заголовке окна, логах и HTTP-заголовке
-  `X-ETS2-Assist-Build`.
-- Конкретные csproj-свойства (рабочий вариант, сессия 9):
+## Версионирование (НОВОЕ ПРАВИЛО, сессия 10, 28.08.2026)
+- Формат строки версии: **`A.B.C.D-DESC-MM.DD-Hmm`**
+  - `A` (1) — поколение проекта. Меняется редко.
+  - `B` (0) — ключевой этап. Повышается ПО КОМАНДЕ при внедрении существенного функционала.
+  - `C` (38) — номер текущего НАБОРА целей/проблем. НЕ меняется, пока не пофиксим набор и не
+    начнём новый; тогда сбрасывается и растёт по команде.
+  - `D` — ИТЕРАЦИЯ: счётчик работ по задачам из `C`. **БАМПИТСЯ АВТОМАТИЧЕСКИ (агентом):**
+    +1 при завершении работы по задаче И +1 при каждом тест-билде. A,B,C — только по команде.
+  - `DESC` — краткое описание проблем, решаемых в текущей `D` (обновляется агентом вместе с `D`,
+    напр. `VER-FMT`, `RND-TARGETS`, `QUESTS-FIX`).
+  - `MM.DD` — дата сборки (месяц.число, ведущие нули). Год НЕ указываем (не нужен).
+  - `Hmm` — время сборки: час БЕЗ ведущего нуля, минуты С ведущим нулём, без разделителей.
+    Пример: 9:22 -> `922`, 13:47 -> `1347`. UNIX-секунды убрали (слишком длинные).
+- **НЕТ RND** в имени версии.
+- `<Version>` = `A.B.C` (ЧИСТЫЙ SemVer) — только для restore. `D` НЕ в `<Version>`
+  (ловушка SemVer: составная версия в `<Version>` роняет restore молча). `D` уходит в
+  `FileVersion`/`AssemblyVersion` (`A.B.C.D`) и в строку `InformationalVersion`.
+- Место строки версии: `BuildInfo.cs` → `BuildInfo.Version` читает `AssemblyInformationalVersion`
+  (нужен `using System.Reflection;`). Строка прилетает из csproj `<InformationalVersion>`.
+  `BuildInfo.Version` — в заголовке окна, логах, HTTP-заголовке `X-ETS2-Assist-Build`.
+- csproj-свойства (рабочий вариант, сессия 10):
   ```
-  <VersionPrefix>1.0.38</VersionPrefix>
-  <BuildTag>$([System.DateTime]::Now.ToString('yyyy.MM.dd-HHmm'))</BuildTag>
-  <DescriptiveVersion>$(VersionPrefix)-TARGETS-FILE-$(BuildTag)</DescriptiveVersion>
-  <_EpochMod>$([MSBuild]::Modulo($([System.DateTimeOffset]::Now.ToUnixTimeSeconds()), 65536))</_EpochMod>
-  <Version>$(VersionPrefix)</Version>
-  <AssemblyVersion>$(VersionPrefix).$(_EpochMod)</AssemblyVersion>
-  <FileVersion>$(VersionPrefix).$(_EpochMod)</FileVersion>
+  <VersionMajor>1</VersionMajor>
+  <VersionStage>0</VersionStage>
+  <VersionSet>38</VersionSet>
+  <VersionIter>1</VersionIter>          <!-- D: бампить при задаче/билде -->
+  <VersionDesc>VER-FMT</VersionDesc>     <!-- что решаем в D -->
+  <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
+  <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
+  <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>
+  <Version>$(VersionMajor).$(VersionStage).$(VersionSet)</Version>
+  <AssemblyVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)</AssemblyVersion>
+  <FileVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)</FileVersion>
   <AssemblyInformationalVersion>$(DescriptiveVersion)</AssemblyInformationalVersion>
   <InformationalVersion>$(DescriptiveVersion)</InformationalVersion>
   ```
-- Бейджи билда (в `data/ets2_assist_build.txt` и `data/web_runtime_manifest.json`) тоже
-  выставлять в `A.B.CCCC-DESC-YYYY.MM.DD-HHmm` вручную.
+- Бейджи билда (`data/ets2_assist_build.txt`, `data/web_runtime_manifest.json`) выставлять
+  в `A.B.C.D-DESC-MM.DD-Hmm` вручную (пример: `1.0.38.3-QUESTS-FIX-08.28-1015`).
 
 ## Обязательные команды (всегда!)
 ПОСЛЕ КАЖДОГО изменения в проекте:
@@ -204,8 +232,18 @@
     (пропуск в циклах inactive/active). НЕ проверено.
   - Все 4 кнопки случайной цели идут через file-write (`add_target` → `AddTargetToFile`) —
     подтверждено в коде, НЕ проверено в рантайме.
-- [ ] **После каждого билда повышать `VersionPrefix` на 1** (1.0.38 → 1.0.39, ...) —
-  правило версионирования (4-я цифра EXE = epoch mod 65536; строка = `A.B.CCCC-DESC-YYYY.MM.DD-HHmm`).
+- [x] **ВЕРСИОНИРОВАНИЕ (новое, сессия 10, уточнено):** строка `A.B.C.D-DESC-MM.DD-Hmm`.
+  A,B,C — только ПО КОМАНДЕ (C=38 = текущий набор задач). D (итератор) бампит САМ агент
+  при завершении задачи и при каждом тест-билде. UNIX-секунды и год убраны (слишком длинные);
+  время `Hmm` (час без нуля, минуты с нулём). Собрано `1.0.38.3-QUESTS-FIX-08.28-1015`.
+- [ ] **ВЕРИФИЦИРОВАТЬ КВЕСТ-КНОПКИ/ТРИГГЕРЫ (сессия 10, доп) у пользователя:** 3 кнопки
+  (Курьер-забор/Тайник/Перекус) + тоггл Обзор; вход в зону → нужный диалог; завершение по
+  кнопке → награда/удаление; Курьер ведёт к фиолетовой точке выдачи; метка вне карты у стрелки;
+  выход из зоны → красная. Флапинг WS при старте — воспроизводится ли ещё.
+- [ ] **КВЕСТЫ (пользователь, этапы):** менеджер квестов (база реализована в сессии 10, доп):
+  - **Супер-задача:** квест «Курьер» (забор→выдача) — реализован; успех → повысить B, новый цикл C/D.
+  - **Премиум-задача:** квест «Попутчик» (СВЕРХ реализованного — ещё не сделан).
+  - Дальше развивать функционал случайных целей по фидбеку пользователя.
 
 ## Нереализованные прототипы / идеи
 - (пока нет зафиксированных; добавлять сюда наброски и отложенные правки)
