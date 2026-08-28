@@ -27,8 +27,8 @@ function connectSaveWebSocket() {
                     console.log('[WS] Received command:', data.command);
                     switch (data.command) {
                         case 'quest_courier':
-                            // Курьер: синяя точка, 100м от фуры, на дороге у ближайшей POI.
-                            generateRandomTarget({ nearTruck: true, distanceM: 100, requirePoi: true, requireRoad: true, questType: 'courier_pickup', color: '#2d7dff', active: true, name: 'Курьер: забрать документы', radius: 50 });
+                            // Курьер: синяя точка СТРОГО НА POI рядом с фурой (<=350м, >=40м).
+                            generateRandomTarget({ atPoi: true, poiMaxDistM: 350, poiMinDistM: 40, questType: 'courier_pickup', color: '#2d7dff', active: true, name: 'Курьер: забрать документы', radius: 50 });
                             break;
                         case 'quest_stash':
                             // Тайник: жёлтая точка, 200м, на POI рядом с дорогой, НЕ активна (без указателя за пределами).
@@ -41,8 +41,12 @@ function connectSaveWebSocket() {
                             generateRandomTarget({ nearTruck: true, distanceM: 400, requirePoi: true, requireRoad: true, questType: 'snack', color: '#22dd55', active: true, name: 'Перекус', radius: 50, cooldown: 5 });
                             break;
                         case 'quest_courier_dropoff':
-                            // Промежуточная точка квеста Курьер (создаётся после принятия задания).
-                            generateRandomTarget({ nearTruck: true, distanceM: data.distanceM ? Number(data.distanceM) : 1000, requirePoi: true, requireRoad: true, questType: 'courier_dropoff', color: '#a64dff', active: true, name: 'Доставить документы', radius: 35 });
+                            // Промежуточная точка квеста Курьер: СТРОГО НА POI примерно в
+                            // distanceM от фуры (чтобы доставка была у здания, а не на трассе).
+                            {
+                                const dm = data.distanceM ? Number(data.distanceM) : 1000;
+                                generateRandomTarget({ atPoi: true, poiTargetDistM: dm, poiMaxDistM: dm * 1.5 + 300, poiMinDistM: 60, questType: 'courier_dropoff', color: '#a64dff', active: true, name: 'Доставить документы', radius: 35 });
+                            }
                             break;
                         case 'list_targets':
                             listTargets();

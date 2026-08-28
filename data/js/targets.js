@@ -152,6 +152,32 @@ async function generateRandomTarget(options) {
         return best;
     }
 
+    // Режим: цель СТРОГО НА POI (здание/компания) — ближайшем к фуре в заданном
+    // радиусе (poiMinDistM..poiMaxDistM), либо ближайшем к запрошенному расстоянию
+    // (poiTargetDistM). Используется для Курьера, чтобы доставка не попадала на трассу.
+    if (opts.atPoi) {
+        const maxDist = Number(opts.poiMaxDistM) || 3000;
+        const minDist = Number(opts.poiMinDistM) || 0;
+        const targetDist = Number(opts.poiTargetDistM) || 0;
+        const cand = [];
+        for (const poi of state.pois) {
+            const d = Math.hypot(poi.x - truckX, poi.z - truckZ);
+            if (d < minDist || d > maxDist) continue;
+            if (findNearestRoadDistance(poi.x, poi.z) > maxDistanceToPOI) continue;
+            cand.push({ poi, d });
+        }
+        if (cand.length) {
+            let chosen = cand[0].poi;
+            if (targetDist > 0) {
+                cand.sort((a, b) => Math.abs(a.d - targetDist) - Math.abs(b.d - targetDist));
+                chosen = cand[0].poi;
+            } else {
+                chosen = cand[Math.floor(Math.random() * cand.length)].poi;
+            }
+            targetPoint = { x: chosen.x, z: chosen.z };
+        }
+    }
+
     // Режим: цель на заданном расстоянии (~distanceM) от фуры — гарантированно в зоне видимости
     if (distanceM > 0) {
         for (let attempt = 0; attempt < 400 && !targetPoint; attempt++) {

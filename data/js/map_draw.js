@@ -222,19 +222,7 @@ function drawMinimap() {
     // Города
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    for (const city of state.cities) {
-        const p = worldToScreen2(city.x, city.z);
-        if (p.x < -10 || p.x > w+10 || p.y < -10 || p.y > h+10) continue;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 4, 0, 2*Math.PI);
-        ctx.fillStyle = '#ffdd88';
-        ctx.shadowColor = '#ffdd8844';
-        ctx.shadowBlur = 6;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-    }
-
-    // POI (с цветами по категориям)
+    // POI (с цветами по категориям) — РИСУЕМ ПЕРВЫМИ (города и цели рисуются поверх)
     const showPoiLabels = scale2 <= 5.0;
     const poiPointSize = Math.max(2, 6 / (scale2 / 10));
     for (const poi of state.pois) {
@@ -251,6 +239,9 @@ function drawMinimap() {
         ctx.shadowBlur = 6;
         ctx.fill();
         ctx.shadowBlur = 0;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#000000';
+        ctx.stroke();
         if (showPoiLabels) {
             ctx.font = '9px "Segoe UI", sans-serif';
             ctx.textAlign = 'center';
@@ -261,6 +252,19 @@ function drawMinimap() {
             ctx.fillText(poi.name || poi.type || 'poi', p.x, p.y - size - 2);
             ctx.shadowBlur = 0;
         }
+    }
+
+    // Города (поверх POI)
+    for (const city of state.cities) {
+        const p = worldToScreen2(city.x, city.z);
+        if (p.x < -10 || p.x > w+10 || p.y < -10 || p.y > h+10) continue;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, 2*Math.PI);
+        ctx.fillStyle = '#ffdd88';
+        ctx.shadowColor = '#ffdd8844';
+        ctx.shadowBlur = 6;
+        ctx.fill();
+        ctx.shadowBlur = 0;
     }
 
     // Шлейф

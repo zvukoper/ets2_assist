@@ -27,8 +27,10 @@ function withRnd(url) {
     return `${url}${sep}rnd=${Date.now()}`;
 }
 function formatDistance(distMeters) {
-    if (distMeters < 1000) return `${Math.round(distMeters)} м`;
-    return `${Math.round(distMeters / 1000)} км`;
+    if (distMeters < 1000) return `${Math.round(distMeters)} метров`;
+    const km = distMeters / 1000;
+    if (km < 10) return `${km.toFixed(1).replace('.', ',')} км`;
+    return `${Math.round(km)} км`;
 }
 function playSoundViaWS(soundType) {
     if (saveWs && saveWs.readyState === WebSocket.OPEN) {
@@ -149,9 +151,12 @@ async function loadData() {
                 state.poiCategoryCounts[category] = items.length;
                 for (const item of items) {
                     if (!item || item.x === undefined || item.z === undefined) continue;
+                    let px = Number(item.x);
+                    let pz = Number(item.z);
+                    if (Math.abs(px) > 1000000 && Math.abs(pz) > 1000000) { px /= 100; pz /= 100; }
                     state.pois.push({
-                        x: Number(item.x),
-                        z: Number(item.z),
+                        x: px,
+                        z: pz,
                         type: category,
                         name: item.realName || item.name || item.gameName || category,
                         uid: item.uid || ''

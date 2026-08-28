@@ -98,11 +98,19 @@ namespace ETS2_Assist_GUI
             };
         }
 
-        // Подсвечивает строки с наградой жирным зелёным: +XXXXX руб. / +XXXXX опыта.
+        // Подсвечивает ТОЛЬКО строки с наградой жирным зелёным. Весь остальной текст —
+        // обычным шрифтом/цветом. Награда определяется по ключевому слову "Награда" либо по
+        // "+/-<число>" с обязательной единицей награды (р/руб/опыта/опыт/xp/монет), чтобы
+        // обычный текст вроде "X=119822, Z=-53603" не красился зелёным.
         private static void ColorRewardLines(RichTextBox box, string message)
         {
             try
             {
+                // Сначала весь текст — обычный (цвет/шрифт по умолчанию).
+                box.Select(0, box.TextLength);
+                box.SelectionColor = box.ForeColor;
+                box.SelectionFont = box.Font;
+
                 var lines = message.Split('\n');
                 for (int i = 0; i < lines.Length && i < box.Lines.Length; i++)
                 {
@@ -124,9 +132,10 @@ namespace ETS2_Assist_GUI
         private static bool IsRewardLine(string line)
         {
             if (string.IsNullOrWhiteSpace(line)) return false;
-            if (line.Contains("руб") || line.Contains("опыта") || line.Contains("опыт") || line.Contains("Награда"))
-                return true;
-            return Regex.IsMatch(line, @"[+\-]\s*\d");
+            string s = line.Trim();
+            if (s.Contains("Награда") || s.Contains("награда")) return true;
+            // "+/- число" строго с единицей награды справа (р/руб/опыта/опыт/xp/монет).
+            return Regex.IsMatch(s, @"[+\-]\s*\d+\s*(?:р\.?|руб|опыта|опыт|xp|монет)", RegexOptions.IgnoreCase);
         }
     }
 }

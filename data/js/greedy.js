@@ -72,11 +72,11 @@ function createLabelElement(text, x, y, color, isActive = false, isCity = false)
     el.style.left = x + 'px';
     el.style.top = y + 'px';
     el.style.color = color;
+    el.style.transform = 'translate(-50%, -50%)';
     if (SHOW_BBOX) {
         el.style.border = '1px solid red';
         el.style.background = 'rgba(255,0,0,0.1)';
         el.style.padding = '0 4px';
-        el.style.transform = 'translate(-50%, -50%)';
     }
     return el;
 }

@@ -345,19 +345,19 @@ namespace ETS2_Assist_GUI
             btnRefreshTracks = new Button { Text = "Обновить список", Location = new Point(leftX, topY + 210), Size = new Size(120, 30) };
             btnRefreshTracks.Click += (s, e) => RefreshTrackList();
 
-            btnRandomTarget = new Button { Text = "Курьер 100 POI дорога т50 а.у.", Location = new Point(leftX, topY + 260), Size = new Size(230, 30) };
+            btnRandomTarget = new Button { Text = "Курьер 100 POI дорога т50 а.у.", Location = new Point(leftX, topY + 260), Size = new Size(230, 20) };
             btnRandomTarget.Click += BtnRandomTarget_Click;
 
-            btnRandomTarget2 = new Button { Text = "Тайник 2 200м т30", Location = new Point(leftX, topY + 290), Size = new Size(230, 30) };
+            btnRandomTarget2 = new Button { Text = "Тайник 2 200м т30", Location = new Point(leftX, topY + 290), Size = new Size(230, 20) };
             btnRandomTarget2.Click += BtnRandomTarget2_Click;
 
-            btnRandomTarget3 = new Button { Text = "Перекус 400", Location = new Point(leftX, topY + 320), Size = new Size(230, 30) };
+            btnRandomTarget3 = new Button { Text = "Перекус 400", Location = new Point(leftX, topY + 320), Size = new Size(230, 20) };
             btnRandomTarget3.Click += BtnRandomTarget3_Click;
 
-            btnRandomTarget4 = new Button { Text = "Обзор целей", Location = new Point(leftX, topY + 350), Size = new Size(230, 30) };
+            btnRandomTarget4 = new Button { Text = "Обзор целей", Location = new Point(leftX, topY + 350), Size = new Size(230, 20) };
             btnRandomTarget4.Click += BtnRandomTarget4_Click;
 
-            btnCheckTargets = new Button { Text = "Проверка точек", Location = new Point(leftX, topY + 380), Size = new Size(120, 30) };
+            btnCheckTargets = new Button { Text = "Проверка точек", Location = new Point(leftX, topY + 380), Size = new Size(120, 20) };
             btnCheckTargets.Click += BtnCheckTargets_Click;
 
             btnShowMap = new Button { Text = "Показать карту ✔", Location = new Point(leftX, topY + 410), Size = new Size(130, 30) };
@@ -652,6 +652,7 @@ namespace ETS2_Assist_GUI
         private void InitializeProcessManager()
         {
             logger = new Logger();
+            Logger.Current = logger;
             logger.OnLogMessage += (msg) => AppendLog(msg, persistWorkflow: false);
             logger.Workflow("ETS2 Assist logger initialized.");
             procManager = new ProcessManager(logger);

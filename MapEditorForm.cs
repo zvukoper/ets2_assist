@@ -11,7 +11,8 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using WebSocketSharp;
+using System.Net.WebSockets;
+using System.Text;
 
 namespace ETS2_Assist_GUI
 {
@@ -31,9 +32,18 @@ namespace ETS2_Assist_GUI
         private double _centerX, _centerZ;
         private double _scale = 1.5;
         private bool _viewReady;
-
         private double? _truckX, _truckZ;
+
         private bool _truckKnown;
+        private DateTime _truckLastSeen = DateTime.MinValue;
+        private DateTime _lastTruckCoordApply = DateTime.MinValue;
+        private double _candTx, _candTz;
+        private bool _haveCandidate = false;
+        // Правдоподобный диапазон карты (м) — вне его сырые координаты считаем мусором.
+        private const double TruckBoundsMinX = 100000, TruckBoundsMaxX = 175000;
+        private const double TruckBoundsMinZ = -70000, TruckBoundsMaxZ = 25000;
+        private const double TruckSanityMaxJumpM = 5000;
+        private System.Windows.Forms.Timer _truckWatchdog = null!;
 
         private bool _panning;
         private int _panStartX, _panStartY;
@@ -41,17 +51,21 @@ namespace ETS2_Assist_GUI
         private const double ClickThresholdPx = 12;
         private const string TelemetryWsUrlFallback = "ws://localhost:8080/api/ws/delta/flat/?throttle=50";
         private const double MaxScale = 8000;
+        private const double TruckCoordScaleX = 1e11;
+        private const double TruckCoordScaleZ = 1e11;
         private const double ClipXMin = 111805.88;
         private const double ClipZMin = -36536.58;
 
-        private WebSocket? _ws;
+        private ClientWebSocket? _ws;
         private readonly System.Windows.Forms.Timer _wsReconnectTimer = new() { Interval = 2500 };
         private CancellationTokenSource? _cts;
+        private readonly List<int> _telemetryPorts = new();
+        private int _telemetryPortIdx = 0;
         private bool _disposed;
 
         private readonly MapPanel _mapPanel = new() { Dock = DockStyle.Fill, BackColor = Color.FromArgb(15, 18, 23) };
         private readonly FlowLayoutPanel _toolbar = new() { Dock = DockStyle.Bottom, Height = 46, Padding = new Padding(6), WrapContents = false };
-        private readonly Label _statusLabel = new() { Dock = DockStyle.Top, Height = 22, ForeColor = Color.FromArgb(143, 160, 185), BackColor = Color.FromArgb(15, 18, 23), Padding = new Padding(4, 2, 0, 0) };
+        private readonly Label _statusLabel = new() { Dock = DockStyle.Bottom, Height = 24, ForeColor = Color.FromArgb(143, 160, 185), BackColor = Color.FromArgb(15, 18, 23), Padding = new Padding(4, 3, 0, 0) };
         private readonly TreeView _sidebar = new() { Dock = DockStyle.Left, Width = 220, BackColor = Color.FromArgb(20, 25, 35), ForeColor = Color.LightGray, Font = new Font("Segoe UI", 9) };
         private readonly ToolTip _tooltip = new() { InitialDelay = 0, ReshowDelay = 0, ShowAlways = true };
 
@@ -63,7 +77,6 @@ namespace ETS2_Assist_GUI
         private readonly string _webDataFile = AppDataPaths.WebDataFile;
         private readonly List<(string category, string uid, double x, double z)> _pois = new();
         private readonly List<(string category, string uid, double x, double z)> _poisRaw = new();
-        private bool _invertV, _invertH;
 
         public MapEditorForm()
         {
@@ -77,8 +90,22 @@ namespace ETS2_Assist_GUI
             if (_viewReady) RequestRender();
             else FitToAllCities();
             StartTelemetry();
+            _truckWatchdog = new System.Windows.Forms.Timer { Interval = 1000 };
+            _truckWatchdog.Tick += (s, e) =>
+            {
+                if (_disposed) return;
+                if (_truckKnown && (DateTime.Now - _truckLastSeen).TotalSeconds > 3)
+                {
+                    _truckKnown = false;
+                    SetTruckStatus();
+                    InvalidateMap();
+                }
+            };
+            _truckWatchdog.Start();
             _wsReconnectTimer.Tick += (s, e) => { _wsReconnectTimer.Stop(); EnsureTelemetry(); };
             this.MouseWheel += OnMouseWheel;
+            LogEditor($"Редактор карты открыт. Городов={_cities.Count}, целей={_targets.Count}, POI={_pois.Count}, дороги={(_roadsPath != null ? "загружены" : "нет")}.");
+            SetTruckStatus();
         }
 
         private void InitializeComponent()
@@ -101,17 +128,9 @@ namespace ETS2_Assist_GUI
             var reloadTargets = new Button { Text = "обновить цели", Width = 120, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat };
             reloadTargets.Click += (s, e) => { LoadTargets(); PopulateSidebar(); RequestRender(); };
 
-            var invV = new Button { Text = "инвертировать v POI", Width = 140, Height = 30, BackColor = Color.FromArgb(60, 40, 40), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat };
-            invV.Click += (s, e) => { _invertV = !_invertV; ApplyPoiTransform(); PopulateSidebar(); RequestRender(); };
-
-            var invH = new Button { Text = "инвертировать h POI", Width = 140, Height = 30, BackColor = Color.FromArgb(40, 50, 60), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat };
-            invH.Click += (s, e) => { _invertH = !_invertH; ApplyPoiTransform(); PopulateSidebar(); RequestRender(); };
-
             _toolbar.Controls.Add(findTruck);
             _toolbar.Controls.Add(showAll);
             _toolbar.Controls.Add(reloadTargets);
-            _toolbar.Controls.Add(invV);
-            _toolbar.Controls.Add(invH);
 
             _sidebar.AfterSelect += (s, e) =>
             {
@@ -346,6 +365,21 @@ namespace ETS2_Assist_GUI
 
             DrawGridTo(g, vMinX, vMaxX, vMinZ, vMaxZ);
 
+            // POI — РИСУЕМ ПЕРВЫМИ, чтобы города и цели перекрывали их при наложении.
+            // Скрываем ПОИ при масштабе > 10 м/px (слишком мелко — только шум на карте).
+            if (_scale <= 10)
+            {
+                foreach (var poi in _pois)
+                {
+                    var p = WorldToScreen(poi.x, poi.z);
+                    if (p.X < -50 || p.Y < -50 || p.X > _mapPanel.Width + 50 || p.Y > _mapPanel.Height + 50) continue;
+                    using var brush = new SolidBrush(CategoryColor(poi.category));
+                    g.FillEllipse(brush, p.X - 3, p.Y - 3, 6, 6);
+                    g.DrawEllipse(new Pen(Color.Black, 1f), p.X - 3, p.Y - 3, 6, 6);
+                    DrawLabelAbove(g, poi.category, p.X, p.Y, CategoryColor(poi.category));
+                }
+            }
+
             foreach (var c in _cities)
             {
                 var p = WorldToScreen(c.x, c.z);
@@ -354,7 +388,7 @@ namespace ETS2_Assist_GUI
                 using var outline = new Pen(Color.Black, 2);
                 g.FillEllipse(brush, p.X - 5, p.Y - 5, 11, 11);
                 g.DrawEllipse(outline, p.X - 5, p.Y - 5, 11, 11);
-                DrawLabelWithOutline(g, c.name, p.X + 7, p.Y - 8);
+                DrawLabelAbove(g, c.name, p.X, p.Y, Color.FromArgb(255, 235, 0), true);
             }
 
             foreach (var t in _targets)
@@ -364,18 +398,7 @@ namespace ETS2_Assist_GUI
                 using var brush = new SolidBrush(t.color);
                 g.FillEllipse(brush, p.X - 5, p.Y - 5, 10, 10);
                 g.DrawEllipse(new Pen(Color.Black, 1.5f), p.X - 5, p.Y - 5, 10, 10);
-                using var font = new Font("Segoe UI", 9, FontStyle.Bold);
-                using var tb = new SolidBrush(Color.White);
-                g.DrawString(t.name, font, tb, p.X + 7, p.Y - 7);
-            }
-
-            foreach (var poi in _pois)
-            {
-                var p = WorldToScreen(poi.x, poi.z);
-                if (p.X < -50 || p.Y < -50 || p.X > _mapPanel.Width + 50 || p.Y > _mapPanel.Height + 50) continue;
-                using var brush = new SolidBrush(CategoryColor(poi.category));
-                g.FillEllipse(brush, p.X - 3, p.Y - 3, 6, 6);
-                g.DrawEllipse(new Pen(Color.Black, 1f), p.X - 3, p.Y - 3, 6, 6);
+                DrawLabelAbove(g, t.name, p.X, p.Y, Color.White, true);
             }
 
             if (_truckKnown && _truckX.HasValue && _truckZ.HasValue)
@@ -384,20 +407,28 @@ namespace ETS2_Assist_GUI
                 using var brush = new SolidBrush(Color.Red);
                 var pts = new[] { new PointF(p.X, p.Y - 8), new PointF(p.X - 6, p.Y + 6), new PointF(p.X + 6, p.Y + 6) };
                 g.FillPolygon(brush, pts);
-                using var font = new Font("Segoe UI", 9, FontStyle.Bold);
-                using var tb = new SolidBrush(Color.Red);
-                g.DrawString("Грузовик", font, tb, p.X + 8, p.Y - 8);
+                DrawLabelAbove(g, "Грузовик", p.X, p.Y, Color.Red, true);
             }
         }
 
-        private static void DrawLabelWithOutline(Graphics g, string text, float x, float y)
+        private static void LogEditor(string msg)
         {
-            using var font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            try { Logger.Current?.Info("[EDITOR] " + msg); }
+            catch { }
+        }
+
+        private static void DrawLabelAbove(Graphics g, string text, float cx, float cy, Color textColor, bool bold = false, int gap = 6)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            using var font = new Font("Segoe UI", bold ? 9.5f : 9f, bold ? FontStyle.Bold : FontStyle.Regular);
+            var size = g.MeasureString(text, font);
+            float x = cx - size.Width / 2f;
+            float y = cy - size.Height - gap;
             using var black = new SolidBrush(Color.Black);
-            using var yellow = new SolidBrush(Color.FromArgb(255, 235, 0));
             foreach (var (dx, dy) in new[] { (-1f, -1f), (1f, -1f), (-1f, 1f), (1f, 1f) })
                 g.DrawString(text, font, black, x + dx, y + dy);
-            g.DrawString(text, font, yellow, x, y);
+            using var fg = new SolidBrush(textColor);
+            g.DrawString(text, font, fg, x, y);
         }
 
         private void DrawGridTo(Graphics g, double worldLeft, double worldRight, double worldTop, double worldBottom)
@@ -552,12 +583,18 @@ namespace ETS2_Assist_GUI
             _statusLabel.Text = msg;
         }
 
+        private void SetTruckStatus()
+        {
+            if (_disposed) return;
+            string ind = _truckKnown ? "● Координаты грузовика онлайн" : "● Нет данных от грузовика";
+            _statusLabel.ForeColor = _truckKnown ? Color.FromArgb(70, 200, 90) : Color.FromArgb(230, 90, 90);
+            _baseStatus = $"{ind}   Центр: {_centerX:F0}, {_centerZ:F0}  Масштаб: {_scale:F1} м/px";
+            if ((DateTime.Now - _lastCopied).TotalSeconds > 3) _statusLabel.Text = _baseStatus;
+        }
+
         private void UpdateStatus()
         {
-            _baseStatus = _truckKnown
-                ? $"Центр: {_centerX:F0}, {_centerZ:F0}  Фура: {_truckX:F0}, {_truckZ:F0}  Масштаб: {_scale:F1} м/px"
-                : $"Центр: {_centerX:F0}, {_centerZ:F0}  Масштаб: {_scale:F1} м/px  (нет данных фуры)";
-            if ((DateTime.Now - _lastCopied).TotalSeconds > 3) _statusLabel.Text = _baseStatus;
+            SetTruckStatus();
         }
 
         private void CenterOnTruck()
@@ -646,12 +683,19 @@ namespace ETS2_Assist_GUI
                         if (xv == null || zv == null) continue;
                         if (!double.TryParse(xv.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var x)) continue;
                         if (!double.TryParse(zv.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var z)) continue;
-                        _poisRaw.Add((prop.Name, uid, x, z));
+                        double xr = x, zr = z;
+                        if (Math.Abs(xr) > 1_000_000 && Math.Abs(zr) > 1_000_000)
+                        {
+                            xr /= 100; zr /= 100;
+                            Debug.WriteLine($"LoadOverlays: POI {uid} нормализован /100 (было x={x}, z={z}) -> x={xr}, z={zr}");
+                        }
+                        _poisRaw.Add((prop.Name, uid, xr, zr));
                     }
                 }
             }
-            catch (Exception ex) { Debug.WriteLine("LoadOverlays: " + ex.Message); }
+            catch (Exception ex) { Debug.WriteLine("LoadOverlays: " + ex.Message); LogEditor("LoadOverlays: ошибка " + ex.Message); }
             ApplyPoiTransform();
+            LogEditor($"LoadOverlays: загружено POI={_pois.Count} (raw={_poisRaw.Count}) из {_overlaysFile}.");
         }
 
         private void ApplyPoiTransform()
@@ -659,8 +703,8 @@ namespace ETS2_Assist_GUI
             _pois.Clear();
             foreach (var p in _poisRaw)
             {
-                double x = _invertH ? -p.x : p.x;
-                double z = _invertV ? -p.z : p.z;
+                double x = p.x;
+                double z = p.z;
                 if (x < ClipXMin || z > ClipZMin) continue;
                 _pois.Add((p.category, p.uid, x, z));
             }
@@ -720,55 +764,166 @@ namespace ETS2_Assist_GUI
             catch { _wsReconnectTimer.Start(); }
         }
 
-        private string GetTelemetryWsUrl()
+        private List<int> GetCandidatePorts()
         {
+            var ports = new List<int>();
             try
             {
                 if (File.Exists(_webDataFile))
                 {
                     var json = JObject.Parse(File.ReadAllText(_webDataFile));
                     var port = json["wsPort"];
-                    if (port != null && int.TryParse(port.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var p) && p > 0)
-                        return $"ws://localhost:{p}/api/ws/delta/flat/?throttle=50";
+                    if (port != null && int.TryParse(port.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var p) && p > 0 && !ports.Contains(p))
+                        ports.Add(p);
                 }
             }
             catch { }
-            return TelemetryWsUrlFallback;
+            if (!ports.Contains(8080)) ports.Add(8080);
+            LogEditor($"GetCandidatePorts: web_data.json={_webDataFile} существует={File.Exists(_webDataFile)}; кандидаты=[" + string.Join(",", ports) + "].");
+            return ports;
         }
 
-        private void EnsureTelemetry()
+        private async void EnsureTelemetry()
         {
             if (_disposed) return;
-            if (_ws != null && (_ws.ReadyState == WebSocketState.Open || _ws.ReadyState == WebSocketState.Connecting)) return;
+            if (_ws != null && (_ws.State == WebSocketState.Open || _ws.State == WebSocketState.Connecting)) return;
+            var ports = GetCandidatePorts();
+            if (ports.Count == 0) ports.Add(8080);
+            if (_telemetryPortIdx >= ports.Count) _telemetryPortIdx = 0;
+            int port = ports[_telemetryPortIdx];
+            LogEditor($"EnsureTelemetry: попытка подключения к ws://localhost:{port}/api/ws/delta/flat/ (индекс {_telemetryPortIdx} из {ports.Count})");
+            var cts = new CancellationTokenSource();
+            _cts = cts;
             try
             {
-                _ws = new WebSocket(GetTelemetryWsUrl());
-                _ws.WaitTime = TimeSpan.FromSeconds(2);
-                _ws.OnMessage += (s, ev) =>
+                var ws = new ClientWebSocket();
+                ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
+                await ws.ConnectAsync(new Uri($"ws://localhost:{port}/api/ws/delta/flat/?throttle=50"), cts.Token).ConfigureAwait(false);
+                _ws = ws;
+                LogEditor($"EnsureTelemetry: ПОДКЛЮЧЕНО к порту {port}.");
+                _ = ReceiveLoop(ws, port, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                LogEditor($"EnsureTelemetry: подключение к порту {port} отменено.");
+            }
+            catch (Exception ex)
+            {
+                LogEditor($"EnsureTelemetry: ОШИБКА подключения к порту {port}: {ex.GetType().Name}: {ex.Message}");
+                _telemetryPortIdx = (_telemetryPortIdx + 1) % Math.Max(1, ports.Count);
+                if (!_disposed) _wsReconnectTimer.Start();
+            }
+        }
+
+        private async Task ReceiveLoop(ClientWebSocket ws, int port, CancellationToken token)
+        {
+            var buf = new byte[16384];
+            try
+            {
+                while (!_disposed && ws.State == WebSocketState.Open && !token.IsCancellationRequested)
                 {
-                    if (_disposed) return;
-                    try
+                    using var ms = new MemoryStream();
+                    WebSocketReceiveResult res;
+                    do
                     {
-                        var json = JObject.Parse(ev.Data);
-                        var placement = json["truck.world.placement"] as JArray;
+                        res = await ws.ReceiveAsync(new ArraySegment<byte>(buf), token).ConfigureAwait(false);
+                        if (res.MessageType == WebSocketMessageType.Close) break;
+                        ms.Write(buf, 0, res.Count);
+                    } while (!res.EndOfMessage);
+                    if (res.MessageType == WebSocketMessageType.Close) break;
+                    var text = Encoding.UTF8.GetString(ms.ToArray());
+                    ProcessTelemetry(text, port);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                LogEditor($"EnsureTelemetry: соединение с портом {port} разорвано: {ex.GetType().Name}: {ex.Message}");
+            }
+            finally
+            {
+                try { ws.Dispose(); } catch { }
+                if (_ws == ws) _ws = null;
+                if (!_disposed) _wsReconnectTimer.Start();
+            }
+        }
+
+        private void ProcessTelemetry(string text, int port)
+        {
+            try
+            {
+                var json = JObject.Parse(text);
+                var placement = json["truck.world.placement"] as JArray;
+                if (placement == null) placement = json.SelectToken("truck.world.placement") as JArray;
+                if (placement == null)
+                {
+                    var truck = json["truck"] as JObject;
+                    if (truck != null) placement = truck["world"]?["placement"] as JArray;
+                }
                         if (placement != null && placement.Count >= 3)
                         {
-                            if (double.TryParse((string?)placement[0], NumberStyles.Any, CultureInfo.InvariantCulture, out var tx)
-                                && double.TryParse((string?)placement[2], NumberStyles.Any, CultureInfo.InvariantCulture, out var tz))
+                            var xTok = placement[0];
+                            var zTok = placement[2];
+                            if (xTok != null && zTok != null
+                                && double.TryParse(xTok.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var tx)
+                                && double.TryParse(zTok.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var tz))
                             {
-                                _truckX = tx; _truckZ = tz; _truckKnown = true;
-                                if (!_disposed && _mapPanel.IsHandleCreated)
-                                    BeginInvoke((Action)(() => { if (!_disposed) { UpdateStatus(); InvalidateMap(); } }));
+                                // Координаты применяем НЕ чаще 1 раза в секунду и только если
+                                // сэмпл правдоподобен (в границах карты и без «прыжка» >5 км) —
+                                // иначе мусорные кадры телеметрии уносят фуру за много км.
+                                _truckLastSeen = DateTime.Now;
+                                double ax = tx / TruckCoordScaleX;
+                                double az = tz / TruckCoordScaleZ;
+                                bool inBounds = ax >= TruckBoundsMinX && ax <= TruckBoundsMaxX
+                                                && az >= TruckBoundsMinZ && az <= TruckBoundsMaxZ;
+                                bool sane = inBounds && (!_truckKnown || !_truckX.HasValue || !_truckZ.HasValue
+                                    || Math.Sqrt((ax - _truckX.Value) * (ax - _truckX.Value) + (az - _truckZ.Value) * (az - _truckZ.Value)) <= TruckSanityMaxJumpM);
+                                if (sane) { _candTx = tx; _candTz = tz; _haveCandidate = true; }
+
+                                var now = DateTime.Now;
+                                if ((now - _lastTruckCoordApply).TotalMilliseconds >= 1000)
+                                {
+                                    _lastTruckCoordApply = now;
+                                    if (!_truckKnown)
+                                    {
+                                        if (inBounds)
+                                        {
+                                            _truckX = ax; _truckZ = az; _truckKnown = true;
+                                            if (!_disposed) BeginInvoke((Action)(() => { if (!_disposed) { SetTruckStatus(); InvalidateMap(); } }));
+                                        }
+                                        else
+                                        {
+                                            LogEditor("[TELEMETRY] первый сэмпл отброшен: вне границ карты (мусор).");
+                                        }
+                                    }
+                                    else if (_haveCandidate)
+                                    {
+                                        double cax = _candTx / TruckCoordScaleX;
+                                        double caz = _candTz / TruckCoordScaleZ;
+                                        _truckX = cax; _truckZ = caz;
+                                        if (!_disposed) BeginInvoke((Action)(() => { if (!_disposed) { SetTruckStatus(); InvalidateMap(); } }));
+                                    }
+                                    else
+                                    {
+                                        LogEditor($"[TELEMETRY] за секунду все сэмплы отброшены (мусор/прыжок >{TruckSanityMaxJumpM}м).");
+                                    }
+                                    _haveCandidate = false;
+                                }
+                            }
+                            else
+                            {
+                                LogEditor($"EnsureTelemetry: placement найден, но координаты не распознаны (x='{xTok}', z='{zTok}').");
                             }
                         }
-                    }
-                    catch { }
-                };
-                _ws.OnClose += (s, ev) => { if (!_disposed) _wsReconnectTimer.Start(); };
-                _ws.OnError += (s, ev) => { if (!_disposed) _wsReconnectTimer.Start(); };
-                _ws.ConnectAsync();
+                else
+                {
+                    LogEditor($"EnsureTelemetry: сообщение получено, placement отсутствует (ключи: {string.Join(",", ((System.Collections.Generic.IDictionary<string, JToken>)json).Keys.Take(8))}).");
+                }
             }
-            catch { if (!_disposed) _wsReconnectTimer.Start(); }
+            catch (Exception ex)
+            {
+                LogEditor($"EnsureTelemetry: ошибка разбора сообщения: {ex.Message}");
+            }
         }
 
         private void LoadEditorState()
@@ -806,7 +961,7 @@ namespace ETS2_Assist_GUI
             try { _cts?.Cancel(); } catch { }
             try { _cts?.Dispose(); } catch { }
             try { _wsReconnectTimer.Stop(); } catch { }
-            try { _ws?.Close(); } catch { }
+            try { _ws?.Dispose(); } catch { }
             _ws = null;
             try { _roadsPath?.Dispose(); } catch { _roadsPath = null; }
             try { _tooltip.Dispose(); } catch { }

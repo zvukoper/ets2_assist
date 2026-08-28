@@ -11,6 +11,8 @@ namespace ETS2_Assist_GUI
     /// </summary>
     public sealed class Logger
     {
+        public static Logger? Current { get; set; }
+
         private readonly string logDir;
         private readonly string workflowFile;
         private readonly string dataFile;

@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -211,29 +212,7 @@ namespace ETS2_Assist_GUI
                             st.InZone = true;
                             st.Armed = true;
                             AppendLog($"[TRIGGER] Вход в зону цели {zt} ({st.Name}, тип={st.QuestType}) — диалог задания.");
-                            this.BeginInvoke((System.Windows.Forms.MethodInvoker)delegate
-                            {
-                                bool wasTop = this.TopMost;
-                                bool pausedByUs = false;
-                                try
-                                {
-                                    this.TopMost = true;
-                                    this.Show();
-                                    this.WindowState = FormWindowState.Normal;
-                                    this.Activate();
-                                    try { if (!IsGamePaused()) { SetGamePause(true); pausedByUs = true; } }
-                                    catch (Exception exP) { AppendLog($"[SCS] пауза не удалась: {exP.Message}"); }
-                                    ForceForegroundWindow(this.Handle, "before-quest-dialog");
-                                    HandleQuestEnter(st);
-                                }
-                                finally
-                                {
-                                    this.TopMost = wasTop;
-                                    try { if (pausedByUs && IsGamePaused()) SetGamePause(false); }
-                                    catch { }
-                                    ReturnFocusToGame();
-                                }
-                            });
+                            this.BeginInvoke((System.Windows.Forms.MethodInvoker)delegate { TriggerQuestDialog(st); });
                         }
                         break;
                     }
@@ -738,39 +717,43 @@ namespace ETS2_Assist_GUI
         {
             switch (st.QuestType)
             {
-                case "courier_pickup":
-                    {
-                        int dist = new Random().Next(400, 2001); // 400..2000 м
-                        using var dlg = new QuestDialogForm("Курьер",
-                            $"Доставить документы.\nНаграда: 1200р.\nРасстояние доставки: {dist} м",
-                            isSuccess: false, primaryText: "Начать выполнение", secondaryText: "Отказаться");
-                        dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
-                        var res = dlg.ShowDialog(this);
-                        st.Armed = false; // после диалога сбрасываем арм (повторный вход -> снова диалог)
-                        RemoveTargetById(st.Id); // любой выбор удаляет точку забора
-                        if (res == DialogResult.Yes)
+                    case "courier_pickup":
                         {
-                            SendCommandToMap("quest_courier_dropoff", new JObject { ["distanceM"] = dist });
-                            AppendLog($"[QUEST] Курьер принят. Точка выдачи создана на {dist} м.");
+                            int dist = new Random().Next(400, 2001); // 400..2000 м
+                            int reward = 1000 + (int)Math.Round(30.0 * dist / 150.0); // 1000р база + 30р/150м
+                            using var dlg = new QuestDialogForm("Курьер",
+                                $"Доставить документы.\nНаграда: {reward}р.\nРасстояние доставки: {dist} м",
+                                isSuccess: false, primaryText: "Начать выполнение", secondaryText: "Отказаться");
+                            dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
+                            var res = dlg.ShowDialog(this);
+                            st.Armed = false; // после диалога сбрасываем арм (повторный вход -> снова диалог)
+                            RemoveTargetById(st.Id); // любой выбор удаляет точку забора
+                            if (res == DialogResult.Yes)
+                            {
+                                _courierReward = reward;
+                                SendCommandToMap("quest_courier_dropoff", new JObject { ["distanceM"] = dist });
+                                AppendLog($"[QUEST] Курьер принят. Награда {reward}р, точка выдачи создана на {dist} м.");
+                            }
+                            else
+                            {
+                                AppendLog("[QUEST] Курьер отклонён — точка забора удалена.");
+                            }
+                            break;
                         }
-                        else
-                        {
-                            AppendLog("[QUEST] Курьер отклонён — точка забора удалена.");
-                        }
-                        break;
-                    }
                 case "courier_dropoff":
                     {
                         using var dlg = new QuestDialogForm("Курьер", "Выручить документы?", isSuccess: false, primaryText: "ДА", secondaryText: "НЕТ");
                         dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
                         var res = dlg.ShowDialog(this);
                         st.Armed = false;
-                        if (res == DialogResult.Yes)
-                        {
-                            GiveReward(1200, 250);
-                            RemoveTargetById(st.Id);
-                            AppendLog("[QUEST] Курьер выполнен: +1200р, +250xp.");
-                        }
+                            if (res == DialogResult.Yes)
+                            {
+                                int reward = _courierReward;
+                                _courierReward = 0;
+                                GiveReward(reward, 250);
+                                RemoveTargetById(st.Id);
+                                AppendLog($"[QUEST] Курьер выполнен: +{reward}р, +250xp.");
+                            }
                         else
                         {
                             AppendLog("[QUEST] Курьер: выдача отложена, ждём повторного входа.");
@@ -839,6 +822,61 @@ namespace ETS2_Assist_GUI
         // ============================================================
         // ПАУЗА ETS2 ЧЕРЕЗ ets2_assist_input.dll (Named Pipe)
         // ============================================================
+        private int _courierReward = 0;
+        private bool _questHandling = false;
+
+        // Показ диалога квеста СОБЛЮДАЯ СТРОГУЮ ЛОГИКУ ПАУЗЫ:
+        // 1) пауза отправляется ТОЛЬКО если игра НЕ на паузе (иначе игрок не успеет
+        //    взять управление — авария);
+        // 2) ждём, пока игра реально не встанет на паузу;
+        // 3) после паузы задержка 2 с, затем показываем диалог и берём фокус на него;
+        // 4) НИКОГДА не снимаем паузу приложением — игрок сам выходит из паузы.
+        private async void TriggerQuestDialog(RandomTargetState st)
+        {
+            if (_questHandling) { AppendLog("[QUEST] диалог уже активен — повторный вход проигнорирован."); return; }
+            _questHandling = true;
+            try
+            {
+                bool alreadyPaused = await IsGamePausedAsync();
+                if (alreadyPaused)
+                {
+                    AppendLog("[QUEST] Игра УЖЕ на паузе — паузу не отправляем (игрок управляет).");
+                }
+                else
+                {
+                    SetGamePause(true);
+                    bool paused = false;
+                    for (int i = 0; i < 20 && !paused; i++)
+                    {
+                        await Task.Delay(250);
+                        if (await IsGamePausedAsync()) paused = true;
+                    }
+                    if (!paused)
+                        AppendLog("[QUEST] ВНИМАНИЕ: пауза не подтверждена за 5с — показываем диалог без гарантии паузы.");
+                    else
+                        AppendLog("[QUEST] Игра встала на паузу — ждём 2с перед диалогом.");
+                }
+                // задержка 2с после паузы, затем фокус на диалог
+                await Task.Delay(2000);
+                this.TopMost = true;
+                this.Show();
+                this.WindowState = FormWindowState.Normal;
+                this.Activate();
+                HandleQuestEnter(st);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[QUEST] ошибка показа диалога: {ex.Message}");
+            }
+            finally
+            {
+                this.TopMost = false;
+                _questHandling = false;
+                // НЕ снимаем паузу приложением — фокус возвращаем в игру, игра остаётся на паузе.
+                ReturnFocusToGame();
+            }
+        }
+
         private bool SetGamePause(bool enabled)
         {
             AppendLog($"[SCS] SetGamePause({enabled})");
