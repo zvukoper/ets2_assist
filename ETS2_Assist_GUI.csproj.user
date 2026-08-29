@@ -4,6 +4,9 @@
     <Compile Update="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="MainForm.PointsOverrides.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="MapEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>

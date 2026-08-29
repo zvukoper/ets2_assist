@@ -2737,6 +2737,7 @@ namespace ETS2_Assist_GUI
             }
             StopTriggerServer();
             StopWebSocketSaveServer();
+            HookPointsOverridesChanged(false);
             base.OnFormClosed(e);
         }
 
@@ -2753,6 +2754,7 @@ namespace ETS2_Assist_GUI
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
+            HookPointsOverridesChanged(true);
             UpdateIndicators();
         }
     }

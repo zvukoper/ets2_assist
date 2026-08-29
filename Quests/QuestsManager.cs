@@ -274,10 +274,12 @@ namespace ETS2_Assist_GUI
                     // при старте) и шлёт актуальные цели командой targets_data.
                     AppendLog("[WS] Миникарта готова -> отправляем цели из файла");
                     SendTargetsToMap();
+                    SendPointsOverridesToMap();
                     break;
                 case "request_reload_custom_targets":
                     // На всякий случай (если миникарта ещё шлёт эту команду).
                     SendTargetsToMap();
+                    SendPointsOverridesToMap();
                     break;
                 case "add_target":
                     // Миникарта сгенерировала случайную цель и просит приложение

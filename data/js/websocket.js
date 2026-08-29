@@ -96,6 +96,11 @@ function connectSaveWebSocket() {
                             // Миникарта сама файл не читает — только рисует то, что прислали.
                             applyTargetsData(data.targets);
                             break;
+                        case 'points_overrides_data':
+                            // Переопределённые города/POI и пользовательские точки
+                            // из редактора карты (delta поверх статических баз).
+                            storePointsOverrides(data);
+                            break;
                         case 'minimap_show':
                             // Миникарта показывается только когда авто-логика включена.
                             if (!minimapAutoOff) {

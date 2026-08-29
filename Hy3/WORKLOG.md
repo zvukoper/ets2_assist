@@ -1,4 +1,4 @@
-﻿# ETS2_Assist_GUI — заметки сессии (Hy3)
+﻿﻿# ETS2_Assist_GUI — заметки сессии (Hy3)
 
 > Папка для памяти между сессиями. Обновляется вручную в конце каждой сессии.
 
@@ -1624,3 +1624,56 @@
 - НЕ ПРОВЕРЕНО в рантайме у пользователя (ждём: категория POI вернулась в сайдбар + точки на карте;
   удаление/сохранение спрашивают подтверждение; поля не обрезаны).
 
+## Сессия 32 (29.08.2026) — Санитайзер GameName не искажает hex-ID при загрузке
+- **БАГ (от пользователя):** при загрузке точки в панель из ID вида `0x63DF0052318001F4`
+  из поля «Системное имя» пропадали все буквы — оставалось `0x6300523180014`.
+- **ПРИЧИНА:** санитайзер GameName в `OnFieldChanged` (MapEditorForm.cs) фильтром `[a-z0-9_]`
+  УДАЛЯЛ заглавные (вместо приведения к нижнему регистру, как обещал комментарий), а программная
+  установка `ctrl.Text` в `LoadPointIntoPanel` вызывает `TextChanged` → санитайзер срабатывал на
+  загружаемом значении. `ReadPanelIntoPoint` читает текст из панели → при сохранении ID был бы
+  реально испорчен (двойной баг: искажение + ложная «грязность» поля при простом выборе точки).
+- **РЕШЕНИЕ (MapEditorForm.cs):**
+  - Санитайзер теперь переводит заглавные в строчные (`char.ToLowerInvariant`), а не удаляет их.
+  - Новое поле `_loadingPanel`: подавляет `OnFieldChanged` при программной загрузке
+    (`LoadPointIntoPanel`) и сбросе поля (`ResetField`) — в поле отображается ровно то, что в
+    данных, без санитизации и без ложной «грязности» при простом выборе точки.
+  - Обновление координат X/Z с клика по карте НЕ подавлено — dirty-маркировка работает как раньше.
+  - Побочно исправлено: в `EnterCreateMode` автодобавленные в dirty поля (X/Y/Z/GameName/RealName)
+    больше не затираются событиями загрузки (как и задумывал комментарий в коде).
+- Тест-сборка `dotnet build -c Release` (29.08, 22:47) — успешна, 0 ошибок; версия в exe
+  `1.0.38.50-GAMEID-SANITIZE-08.29-2247` (D=49 за задачу + 1 за тест-билд, как по правилам).
+- Публикация `dotnet publish -c Release -r win-x64 --self-contained /p:PublishSingleFile=true`
+  (29.08, 22:50) — успешна; SyncDataToPublish скопировала 388 файлов data; все папки data на месте
+  (Arduino, bin, css, ets2_server, GeoJson, Jobs, js, language, localized_cities, plugins,
+  saved_tracks), ru.csv/en.csv на месте. Старый `ETS2_Assist_GUI.exe` в publish отсутствует.
+  Версии синхронизированы: exe/build.txt/manifest = `1.0.38.50-GAMEID-SANITIZE-08.29-2249`
+  (обновлены и в исходниках data, и в publish\data).
+- ПРОВЕРЕНО в рантайме у пользователя (29.08.2026, подтверждено): санитайзер GameName работает
+  корректно — заглавные не удаляются, а приводятся к строчным.
+
+## Сессия 33 (29.08.2026) — Наложение map_overrides редактора на веб-миникарту
+- **ЗАДАЧА:** миникарта грузит только статику (cities.geojson + cities_sibirmap.json, Overlays.json);
+  переопределения городов/POI из map_overrides и пользовательские точки редактора на ней не видны.
+- **РЕАЛИЗАЦИЯ (тот же delta-merge, что в редакторе):**
+  - NEW `MainForm.PointsOverrides.cs`: `SendPointsOverridesToMap()` — читает статику (cities по
+    gameName, POI Overlays.json по uid, нормализация /100), накладывает overrides из
+    `map_overrides\*.json` по `load_order.txt` через `MapEditorForm.ApplyJObjectToPoint`
+    (сделан `internal static`), шлёт `points_overrides_data` {cities[], pois[], userPoints[]} через
+    `SendCommandToMap`. ДЕБАУНС 400мс: `NotifyPointsOverridesChanged()` (static event) + таймер.
+    Payload содержит ТОЛЬКО переопределённые города/POI + все пользовательские точки (легковесный).
+    Цели из custom_targets.json НЕ дублируются (их отдаёт targets_data).
+  - `MapEditorForm.cs`: `NotifyPointsOverridesChanged()` после успешных SaveCurrentPoint/DeleteCurrentPoint.
+  - `MainForm.cs`: подписка/отписка HookPointsOverridesChanged в OnLoad/OnFormClosed.
+  - `QuestsManager.cs`: map_ready и request_reload_custom_targets → + SendPointsOverridesToMap().
+  - Web: NEW `data\js\points_overrides.js` (storePointsOverrides/getEffectiveCityList/
+    getEffectivePoiList — merge по gameName/uid поверх state.cities/state.pois, фильтр hidden,
+    userPoints → type 'custom'; state НЕ мутируется); websocket.js case 'points_overrides_data';
+    map_draw.js — POI_COLORS['custom'], циклы городов/POI через effective-списки, пользовательский
+    цвет точек; web_pda_map.html — script-тег.
+- Тест-сборка после каждой части (0 ошибок, 37 известных предупреждений); node --check на 3 js — OK.
+- Публикация (29.08, 23:01) — успешна; SyncDataToPublish скопировала 389 файлов data
+  (+points_overrides.js); 11 папок data; старый exe отсутствует. Версии синхронизированы:
+  exe/build.txt/manifest = `1.0.38.51-MAP-OVR-TO-MAP-08.29-2301` (исходники + publish).
+- Версия в свойствах exe проверена `(Get-Item exe).VersionInfo.ProductVersion` — по новому правилу.
+- НЕ ПРОВЕРЕНО в рантайме у пользователя (ждём: переместить город/POI в редакторе → сохранить →
+  миникарта показывает новую позицию; новая пользовательская точка видна; hidden скрыт).

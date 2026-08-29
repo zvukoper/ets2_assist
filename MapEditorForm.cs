@@ -115,6 +115,7 @@ namespace ETS2_Assist_GUI
         private bool _suppressCheck;           // защита от рекурсии при программной установке чекбоксов
         private readonly ToolTip _editTip = new() { InitialDelay = 300, ShowAlways = true };
         private bool _sanitizing;                 // защита от рекурсии при санитизации GameName
+        private bool _loadingPanel;               // подавляет OnFieldChanged при программной загрузке точки в панель
         private Label? _gameNameError;           // красная подпись под полем GameName
         private Label? _gameNameLabel;           // подпись «Системное имя» (для подсветки обязательного)
         private static readonly Color DirtyBg = Color.FromArgb(120, 60, 12); // тёмно-оранжевый — изменённое поле
@@ -453,8 +454,9 @@ namespace ETS2_Assist_GUI
 
         // Преобразует JObject (запись custom_targets/override) в PointData.
         // Применяет к точке ТОЛЬКО те поля, которые ПРИСУТСТВУЮТ в JObject (delta-merge).
-        // Используется и при чтении статических точек, и при наложении overrides поверх статических.
-        private static void ApplyJObjectToPoint(PointData target, JObject t)
+        // Используется и при чтении статических точек, и при наложении overrides поверх статических,
+        // и при наложении overrides на миникарту (MainForm.PointsOverrides.cs).
+        internal static void ApplyJObjectToPoint(PointData target, JObject t)
         {
             var id = (string?)t["gameName"];
             if (!string.IsNullOrEmpty(id)) target.GameName = id;
@@ -1593,17 +1595,22 @@ namespace ETS2_Assist_GUI
             if (f == null || !_fieldControls.TryGetValue(key, out var ctrl)) return;
             var fld = typeof(PointData).GetField(key);
             var v = fld?.GetValue(_editingCopy);
-            if (f.ValueType == typeof(bool))
-                ((CheckBox)ctrl).Checked = v is bool b && b;
-            else if (key == "Category")
+            _loadingPanel = true; // программный сброс: OnFieldChanged не должен санитизировать/грязнить поле
+            try
             {
-                var cb = (ComboBox)ctrl;
-                var s = v?.ToString() ?? "";
-                if (!cb.Items.Contains(s)) cb.Items.Add(s);
-                cb.SelectedItem = s;
+                if (f.ValueType == typeof(bool))
+                    ((CheckBox)ctrl).Checked = v is bool b && b;
+                else if (key == "Category")
+                {
+                    var cb = (ComboBox)ctrl;
+                    var s = v?.ToString() ?? "";
+                    if (!cb.Items.Contains(s)) cb.Items.Add(s);
+                    cb.SelectedItem = s;
+                }
+                else
+                    ctrl.Text = v == null ? "" : Convert.ToString(v, CultureInfo.InvariantCulture) ?? "";
             }
-            else
-                ctrl.Text = v == null ? "" : Convert.ToString(v, CultureInfo.InvariantCulture) ?? "";
+            finally { _loadingPanel = false; }
             if (ctrl is TextBox tbx) tbx.BackColor = Color.FromArgb(40, 48, 62);
             if (key == "GameName") CheckGameNameUnique();
             _dirtyFields.Remove(key);
@@ -1846,6 +1853,9 @@ namespace ETS2_Assist_GUI
 
         private void LoadPointIntoPanel(PointData pd)
         {
+            _loadingPanel = true;
+            try
+            {
             foreach (var f in PointData.Fields)
             {
                 if (!_fieldControls.TryGetValue(f.Key, out var ctrl)) continue;
@@ -1881,6 +1891,11 @@ namespace ETS2_Assist_GUI
 
                 }
             }
+            }
+            finally
+            {
+                _loadingPanel = false;
+            }
             if (_gameNameError != null) _gameNameError.Visible = false;
             RefreshRequiredHighlight();
             UpdateActionButtons();
@@ -1889,16 +1904,23 @@ namespace ETS2_Assist_GUI
         private void OnFieldChanged(string key)
         {
             if (_editingCopy == null) return;
+            if (_loadingPanel) return; // программная загрузка — не санитизируем и не трогаем dirty-статус
             var f = PointData.Fields.FirstOrDefault(x => x.Key == key);
             if (f == null) return;
             var ctrl = _fieldControls[key];
 
-            // Системное имя: только [a-z0-9_], принудительно в нижний регистр.
+            // Системное имя: только [a-z0-9_], заглавные автоматически переводятся в строчные.
             if (key == "GameName" && !_sanitizing)
             {
                 _sanitizing = true;
                 var tb = (TextBox)ctrl;
-                var clean = new string(tb.Text.Where(ch => (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_').ToArray());
+                var sb = new StringBuilder(tb.Text.Length);
+                foreach (var ch in tb.Text)
+                {
+                    var c = char.ToLowerInvariant(ch);
+                    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_') sb.Append(c);
+                }
+                var clean = sb.ToString();
                 if (tb.Text != clean)
                 {
                     int p = tb.SelectionStart;
@@ -2031,6 +2053,7 @@ namespace ETS2_Assist_GUI
             UpdateActionButtons();
             RequestRender();
             LogEditor($"Точка '{name}' сохранена (delta) в overrides {_selectedOverrideFile}; выполнено обновление карты.");
+            MainForm.NotifyPointsOverridesChanged();
         }
 
         private void CommitNewPoint() { if (_createMode) SaveCurrentPoint(); }
@@ -2071,6 +2094,7 @@ namespace ETS2_Assist_GUI
             _selectedGameName = null; _createMode = false; _editingCopy = null; _dirtyFields.Clear();
             RebuildTargetsFromModel(); PopulateSidebar(); UpdateActionButtons(); RequestRender();
             LogEditor($"Точка '{pd.GameName}' удалена/сброшена.");
+            MainForm.NotifyPointsOverridesChanged();
         }
 
         private void CopySelectedAsJson()

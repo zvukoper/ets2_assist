@@ -45,6 +45,7 @@ const POI_COLORS = {
     'parking': '#aaddaa',
     'viewpoint': '#ffaa88',
     'industry': '#cc88ff',
+    'custom': '#ffffff',
     'default': '#66bbff'
 };
 
@@ -225,15 +226,15 @@ function drawMinimap() {
     // POI (с цветами по категориям) — РИСУЕМ ПЕРВЫМИ (города и цели рисуются поверх)
     const showPoiLabels = scale2 <= 5.0;
     const poiPointSize = Math.max(2, 6 / (scale2 / 10));
-    for (const poi of state.pois) {
+    for (const poi of getEffectivePoiList()) {
         const p = worldToScreen2(poi.x, poi.z);
         if (p.x < -10 || p.x > w+10 || p.y < -10 || p.y > h+10) continue;
         const size = Math.min(6, poiPointSize);
         ctx.beginPath();
         ctx.arc(p.x, p.y, size, 0, 2*Math.PI);
-        // Выбираем цвет по категории
+        // Выбираем цвет по категории; у пользовательских точек — свой цвет из редактора
         const category = poi.type || 'default';
-        const color = POI_COLORS[category.toLowerCase()] || POI_COLORS['default'];
+        const color = (category === 'custom' && poi.color) ? poi.color : (POI_COLORS[category.toLowerCase()] || POI_COLORS['default']);
         ctx.fillStyle = color;
         ctx.shadowColor = color + '44';
         ctx.shadowBlur = 6;
@@ -255,7 +256,7 @@ function drawMinimap() {
     }
 
     // Города (поверх POI)
-    for (const city of state.cities) {
+    for (const city of getEffectiveCityList()) {
         const p = worldToScreen2(city.x, city.z);
         if (p.x < -10 || p.x > w+10 || p.y < -10 || p.y > h+10) continue;
         ctx.beginPath();
