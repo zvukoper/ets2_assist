@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,13 +8,12 @@ using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.WebSockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Net.WebSockets;
-using System.Text;
+using System.Xml.Linq;
 
 namespace ETS2_Assist_GUI
 {
@@ -746,7 +747,7 @@ namespace ETS2_Assist_GUI
                 _pointModel.TryGetValue(t.id, out var pm);
                 bool isCity = pm != null && pm.IsCity;
                 bool isPoi = pm != null && pm.IsPoi;
-                if (isPoi && _scale > 10) continue; // слишком мелко — только шум
+                if (isPoi && _scale > 30) continue; // слишком мелко — только шум
                 if (onlySel && !_selectedIds.Contains(t.id)) continue;
                 bool disabled = pm != null && !pm.Enabled;
                 // видимость по категории: отключённые — группой "Отключенные", иначе по Category
@@ -1210,9 +1211,15 @@ namespace ETS2_Assist_GUI
             var userPts = _pointModel.Values.Where(pd => pd.SourceFile != "" && !_staticNames.Contains(pd.GameName) && !pd.IsCity && !pd.IsPoi).ToList();
             if (userPts.Count > 0)
             {
+
+                
+
                 var uNode = new TreeNode("Пользовательское (" + userPts.Count + ")") { Name = "Пользовательское", Checked = _catVisible.TryGetValue("Пользовательское", out var su) && su };
                 foreach (var pd in userPts)
                 {
+
+                    LogEditor($"USER POINTS: pd.SourceFile " + pd.SourceFile + " pd.GameName " + pd.GameName + " pd.IsPoi"+ pd.IsPoi);
+
                     var n = new TreeNode(pd.RealName + " [" + pd.GameName + "]") { Tag = (pd.X, pd.Z), Name = pd.GameName };
                     n.Checked = _selectedIds.Contains(pd.GameName);
                     if (_selectedIds.Contains(pd.GameName)) { n.BackColor = Color.FromArgb(60, 70, 90); if (pd.GameName == _selectedGameName) selNode = n; }
@@ -1855,6 +1862,9 @@ namespace ETS2_Assist_GUI
                 else
                 {
                     // Если отображаемое имя (realName) пустое — в поле подставляем системное имя (gameName).
+
+                    LogEditor($"LoadPointIntoPanel pd.GameName:{pd.GameName}"); 
+
                     if (f.Key == "RealName" && string.IsNullOrEmpty(pd.RealName) && !string.IsNullOrEmpty(pd.GameName))
                     {
                         ctrl.Text = pd.GameName;
@@ -1863,7 +1873,12 @@ namespace ETS2_Assist_GUI
                     {
                         var v = fld?.GetValue(pd);
                         ctrl.Text = v == null ? "" : Convert.ToString(v, CultureInfo.InvariantCulture) ?? "";
+                        
+                        
+
                     }
+                    LogEditor($"LoadPointIntoPanel ctrl.Text:{ctrl.Text}");
+
                 }
             }
             if (_gameNameError != null) _gameNameError.Visible = false;
@@ -1995,6 +2010,7 @@ namespace ETS2_Assist_GUI
             string name = pd.GameName;
             pd.SourceFile = _selectedOverrideFile;
             pd.IsNew = false;
+            LogEditor($"SaveCurrentPoint: pd.SourceFile:'{pd.SourceFile}' pd.GameName:{pd.GameName} pd.IsNew:{pd.IsNew} pd.RealName:{pd.RealName}");
             WritePointToOverrideFile(pd);
             _createMode = false;
 
