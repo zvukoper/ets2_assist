@@ -37,8 +37,8 @@ function connectSaveWebSocket() {
                             break;
                         case 'quest_snack':
                             // Перекус: зелёная точка, 400м, на POI у дороги. После выполнения
-                            // уходит на кулдаун (5 мин) и снова появляется (cooldown=5).
-                            generateRandomTarget({ nearTruck: true, distanceM: 400, requirePoi: true, requireRoad: true, questType: 'snack', color: '#22dd55', active: true, name: 'Перекус', radius: 50, cooldown: 5 });
+                            // уходит на кулдаун (2 мин, реальное системное время) и снова появляется.
+                            generateRandomTarget({ nearTruck: true, distanceM: 400, requirePoi: true, requireRoad: true, questType: 'snack', color: '#22dd55', active: true, name: 'Перекус', radius: 50, cooldown: 2 });
                             break;
                         case 'quest_courier_dropoff':
                             // Промежуточная точка квеста Курьер: СТРОГО НА POI примерно в

@@ -111,6 +111,9 @@ namespace ETS2_Assist_GUI
             public bool Active = true;    // участвует в обзоре целей / имеет указатель за пределами
             public bool InZone = false;   // игрок находится в зоне цели
             public bool Armed = false;    // вошёл в зону -> триггер взведён, ждём выхода
+            // КУЛДАУН на РЕАЛЬНОМ СИСТЕМНОМ ВРЕМЕНИ (UTC). Пока now < CooldownUntil —
+            // цель неактивна (скрыта, триггер зоны отключён), сохраняется между перезапусками.
+            public DateTime CooldownUntil = DateTime.MinValue;
         }
         private Dictionary<string, RandomTargetState> _randomTargets = new Dictionary<string, RandomTargetState>();
         private bool _overviewOn = false;
@@ -209,6 +212,12 @@ namespace ETS2_Assist_GUI
                         var zt = data["id"]?.Value<string>();
                         if (zt != null && _randomTargets.TryGetValue(zt, out var st))
                         {
+                            // КУЛДАУН (реальное системное время): пока не истёк — игнорируем вход.
+                            if (st.CooldownUntil > DateTime.UtcNow)
+                            {
+                                AppendLog($"[TRIGGER] Цель {zt} ({st.Name}) на кулдауне до {st.CooldownUntil.ToLocalTime():HH:mm:ss} — вход проигнорирован.");
+                                break;
+                            }
                             st.InZone = true;
                             st.Armed = true;
                             AppendLog($"[TRIGGER] Вход в зону цели {zt} ({st.Name}, тип={st.QuestType}) — диалог задания.");
@@ -502,6 +511,9 @@ namespace ETS2_Assist_GUI
             catch (Exception ex) { AppendLog($"[TARGETS] Ошибка запуска таймера кулдауна: {ex.Message}"); }
         }
 
+        // КУЛДАУН на РЕАЛЬНОМ СИСТЕМНОМ ВРЕМЕНИ (UTC). Таймер раз в минуту проверяет
+        // cooldown_until; когда время пришло — цель снова active, кулдаун сбрасывается.
+        // Это переживает перезапуск приложения/игры: метка времени хранится в файле.
         private void DecrementCooldowns()
         {
             try
@@ -511,20 +523,22 @@ namespace ETS2_Assist_GUI
                 var root = JObject.Parse(File.ReadAllText(filePath));
                 var arr = root["customTargets"] as JArray;
                 if (arr == null || arr.Count == 0) return;
+                var now = DateTime.UtcNow;
                 bool changed = false;
                 foreach (var item in arr.OfType<JObject>())
                 {
-                    int cur = item["current_cooldown"]?.Value<int>() ?? 0;
-                    if (cur > 0)
+                    var cu = item["cooldown_until"]?.Value<string>();
+                    if (string.IsNullOrEmpty(cu)) continue;
+                    if (!DateTime.TryParse(cu, null, System.Globalization.DateTimeStyles.RoundtripKind, out var until)) continue;
+                    if (until <= now)
                     {
-                        cur -= 1;
-                        item["current_cooldown"] = cur;
-                        if (cur <= 0)
-                        {
-                            item["current_cooldown"] = 0;
-                            item["status"] = "active"; // кулдаун истёк — цель снова активна
-                            AppendLog($"[TARGETS] Кулдаун цели '{item["realName"]}' истёк — цель снова активна.");
-                        }
+                        item["status"] = "active";
+                        item["cooldown_until"] = (string?)null; // снимаем метку
+                        if (item["current_cooldown"] != null) item["current_cooldown"] = 0;
+                        string id = item["id"]?.Value<string>() ?? "";
+                        if (!string.IsNullOrEmpty(id) && _randomTargets.TryGetValue(id, out var st))
+                            st.CooldownUntil = DateTime.MinValue;
+                        AppendLog($"[TARGETS] Кулдаун цели '{item["realName"]}' истёк — цель снова активна.");
                         changed = true;
                     }
                 }
@@ -583,12 +597,18 @@ namespace ETS2_Assist_GUI
                 }
 
                 // delete_on_complete=0 (по умолчанию): оставляем цель, применяем кулдаун.
+                // Кулдаун — РЕАЛЬНОЕ СИСТЕМНОЕ ВРЕМЯ (UTC), метка cooldown_until пишется в файл
+                // и переживает перезапуск приложения/игры. Точка скрыта и триггер отключён, пока
+                // now < cooldown_until (см. target_zone_enter + DecrementCooldowns).
                 int cd = cooldown > 0 ? cooldown : 5; // запасной 5 мин, если кулдаун не задан
-                entry["current_cooldown"] = cd;
                 entry["status"] = "inactive";
+                entry["cooldown_until"] = DateTime.UtcNow.AddMinutes(cd).ToString("o");
+                entry["current_cooldown"] = 0;
+                if (_randomTargets.TryGetValue(id, out var st))
+                    st.CooldownUntil = DateTime.UtcNow.AddMinutes(cd);
                 File.WriteAllText(filePath, root.ToString(Formatting.Indented));
                 EnsureCooldownTimer();
-                AppendLog($"[TARGETS] Цель '{entry["realName"]}' скрыта на кулдаун {cd} мин.");
+                AppendLog($"[TARGETS] Цель '{entry["realName"]}' скрыта на кулдаун {cd} мин (до {DateTime.UtcNow.AddMinutes(cd).ToLocalTime():HH:mm:ss}).");
             }
             catch (Exception ex) { AppendLog($"[TARGETS] Ошибка завершения цели: {ex.Message}"); }
         }
@@ -920,14 +940,11 @@ namespace ETS2_Assist_GUI
 
                 ShowWindow(hWnd, SW_RESTORE);
                 BringWindowToTop(hWnd);
-                bool result = SetForegroundWindow(hWnd);
+                SetForegroundWindow(hWnd);
                 SetActiveWindow(hWnd);
                 SetFocus(hWnd);
 
-                IntPtr foregroundAfter = GetForegroundWindow();
-                bool foregroundConfirmed = foregroundAfter == hWnd;
-                AppendLog($"[UI] ForceForegroundWindow({reason}) handle=0x{hWnd.ToInt64():X}, SetForegroundWindow={result}, foregroundAfter=0x{foregroundAfter.ToInt64():X}, confirmed={foregroundConfirmed}");
-                return foregroundConfirmed;
+                return GetForegroundWindow() == hWnd;
             }
             finally
             {

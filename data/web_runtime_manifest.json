@@ -1,1 +1,21 @@
-{    "static_data_policy":  "preserve-existing",    "required_static":  [                            "GeoJson/roads.geojson",                            "GeoJson/cities.geojson",                            "Overlays.json",                            "localized_cities/cities_sibirmap.json"                        ],    "build":  "1.0.38.35-NO-COORD-SPAM-08.28-2256",    "mode":  "track-static-snapshot",    "playbackStaticFetch":  false}
+﻿{
+  "static_data_policy": "preserve-existing",
+  "required_static": [
+    "GeoJson/roads.geojson",
+    "GeoJson/cities.geojson",
+    "Overlays.json",
+    "localized_cities/cities_sibirmap.json"
+  ],
+  "build": "1.0.38.48-UI-FIXES-08.29-1736",
+  "mode": "track-static-snapshot",
+  "playbackStaticFetch": false
+}
+
+
+
+
+
+
+
+
+

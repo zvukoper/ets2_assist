@@ -5,6 +5,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
 
+    <!-- Имя выходного EXE (файл). Namespace проекта остаётся ETS2_Assist_GUI. -->
+    <AssemblyName>ETS2_Assist</AssemblyName>
+
     <!-- Настройки публикации в один EXE -->
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
@@ -34,8 +37,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>38</VersionSet>
-        <VersionIter>35</VersionIter>
-        <VersionDesc>NO-COORD-SPAM</VersionDesc>
+        <VersionIter>48</VersionIter>
+        <VersionDesc>UI-FIXES</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>

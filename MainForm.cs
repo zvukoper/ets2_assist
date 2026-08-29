@@ -270,7 +270,6 @@ namespace ETS2_Assist_GUI
                         TopMost = false;
                         ForceForegroundWindow(Handle, "application-startup-retry");
                     }
-                    AppendLog($"[UI] ETS2 Assist выведен на передний план при запуске. confirmed={confirmed}");
                 }
                 catch (Exception ex)
                 {

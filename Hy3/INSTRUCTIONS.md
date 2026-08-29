@@ -44,6 +44,13 @@
   если это действительно нужно.
 - Живая отладка телеметрии: страница `http://localhost:8082/web_telemetry_inspector.html`
   — в реальном времени видны почти все данные от WebSocket TruckTel.
+- **ОТЛАДКА ПО ЛОГАМ — БЕЗ УЧАСТИЯ ПОЛЬЗОВАТЕЛЯ (новое правило):** если для диагностики
+  или отладки нужен фрагмент лога — агент САМ находит, куда пишется лог приложения
+  (`bin\Release\net10.0-windows\win-x64\publish\Logs\app_workflow.log` или иной путь,
+  выясняемый из кода/конфигурации), САМ читает файл лога и САМ ищет в нём нужную информацию
+  (grep/чтение). **Пользователь НЕ должен копировать и вставлять фрагменты лога для агента.**
+  При запросе у пользователя — просить только воспроизвести действие и (опционально) указать
+  примерное время, а лог агент забирает и анализирует самостоятельно.
 
 ## Статус памяти между сессиями
 Память живёт ТОЛЬКО в папке `F:\repo\ets2_assist\Hy3\` (файлы `WORKLOG.md` и `INSTRUCTIONS.md`).
@@ -60,7 +67,9 @@
   ```
   dotnet publish ETS2_Assist_GUI.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
   ```
-- Результат: `bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist_GUI.exe` (~130 МБ).
+- Результат: `bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe` (~130 МБ).
+  Имя EXE задано через `<AssemblyName>ETS2_Assist</AssemblyName>` в csproj (namespace проекта
+  остаётся `ETS2_Assist_GUI`).
 - JS-файлы в `data/` не компилируются — правки копируются при публикации как Content.
   Перед публикацией желательно `node --check` на изменённых `.js`.
 - **OFFLINE-БИЛД (машина без egress в NuGet; 27.08.2026, СЕССИЯ 9):**
@@ -82,15 +91,16 @@
   `AssemblyInformationalVersionAttribute` из `$(InformationalVersion)`; `<AssemblyInformationalVersion>`
   в одиночку атрибут НЕ генерит).    `<Version>` оставлять чистой (`1.0.38`). Это ПРАВИЛО — иначе билд не соберётся.
 - **ЛОВУШКА: exe ЗАЛОЧЕН при публикации (урок 28.08.2026, сессия 10, MAP-EDITOR):**
-   `dotnet publish` падает на шаге `GenerateBundle` с
-   `System.UnauthorizedAccessException: Access to the path '...publish\ETS2_Assist_GUI.exe' is denied`,
+   `dotnet publish` (и `dotnet build`) падает на этапе упаковки с
+   `System.UnauthorizedAccessException: Access to the path '...publish\ETS2_Assist.exe' is denied`,
    если этот exe **в данный момент запущен** (пользователь тестирует сборку). При этом цель
    `SyncDataToPublish` (`AfterTargets="Publish"`) НЕ дорабатывает, и папка `publish\data`
    ОСТАЁТСЯ ПУСТОЙ/неполной (пропадают js, css, GeoJson, language, localized_cities и т.д.) —
    приложение потом падает/работает без данных. Признак: файл залочен = процесс жив.
-   **ПРАВИЛО (обязательное перед КАЖДОЙ публикацией):**
-   1. ПЕРЕД `dotnet publish` проверить, запущен ли `ETS2_Assist_GUI.exe` и/или залочен ли файл
-      (попытка `[System.IO.File]::Open(...,FileShare.None)`).
+   **ПРАВИЛО (обязательное перед КАЖДЫМ build И publish):**
+   1. ПЕРЕД `dotnet build`/`dotnet publish` проверить, запущен ли `ETS2_Assist.exe` (и для
+      обратной совместимости `ETS2_Assist_GUI.exe` — старые сборки ещё могут быть запущены) и/или
+      залочен ли файл (попытка `[System.IO.File]::Open(...,FileShare.None)`).
    2. Если залочен/запущен — **ВЫДАТЬ ПОЛЬЗОВАТЕЛЮ ЗАПРОС** (question-инструмент) закрыть
       запущенный exe (через Диспетчер задач / просто выйти из приложения) и только ПОСЛЕ
       подтверждения продолжить публикацию. НЕ перезаписывать поверх живого процесса.
@@ -100,9 +110,11 @@
       `скопировано N файлов data` — N должно быть ~390.
    4. Версия в `data/ets2_assist_build.txt` и `data/web_runtime_manifest.json` (`"build"`) ДОЛЖНА
       совпадать с `ProductVersion` собранного exe (читается из
-      `bin\Release\...\publish\ETS2_Assist_GUI.exe` → VersionInfo.ProductVersion). Так как время
+      `bin\Release\...\publish\ETS2_Assist.exe` → VersionInfo.ProductVersion). Так как время
       сборки `Hmm` генерится в момент билда, после публикации сверить и при расхождении
       перезаписать оба файла в `publish\data` актуальной строкой.
+   5. После переименования exe (сессия 28.08.2026) в папке `publish\` может остаться СТАРЫЙ
+      `ETS2_Assist_GUI.exe` — после успешной публикации удалить его, чтобы не путать пользователя.
 
 ## Версионирование (НОВОЕ ПРАВИЛО, сессия 10, 28.08.2026)
 - Формат строки версии: **`A.B.C.D-DESC-MM.DD-Hmm`**

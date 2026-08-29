@@ -39,7 +39,8 @@ function normalizeTarget(t) {
         hidden: Number(t.hidden) || 0,
         cooldown: Number(t.cooldown) || 0,
         currentCooldown: Number(t.current_cooldown) || 0,
-        deleteOnComplete: Number(t.delete_on_complete) || 0
+        deleteOnComplete: Number(t.delete_on_complete) || 0,
+        cooldownUntil: t.cooldown_until || null
     };
 }
 
@@ -51,7 +52,17 @@ function applyTargetsData(targetArray) {
         // state.target фокусируется на последней; inZone/armed сбрасываем (каждый кадр
         // trail.js переопределит по фактической близости).
         if (!state.randomTargets) state.randomTargets = [];
-        state.randomTargets = state.customTargets.filter(t => t.isRandom);
+        // На кулдауне (status=inactive + cooldown_until в будущем) — скрываем с карты и
+        // не создаём триггер зоны. cooldown_until — РЕАЛЬНОЕ СИСТЕМНОЕ ВРЕМЯ (UTC, ISO).
+        const nowMs = Date.now();
+        state.randomTargets = state.customTargets.filter(t => {
+            if (!t.isRandom) return false;
+            if (t.status === 'inactive' && t.cooldownUntil) {
+                const until = Date.parse(t.cooldownUntil);
+                if (!isNaN(until) && until > nowMs) return false; // ещё на кулдауне — прячем
+            }
+            return true;
+        });
         state.randomTargets.forEach(t => { t.inZone = false; t.armed = false; });
         if (state.randomTargets.length) {
             const last = state.randomTargets[state.randomTargets.length - 1];
