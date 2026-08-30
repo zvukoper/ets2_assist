@@ -165,10 +165,21 @@ namespace ETS2_Assist_GUI
                     ? File.ReadAllLines(AppDataPaths.MapOverridesLoadOrderFile).Select(l => l.Trim()).Where(l => l.Length > 0).ToList()
                     : new List<string>();
 
-                // ФИКС (диагностика 17:26): custom_map1.json (файл по умолчанию редактора)
-                // ОБЯЗАН быть в load_order, иначе его записи (перемещённые города/POI,
-                // пользовательские точки) не попадают в пакет для миникарты.
                 bool changed = false;
+                // ФИКС (30.08.2026): у пользователя был ОБРАТНЫЙ порядок
+                // [test_targets.json, custom_map1.json] — custom_map1 (last=высший приоритет)
+                // перекрывал статус целей. Нормализуем порядок:
+                // custom_map1 ниже, test_targets.json последним (высший приоритет).
+                int ttIdx = order.FindIndex(f => f.Equals("test_targets.json", StringComparison.OrdinalIgnoreCase));
+                int cmIdx = order.FindIndex(f => f.Equals("custom_map1.json", StringComparison.OrdinalIgnoreCase));
+                if (ttIdx >= 0 && cmIdx >= 0 && ttIdx < cmIdx)
+                {
+                    string tt = order[ttIdx];
+                    order.RemoveAt(ttIdx);
+                    order.Add(tt);
+                    changed = true;
+                    AppendLog("[OVR] load_order.txt исправлен: test_targets.json переставлен ПОСЛЕДНИМ (высший приоритет).");
+                }
                 if (!order.Contains("custom_map1.json", StringComparer.OrdinalIgnoreCase))
                 {
                     // ВСТАВЛЯЕМ ПЕРЕД test_targets.json: priority custom_map1 ниже (раньше),
@@ -284,6 +295,16 @@ namespace ETS2_Assist_GUI
                     JObjectTargetMergeExtensions.ApplyToTargetEntry(tgt, entry);
                     mergedTargets++;
                     AppendLog($"[OVR][DEBUG] merge TARGET '{key}' ({file})");
+                    continue;
+                }
+                // 3b) ФИКС (30.08.2026): случайные/квестовые цели (isRandom) из
+                // test_targets.json НЕ должны доходить до ветки user-точек — иначе
+                // каждая цель ДУБЛИРУЕТСЯ на карте как POI 'custom' (сейчас в payload
+                // custom=5 при 2 пользовательских точках: +courier_pickup,
+                // +courier_dropoff, +random). Цели отрисовываются как targets.
+                if ((entry["isRandom"]?.Value<bool>() ?? false) ||
+                    !string.IsNullOrEmpty(entry["questType"]?.Value<string>()))
+                {
                     continue;
                 }
                 // 4) Пользовательская точка (только в overrides).

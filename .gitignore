@@ -452,3 +452,6 @@ artifacts/
 /.vs/ETS2_Assist_GUI.slnx/FileContentIndex/68a717d8-4ed3-4a0d-bd33-c74fbb08c8fb.vsidx
 /.vs/ETS2_Assist_GUI.slnx/FileContentIndex/a2806392-00ae-4982-b9fd-6ac72aa563df.vsidx
 /.vs/ETS2_Assist_GUI.slnx/copilot-chat/e3fe6f65/sessions/418cb2ad-4efe-432e-a51e-d74434d3ed54
+
+# Inferpal AI assistant
+.inferpal/

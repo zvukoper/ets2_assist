@@ -314,21 +314,13 @@ async function generateRandomTarget(options) {
         armed: false
     };
 
-    // ДЕДУП ПО ТИПУ: случайная цель каждого questType может быть только одна.
-    // Удаляем предыдущую цель того же типа (защита от флаппинга WS / повторных
-    // нажатий кнопки), чтобы не плодились двойники в разных местах.
-    if (opts && opts.questType) {
-        const sameType = (state.randomTargets || []).filter(t => t.questType === opts.questType);
-        sameType.forEach(old => {
-            if (old.id === id) return;
-            state.randomTargets = (state.randomTargets || []).filter(t => t !== old);
-            state.customTargets = (state.customTargets || []).filter(t => t !== old);
-            if (saveWs && saveWs.readyState === WebSocket.OPEN) {
-                saveWs.send(JSON.stringify({ command: 'remove_target', id: old.id }));
-                console.log('[TARGETS] Удалён дубликат типа ' + opts.questType + ' (id=' + old.id + ')');
-            }
-        });
-    }
+    // ДЕДУП ПО ТИПУ: РАНЬШЕ здесь JS сам удалял "дубликат" того же questType
+    // командой remove_target. ПРИ РАЗНЫХ КЛИЕНТАХ на одном broadcast-WS это
+    // создавало ping-pong add_target -> remove_target: цель Кнопки создавалась и
+    // СРАЗУ исчезала. Запись/удаление целей — исключительная зона C# (единый
+    // конвейер overrides: test_targets.json + map_overrides_data): там уже есть
+    // защита от дублей (AddTargetToFile удаляет старую цель того же questType).
+    // Живой PreviousTarget типа questType заменяется пакетом от C# автоматически.
 
     state.customTargets.push(newTarget);
     if (!state.randomTargets) state.randomTargets = [];

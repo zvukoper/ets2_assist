@@ -1,19 +1,32 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace ETS2_Assist_GUI
 {
+    // Диалог квеста с РАЗДЕЛЬНЫМИ контролами (просьба пользователя 30.08.2026):
+    //   _messageLabel — обычный текст задания (шрифт/цвет по умолчанию);
+    //   _rewardsTable — награды, по ОТДЕЛЬНОМУ Label на каждую строку,
+    //       ЗЕЛЁНЫЙ ЖИРНЫЙ шрифт.
+    // Награды передаются отдельным параметром rewards (каждая строка = свой контрол).
     internal sealed class QuestDialogForm : Form
     {
-        private readonly RichTextBox _messageBox;
+        private readonly Label _messageLabel;
+        private readonly TableLayoutPanel _rewardsTable;
         private readonly Button _primaryButton;
         private readonly Button _secondaryButton;
         private readonly bool _isSuccess;
 
+        private static readonly Color RewardColor = Color.FromArgb(0, 150, 40);
+        private static readonly Font RewardFont =
+            new Font("Segoe UI", 10.5F, FontStyle.Bold, GraphicsUnit.Point);
+
+        // Новый формат: message — обычный текст, rewards — строки наград (пустой
+        // параметр — без блока наград). ЕДИНЫЙ конструктор: rewards — именованный.
         public QuestDialogForm(string title, string message, bool isSuccess,
-            string primaryText = "", string secondaryText = "")
+            string primaryText = "", string secondaryText = "",
+            IEnumerable<string>? rewards = null)
         {
             _isSuccess = isSuccess;
 
@@ -27,20 +40,46 @@ namespace ETS2_Assist_GUI
             TopMost = true;
             AutoScaleMode = AutoScaleMode.Dpi;
             Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point);
-            ClientSize = new Size(isSuccess ? 430 : 500, isSuccess ? 180 : 200);
 
-            _messageBox = new RichTextBox
+            // ---- ТЕКСТ ЗАДАНИЯ: ОТДЕЛЬНЫЙ КОНТРОЛ, обычный шрифт/цвет ----
+            _messageLabel = new Label
             {
-                ReadOnly = true,
-                BorderStyle = BorderStyle.None,
-                Dock = DockStyle.Fill,
-                BackColor = SystemColors.Control,
-                Font = new Font("Segoe UI", 10.5F, FontStyle.Regular, GraphicsUnit.Point),
                 Text = message,
-                DetectUrls = false,
-                Margin = new Padding(20, 16, 20, 8)
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                Padding = new Padding(20, 14, 20, 4),
+                Font = new Font("Segoe UI", 10.5F, FontStyle.Regular, GraphicsUnit.Point),
+                ForeColor = SystemColors.ControlText
             };
-            ColorRewardLines(_messageBox, message);
+
+            // ---- НАГРАДЫ: ОТДЕЛЬНЫЙ КОНТРОЛ, каждая строка = свой Label,
+            //      ЗЕЛЁНЫЙ ЖИРНЫЙ (просьба пользователя) ----
+            _rewardsTable = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoScroll = false,
+                ColumnCount = 1,
+                RowCount = 1,
+                Padding = new Padding(20, 2, 20, 6),
+                Margin = new Padding(0)
+            };
+            bool hasRewards = false;
+            foreach (var r in rewards ?? (IEnumerable<string>)Array.Empty<string>())
+            {
+                if (string.IsNullOrWhiteSpace(r)) continue;
+                hasRewards = true;
+                var lbl = new Label
+                {
+                    Text = r,
+                    AutoSize = true,
+                    Font = (Font)RewardFont.Clone(),
+                    ForeColor = RewardColor,
+                    Margin = new Padding(0, 1, 0, 1)
+                };
+                _rewardsTable.Controls.Add(lbl, 0, _rewardsTable.RowCount - 1);
+                _rewardsTable.RowCount++;
+            }
 
             var buttons = new FlowLayoutPanel
             {
@@ -88,8 +127,11 @@ namespace ETS2_Assist_GUI
                 buttons.Controls.Add(_primaryButton);
             }
 
-            Controls.Add(_messageBox);
             Controls.Add(buttons);
+            if (hasRewards) Controls.Add(_rewardsTable);
+            Controls.Add(_messageLabel);
+
+            ClientSize = ComputeClientSize(message, hasRewards, isSuccess);
 
             Shown += (_, _) =>
             {
@@ -98,44 +140,60 @@ namespace ETS2_Assist_GUI
             };
         }
 
-        // Подсвечивает ТОЛЬКО строки с наградой жирным зелёным. Весь остальной текст —
-        // обычным шрифтом/цветом. Награда определяется по ключевому слову "Награда" либо по
-        // "+/-<число>" с обязательной единицей награды (р/руб/опыта/опыт/xp/монет), чтобы
-        // обычный текст вроде "X=119822, Z=-53603" не красился зелёным.
-        private static void ColorRewardLines(RichTextBox box, string message)
+        // (params-конструктор убран: он конфликтовал с именованным rewards,
+        //  перетягивая List<string> на позиционный secondaryText — CS1503.)
+
+        // Подбирает высоту окна под фактический контент (текст + награды + кнопки).
+        private Size ComputeClientSize(string message, bool hasRewards, bool isSuccess)
         {
+            int width = isSuccess ? 430 : 500;
             try
             {
-                // Сначала весь текст — обычный (цвет/шрифт по умолчанию).
-                box.Select(0, box.TextLength);
-                box.SelectionColor = box.ForeColor;
-                box.SelectionFont = box.Font;
-
-                var lines = message.Split('\n');
-                for (int i = 0; i < lines.Length && i < box.Lines.Length; i++)
+                using var g = CreateGraphics();
+                int usable = width - 60;
+                var textFont = _messageLabel.Font;
+                int textLines = 1;
+                foreach (var raw in (message ?? "").Split('\n'))
                 {
-                    if (IsRewardLine(lines[i]))
-                    {
-                        int start = box.GetFirstCharIndexFromLine(i);
-                        int len = box.Lines[i].Length;
-                        if (start < 0 || len <= 0) continue;
-                        box.Select(start, len);
-                        box.SelectionColor = Color.FromArgb(0, 150, 40);
-                        box.SelectionFont = new Font(box.Font, FontStyle.Bold);
-                    }
+                    var line = raw.TrimEnd('\r');
+                    var size = g.MeasureString(string.IsNullOrEmpty(line) ? " " : line, textFont);
+                    textLines += Math.Max(1, (int)Math.Ceiling(size.Width / usable));
                 }
-                box.Select(0, 0);
+                int totalH = (int)(textLines * textFont.GetHeight(g)) + 40;
+
+                if (hasRewards)
+                {
+                    int rewardLines = 0;
+                    foreach (Control c in _rewardsTable.Controls)
+                    {
+                        if (c is Label l && !string.IsNullOrEmpty(l.Text))
+                        {
+                            var s = g.MeasureString(l.Text, RewardFont);
+                            rewardLines += Math.Max(1, (int)Math.Ceiling(s.Width / usable));
+                        }
+                    }
+                    totalH += (int)(rewardLines * RewardFont.GetHeight(g)) + 16;
+                }
+
+                totalH += 58 + 10;
+                return new Size(width, Math.Max(isSuccess ? 160 : 180, totalH));
             }
-            catch { }
+            catch
+            {
+                return new Size(width, isSuccess ? 180 : 200);
+            }
         }
 
-        private static bool IsRewardLine(string line)
+        protected override void Dispose(bool disposing)
         {
-            if (string.IsNullOrWhiteSpace(line)) return false;
-            string s = line.Trim();
-            if (s.Contains("Награда") || s.Contains("награда")) return true;
-            // "+/- число" строго с единицей награды справа (р/руб/опыта/опыт/xp/монет).
-            return Regex.IsMatch(s, @"[+\-]\s*\d+\s*(?:р\.?|руб|опыта|опыт|xp|монет)", RegexOptions.IgnoreCase);
+            if (disposing)
+            {
+                foreach (Control c in _rewardsTable.Controls)
+                {
+                    if (c is Label l) l.Font?.Dispose();
+                }
+            }
+            base.Dispose(disposing);
         }
     }
 }

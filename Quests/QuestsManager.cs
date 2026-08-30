@@ -741,8 +741,13 @@ namespace ETS2_Assist_GUI
                             int dist = new Random().Next(400, 2001); // 400..2000 м
                             int reward = 1000 + (int)Math.Round(30.0 * dist / 150.0); // 1000р база + 30р/150м
                             using var dlg = new QuestDialogForm("Курьер",
-                                $"Доставить документы.\nНаграда: {reward}р.\nРасстояние доставки: {dist} м",
-                                isSuccess: false, primaryText: "Начать выполнение", secondaryText: "Отказаться");
+                                "Доставить документы.",
+                                isSuccess: false, primaryText: "Начать выполнение", secondaryText: "Отказаться",
+                                rewards: new System.Collections.Generic.List<string>
+                                {
+                                    $"Награда: {reward}р",
+                                    $"Расстояние доставки: {dist} м"
+                                });
                             dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
                             var res = dlg.ShowDialog(this);
                             st.Armed = false; // после диалога сбрасываем арм (повторный вход -> снова диалог)
@@ -761,7 +766,10 @@ namespace ETS2_Assist_GUI
                         }
                 case "courier_dropoff":
                     {
-                        using var dlg = new QuestDialogForm("Курьер", "Выручить документы?", isSuccess: false, primaryText: "ДА", secondaryText: "НЕТ");
+                        int rewardNow = _courierReward;
+                        using var dlg = new QuestDialogForm("Курьер", "Выручить документы?",
+                            isSuccess: false, primaryText: "ДА", secondaryText: "НЕТ",
+                            rewards: new System.Collections.Generic.List<string> { $"Награда: {rewardNow}р, +250 опыта" });
                         dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
                         var res = dlg.ShowDialog(this);
                         st.Armed = false;
@@ -781,7 +789,9 @@ namespace ETS2_Assist_GUI
                     }
                 case "stash":
                     {
-                        using var dlg = new QuestDialogForm("Тайник", "Вы нашли тайник.\n+3000р", isSuccess: true, primaryText: "ОК");
+                        using var dlg = new QuestDialogForm("Тайник", "Вы нашли тайник.",
+                            isSuccess: true, primaryText: "ОК",
+                            rewards: new System.Collections.Generic.List<string> { "+3000р" });
                         dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
                         var res = dlg.ShowDialog(this);
                         st.Armed = false;
@@ -795,7 +805,9 @@ namespace ETS2_Assist_GUI
                     }
                 case "snack":
                     {
-                        using var dlg = new QuestDialogForm("Перекус", "Вы перекусили чем-то вкусным.", isSuccess: true, primaryText: "ОК");
+                        using var dlg = new QuestDialogForm("Перекус", "Вы перекусили чем-то вкусным.",
+                            isSuccess: true, primaryText: "ОК",
+                            rewards: new System.Collections.Generic.List<string> { "-450р", "+1000 опыта" });
                         dlg.Shown += (_, _) => ForceForegroundWindow(dlg.Handle, "quest-dialog");
                         var res = dlg.ShowDialog(this);
                         st.Armed = false;
@@ -844,12 +856,15 @@ namespace ETS2_Assist_GUI
         private int _courierReward = 0;
         private bool _questHandling = false;
 
-        // Показ диалога квеста СОБЛЮДАЯ СТРОГУЮ ЛОГИКУ ПАУЗЫ:
-        // 1) пауза отправляется ТОЛЬКО если игра НЕ на паузе (иначе игрок не успеет
-        //    взять управление — авария);
-        // 2) ждём, пока игра реально не встанет на паузу;
-        // 3) после паузы задержка 2 с, затем показываем диалог и берём фокус на него;
-        // 4) НИКОГДА не снимаем паузу приложением — игрок сам выходит из паузы.
+        // Показ диалога квеста СОБЛЮДАЯ СТРОГУЮ ЛОГИКУ ПАУЗЫ (уточнение пользователя
+        // 30.08.2026: «перед появлением диалога пауза, НО только если НЕ на паузе;
+        // после паузы диалог c задержкой 2с»):
+        // 1) пауза отправляется ТОЛЬКО если игра НЕ на паузе;
+        // 2) ждём подтверждение паузы по телеметрии (до 5с); если НЕ подтвердилось —
+        //    ретраим команду PAUSE ещё раз (1с) и ждём ещё 3с (двойная попытка —
+        //    была жалоба «не всегда ставится на паузу»);
+        // 3) после паузы (или если УЖЕ была на паузе) задержка 2с, затем диалог;
+        // 4) после закрытия диалога фокус возвращаем в окно игры.
         private async void TriggerQuestDialog(RandomTargetState st)
         {
             if (_questHandling) { AppendLog("[QUEST] диалог уже активен — повторный вход проигнорирован."); return; }
@@ -859,24 +874,39 @@ namespace ETS2_Assist_GUI
                 bool alreadyPaused = await IsGamePausedAsync();
                 if (alreadyPaused)
                 {
-                    AppendLog("[QUEST] Игра УЖЕ на паузе — паузу не отправляем (игрок управляет).");
+                    AppendLog("[QUEST] Игра УЖЕ на паузе — паузу не отправляем.");
+                    // Уточнение пользователя: задержка 2с обязательна ПЕРЕД диалогом —
+                    // и в ветке уже-на-паузе тоже.
+                    await Task.Delay(2000);
                 }
                 else
                 {
-                    SetGamePause(true);
                     bool paused = false;
-                    for (int i = 0; i < 20 && !paused; i++)
+                    for (int attempt = 0; attempt < 2 && !paused; attempt++)
                     {
-                        await Task.Delay(250);
-                        if (await IsGamePausedAsync()) paused = true;
+                        if (attempt > 0)
+                        {
+                            AppendLog("[QUEST] Пауза не подтвердилась — повторная отправка PAUSE.");
+                            await Task.Delay(1000);
+                            SetGamePause(true);
+                        }
+                        else
+                        {
+                            SetGamePause(true);
+                        }
+                        for (int i = 0; i < 20 && !paused; i++)
+                        {
+                            await Task.Delay(250);
+                            if (await IsGamePausedAsync()) paused = true;
+                        }
                     }
                     if (!paused)
-                        AppendLog("[QUEST] ВНИМАНИЕ: пауза не подтверждена за 5с — показываем диалог без гарантии паузы.");
+                        AppendLog("[QUEST] ВНИМАНИЕ: пауза не подтвердилась за 2 попытки — показываем диалог без гарантии паузы.");
                     else
                         AppendLog("[QUEST] Игра встала на паузу — ждём 2с перед диалогом.");
+                    // задержка 2с после паузы во всех ветках, перед диалогом.
+                    await Task.Delay(2000);
                 }
-                // задержка 2с после паузы, затем фокус на диалог
-                await Task.Delay(2000);
                 this.TopMost = true;
                 this.Show();
                 this.WindowState = FormWindowState.Normal;
@@ -891,7 +921,8 @@ namespace ETS2_Assist_GUI
             {
                 this.TopMost = false;
                 _questHandling = false;
-                // НЕ снимаем паузу приложением — фокус возвращаем в игру, игра остаётся на паузе.
+                // Фокус ВСЕГДА возвращаем в окно игры (просьба пользователя) —
+                // паузу не снимаем: игрок сам выходит из паузы.
                 ReturnFocusToGame();
             }
         }

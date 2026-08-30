@@ -54,6 +54,10 @@ namespace ETS2_Assist_GUI
         private const double MaxScale = 8000;
         private const double TruckCoordScaleX = 1e11;
         private const double TruckCoordScaleZ = 1e11;
+
+        // Состояние наличия placement в потоке телеметрии (для анти-спам-лога):
+        // null = ещё не определено; true/false = был/не был placement в последнем кадре.
+        private bool? _teleHadPlacement = null;
         private const double ClipXMin = 111805.88;
         private const double ClipZMin = -36536.58;
 
@@ -1389,8 +1393,17 @@ namespace ETS2_Assist_GUI
                     var truck = json["truck"] as JObject;
                     if (truck != null) placement = truck["world"]?["placement"] as JArray;
                 }
+                // АНТИ-СПАМ (урок логов 30.08.2026): при паузе TruckTel шлёт только
+                // frame.render_time/simulation_time — «placement отсутствует» приходило
+                // ~15 раз/сек (12k+ строк в логе за день). Логируем только СМЕНУ состояния:
                         if (placement != null && placement.Count >= 3)
                         {
+                            // Смена состояния «placement вернулся» — одна строка, не спам.
+                            if (_teleHadPlacement != true)
+                            {
+                                _teleHadPlacement = true;
+                                LogEditor("EnsureTelemetry: placement получен (поток телеметрии восстановлен).");
+                            }
                             var xTok = placement[0];
                             var zTok = placement[2];
                             if (xTok != null && zTok != null
@@ -1446,7 +1459,13 @@ namespace ETS2_Assist_GUI
                         }
                 else
                 {
-                    LogEditor($"EnsureTelemetry: сообщение получено, placement отсутствует (ключи: {string.Join(",", ((System.Collections.Generic.IDictionary<string, JToken>)json).Keys.Take(8))}).");
+                    // Логируем ТОЛЬКО переход (был placement -> исчез): при паузе это
+                    // происходит на КАЖДОМ кадре, спамить нельзя.
+                    if (_teleHadPlacement != false)
+                    {
+                        _teleHadPlacement = false;
+                        LogEditor("EnsureTelemetry: placement отсутствует в кадрах телеметрии (пауза/нет данных) — дальнейшие кадры без placement не логируются.");
+                    }
                 }
             }
             catch (Exception ex)

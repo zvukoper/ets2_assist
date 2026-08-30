@@ -58,6 +58,7 @@ namespace ETS2_Assist_GUI
         private Button btnOpenTracksFolder = null!;
         private Button btnShowMap = null!;
         private Button btnShowHybrid = null!;
+        private Button btnLaunchAR = null!;
         private Button btnMapEditor = null!;
 
         private RichTextBox logConsole = null!;
@@ -417,6 +418,11 @@ namespace ETS2_Assist_GUI
                 catch (Exception ex) { AppendLog($"[EDITOR] Ошибка открытия редактора: {ex.Message}"); }
             };
 
+            // AR HUD: полноэкранный оверлей web_ar_hud.html на мониторе игры
+            // (перекрестье дополненной реальности на ближайшую точку 3D).
+            btnLaunchAR = new Button { Text = "Запустить AR", Location = new Point(leftX, topY + 600), Size = new Size(230, 30) };
+            btnLaunchAR.Click += (s, e) => LaunchArOverlay();
+
             int consoleLeft = leftX + 240;
             int consoleWidth = 400;
             logConsole = new RichTextBox
@@ -541,7 +547,7 @@ namespace ETS2_Assist_GUI
 
             this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
-                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnMapEditor,
+                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnMapEditor, btnLaunchAR,
                 logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu, btnTheme
             });
             PositionBuildLabel();
@@ -2010,9 +2016,76 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        // ================================================================
+        // AR HUD: ПОЛНОЭКРАННЫЙ ОВЕРЛЕЙ web_ar_hud.html НА МОНИТОРЕ ИГРЫ
+        // Перекрестье дополненной реальности на ближайшую точку 3D
+        // (учёт поворота головы + движения фуры; прижим к краю экрана).
+        // ================================================================
+        private void LaunchArOverlay()
+        {
+            string overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "WebOverlay.exe");
+            if (!File.Exists(overlayExe))
+                overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "pano.exe");
+            if (!File.Exists(overlayExe))
+            {
+                AppendLog("[AR] WebOverlay executable not found — AR HUD недоступен.");
+                MessageBox.Show("WebOverlay.exe не найден в data\\bin. AR HUD недоступен.", "AR",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (!_staticWebRunning)
+            {
+                if (!StartStaticWebServer())
+                {
+                    AppendLog("[AR] Статический веб-сервер не запущен — AR невозможен.");
+                    return;
+                }
+            }
+
+            try
+            {
+                // Полный экран на мониторе игры: geometry-файл WebOverlay хранит
+                // позицию/размер ПО URL — переписываем на Bounds рабочего стола
+                // монитора, где открыто окно игры.
+                var screen = GetGameScreen();
+                var b = screen.Bounds;
+                string url = "http://localhost:8082/web_ar_hud.html";
+                string cfgPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "WebOverlay", "config", OverlayStateFileName(url));
+                Directory.CreateDirectory(Path.GetDirectoryName(cfgPath)!);
+                File.WriteAllLines(cfgPath, new[] { b.X.ToString(), b.Y.ToString(), "1", b.Width.ToString(), b.Height.ToString() });
+                AppendLog($"[AR] Геометрия AR HUD: экран '{screen.DeviceName}' {b.Width}x{b.Height} @({b.X},{b.Y}).");
+
+                // Если AR уже запущен — закрываем старый процесс его окна (URL-ключ
+                // в заголовке у WebOverlay не гарантирован, ищем по заголовку).
+                foreach (var proc in Process.GetProcessesByName("WebOverlay"))
+                {
+                    try
+                    {
+                        if (proc.MainWindowTitle != null && proc.MainWindowTitle.Contains("AR HUD"))
+                        {
+                            proc.Kill(); proc.WaitForExit(2000);
+                            AppendLog("[AR] Предыдущий AR HUD остановлен.");
+                        }
+                    }
+                    catch { }
+                }
+
+                Process.Start(overlayExe, url);
+                StartArTargetFeed();
+                AppendLog("[AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[AR] Ошибка запуска AR HUD: {ex.Message}");
+            }
+        }
+
         private void StopSystem()
         {
             AppendLog("Stopping system...");
+            StopArTargetFeed();
             procManager.Stop();
             _pauseCheckTimer?.Stop();
             StopTriggerServer();
