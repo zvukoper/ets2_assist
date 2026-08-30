@@ -126,8 +126,10 @@ namespace ETS2_Assist_GUI
         private bool _pausedIntent = false;
         private System.Windows.Forms.Timer _pauseCheckTimer = null!;
 
-        // Состояние показа оверлеев (карта/гибрид/пауз-лого) и тоггл авто-показа миникарты.
-        private bool _minimapAutoLogic = true;     // кнопка «Показать карту»: true = авто-логика включена
+        // Состояние показа оверлеев (карта/гибрид/пауз-лого) и тоггл показа миникарты.
+        // «Показать карту» — ТОГГЛ: ВКЛ = карта НИКОГДА не исчезает (всегда на экране);
+        // ВЫКЛ (по умолчанию) — обычная логика: пауза -> лого+версия, не пауза -> гибрид+миникарта.
+        private bool _minimapAutoLogic = false;
         private bool _darkTheme = false;           // тёмная тема интерфейса (кнопка «Тема»)
         private bool? _lastMinimapVisible;
         private bool? _lastMinimapAuto;
@@ -359,18 +361,27 @@ namespace ETS2_Assist_GUI
             btnCheckTargets = new Button { Text = "Проверка точек", Location = new Point(leftX, topY + 380), Size = new Size(120, 20) };
             btnCheckTargets.Click += BtnCheckTargets_Click;
 
-            btnShowMap = new Button { Text = "Показать карту ✔", Location = new Point(leftX, topY + 410), Size = new Size(130, 30) };
+            btnShowMap = new Button { Text = "Показать карту ✖", Location = new Point(leftX, topY + 410), Size = new Size(130, 30) };
             btnShowMap.Click += (s, e) => {
                 _minimapAutoLogic = !_minimapAutoLogic;
                 btnShowMap.Text = _minimapAutoLogic ? "Показать карту ✔" : "Показать карту ✖";
-                AppendLog($"[UI] Авто-показ миникарты {( _minimapAutoLogic ? "ВКЛ" : "ВЫКЛ" )}");
-                // Применяем немедленно, не дожидаясь таймера.
-                bool activeNow = IsGameRunning() && !IsGamePaused() && IsGameFocused();
-                bool minimapVisible = activeNow && _minimapAutoLogic;
-                SendCommandToMap(minimapVisible ? "minimap_show" : "minimap_hide");
-                SendCommandToMap("minimap_auto", new JObject { ["enabled"] = _minimapAutoLogic });
-                _lastMinimapVisible = minimapVisible;
-                _lastMinimapAuto = _minimapAutoLogic;
+                AppendLog($"[UI] Показ карты {( _minimapAutoLogic ? "ВСЕГДА (вкл)" : "АВТО (выкл)" )}");
+                if (_minimapAutoLogic)
+                {
+                    // Тоггл ВКЛ: карта всегда видна, немедленно показываем (без ожидания таймера).
+                    SendCommandToMap("minimap_auto", new JObject { ["enabled"] = true });
+                    SendCommandToMap("minimap_show");
+                }
+                else
+                {
+                    // Тоггл ВЫКЛ: обычная авто-логика (пауза -> лого, не пауза -> карта/гибрид).
+                    SendCommandToMap("minimap_auto", new JObject { ["enabled"] = false });
+                    bool activeNow = IsGameRunning() && !IsGamePaused() && IsGameFocused();
+                    SendCommandToMap(activeNow ? "minimap_show" : "minimap_hide");
+                }
+                _lastMinimapVisible = null; // заставить авто-логику перевычислить на след. тике
+                _lastMinimapAuto = null;
+                UpdateStartButton();
             };
 
             btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 440), Size = new Size(120, 30) };

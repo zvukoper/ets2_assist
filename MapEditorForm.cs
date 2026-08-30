@@ -66,7 +66,11 @@ namespace ETS2_Assist_GUI
 
         private readonly MapPanel _mapPanel = new() { Dock = DockStyle.Fill, BackColor = Color.FromArgb(15, 18, 23) };
         private readonly FlowLayoutPanel _toolbar = new() { Dock = DockStyle.Bottom, Height = 46, Padding = new Padding(6), WrapContents = false };
-        private readonly Label _statusLabel = new() { Dock = DockStyle.Bottom, Height = 24, ForeColor = Color.FromArgb(143, 160, 185), BackColor = Color.FromArgb(15, 18, 23), Padding = new Padding(4, 3, 0, 0) };
+        // Статусная строка (8px): левая половина — индикация состояний (окружность-индикатор + текст),
+        // правая — выполняемые операции (вращающийся индикатор / зелёная галочка + текст).
+        // Клик по строке открывает папку логов приложения.
+        private readonly EditorStatusBar _statusBar = new() { Dock = DockStyle.Bottom, Height = 24 };
+        private readonly Label _statusLabel = new() { Dock = DockStyle.Bottom, Height = 24, ForeColor = Color.FromArgb(143, 160, 185), BackColor = Color.FromArgb(15, 18, 23), Padding = new Padding(4, 3, 0, 0), Visible = false };
         private readonly TreeView _sidebar = new() { Dock = DockStyle.Left, Width = 220, BackColor = Color.FromArgb(20, 25, 35), ForeColor = Color.LightGray, Font = new Font("Segoe UI", 9), CheckBoxes = true };
         private readonly ToolTip _tooltip = new() { InitialDelay = 0, ReshowDelay = 0, ShowAlways = true };
 
@@ -170,7 +174,8 @@ namespace ETS2_Assist_GUI
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.FromArgb(15, 18, 23);
             Controls.Add(_mapPanel);
-            Controls.Add(_statusLabel);
+            Controls.Add(_statusBar);   // статусная строка (левый dock — нижняя, под картой)
+            Controls.Add(_statusLabel); // legacy-строка скрыта (Visible=false), сохранена для совместимости
             Controls.Add(_toolbar);
             Controls.Add(_sidebar);
 
@@ -274,6 +279,7 @@ namespace ETS2_Assist_GUI
 
         private void LoadTargets()
         {
+            _statusBar.SetOperation("загрузка точек", busy: true);
             EnsureOverridesInit();
             _pointModel.Clear();
             _staticNames.Clear();
@@ -335,6 +341,7 @@ namespace ETS2_Assist_GUI
             // 3) перестроить визуальный список
             RebuildTargetsFromModel();
             RebuildSelectLookup();
+            _statusBar.SetOperation($"точки обновлены ({_pointModel.Count})", busy: false);
         }
 
         // Справочник координат ВСЕХ точек (цели/города/POI) для выделения/вписывания в карту.
@@ -354,8 +361,22 @@ namespace ETS2_Assist_GUI
             try
             {
                 if (!Directory.Exists(_overridesDir)) Directory.CreateDirectory(_overridesDir);
+                // РЕМОНТ load_order (диагностика 17:26): если load_order отсутствует, создаём
+                // с custom_map1.json; если существует — ГАРАНТИРУЕМ, что custom_map1.json в нём
+                // есть (иначе его записи не читаются конвейером миникарты и редактором).
                 if (!File.Exists(_loadOrderFile))
                     File.WriteAllText(_loadOrderFile, "custom_map1.json" + Environment.NewLine);
+                else
+                {
+                    var lines = File.ReadAllLines(_loadOrderFile).Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
+                    if (!lines.Contains("custom_map1.json", StringComparer.OrdinalIgnoreCase))
+                    {
+                        // Вставляем ПЕРВЫМ (низший приоритет), существующие не двигаем.
+                        lines.Insert(0, "custom_map1.json");
+                        File.WriteAllLines(_loadOrderFile, lines);
+                        LogEditor("[INIT] custom_map1.json добавлен в load_order.txt (был отсутствовал — записи не читались!).");
+                    }
+                }
                 string custom = Path.Combine(_overridesDir, "custom_map1.json");
                 bool needCreate = !File.Exists(custom);
                 if (!needCreate)
@@ -693,7 +714,7 @@ namespace ETS2_Assist_GUI
             if ((now - _lastProgress).TotalMilliseconds < 120 && msg.StartsWith("Этап 2")) return;
             _lastProgress = now;
             if (IsDisposed || !_statusLabel.IsHandleCreated) return;
-            BeginInvoke((Action)(() => { if (!_disposed) _statusLabel.Text = msg; }));
+            BeginInvoke((Action)(() => { if (!_disposed) { _statusLabel.Text = msg; _statusBar.SetOperation(msg, busy: true); } }));
         }
 
         private PointF WorldToScreen(double wx, double wz)
@@ -1036,14 +1057,17 @@ namespace ETS2_Assist_GUI
         {
             _lastCopied = DateTime.Now;
             _statusLabel.Text = msg;
+            _statusBar.SetOperation(msg, busy: false);
         }
 
         private void SetTruckStatus()
         {
             if (_disposed) return;
-            string ind = _truckKnown ? "● Координаты грузовика онлайн" : "● Нет данных от грузовика";
+            // Индикатор «данные транспорта»: lime при наличии данных, тусклый при их отсутствии.
+            _statusBar.SetSystemState("данные транспорта", _truckKnown);
+            _baseStatus = (_truckKnown ? "● Координаты грузовика онлайн" : "● Нет данных от грузовика")
+                        + $"   Центр: {_centerX:F0}, {_centerZ:F0}  Масштаб: {_scale:F1} м/px";
             _statusLabel.ForeColor = _truckKnown ? Color.FromArgb(70, 200, 90) : Color.FromArgb(230, 90, 90);
-            _baseStatus = $"{ind}   Центр: {_centerX:F0}, {_centerZ:F0}  Масштаб: {_scale:F1} м/px";
             if ((DateTime.Now - _lastCopied).TotalSeconds > 3) _statusLabel.Text = _baseStatus;
         }
 
@@ -1609,6 +1633,9 @@ namespace ETS2_Assist_GUI
                 }
                 else
                     ctrl.Text = v == null ? "" : Convert.ToString(v, CultureInfo.InvariantCulture) ?? "";
+                        
+                        
+
             }
             finally { _loadingPanel = false; }
             if (ctrl is TextBox tbx) tbx.BackColor = Color.FromArgb(40, 48, 62);
@@ -2053,6 +2080,7 @@ namespace ETS2_Assist_GUI
             UpdateActionButtons();
             RequestRender();
             LogEditor($"Точка '{name}' сохранена (delta) в overrides {_selectedOverrideFile}; выполнено обновление карты.");
+            _statusBar.SetOperation($"сохранено: {name}", busy: false);
             MainForm.NotifyPointsOverridesChanged();
         }
 
@@ -2094,6 +2122,7 @@ namespace ETS2_Assist_GUI
             _selectedGameName = null; _createMode = false; _editingCopy = null; _dirtyFields.Clear();
             RebuildTargetsFromModel(); PopulateSidebar(); UpdateActionButtons(); RequestRender();
             LogEditor($"Точка '{pd.GameName}' удалена/сброшена.");
+            _statusBar.SetOperation($"удалено: {pd.GameName}", busy: false);
             MainForm.NotifyPointsOverridesChanged();
         }
 
@@ -2198,7 +2227,15 @@ namespace ETS2_Assist_GUI
             }
             catch (Exception vex) { LogEditor($"[SAVE-ERROR] не удалось перечитать файл: {vex.Message}"); }
             LogEditor($"Запись точки '{pd.GameName}' в файл: {path} (полей в записи: {jo.Count})");
-            if (!_overrideFiles.Contains(_selectedOverrideFile)) { _overrideFiles.Add(_selectedOverrideFile); SaveLoadOrder(); }
+            // ФАЙЛ ОБЯЗАН быть в load_order — иначе конвейер миникарты его НЕ прочитает
+            // (диагноз 17:26: custom_map1.json писался, но load_order содержал только test_targets).
+            if (!_overrideFiles.Contains(_selectedOverrideFile))
+            {
+                _overrideFiles.Add(_selectedOverrideFile);
+                SaveLoadOrder();
+                LogEditor($"[OVR][FIX] файл {_selectedOverrideFile} добавлен в load_order.txt (не был подключён — миникарта бы его не прочитала!)");
+                MainForm.NotifyPointsOverridesChanged(); // файл стал видимым конвейеру — переотправить пакет
+            }
         }
 
         private void RemovePointFromOverrideFile(string gameName, string file)
@@ -2211,6 +2248,7 @@ namespace ETS2_Assist_GUI
             var toRemove = arr.OfType<JObject>().Where(o => (o["gameName"]?.Value<string>() ?? "") == gameName).ToList();
             foreach (var r in toRemove) arr.Remove(r);
             File.WriteAllText(path, root.ToString(Formatting.Indented));
+            LogEditor($"[OVR] RemovePointFromOverrideFile: '{gameName}' удалён из {file} (убрано {toRemove.Count}).");
         }
 
         private void RemoveAnyOverrideFor(string gameName)

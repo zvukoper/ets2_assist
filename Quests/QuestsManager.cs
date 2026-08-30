@@ -183,10 +183,11 @@ namespace ETS2_Assist_GUI
                 return;
             }
 
-            // Отладка: принудительно перечитываем custom_targets.json и шлём на миникарту.
-            SendTargetsToMap();
+            // Отладка: принудительно пересобираем пакет overrides (статика + overrides +
+            // test_targets.json) и шлём на миникарту.
+            SendTargetsOverridesData("check");
             LogCustomTargetsFromFile();
-            AppendLog("Проверка точек: файл принудительно перечитан и отправлен на карту.");
+            AppendLog("Проверка точек: пакет overrides принудительно пересобран и отправлен на карту.");
         }
 
         private void OnClientCommand(JObject data)
@@ -206,6 +207,9 @@ namespace ETS2_Assist_GUI
                     var createdTarget = data["target"];
                     AppendDataLog($"target_created x={createdTarget?["x"]} z={createdTarget?["z"]}");
                     RegisterTargetFromMap(data["target"]);
+                    break;
+                case "targets_data_ack":
+                    // Совместимость: старые подтверждения миникарты не нужны.
                     break;
                 case "target_zone_enter":
                     {
@@ -269,21 +273,26 @@ namespace ETS2_Assist_GUI
                     // Отладка теперь ведётся командой «Проверка точек» (чтение файла).
                     AppendLog("[WS] targets_snapshot проигнорирован (устарело).");
                     break;
+                case "map_overrides_ack":
+                    // КВИТАНЦИЯ от миникарты: пакет map_overrides_data Дошёл и ПРИМЕНЁН.
+                    // Сверяем счётчики: если на миникарте нет custom-точек, а в отправке были —
+                    // обрыв на отрисовке; если ack нет вовсе — обрыв доставки WS.
+                    AppendLog($"[OVR] ACK от миникарты: seq={data["seq"]} ({data["reason"]}) — применено cities={data["cities"]}, pois={data["pois"]} (custom={data["custom"]}), targets={data["targets"]}");
+                    break;
                 case "map_ready":
-                    // Миникарта готова — приложение читает custom_targets.json (один раз
-                    // при старте) и шлёт актуальные цели командой targets_data.
-                    AppendLog("[WS] Миникарта готова -> отправляем цели из файла");
-                    SendTargetsToMap();
-                    SendPointsOverridesToMap();
+                    // Миникарта готова — приложение шлёт полный пакет overrides (города/POI
+                    // + цели из test_targets.json) командой map_overrides_data.
+                    AppendLog("[WS] Миникарта готова -> отправляем overrides+цели");
+                    MainForm.EnsureTestTargetsFileStatic();
+                    SendTargetsOverridesData("map_ready");
                     break;
                 case "request_reload_custom_targets":
-                    // На всякий случай (если миникарта ещё шлёт эту команду).
-                    SendTargetsToMap();
-                    SendPointsOverridesToMap();
+                    // На всякий случай (совместимость) — полная пересылка пакета overrides.
+                    SendTargetsOverridesData("request_reload");
                     break;
                 case "add_target":
-                    // Миникарта сгенерировала случайную цель и просит приложение
-                    // записать её в custom_targets.json, затем разослать targets_data.
+                    // Миникарта сгенерировала случайную цель и просит приложение записать её
+                    // в test_targets.json (система overrides), затем прислать пакет заново.
                     AppendLog($"[WS] add_target x={data["target"]?["x"]} z={data["target"]?["z"]}");
                     AddTargetToFile(data["target"]);
                     break;
@@ -330,10 +339,25 @@ namespace ETS2_Assist_GUI
         }
 
         // ============================================================
-        // РАБОТА С ФАЙЛОМ ЦЕЛЕЙ (custom_targets.json) — ЕДИНСТВЕННЫЙ ВЛАДЕЛЕЦ
+        // РАБОТА С ФАЙЛОМ ЦЕЛЕЙ — map_overrides\test_targets.json
         // ============================================================
-        // Приложение — единственный, кто читает и пишет custom_targets.json.
-        // Миникарта файл не трогает: получает targets_data и только рисует.
+        // Цели тестовых кнопок живут в системе overrides (как все точки).
+        // Приложение — единственный владелец файла; миникарта файл не трогает:
+        // получает ГОТОВЫЙ пакет map_overrides_data и только рисует.
+
+        // Полная пересборка и отправка пакета overrides на миникарту.
+        internal void SendTargetsOverridesData(string reason) => SendMapOverridesToMap(reason);
+
+        // Статическая обёртка для вызова из MainForm до подписок (инициализация).
+        internal static void EnsureTestTargetsFileStatic()
+        {
+            try
+            {
+                var main = System.Windows.Forms.Application.OpenForms.OfType<MainForm>().FirstOrDefault();
+                main?.EnsureTestTargetsFile();
+            }
+            catch { }
+        }
 
         // Подробная отладка записи в файл целей: путь + содержимое файла после
         // операции (перечитываем то, что реально лежит на диске).
@@ -358,27 +382,8 @@ namespace ETS2_Assist_GUI
 
         private void SendTargetsToMap()
         {
-            try
-            {
-                string filePath = AppDataPaths.CustomTargetsFile;
-                JArray targets;
-                if (File.Exists(filePath))
-                {
-                    var root = JObject.Parse(File.ReadAllText(filePath));
-                    targets = root["customTargets"] as JArray ?? new JArray();
-                }
-                else
-                {
-                    targets = new JArray();
-                }
-                var payload = new JObject { ["targets"] = targets };
-                SendCommandToMap("targets_data", payload);
-                AppendLog($"[TARGETS] Отправлено точек на миникарту: {targets.Count} (путь файла={filePath})");
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"[TARGETS] Ошибка отправки целей на миникарту: {ex.Message}");
-            }
+            // Совместимость: старое имя метода теперь отправляет полный пакет overrides.
+            SendMapOverridesToMap("targets");
         }
 
         private void AddTargetToFile(JToken target)
@@ -395,7 +400,8 @@ namespace ETS2_Assist_GUI
                 bool active = target["active"]?.Value<bool>() ?? true;
                 double radius = target["radius"]?.Value<double>() ?? 50;
 
-                string filePath = AppDataPaths.CustomTargetsFile;
+                EnsureTestTargetsFile();
+                string filePath = AppDataPaths.TestTargetsFile;
                 JObject root;
                 string existing = File.Exists(filePath) ? File.ReadAllText(filePath) : "";
                 if (!string.IsNullOrWhiteSpace(existing))
@@ -453,18 +459,11 @@ namespace ETS2_Assist_GUI
                 entry["isRandom"] = true;
                 entry["radius"] = radius;
 
-                // Доп. параметры custom_targets (для кулдауна/скрытия/удаления).
+                // Доп. параметры (кулдаун/скрытие/удаление) — как в системе overrides.
                 int cooldown = target["cooldown"]?.Value<int>() ?? 0;
-                int currentCooldown = target["current_cooldown"]?.Value<int>() ?? 0;
                 int hidden = target["hidden"]?.Value<int>() ?? 0;
                 int deleteOnComplete = target["delete_on_complete"]?.Value<int>() ?? 0;
-                // Для только что сгенерированных целей (без явного кулдауна) ставим 0.
-                if (target["cooldown"] == null) cooldown = 0;
-                if (target["current_cooldown"] == null) currentCooldown = 0;
-                if (target["hidden"] == null) hidden = 0;
-                if (target["delete_on_complete"] == null) deleteOnComplete = 0;
                 entry["cooldown"] = cooldown;
-                entry["current_cooldown"] = currentCooldown;
                 entry["hidden"] = hidden;
                 entry["delete_on_complete"] = deleteOnComplete;
 
@@ -479,14 +478,15 @@ namespace ETS2_Assist_GUI
                 }
 
                 File.WriteAllText(filePath, root.ToString(Formatting.Indented));
-                AppendLog($"[TARGETS] Цель добавлена в файл: {name} ({x:F1}, {z:F1}) [id={id}]");
+                AppendLog($"[TARGETS] Цель добавлена в overrides ({Path.GetFileName(filePath)}): {name} ({x:F1}, {z:F1}) [id={id}]");
                 LogTargetsFileDump("ПОСЛЕ ЗАПИСИ ЦЕЛИ", filePath);
                 EnsureCooldownTimer();
-                SendTargetsToMap();
+                // Пересобираем и шлём ПОЛНЫЙ пакет overrides (цели + города/POI).
+                SendMapOverridesToMap("add_target");
             }
             catch (Exception ex)
             {
-                AppendLog($"[TARGETS] Ошибка записи цели в файл: {ex.Message}");
+                AppendLog($"[TARGETS] Ошибка записи цели в overrides: {ex.Message}");
             }
         }
 
@@ -520,7 +520,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string filePath = AppDataPaths.CustomTargetsFile;
+                string filePath = AppDataPaths.TestTargetsFile;
                 if (!File.Exists(filePath)) return;
                 var root = JObject.Parse(File.ReadAllText(filePath));
                 var arr = root["customTargets"] as JArray;
@@ -536,7 +536,6 @@ namespace ETS2_Assist_GUI
                     {
                         item["status"] = "active";
                         item["cooldown_until"] = (string?)null; // снимаем метку
-                        if (item["current_cooldown"] != null) item["current_cooldown"] = 0;
                         string id = item["id"]?.Value<string>() ?? "";
                         if (!string.IsNullOrEmpty(id) && _randomTargets.TryGetValue(id, out var st))
                             st.CooldownUntil = DateTime.MinValue;
@@ -547,7 +546,7 @@ namespace ETS2_Assist_GUI
                 if (changed)
                 {
                     File.WriteAllText(filePath, root.ToString(Formatting.Indented));
-                    SendTargetsToMap(); // рассылка — только когда что-то изменилось (кулдаун сброшен)
+                    SendMapOverridesToMap("cooldown-reset"); // рассылка — только когда что-то изменилось
                 }
             }
             catch (Exception ex) { AppendLog($"[TARGETS] Ошибка декремента кулдауна: {ex.Message}"); }
@@ -558,7 +557,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string filePath = AppDataPaths.CustomTargetsFile;
+                string filePath = AppDataPaths.TestTargetsFile;
                 if (!File.Exists(filePath)) { RemoveTargetById(id); return; }
                 var root = JObject.Parse(File.ReadAllText(filePath));
                 var arr = root["customTargets"] as JArray;
@@ -605,11 +604,11 @@ namespace ETS2_Assist_GUI
                 int cd = cooldown > 0 ? cooldown : 5; // запасной 5 мин, если кулдаун не задан
                 entry["status"] = "inactive";
                 entry["cooldown_until"] = DateTime.UtcNow.AddMinutes(cd).ToString("o");
-                entry["current_cooldown"] = 0;
                 if (_randomTargets.TryGetValue(id, out var st))
                     st.CooldownUntil = DateTime.UtcNow.AddMinutes(cd);
                 File.WriteAllText(filePath, root.ToString(Formatting.Indented));
                 EnsureCooldownTimer();
+                SendMapOverridesToMap("cooldown-set");
                 AppendLog($"[TARGETS] Цель '{entry["realName"]}' скрыта на кулдаун {cd} мин (до {DateTime.UtcNow.AddMinutes(cd).ToLocalTime():HH:mm:ss}).");
             }
             catch (Exception ex) { AppendLog($"[TARGETS] Ошибка завершения цели: {ex.Message}"); }
@@ -619,7 +618,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string filePath = AppDataPaths.CustomTargetsFile;
+                string filePath = AppDataPaths.TestTargetsFile;
                 if (!File.Exists(filePath)) return;
                 var root = JObject.Parse(File.ReadAllText(filePath));
                 var arr = root["customTargets"] as JArray;
@@ -643,14 +642,12 @@ namespace ETS2_Assist_GUI
                     if (Math.Abs(ix - x) < 0.5 && Math.Abs(iz - z) < 0.5) toRemove.Add(item);
                 }
                 foreach (var r in toRemove) arr.Remove(r);
-                AppendLog($"[TARGETS][DEBUG] УДАЛЕНИЕ цели: путь={filePath}, убрано={toRemove.Count}, осталось={arr.Count}");
                 File.WriteAllText(filePath, root.ToString(Formatting.Indented));
-                LogTargetsFileDump("ПОСЛЕ УДАЛЕНИЯ ЦЕЛИ", filePath);
-                AppendLog($"[TARGETS] Цель удалена из файла: ({x:F1}, {z:F1}), осталось {arr.Count}");
+                AppendLog($"[TARGETS] Цель удалена из overrides: ({x:F1}, {z:F1}), осталось {arr.Count}");
             }
             catch (Exception ex)
             {
-                AppendLog($"[TARGETS] Ошибка удаления цели из файла: {ex.Message}");
+                AppendLog($"[TARGETS] Ошибка удаления цели из overrides: {ex.Message}");
             }
         }
 
@@ -661,7 +658,7 @@ namespace ETS2_Assist_GUI
             {
                 if (string.IsNullOrEmpty(id)) return;
                 _randomTargets.Remove(id);
-                string filePath = AppDataPaths.CustomTargetsFile;
+                string filePath = AppDataPaths.TestTargetsFile;
                 if (!File.Exists(filePath)) { SendCommandToMap("remove_target", new JObject { ["id"] = id }); return; }
                 var root = JObject.Parse(File.ReadAllText(filePath));
                 var arr = root["customTargets"] as JArray;
@@ -669,10 +666,10 @@ namespace ETS2_Assist_GUI
                 var toRemove = arr.OfType<JObject>().Where(i => (i["id"]?.Value<string>() ?? "") == id).ToList();
                 foreach (var r in toRemove) arr.Remove(r);
                 File.WriteAllText(filePath, root.ToString(Formatting.Indented));
-                LogTargetsFileDump("ПОСЛЕ УДАЛЕНИЯ ЦЕЛИ (по id)", filePath);
-                AppendLog($"[TARGETS] Цель [id={id}] удалена из файла, осталось {arr.Count}");
+                AppendLog($"[TARGETS] Цель [id={id}] удалена из overrides, осталось {arr.Count}");
                 SendCommandToMap("remove_target", new JObject { ["id"] = id });
-                SendTargetsToMap();
+                // Полный пакет: миникарта получает новые списки и перерисовывается сама.
+                SendMapOverridesToMap("remove_target");
             }
             catch (Exception ex)
             {
@@ -823,11 +820,11 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                string filePath = AppDataPaths.CustomTargetsFile;
-                if (!File.Exists(filePath)) { AppendLog("[TARGETS] Файл целей отсутствует."); return; }
+                string filePath = AppDataPaths.TestTargetsFile;
+                if (!File.Exists(filePath)) { AppendLog($"[TARGETS] Файл целей отсутствует: {filePath}"); return; }
                 var root = JObject.Parse(File.ReadAllText(filePath));
                 var arr = root["customTargets"] as JArray ?? new JArray();
-                AppendLog($"=== Проверка точек (из файла): {arr.Count} ===");
+                AppendLog($"=== Проверка точек (test_targets.json): {arr.Count} ===");
                 for (int i = 0; i < arr.Count; i++)
                 {
                     var t = arr[i];

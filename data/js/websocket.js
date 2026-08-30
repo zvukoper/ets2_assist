@@ -6,6 +6,7 @@ let saveWsConnected = false;
 let saveInProgress = false;
 let saveStartedAt = 0;
 let minimapAutoOff = false;   // true = ручной тоггл выключил авто-показ миникарты
+let minimapAlwaysOn = false;  // тоггл «Показать карту»: true = карта ВСЕГДА видна (hide игнорируется)
 let minimapShownOnce = false; // первый показ с анимацией — только один раз
 
 function connectSaveWebSocket() {
@@ -92,9 +93,22 @@ function connectSaveWebSocket() {
                             console.log('[WS] Сброшен флаг достижения цели');
                             break;
                         case 'targets_data':
-                            // Приложение прислало актуальные цели из custom_targets.json.
-                            // Миникарта сама файл не читает — только рисует то, что прислали.
+                            // УСТАРЕЛО (оставлено для совместимости): полный пакет теперь
+                            // приходит как map_overrides_data, но цели из этого пакета тоже
+                            // применяются (normalizeTarget тот же).
                             applyTargetsData(data.targets);
+                            break;
+                        case 'map_overrides_data':
+                            // ПОЛНЫЙ пакет от приложения: города/POI/цели (статика + overrides
+                            // + test_targets). Миникарта ничего не merge — просто применяет.
+                            // typeof-guard: если points_overrides.js ещё не успел загрузиться
+                            // (гонка при старте), буферизуем пакет — он применится при загрузке.
+                            if (typeof storeMapOverrides === 'function') {
+                                storeMapOverrides(data);
+                            } else {
+                                console.warn('[WS] storeMapOverrides ещё не определена — пакет буферизован');
+                                window.__pendingMapOverrides = data;
+                            }
                             break;
                         case 'points_overrides_data':
                             // Переопределённые города/POI и пользовательские точки
@@ -109,13 +123,21 @@ function connectSaveWebSocket() {
                             }
                             break;
                         case 'minimap_hide':
-                            hideUIFast();
+                            // При включённом тогл-режиме (minimapAutoOff=false => показ ВСЕГДА)
+                            // hide-команды игнорируются: карта никогда не исчезает.
+                            if (!minimapAlwaysOn) hideUIFast();
                             break;
                         case 'minimap_auto':
-                            // Ручной тоггл (кнопка «Показать карту»): false = скрыть миникарту
-                            // и не показывать её автоматически, пока не включат обратно.
-                            minimapAutoOff = data.enabled === false;
-                            if (minimapAutoOff) hideUIFast();
+                            // Тоггл «Показать карту»: enabled=true — карта ВСЕГДА на экране
+                            // (minimap_hide игнорируется); false — обычная авто-логика.
+                            if (data.enabled === true) {
+                                minimapAlwaysOn = true;
+                                minimapAutoOff = false;
+                                if (!minimapShownOnce) { showUIWithAnimation(); minimapShownOnce = true; }
+                                else showUIFast();
+                            } else {
+                                minimapAlwaysOn = false;
+                            }
                             break;
                         case 'show_pause_logo':
                         case 'hide_pause_logo':
@@ -335,6 +357,7 @@ function applyTelemetryDelta(data) {
 
     state.wsDataReceived = true;
     telemetryFrames++;
+    if (window.mapStatusSetTelemetry) mapStatusSetTelemetry(true);
     updateAll(state.speed);
     updateRuntimeDebugOverlay();
 }
@@ -369,6 +392,7 @@ function connectWebSocket() {
         wsConnected = false;
         if (telemetryDot) telemetryDot.style.background = '#f5b342';
         if (telemetryStatus) telemetryStatus.textContent = '⏳ переподключение...';
+        if (window.mapStatusSetTelemetry) mapStatusSetTelemetry(false);
         if (reconnectTimer) clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(connectWebSocket, 1500);
     };

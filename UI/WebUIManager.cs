@@ -107,6 +107,7 @@ namespace ETS2_Assist_GUI
             }
 
             // Пауз-лого: показываем ТОЛЬКО в фокусе и на паузе. Вне фокуса — скрываем.
+            // Когда «Показать карту» включён (тоггл), карта не зависит от паузы/фокуса.
             if (showPause != _lastPauseLogoVisible)
             {
                 _lastPauseLogoVisible = showPause;
@@ -114,17 +115,35 @@ namespace ETS2_Assist_GUI
                 AppendLog(showPause ? "[UI] Пауз-лого показан (в фокусе, пауза)" : "[UI] Пауз-лого скрыт (в фокусе и не на паузе / вне фокуса)");
             }
 
-            // Миникарта: как гибрид, но с учётом ручного тоггла (кнопка «Показать карту»).
-            bool minimapVisible = showMapHybrid && _minimapAutoLogic;
+            // Миникарта:
+            //  - тоггл «Показать карту» ВКЛ -> карта ВСЕГДА видна (не зависит от паузы/фокуса);
+            //  - тоггл ВЫКЛ -> обычная логика (как гибрид: фокус + не пауза).
+            bool minimapVisible;
+            if (_minimapAutoLogic)
+            {
+                minimapVisible = true;
+                // Один раз показываем; гибридом и пауз-лого управляет обычная логика выше.
+                if (_lastMinimapVisible != true)
+                {
+                    SendCommandToMap("minimap_auto", new JObject { ["enabled"] = true });
+                    SendCommandToMap("minimap_show");
+                }
+            }
+            else
+            {
+                minimapVisible = showMapHybrid;
+            }
             if (minimapVisible != _lastMinimapVisible)
             {
                 _lastMinimapVisible = minimapVisible;
-                SendCommandToMap(minimapVisible ? "minimap_show" : "minimap_hide");
+                if (!_minimapAutoLogic)
+                    SendCommandToMap(minimapVisible ? "minimap_show" : "minimap_hide");
             }
             if (_minimapAutoLogic != _lastMinimapAuto)
             {
                 _lastMinimapAuto = _minimapAutoLogic;
-                SendCommandToMap("minimap_auto", new JObject { ["enabled"] = _minimapAutoLogic });
+                if (!_minimapAutoLogic)
+                    SendCommandToMap("minimap_auto", new JObject { ["enabled"] = false });
             }
         }
 

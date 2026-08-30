@@ -6,7 +6,7 @@
     "Overlays.json",
     "localized_cities/cities_sibirmap.json"
   ],
-  "build": "1.0.38.51-MAP-OVR-TO-MAP-08.29-2301",
+  "build": "1.0.38.55-OVR-JS-TRUNC-08.30-1813",
   "mode": "track-static-snapshot",
   "playbackStaticFetch": false
 }

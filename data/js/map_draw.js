@@ -224,9 +224,13 @@ function drawMinimap() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     // POI (с цветами по категориям) — РИСУЕМ ПЕРВЫМИ (города и цели рисуются поверх)
+    // Безопасный доступ: если points_overrides.js не загрузился (гонка map_ready),
+    // используем state напрямую — иначе ReferenceError убивал всю отрисовку ПОСЛЕ дорог.
+    const poiList = (typeof getEffectivePoiList === 'function') ? getEffectivePoiList() : (state.pois || []);
+    const cityList = (typeof getEffectiveCityList === 'function') ? getEffectiveCityList() : (state.cities || []);
     const showPoiLabels = scale2 <= 5.0;
     const poiPointSize = Math.max(2, 6 / (scale2 / 10));
-    for (const poi of getEffectivePoiList()) {
+    for (const poi of poiList) {
         const p = worldToScreen2(poi.x, poi.z);
         if (p.x < -10 || p.x > w+10 || p.y < -10 || p.y > h+10) continue;
         const size = Math.min(6, poiPointSize);
@@ -256,7 +260,7 @@ function drawMinimap() {
     }
 
     // Города (поверх POI)
-    for (const city of getEffectiveCityList()) {
+    for (const city of cityList) {
         const p = worldToScreen2(city.x, city.z);
         if (p.x < -10 || p.x > w+10 || p.y < -10 || p.y > h+10) continue;
         ctx.beginPath();

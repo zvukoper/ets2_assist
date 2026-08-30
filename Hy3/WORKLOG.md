@@ -1677,3 +1677,283 @@
 - Версия в свойствах exe проверена `(Get-Item exe).VersionInfo.ProductVersion` — по новому правилу.
 - НЕ ПРОВЕРЕНО в рантайме у пользователя (ждём: переместить город/POI в редакторе → сохранить →
   миникарта показывает новую позицию; новая пользовательская точка видна; hidden скрыт).
+
+## Сессия 34 (30.08.2026) — ЕДИНЫЙ КОНВЕЙЕР OVERRIDES (dumb-receiver) + СТАТУСНЫЕ СТРОКИ + ТОГЛ «ПОКАЗАТЬ КАРТУ» (52)
+
+### Задача (приоритет пользователя)
+1. Overrides на миникарте идентично редактору; логику сбора НЕ дублировать в JS —
+   миникарта = вебсокетный приёмник ГОТОВОГО пакета (dumb-receiver).
+2. Отказ от custom_targets.json: тестовые кнопки работают через систему overrides,
+   файл `map_overrides\test_targets.json`, подключается в load_order по умолчанию.
+3. Пересчёт точек редактора (сохранение/перезапуск) → перерисовка на миникарте.
+4. Статусная строка (редактор + миникарта): лев. половина — состояния (окружность
+   светло-серый фон + 2px тёмно-серая обводка, lime при активности, текст справа;
+   индикатор «данные транспорта»: lime = есть, пусто = «нет данных транспорта»);
+   прав. половина — вращающийся индикатор операции + текст; по завершении — тёмно-зелёная
+   галочка, текст прошлой операции остаётся до новой. Фон тёмно-серый, шрифт приглушённо
+   белый с чёрной обводкой. Клик по статусной строке редактора → папка логов.
+5. «Показать карту» = тоггл: ВКЛ — карта НИКОГДА не исчезает; ВЫКЛ (по умолчанию) —
+   обычная логика (пауза → лого+версия; не пауза → гибрид+миникарта).
+
+### Реализация C#
+- NEW `MainForm.OverridesPipeline.cs` — единый конвейер: `SendMapOverridesToMap(reason)`
+  собирает effective-данные (статика городов/POI + delta-merge overrides по load_order
+  через `MapEditorForm.ApplyJObjectToPoint` + цели из `test_targets.json` с автопробуждением
+  кулдаунов) и шлёт ГОТОВЫЙ пакет `map_overrides_data` {seq, reason, cities, pois, targets}.
+  `EnsureTestTargetsFile()` создаёт файл и добавляет в load_order. Пользовательские точки
+  из overrides → POI category='custom'.
+- `AppDataPaths.cs`: + `TestTargetsFile`/`MapOverridesDirectory`/`MapOverridesLoadOrderFile`.
+- `MainForm.PointsOverrides.cs` — сокращён до event + debounce + переадресации на конвейер.
+- `QuestsManager.cs`: ВСЕ файловые операции целей → `AppDataPaths.TestTargetsFile`
+  (AddTargetToFile/RemoveTargetById/RemoveTargetFromFile/DecrementCooldowns/
+  CompleteTargetById/LogCustomTargetsFromFile); после каждого изменения — полный пакет.
+  `current_cooldown` удалён (кулдаун = cooldown_until UTC). map_ready/check → полный пакет.
+- `MainForm.cs`: `_minimapAutoLogic = false` по умолчанию; btnShowMap-тоггл ВКЛ шлёт
+  `minimap_auto{true}` + `minimap_show` (карта всегда видна).
+- `UI/WebUIManager.cs`: при ВКЛ миникарта всегда видна, пауз-лого/гибрид по обычной логике.
+- `MapEditorForm.cs`: NEW `UI\EditorStatusBar.cs` (статусная строка редактора,
+  клик → Logs); legacy `_statusLabel` скрыт; SetOperation в LoadTargets/Save/Delete/Progress.
+
+### Реализация Web
+- `data/js/points_overrides.js` ПЕРЕПИСАН: `storeMapOverrides` (dumb-receiver — ЗАМЕНЯЕТ
+  state.cities/state.pois/state.customTargets и перерисовывает); старые
+  `getEffective*List` теперь возвращают state напрямую (map_draw.js не менялся).
+- `data/js/status_bar.js` NEW: статусная строка миникарты (аналог редактора, CSS-анимация
+  вращения). API: `mapStatusSetTelemetry(bool)`, `mapStatusSetOperation(text, busy)`.
+- `data/js/websocket.js`: case `map_overrides_data` → storeMapOverrides; уведомление
+  статус-строки в applyTelemetryDelta/socket.onclose; тоггл `minimap_auto` true →
+  `minimapAlwaysOn` (minimap_hide игнорируется).
+- `data/web_pda_map.html`: + script status_bar.js.
+
+### Версия / сборка
+- **`1.0.38.52-OVR-PIPELINE-08.30-1613`** — exe/build.txt/manifest синхронны (исходники + publish).
+- publish\data: 799 файлов, все критичные папки (js 23 шт., GeoJson, bin, language,
+  localized_cities) на месте. Перед публикацией exe был залочен → пользователь закрыл.
+
+### Что проверить у пользователя (рантайм)
+- Статусная строка на миникарте и в редакторе; клик по ней в редакторе → логи.
+- Переместить город/POI в редакторе → сохранить → миникарта показывает новую позицию.
+- Тестовые кнопки → цели пишутся в `map_overrides\test_targets.json`, видны на миникарте
+  и в редакторе («Пользовательское»).
+- Кнопка «Показать карту»: ВКЛ = карта всегда видна; ВЫКЛ = лого на паузе, карта в игре.
+
+---
+
+## Сессия 35 (30.08.2026) — OllamaLimits.exe (новый проект) + фиксы статуса/миникарты (53)
+
+### Задача 1 (ПЕРВООЧЕРЕДНАЯ): OllamaLimits.exe — трей-индикатор лимитов Ollama
+- НОВЫЙ проект `F:\repo\ollama_limits\` (не входит в ETS2-репозиторий): net10.0-windows,
+  WinForms + WebView2 (Microsoft.Web.WebView2 1.0.2903.40 из локального NuGet-кэша),
+  single-file self-containedpublish.
+- Собран: **`F:\repo\ollama_limits\bin\Release\net10.0-windows\win-x64\publish\OllamaLimits.exe`
+  (49.6 МБ, standalone).**
+- Архитектура:
+  - `Program.cs` — `TrayContext` (ApplicationContext): NotifyIcon без окна и без
+    панели задач; меню (Session/Weekly/Reset/Выход), ЛКМ → браузер на
+    `https://ollama.com/settings`; пульс-таймер 1с для >95%.
+  - `UsageEngine.cs` — СКРЫТЫЙ offscreen WebView2 (хост-форма за экраном, Opacity 0),
+    профиль `%LocalAppData%\OllamaLimits\WebData` (куки логина), навигация на
+    `ollama.com/settings` каждые 30с. При редиректе на `signin.ollama.com` / workos —
+    открывает ВИДИМОЕ окно входа (`SignInWindow.cs`, тот же профиль → общие куки);
+    после закрытия окна — немедленное обновление.
+  - `UsageParser` — JS-сниппет ( ExecuteScriptAsync): ищет DOM-узлы
+    «Session usage»/«Weekly usage» (берёт ближайший %) и «Resets in …»; возвращает
+    JSON в C#.
+  - `IconRenderer.cs` — отрисовка 32×32 иконки: две цифры (сверху session, снизу
+    weekly), белый жирный шрифт с чёрной 8-направленной обводкой; фон lime, >
+    50% зелёный, >65% голубой, >85% оранжевый, >90% красный, >95% пульс
+    (прозрачный↔красный, период 2с, фазы по таймеру 1с).
+- Офлайн-heavy: машина без NuGet egress → restore из плоского фида пакета
+  (`dotnet restore --source %USERPROFILE%\.nuget\packages`), WebView2 версия — та,
+  что в кэше (1.0.2903.40). TFM = net10.0-windows (packs 10.0.11 локально).
+- НЕ ПРОВЕРЕНО у пользователя (реальный логин + данные usage — только на живой странице).
+
+### Задача 2: ФИКС крэша «Parameter is not valid» в EditorStatusBar (DrawOutlined→MeasureString)
+- Крэш происходил в OnPaint: при закрытии редактора/смене DPI базовый `Font` контрола
+  мог освобождаться, и `g.MeasureString(text, font)` бросал «Parameter is not valid»
+  → unhandled paint exception → «белый прямоугольник, перечёркнутый красным».
+  Дополнительно `_anim.Tick` вызывал Invalidate после Dispose.
+- ФИКС (`UI/EditorStatusBar.cs`):
+  - ВСЯ отрисовка в try/catch (paint-исключения проглатываются);
+  - `using var font = (Font)Font.Clone()` — локальный клон шрифта на каждый кадр;
+  - `SafeMeasure()` — MeasureString с fallback-оценкой (len * 0.55em) при любом сбое;
+  - `SetSystemState`/`SetOperation` — guard IsDisposed/IsHandleCreated + try/catch;
+  - `_anim.Tick` — не тикает после Dispose;
+  - override `Dispose(bool)` — остановка/освобождение таймера.
+- Спиннер больше не заезжает за середину строки (Math.Max с 50%+12px).
+
+### Задача 3 (2-я задача пользователя): ФИКС «миникарта без точек»
+- **КОРЕНЬ (JS ReferenceError в map_draw.js):** отрисовка дорог уже была пройдена,
+  а циклы POI/городов вызывали `getEffectivePoiList()`/`getEffectiveCityList()` из
+  `data/js/points_overrides.js`. При гонке (map_ready → C#-ответ 28мс, а script-тег
+  points_overrides.js последний в HTML) функции ещё не определены → ReferenceError →
+  выполнения drawMinimap прерывалось ПОСЛЕ отрисовки дорог (дороги видны), грузовик
+  (строка 292) и точки не рисовались. Симптом пользователя точь-в-точь.
+- ФИКС (`data/js/map_draw.js`): безопасные вызовы —
+  `typeof getEffectivePoiList === 'function' ? getEffectivePoiList() : (state.pois || [])`
+  (и то же для городов) → при незагруженном points_overrides.js рисуем статику; когда
+  пакет придёт — dumb-receiver применит и перерисует.
+- Побочная диагностика: TruckTel (порт 8081) на ПАУЗЕ отдаёт только
+  frame.render_time/simulation_time (placement отсутствует) — это норм (фура просто
+  остаётся на последнем месте); в логе EDITOR «placement отсутствует» при паузе — НЕ ошибка.
+
+### Версия / сборка
+- `52` → `53` `STATUS-MAP-FIX`. Собрано и опубликовано:
+  **`1.0.38.53-STATUS-MAP-FIX-08.30-1707`** (все 5 источников версии синхронны;
+  publish\data = 817 файлов, status_bar.js на месте; старый exe отсутствует).
+
+### Что проверить у пользователя (рантайм)
+- Кнопка «Редактор карты» — не падает; статусная строка внизу редактора видна
+  (индикатор транспорта + операции); клик по ней открывает папку логов.
+- Миникарта: точкиublish городов/POI/целей видны СРАЗУ при запуске (и при гонке map_ready
+  тоже — благодаря SafeAccess), грузовик рисуется на своей позиции.
+- OllamaLimits.exe: запустить → иконка в трее; если не залогинен — откроется окно входа;
+  после входа цифры появятся; ЛКМ → браузер настройки; ПКМ → Выход.
+
+### Сессия 35 (продолжение, 30.08.2026) — OllamaLimits v2: бары, новая кодировка, Reset×2, persist-auth
+- **Иконка РАЗДЕЛЕНА ГОРИЗОНТАЛЬНО ПОПОЛАМ** (IconRenderer.cs переписан, рендер 64×64):
+  верхняя половина — Session usage, нижняя — Weekly. Каждая половина = тёмная подложка +
+  ИНДИВИДУАЛЬНЫЙ прогресс-бар (заливка слева направо на всю высоту половины, alpha-брус,
+  яркая 2.5px кромка) + цифра, ВПИСАННАЯ ПО ВЫСОТЕ половины (автоподбор 80%→по ширине),
+  горизонтальный центр, белая с чёрной 8-направленной обводкой.
+- **НОВАЯ ЦВЕТОВАЯ КОДИРОВКА** (обе части индивидуально): до 50 — обычный зелёный;
+  после 50 — lime; после 65 — orange; 85+ — yellow; 90+ — red; 95+ — ПЛАВНОЕ мигание
+  (синус-fade alpha 60..250, период 2с; тик перерисовки 50 мс, фаза от UtcNow).
+- Фон иконки тёмный (28,30,34) + разделитель/рамка — цифры контрастны в любом штате.
+- **Меню ПКМ:** Session usage → Session reset («Session resets in 4 hours.»);
+  Weekly usage → Weekly reset. Парсер (UsageParser) теперь отдаёт sessionReset/weeklyReset
+  РАЗДЕЛЬНО: ищется leaf-узел «Resets in …», чей контейнер (4 родителя вверх) содержит
+  маркер части; fallback — одна строка для обеих.
+- **Сохранение авторизации между запусками:** персистентный профиль WebView2
+  `%LocalAppData%\OllamaLimits\WebData` (куки на диске), общий для hidden-WebView2 и
+  SignInWindow. КРИТИЧНО: убран ошибочный ClearBrowsingDataAsync из InitHidden
+  (он бы СТИРАЛ куки при каждом старте — уничтожал авторизацию).
+- Публикация падала (exe залочен — пользователь тестировал) → закрыт → перепубликовано:
+  **`OllamaLimits.exe` 49.6 МБ, 30.08.2026 17:17**.
+- НЕ ПРОВЕРЕНО у пользователя (бары/цвета на реальных процентах; fade при 95+;
+  Reset-строки раздельные; persist-логин между перезапусками).
+
+### Сессия 35 (продолжение 2, 30.08.2026 17:26) — OllamaLimits v3: цифра Session на всю иконку + раздельные Resets
+- **Иконка:** цифра Weekly УБРАНА; цифра Session теперь НА ВСЮ иконку (вписана по
+  высоте S−2×margin=5px, горизонтальный центр, белая с чёрной обводкой).
+  Прогресс-бары обеих половин ОСТАВЛЕНЫ как были (пользователь: «отлично получились»).
+- **ФИКС Reset-наследования:** раньше поведение было `wReset || sReset` → при
+  неудачном контейнерном поиске weekly показывал SESSION-reset. Теперь:
+  (а) deep-контейнерный поиск (до 7 родителей вверх — охватывает блок части целиком,
+  incl. «Resets in 12 hours» НИЖЕ бара weekly); (б) если одна из частей не нашлась —
+  fallback по ПОРЯДКУ в DOM: 1-я Reset-строка страницы = session, 2-я = weekly;
+  (в) НИКАКОГО наследования session→weekly. Структура страницы (от пользователей):
+  `Session usage / 65.6% used / [бар] / Resets in 3 hours.` и
+  `Weekly usage / 15.1% used / [бар] / Resets in 12 hours.`
+- Собран/опубликован **`OllamaLimits.exe` 49.6 МБ (30.08.2026 17:26)**.
+- НЕ ПРОВЕРЕНО у пользователя: одна цифра Session на всю иконку; раздельные Reset
+  (Session = 3h, Weekly = 12h на его аккаунте).
+
+---
+
+## Сессия 35 (продолжение 3, 30.08.2026 17:37) — ДИАГНОЗ + ФИКС overrides→миникарта (54)
+
+### Эмпирика пользователя
+«Точки на миникарте появились, всё работает» (цели из test_targets). Но точки,
+добавленные/перенесённые в РЕДАКТОРЕ, на миникарте НЕ видны — overrides не прогружаются.
+Требование: никаких таймерных рассылок точек — только разово по событиям (сохранение/
+добавление/удаление/кулдаун).
+
+### ДИАГНОЗ (по логам + файлам пользователя)
+- Лог: `[OVR] map_overrides_data (overrides-changed): cities=77, pois=1118, targets=4`.
+- Статических POI в Overlays.json ровно **1115+3=1118** — то есть в payload НЕТ
+  пользовательских точек ни из custom_map1.json (courier_pickup, random), ни merge'ов.
+- **КОРЕНЬ:** `C:\Users\Admin\AppData\Local\ETS2_Assist\map_overrides\load_order.txt`
+  содержал **ТОЛЬКО `test_targets.json`**. `custom_map1.json` (куда редактор писал
+  точки по умолчанию) НЕ БЫЛ подключён → конвейер `ReadOverridesInLoadOrder()` его
+  просто не читал. Причина: `EnsureTestTargetsFile` (сессия 34) создавал load_order
+  с одним test_targets.json, а редакторский `EnsureOverridesInit` пишет custom_map1
+  в load_order только при СОЗДАНИИ файла (если load_order уже существовал — не чинил).
+
+### ФИКСЫ (v54)
+1. **`MainForm.OverridesPipeline.EnsureTestTargetsFile`**: теперь гарантирует В ОБОИХ
+   файлах presence в load_order — вставляет `custom_map1.json` ПЕРЕД test_targets.json
+   (ниже приоритет), логирует «был отсутствовал — его записи не читались!».
+2. **`MapEditorForm.EnsureOverridesInit`**: если load_order существует, но без
+   custom_map1.json — вставляет его ПЕРВЫМ + лог `[INIT] custom_map1.json добавлен`.
+3. **`WritePointToOverrideFile`**: после записи точки гарантирует, что файл есть в
+   `_overrideFiles`/load_order; если добавлен — `NotifyPointsOverridesChanged()`
+   (разовая переотправка пакета). Лог `[OVR][FIX] файл ... добавлен в load_order`.
+4. **`RemovePointFromOverrideFile`**: лог удаления `[OVR] RemovePointFromOverrideFile`.
+5. **Payload-сериализация**: города/POI получили флаг `overridden` (для отладки/JS).
+
+### DEBUG-ЛОГИРОВАНИЕ конвейера (теги `[OVR][DEBUG]`, app_workflow.log)
+- `ReadOverridesInLoadOrder`: полный список load_order при КАЖДОЙ сборке пакета;
+  файлы не найдены; записей в файле; КОЖДУЮ запись `{файл} -> {gameName}: {coords}`.
+- `ApplyOverrideFiles`: по каждому merge-действию (CITY/POI/TARGET/USER-точка с
+  координатами) + итог `cities+N, pois+N, targets+N, user+N`.
+- `SendMapOverridesToMap`: расширенный итог — `cities=X (переопр=Y), pois=Z
+  (переопр=W, custom=V), targets=N` — сразу видно, дошли ли override-записи до payload.
+- Ручной ремонт УЖЕ сделан в рантайме: load_order.txt пользователя = 
+  `custom_map1.json`, `test_targets.json`.
+
+### Версия / сборка
+- **`1.0.38.54-OVR-DEBUG-FIX-08.30-1737`** — все 5 источников синхронны, data=834 файла.
+
+### Что проверить у пользователя (главное!)
+- Запустить новый EXE → редактор: переместить/добавить/изменить точку → СОХРАНИТЬ.
+- В логе `app_workflow.log` искать цепочку:
+  `[OVR][DEBUG] load_order.txt: [custom_map1.json, test_targets.json]` →
+  `прочитан custom_map1.json: записей=N` → `merge USER-точка '...' -> pois[custom]` →
+  `map_overrides_data #N (overrides-changed): pois=1120 (переопр=..., custom=2)`.
+- На миникарте: переопределённая/добавленная точка должна появиться СРАЗУ после
+  сохранения (единый пакет замены state + перерисовка, без таймеров).
+- «Проверка точек» — тоже разовая пересборка (кнопка, не таймер).
+
+---
+
+## Сессия 35 (продолжение 4, 30.08.2026 18:13) — КОРЕНЬ НАЙДЕН: points_overrides.js был ОБРЕЗАН (55)
+
+### Вопрос пользователя по модели точек (зафиксировать!)
+- **`id`** в test_targets.json — уникальный ключ ЦЕЛИ для времени выполнения (генерит
+  миникарта: `random` или `rt_...`). По нему C# ведёт `_randomTargets` (триггеры,
+  кулдауны, завершение), minигде remove_target/complete по id.
+- **`gameName` — ОСНОВНОЕ СИСТЕМНОЕ ИМЯ точки (главный ключ!).** Вся логика
+  overrides/редактора/конвейера построена на gameName: merge c городами/POI/статикой,
+  запись в файлы overrides, сопоставление точек между C# и JS. id и gameName СОВПАДАЮТ
+  у квестовых шаблонов (courier_pickup и т.п.), но id уникален для каждого экземпляра
+  случайной цели, а gameName — «тип/системное имя» точки.
+
+### Симптом пользователя (после v54)
+Пакеты собираются корректно (`pois=1119 (переопр=5, custom=4)` — merges есть, broadcast
+ушёл), НО на миникарте ничего не меняется: ни изменения точек, ни новые.
+
+### КОРЕНЬ (найден балансом скобок)
+`data/js/points_overrides.js` был **ФИЗИЧЕСКИ ОБРЕЗАН на 134-й строке** — файл кончался
+посреди `storePointsOverrides` (последний символ `}))),` — нет `targets: []`, `});`, `}`).
+→ **Синтаксическая ошибка всего файла** → НИ одна функция не определена
+(storeMapOverrides/getEffectiveCityList/getEffectivePoiList = undefined):
+- websocket.js `case 'map_overrides_data'` бросал ReferenceError → ловился общим
+  catch в ws.onmessage («Error parsing message») → ПАКЕТЫ МОЛЧА ПОТЕРЯЛИСЬ;
+- map_draw.js спасал typeof-guard (статика рисовалась), поэтому «карта жива, точки есть
+  (из статических целей), а overrides мертвы».
+Причина обреза — частичная правка файла инструментом редактирования ранее (v52, 16:09):
+замена прошла по якорю, но хвост замещаемого блока не был включён.
+
+### ФИКСЫ (v55)
+1. **Восстановлен хвост `storePointsOverrides`** (закрытие `targets: [] } }); }`) — файл
+   снова валиден (баланс скобок 0; publish идентичен исходнику — проверено).
+2. **ACK-квитирование**: миникарта после applyMapOverrides шлёт `map_overrides_ack`
+   {seq, reason, cities, pois, custom, targets} → C# логирует `[OVR] ACK от миникарты`.
+   Теперь доставка/применение видны в логе от конца до конца.
+3. **Буферизация гонки**: websocket.js при неопределённом storeMapOverrides (пакет пришёл
+   раньше загрузки points_overrides.js) кладёт пакет в `window.__pendingMapOverrides`;
+   points_overrides.js при загрузке применяет буфер.
+4. **Статусная строка миникарты** показывает итог применения: `overrides #N: C гор,
+   P точек (K своих), T целей`.
+5. C# `map_overrides_data` payload уже нёс флаг `overridden` (v54) — используется
+   в счётчиках ack.
+
+### Версия / сборка
+- **`1.0.38.55-OVR-JS-TRUNC-08.30-1813`** — все 5 источников синхронны, data=853 файлов.
+
+### Что проверить у пользователя
+- Точка из редактора (test1, перемещённый POI Company/Перекус) должна появляться/двигаться
+  на миникарте СРАЗУ после сохранения (debounce 400 мс).
+- В логе после каждого сохранения: `[OVR] ACK от миникарты: seq=... — применено ...`
+  — если ack НЕТ, значит пакет не дошёл (WS), если есть, но точек нет — проблема отрисовки.

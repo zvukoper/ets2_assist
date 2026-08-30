@@ -14,6 +14,10 @@ namespace ETS2_Assist_GUI
 
         public static string SavedTracksDirectory => Path.Combine(UserDataDirectory, "saved_tracks");
         public static string CustomTargetsFile => Path.Combine(UserDataDirectory, "custom_targets.json");
+        // Хранилище целей тестовых кнопок: теперь в папке map_overrides (система overrides).
+        public static string TestTargetsFile => Path.Combine(UserDataDirectory, "map_overrides", "test_targets.json");
+        public static string MapOverridesDirectory => Path.Combine(UserDataDirectory, "map_overrides");
+        public static string MapOverridesLoadOrderFile => Path.Combine(UserDataDirectory, "map_overrides", "load_order.txt");
         public static string WebDataFile => Path.Combine(UserDataDirectory, "web_data.json");
         public static string JobStateFile => Path.Combine(UserDataDirectory, "job_state.json");
         public static string ConfigFile => Path.Combine(UserDataDirectory, "config.json");
