@@ -75,6 +75,16 @@
         smooth: 0.25,           // коэф. экспон. интерполяции позиции (плавность, 60fps)
         headPitchSign: 1,       // знак pitch головы (v67 эмпирика)
 
+        // v82 ПОМЕТКА (pin): зеркало горизонтали + предиктивная интерполяция.
+        pinSmooth: 0.35,        // лерpin позиции pin (лёгкая, быстрее цели)
+        pinLead: 0.6,           // предикция «на кадр вперёд» (доля вектора скорости)
+        showClipFrame: true,    // v82: рамка отсечения рендера (границы edgeMargin)
+
+        // v82 ПОМЕТКА (pin): плавность + предикция на кадр вперёд.
+        pinSmooth: 0.35,        // лерп позиции pin на кадр (быстрее цели)
+        pinLead: 0.6,           // предиктивный сдвиг на ~1 кадр вперёд (доля от скорости)
+        showClipFrame: true,    // v82: визуализировать границу отсечения рендера
+
         // ВЫСОТА ТОЧКИ ПО ГОРОДУ (v70): Y=0 = «координаты нет».
         hCityDist: 350,
         hLockDist: 50,
@@ -541,8 +551,31 @@
     // requestAnimationFrame синхронизирован с монитором (обычно 60 Гц), поэтому
     // частоту РАСЧЁТА удваиваем: на каждый rAF выполняем два шага сглаживания
     // с полшагом (эффективно ~120 Гц лерпа) + экстраполяция камеры остаётся.
-    let _sm = null;                       // сглаженное состояние
+    let _sm = null;                       // сглаженное состояние (цель)
+    let _pinSm = null;                    // v82: сглаженная позиция pin
+    let _pinPrevU, _pinPrevV;             // prev для предикции pin (кадр→кадр)
     let _fpsCnt = 0, _fpsAt = performance.now(), _fpsVal = 0;
+
+    // v82: рамка отсечения рендера — пунктирный прямоугольник на границе
+    // [edgeMargin .. W/H − edgeMargin]; внутри неё рисуется всё, за ней — обрезка.
+    function drawClipFrame() {
+        const m = CFG.edgeMargin;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(120,220,255,0.35)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 6]);
+        ctx.strokeRect(m, m, W - 2 * m, H - 2 * m);
+        // маленькие уголки-маркеры для наглядности
+        ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(120,220,255,0.6)';
+        const L = 14;
+        for (const [cx2, cy2, sx, sy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) {
+            ctx.beginPath();
+            ctx.moveTo(cx2 + sx * L, cy2); ctx.lineTo(cx2, cy2); ctx.lineTo(cx2, cy2 + sy * L);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
 
     function render() {
         requestAnimationFrame(render);
@@ -552,6 +585,8 @@
         // «Даже если ближайших точек нет, мы всё равно отрисовываем метки новых точек».
         ctx.fillStyle = 'rgba(255,255,255,0.45)';
         ctx.fillRect(W / 2 - 1, H / 2 - 1, 1.5, 1.5);
+        // v82: рамка отсечения рендера (границы, за которые метки не выходят).
+        if (CFG.showClipFrame) drawClipFrame();
         _fpsCnt++;
         const fNow = performance.now();
         if (fNow - _fpsAt >= 1000) { _fpsVal = _fpsCnt; _fpsCnt = 0; _fpsAt = fNow; }
@@ -576,11 +611,30 @@
 
         // v73 фидбек: ПОМЕТКА (pin) — НЕЗАВИСИМО от цели/радиуса 1.5 км: рисуем всегда,
         // когда есть телеметрия и pin установлен.
+        // v82 ЗЕРКАЛО (фидбек 31.08: «просчёт прицела нужно отзеркалить горизонтально»):
+        // горизонталь pin-метки была зеркальной (поворот головы влево → метка уходила
+        // вправо и отсекалась). Фикс: u_pin = W − u_raw. Вертикаль НЕ трогаем.
+        // v82 ПРЕДИКТОР: pin экстраполируется на 1 кадр вперёд (k = 1 + leadFrames)
+        // от последнего приёма телеметрии — «на кадр вперёд» по скорости/скорости yaw.
         if (ar.haveTruck && ar.pin) {
             const pPr = projectPoint({ x: ar.pin.x, y: ar.pin.y, z: ar.pin.z }, exCam);
             if (pPr.inFront) {
-                let pu = Number.isFinite(pPr.u) ? pPr.u : (pPr.u > 0 ? W - CFG.edgeMargin : CFG.edgeMargin);
+                // ЗЕРКАЛИМ u И КОНЕЧНУЮ экранизацию: (W − u.
+                let pu = Number.isFinite(pPr.u) ? (W - pPr.u) : (pPr.u > 0 ? CFG.edgeMargin : W - CFG.edgeMargin);
                 let pv = Number.isFinite(pPr.v) ? pPr.v : (pPr.v > 0 ? H - CFG.edgeMargin : CFG.edgeMargin);
+                pu = Math.min(Math.max(pu, CFG.edgeMargin), W - CFG.edgeMargin);
+                pv = Math.min(Math.max(pv, CFG.edgeMargin), H - CFG.edgeMargin);
+                // v82: низкочастотная интерполяция позиции pin (как у цели, smooth-коэф
+                // 0.35/кадр — быстрее цели, метка «прицел» должна быть лёгкой) и
+                // предиктивный сдвиг на 1 кадр вперёд (по скорости pin на экране).
+                if (!_pinSm) { _pinSm = { u: pu, v: pv }; }
+                else {
+                    _pinSm.u += (pu - _pinSm.u) * CFG.pinSmooth;
+                    _pinSm.v += (pv - _pinSm.v) * CFG.pinSmooth;
+                    pu = _pinSm.u + (_pinSm.u - (_pinPrevU === undefined ? pu : _pinPrevU)) * CFG.pinLead;
+                    pv = pv + (pv - (_pinPrevV === undefined ? pv : _pinPrevV)) * CFG.pinLead;
+                }
+                _pinPrevU = pu; _pinPrevV = pv;
                 pu = Math.min(Math.max(pu, CFG.edgeMargin), W - CFG.edgeMargin);
                 pv = Math.min(Math.max(pv, CFG.edgeMargin), H - CFG.edgeMargin);
                 ctx.save();
@@ -597,11 +651,23 @@
                 ctx.stroke();
                 ctx.restore();
                 const pinDist = fmtDist(pPr.dist);
-                drawOutlinedText('Новая точка  \u00B7  ' + pinDist,
+                // v82 ТЕКСТ под pin: имя + дистанция; ниже — углы камеры (питч и
+                // горизонтальные углы: курс фуры + поворот головы), в градусах.
+                drawOutlinedText('Новая точка  ·  ' + pinDist,
                     pu, pv + 18, '600 13px "Segoe UI", Arial',
                     'rgba(220,220,220,0.95)', 0.95);
+                const pitchDeg = (ar.headPitchRaw * 360).toFixed(1);
+                const yawBaseDeg = (exCam.yawBase * 360 % 360).toFixed(1);
+                const yawHeadDeg = ((exCam.yawHead || 0) * 180 / Math.PI).toFixed(1);
+                drawOutlinedText(
+                    'питч ' + pitchDeg + '° · курс ' + yawBaseDeg + '° · голова ' + yawHeadDeg + '°',
+                    pu, pv + 36, '11px Consolas, monospace',
+                    'rgba(255,220,120,0.9)', 0.9);
             }
         }
+
+        // pin исчез — сброс предикции.
+        if (!ar.pin) { _pinSm = null; _pinPrevU = undefined; _pinPrevV = undefined; }
 
         if (!ar.haveTruck || !ar.target) return;   // цель нет — дальше рисовать нечего
 
