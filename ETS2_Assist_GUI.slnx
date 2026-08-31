@@ -1,3 +1,7 @@
 <Solution>
+  <Folder Name="/obj/" />
+  <Folder Name="/obj/probe/">
+    <Project Path="obj/probe/probe2/probe2.csproj" />
+  </Folder>
   <Project Path="ETS2_Assist_GUI.csproj" />
 </Solution>

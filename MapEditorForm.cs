@@ -34,6 +34,12 @@ namespace ETS2_Assist_GUI
         private double _scale = 1.5;
         private bool _viewReady;
         private double? _truckX, _truckZ;
+        // Высота грузовика (placement[1]) — для клика-копирования координат (v72).
+        private double? _truckY;
+        // heading фуры (доля оборота, от placement[3]; 0 = север(-Z), растёт против часовой).
+        private double _truckHeading;
+        // УГОЛ ПОВОРОТА ГОЛОВЫ (truck.head.offset[3], доля оборота) — для конуса обзора.
+        private double _headYaw;
 
         private bool _truckKnown;
         private DateTime _truckLastSeen = DateTime.MinValue;
@@ -97,6 +103,9 @@ namespace ETS2_Assist_GUI
         private readonly HashSet<string> _staticNames = new(); // gameName, пришедшие из статического custom_targets.json
         private string? _selectedGameName;   // выбранная точка
         private bool _createMode;            // режим создания новой точки
+        // ПОМЕТКА ИЗ АР (v70): серый крестик в месте будущей точки (координаты мира).
+        private bool _createModeFromAr;
+        private double _arPinWx, _arPinWy, _arPinWz;
         private readonly HashSet<string> _dirtyFields = new(); // изменённые поля текущей точки
         private PointData? _editingCopy;     // копия для редактирования (отмена)
 
@@ -765,6 +774,54 @@ namespace ETS2_Assist_GUI
 
             DrawGridTo(g, vMinX, vMaxX, vMinZ, vMaxZ);
 
+            // КОНУС ОБЗОРА (v74: максимум 1.5 км; при малом зуме не выходит за панель —
+            // экранный радиус ограничен половиной диагонали панели; масштабируется зумом).
+            if (_truckX.HasValue && _truckZ.HasValue)
+            {
+                bool online = _truckKnown;                     // телеметрия живая?
+                double dir = _truckHeading + _headYaw;         // итоговое направление взгляда
+                double cx = _truckX.Value, cz = _truckZ.Value;
+                // Экранные координаты вершины конуса.
+                var p0 = WorldToScreen(cx, cz);
+                const double halfAngleDeg = 17.5;
+                // v74: длина = min(1.5 км, половина диагонали экрана в метрах).
+                double maxPx = Math.Sqrt(_mapPanel.Width * _mapPanel.Width + _mapPanel.Height * _mapPanel.Height) / 2.0;
+                double rWorld = Math.Min(1500.0, maxPx * _scale);
+                // heading: 0 = север (-Z), растёт против часовой (влево).
+                // Экран: ось X вправо, ось Y ВНИЗ → экранное направление взгляда:
+                // screenAngle = heading*360 по часовой от вертикали вверх + поворот головы.
+                double screenAngleDeg = -(dir * 360.0);        // соответствует RotateTransform стрелки
+                double a0 = (screenAngleDeg - halfAngleDeg) * Math.PI / 180.0;
+                double a1 = (screenAngleDeg + halfAngleDeg) * Math.PI / 180.0;
+                double r = rWorld;
+                // Точки дуги в МИРОВЫХ координатах (конус «лежит» на карте, зум работает).
+                var pts = new List<PointF> { p0 };
+                int steps = 24;
+                for (int i = 0; i <= steps; i++)
+                {
+                    double t = (double)i / steps;
+                    double a = a0 + (a1 - a0) * t;
+                    // Экранное направление (dx, dy) при угле a (радианы, 0 = вверх):
+                    double dx = Math.Sin(a);
+                    double dy = -Math.Cos(a);
+                    // Преобразуем экранное направление обратно в мировое: мир = экран повернуть обратно.
+                    // Мировая СК: X-восток ВПРАВО, Z-юг ВНИЗ (на экране +Z вниз).
+                    // Экранная стрелка вращается на -heading*360: мир->экран. Обратно:
+                    double wx = cx + dx * r;
+                    double wz = cz + dy * r;   // прим.: направление уже в СК экрана ⇒ совпадает с миром
+                    pts.Add(WorldToScreen(wx, wz));
+                }
+                // Онлайн — жёлтый полупрозрачный; офлайн — серый, почти бесцветный.
+                using var coneBrush = new SolidBrush(online
+                    ? Color.FromArgb(38, 255, 210, 90)
+                    : Color.FromArgb(20, 150, 150, 150));
+                using var conePen = new Pen(online
+                    ? Color.FromArgb(120, 255, 210, 90)
+                    : Color.FromArgb(60, 170, 170, 170), 1f);
+                g.FillPolygon(coneBrush, pts.ToArray());
+                g.DrawPolygon(conePen, pts.ToArray());
+            }
+
             // Единый конвейер отрисовки ВСЕХ точек (цели/города/POI) из _targets.
             // Города и POI теперь — полноценные точки в _pointModel/_targets (как и цели),
             // поэтому перетаскиваются и выделяются единообразно. POI скрываем при масштабе > 10 м/px.
@@ -834,6 +891,8 @@ namespace ETS2_Assist_GUI
             }
 
             // Временный маркер создаваемой точки: серая точка с перекрестьем (наглядность создания).
+            // v70: если точка пришла ИЗ АР («Пометить в АР»), подпись и позиция от пометки;
+            // Y из пометки (высота грузовика) показываем в подписи.
             if (_createMode && _editingCopy != null)
             {
                 var p = WorldToScreen(_editingCopy.X, _editingCopy.Z);
@@ -843,22 +902,54 @@ namespace ETS2_Assist_GUI
                 g.DrawEllipse(cmPen, p.X - 6, p.Y - 6, 12, 12);
                 g.DrawLine(cmPen, p.X - 13, p.Y, p.X + 13, p.Y);
                 g.DrawLine(cmPen, p.X, p.Y - 13, p.X, p.Y + 13);
-                DrawLabelAbove(g, "Новая точка", p.X, p.Y, Color.LightGray, true);
+                var hint = _createModeFromAr
+                    ? $"Новая точка (АР)  Y={_editingCopy.Y:F1}м"
+                    : "Новая точка";
+                DrawLabelAbove(g, hint, p.X, p.Y, Color.LightGray, true);
             }
 
-            if (_truckKnown && _truckX.HasValue && _truckZ.HasValue)
+            if (_truckX.HasValue && _truckZ.HasValue)
             {
+                bool online = _truckKnown;                     // телеметрия живая?
                 var p = WorldToScreen(_truckX.Value, _truckZ.Value);
-                using var brush = new SolidBrush(Color.Red);
-                var pts = new[] { new PointF(p.X, p.Y - 8), new PointF(p.X - 6, p.Y + 6), new PointF(p.X + 6, p.Y + 6) };
-                g.FillPolygon(brush, pts);
-                DrawLabelAbove(g, "Грузовик", p.X, p.Y, Color.Red, true);
+                // Треугольник-стрелка как на миникарте (map_draw.js, дельтоид), вращение
+                // по heading фуры. ОТЗЕРКАЛЕНО по вертикали (фидбек 31.08.2026): вращение
+                // было инверсным — минус 180 убран. heading=0 → нос К СЕВЕРУ (-Z, вверх).
+                // v66b: при потере телеметрии НЕ удаляется — становится серым;
+                // последняя позиция всегда остаётся на карте.
+                var shape = new PointF[]
+                {
+                    new PointF(0, -9f),              // нос (вперёд, на экране ВВЕРХ)
+                    new PointF(-5f, 7f),             // левое крыло
+                    new PointF(0f, 4.5f),            // хвостовая впадина (как на миникарте)
+                    new PointF(5f, 7f)               // правое крыло
+                };
+                var gstate = g.Save();
+                g.TranslateTransform(p.X, p.Y);
+                g.RotateTransform((float)(-_truckHeading * 360.0));
+                using var brush = new SolidBrush(online
+                    ? Color.FromArgb(255, 77, 77)    // #ff4d4d
+                    : Color.FromArgb(140, 128, 128, 128));   // серый полупрозрачный
+                using var outline = new Pen(online ? Color.White : Color.FromArgb(190, 190, 190), 1.5f);
+                g.FillPolygon(brush, shape);
+                g.DrawPolygon(outline, shape);
+                g.Restore(gstate);
+                DrawLabelAbove(g, online ? "Грузовик" : "Грузовик (нет данных)", p.X, p.Y,
+                    online ? Color.Red : Color.FromArgb(170, 170, 170), true);
             }
         }
 
         private static void LogEditor(string msg)
         {
             try { Logger.Current?.Info("[EDITOR] " + msg); }
+            catch { }
+        }
+
+        // ПОДРОБНЫЕ данные (значения, пакеты, кадры) — В app_data.log, НЕ в workflow
+        // (правило пользователя: workflow — только шаги, данные — в app_data).
+        private static void LogEditorData(string msg)
+        {
+            try { Logger.Current?.Data("[EDITOR] " + msg); }
             catch { }
         }
 
@@ -1023,6 +1114,21 @@ namespace ETS2_Assist_GUI
             // Если только что было перетаскивание — не обрабатываем клик (не создаём точку).
             if (_dragMoved) { _dragMoved = false; return; }
 
+            // КЛИК ПО ГРУЗОВИКУ (v72, требование): копируем координаты с высотой,
+            // тултип-статус; точку НЕ создаём, выделение НЕ сбрасываем.
+            if (_truckX.HasValue && _truckZ.HasValue)
+            {
+                var tp = WorldToScreen(_truckX.Value, _truckZ.Value);
+                if (Math.Abs(tp.X - e.X) <= ClickThresholdPx && Math.Abs(tp.Y - e.Y) <= ClickThresholdPx)
+                {
+                    double ty = _truckY.HasValue ? _truckY.Value : 0;
+                    var coord = $"{_truckX.Value.ToString("F2", CultureInfo.InvariantCulture)}, {ty.ToString("F2", CultureInfo.InvariantCulture)}, {_truckZ.Value.ToString("F2", CultureInfo.InvariantCulture)}";
+                    Clipboard.SetText(coord);
+                    ShowCopied($"Грузовик:  {coord}   (скопировано в буфер)");
+                    return;
+                }
+            }
+
             var (wx, wz) = ScreenToWorld(e.X, e.Y);
 
             // Любая точка под курсором (цель/город/POI) — выделяем (Ctrl — мультивыбор)
@@ -1050,6 +1156,8 @@ namespace ETS2_Assist_GUI
 
             // По-настоящему пустое место — режим создания новой точки.
             EnterCreateMode(wx, wz);
+            // v73: журнал выбора новой точки (Logs\new_object_po_selections.txt).
+            try { MainForm.LogNewPointSelection(wx, 0, wz); } catch { }
             var anyCoord = $"{wx.ToString("F2", CultureInfo.InvariantCulture)}, 0, {wz.ToString("F2", CultureInfo.InvariantCulture)}";
             Clipboard.SetText(anyCoord);
             ShowCopied($"Создание точки. Координаты: {anyCoord}");
@@ -1164,8 +1272,11 @@ namespace ETS2_Assist_GUI
                         var xv = item["x"];
                         var zv = item["z"];
                         if (xv == null || zv == null) continue;
-                        if (!double.TryParse(xv.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var x)) continue;
-                        if (!double.TryParse(zv.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var z)) continue;
+                        // ФИКС v64: Value<double>() напрямую — ToString() в ru-RU даёт «,»
+                        // (старый корень «парадокса ×100» на других машинах: Invariant TryParse
+                        // читал запятую как разделитель тысяч).
+                        if (!double.IsFinite(xv.Value<double>()) || !double.IsFinite(zv.Value<double>())) continue;
+                        double x = xv.Value<double>(), z = zv.Value<double>();
                         double xr = x, zr = z;
                         if (Math.Abs(xr) > 1_000_000 && Math.Abs(zr) > 1_000_000)
                         {
@@ -1295,6 +1406,53 @@ namespace ETS2_Assist_GUI
         {
             try { EnsureTelemetry(); }
             catch { _wsReconnectTimer.Start(); }
+            // REST-снимок TruckTel (каждую 1с): работает И на паузе (подтверждено 31.08.2026
+            // для placement при движении; на паузе placement отсутствует в обоих каналах).
+            // WS-дельта остаётся «горячим» потоком; REST страхует, если WS отвалится.
+            StartEditorRestSnapshot();
+        }
+
+        private System.Threading.CancellationTokenSource? _editorRestCts;
+        private Task? _editorRestTask;
+        private static readonly System.Net.Http.HttpClient _editorHttp = new() { Timeout = TimeSpan.FromSeconds(3) };
+        // Кэш порта REST-снимка: НЕ дёргаем GetCandidatePorts каждую секунду
+        // (иначе спамим workflow-лог). Перечитываем web_data.json раз в 10с.
+        private int _editorRestPort = 8080;
+        private DateTime _editorRestPortAt = DateTime.MinValue;
+
+        private void StartEditorRestSnapshot()
+        {
+            if (_editorRestTask != null && !_editorRestTask.IsCompleted) return;
+            _editorRestCts = new System.Threading.CancellationTokenSource();
+            var token = _editorRestCts.Token;
+            _editorRestTask = Task.Run(async () =>
+            {
+                LogEditor($"[REST] снимок телеметрии запущен (порт {_editorRestPort} из web_data.json).");
+                while (!_disposed && !token.IsCancellationRequested)
+                {
+                    try
+                    {
+                        // Порт обновляем не чаще 1 раза в 10с (перечитывая web_data.json молча).
+                        if ((DateTime.Now - _editorRestPortAt).TotalSeconds > 10)
+                        {
+                            _editorRestPortAt = DateTime.Now;
+                            var ports = GetCandidatePorts();
+                            if (ports.Count > 0 && ports[0] != _editorRestPort)
+                            {
+                                _editorRestPort = ports[0];
+                                LogEditor($"[REST] порт TruckTel сменился на {_editorRestPort}.");
+                            }
+                        }
+                        var resp = await _editorHttp.GetAsync($"http://localhost:{_editorRestPort}/api/rest/flat/truck", token);
+                        resp.EnsureSuccessStatusCode();
+                        var text = await resp.Content.ReadAsStringAsync(token);
+                        ProcessTelemetry(text, _editorRestPort); // тот же парсер placement
+                    }
+                    catch { /* TruckTel недоступен — ждём следующий тик */ }
+                    try { await Task.Delay(1000, token); } catch { break; }
+                }
+                LogEditor("[REST] снимок телеметрии остановлен.");
+            }, token);
         }
 
         private List<int> GetCandidatePorts()
@@ -1312,7 +1470,8 @@ namespace ETS2_Assist_GUI
             }
             catch { }
             if (!ports.Contains(8080)) ports.Add(8080);
-            LogEditor($"GetCandidatePorts: web_data.json={_webDataFile} существует={File.Exists(_webDataFile)}; кандидаты=[" + string.Join(",", ports) + "].");
+            // v73: это высокочастотный диагностический вывод (раз/10с) → app_data.
+            LogEditorData($"GetCandidatePorts: web_data.json={_webDataFile} существует={File.Exists(_webDataFile)}; кандидаты=[" + string.Join(",", ports) + "].");
             return ports;
         }
 
@@ -1393,6 +1552,21 @@ namespace ETS2_Assist_GUI
                     var truck = json["truck"] as JObject;
                     if (truck != null) placement = truck["world"]?["placement"] as JArray;
                 }
+                // Поворот головы: truck.head.offset[3] (доля оборота; Value<double> — культуры-независимо).
+                // Конус обзора рисуется по heading фуры + yaw головы.
+                var headArr = json["truck.head.offset"] as JArray;
+                if (headArr == null) headArr = json.SelectToken("truck.head.offset") as JArray;
+                if (headArr == null)
+                {
+                    var truck = json["truck"] as JObject;
+                    var ho = truck?["head"]?["offset"] as JArray;
+                    if (ho != null) headArr = ho;
+                }
+                if (headArr != null && headArr.Count >= 4 && headArr[3] != null)
+                {
+                    double hy = headArr[3].Value<double>();
+                    if (double.IsFinite(hy)) _headYaw = hy;
+                }
                 // АНТИ-СПАМ (урок логов 30.08.2026): при паузе TruckTel шлёт только
                 // frame.render_time/simulation_time — «placement отсутствует» приходило
                 // ~15 раз/сек (12k+ строк в логе за день). Логируем только СМЕНУ состояния:
@@ -1406,23 +1580,81 @@ namespace ETS2_Assist_GUI
                             }
                             var xTok = placement[0];
                             var zTok = placement[2];
-                            if (xTok != null && zTok != null
-                                && double.TryParse(xTok.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var tx)
-                                && double.TryParse(zTok.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var tz))
+                            // heading — 4-й элемент placement (доля оборота 0..1).
+                            // КЛЮЧЕВОЙ ФИКС (v64): JValue.ToString() в ru-RU даёт «0,35»
+                            // (запятая), Invariant TryParse читает «,» как разделитель тысяч
+                            // → числа ×1e8 мусор («произвольное вращение», «вне границ»).
+                            // Читаем числа НАПРЯМУЮ через Value<double>() — культуро-независимо.
+                            double th = placement.Count >= 4 && placement[3] != null
+                                ? placement[3].Value<double>() : 0.0;
+                            bool haveHeading = placement.Count >= 4 && placement[3] != null &&
+                                th >= -0.5 && th <= 1.5;
+                            if (xTok != null && zTok != null)
                             {
+                                // Числа читаем напрямую (Value<double>): без текстового раунд-трипа
+                                // и без зависимости от культуры (корень бага «вне границ карты»).
+                                double tx = xTok.Value<double>();
+                                double tz = zTok.Value<double>();
+                                if (double.IsNaN(tx) || double.IsInfinity(tx) || double.IsInfinity(tz))
+                                {
+                                    // Мусорный кадр (NaN/Inf) — подробности в app_data, не в workflow.
+                                    LogEditorData($"[TELEMETRY][DROP] кадр с NaN/Inf координатами пропущен.");
+                                    return;
+                                }
                                 // Координаты применяем НЕ чаще 1 раза в секунду и только если
                                 // сэмпл правдоподобен (в границах карты и без «прыжка» >5 км) —
                                 // иначе мусорные кадры телеметрии уносят фуру за много км.
                                 _truckLastSeen = DateTime.Now;
-                                double ax = tx / TruckCoordScaleX;
-                                double az = tz / TruckCoordScaleZ;
+                                // МАСШТАБ ТЕЛЕМЕТРИИ (эмпирика 31.08.2026, session 41):
+                                // TruckTel отдаёт placement УЖЕ В МЕТРАХ КАРТЫ
+                                // (X=122629.27, Z=-54727.70 — напрямую совпадает с дорогами).
+                                // Делители 1e11 НЕ НУЖНЫ. Ограничение границ остаётся (мусор отсекается),
+                                // но масштаб единый с оверлеями — фура встанет на своё место.
+                                // (Предыдущее «×100 при парсинге» = следствие мусорных кадров, не реальный формат.)
+                                double ax = tx;           // было: tx / TruckCoordScaleX
+                                double az = tz;           // было: tz / TruckCoordScaleZ
                                 bool inBounds = ax >= TruckBoundsMinX && ax <= TruckBoundsMaxX
                                                 && az >= TruckBoundsMinZ && az <= TruckBoundsMaxZ;
                                 bool sane = inBounds && (!_truckKnown || !_truckX.HasValue || !_truckZ.HasValue
                                     || Math.Sqrt((ax - _truckX.Value) * (ax - _truckX.Value) + (az - _truckZ.Value) * (az - _truckZ.Value)) <= TruckSanityMaxJumpM);
-                                if (sane) { _candTx = tx; _candTz = tz; _haveCandidate = true; }
+                                // heading применяется ТОЛЬКО вместе с правдоподобным сэмплом координат,
+                                // причём сглаженно (купон против резких рывков ~0.6/кадр):
+                                if (sane && haveHeading)
+                                {
+                                    double prev = _truckHeading;
+                                    double diff = th - prev;
+                                    // нормализуем разницу в диапазон [-0.5, 0.5] (переход через 0/1)
+                                    if (diff > 0.5) diff -= 1.0;
+                                    if (diff < -0.5) diff += 1.0;
+                                    double maxStep = 0.6; // 216°/кадр — заведомо больше реального поворота
+                                    if (Math.Abs(diff) <= maxStep || !_truckKnown)
+                                    {
+                                        double applied = prev + diff;
+                                        // ре-нормализация в [0..1]
+                                        applied -= Math.Floor(applied);
+                                        _truckHeading = applied;
+                                    }
+                                }
+                                if (sane) { _candTx = ax; _candTz = az; _haveCandidate = true; }
+                                else if (!_haveCandidate && !_truckKnown)
+                                {
+                                    // ПОДРОБНАЯ диагностика отброса — ТОЛЬКО в app_data.log (не спамим workflow).
+                                    // Периодичность: 1 строка/с максимум (по границе применения).
+                                    if ((DateTime.Now - _lastTruckCoordApply).TotalMilliseconds >= 1000)
+                                    {
+                                        _lastTruckCoordApply = DateTime.Now;
+                                        LogEditorData($"[TELEMETRY][DROP] сэмпл вне границ/мусор: raw x={tx}, z={tz}" +
+                                            (haveHeading ? $", h={th}" : "") + " (в workflow — только смена состояния).");
+                                    }
+                                }
 
                                 var now = DateTime.Now;
+                                var tyTok = placement.Count >= 2 ? placement[1] : null;
+                                if (tyTok != null)
+                                {
+                                    double tvy = tyTok.Value<double>();
+                                    if (double.IsFinite(tvy)) _truckY = tvy;   // v72
+                                }
                                 if ((now - _lastTruckCoordApply).TotalMilliseconds >= 1000)
                                 {
                                     _lastTruckCoordApply = now;
@@ -1431,23 +1663,26 @@ namespace ETS2_Assist_GUI
                                         if (inBounds)
                                         {
                                             _truckX = ax; _truckZ = az; _truckKnown = true;
+                                            LogEditor($"[TELEMETRY] первый валидный сэмпл применён: X={ax:F1} Z={az:F1}.");
                                             if (!_disposed) BeginInvoke((Action)(() => { if (!_disposed) { SetTruckStatus(); InvalidateMap(); } }));
                                         }
                                         else
                                         {
-                                            LogEditor("[TELEMETRY] первый сэмпл отброшен: вне границ карты (мусор).");
+                                            // Подробности отброса уже ушли в app_data (см. DROP выше).
+                                            // В workflow — только 1 строка/с (НЕ на каждый кадр).
                                         }
                                     }
                                     else if (_haveCandidate)
                                     {
-                                        double cax = _candTx / TruckCoordScaleX;
-                                        double caz = _candTz / TruckCoordScaleZ;
+                                        double cax = _candTx;   // метры (масштаб снят, см. эмпирику 31.08.2026)
+                                        double caz = _candTz;   // метры
                                         _truckX = cax; _truckZ = caz;
                                         if (!_disposed) BeginInvoke((Action)(() => { if (!_disposed) { SetTruckStatus(); InvalidateMap(); } }));
                                     }
                                     else
                                     {
-                                        LogEditor($"[TELEMETRY] за секунду все сэмплы отброшены (мусор/прыжок >{TruckSanityMaxJumpM}м).");
+                                        // Все сэмплы за секунду мусор — фура НЕ трогаем (не улетаем).
+                                        // Подробности (с какими координатами) — в app_data, см. DROP.
                                     }
                                     _haveCandidate = false;
                                 }
@@ -1894,8 +2129,45 @@ namespace ETS2_Assist_GUI
             _dirtyFields.Add("X"); _dirtyFields.Add("Y"); _dirtyFields.Add("Z");
             _dirtyFields.Add("GameName"); _dirtyFields.Add("RealName");
             LoadPointIntoPanel(pd);
+            // v70: пометка в АР-оверлее (серый крестик) в точке будущей новой точки.
+            try { MainForm.Current?.ArPlacePinAtWorld(x, z); } catch { }
             RequestRender();
         }
+
+        // СОЗДАНИЕ ТОЧКИ ИЗ АР (v70): точка на пересечении взгляда с плоскостью высоты
+        // грузовика. Высота prefill = высота грузовика (из пометки); серая пометка
+        // рисуется на карте, пока пользователь редактирует; снимается «отменить».
+        public void OpenCreateAt(double x, double z, double y = 0, bool fromArPin = false)
+        {
+            _createMode = true;
+            _createModeFromAr = fromArPin;
+            if (fromArPin) _arPinWx = x; _arPinWz = z; _arPinWy = y;
+            _selectedGameName = null;
+            _selectedIds.Clear();
+            var pd = new PointData
+            {
+                GameName = "",
+                RealName = "Новая точка (АР)",
+                Category = "Пользовательское",
+                Enabled = true,
+                X = x, Y = fromArPin ? Math.Round(y, 2) : 0, Z = z,
+                Color = "#ffff00",
+                TriggerRadius = 200,
+                IsNew = true
+            };
+            _editingCopy = pd.Clone();
+            _dirtyFields.Clear();
+            _dirtyFields.Add("X"); _dirtyFields.Add("Y"); _dirtyFields.Add("Z");
+            _dirtyFields.Add("GameName"); _dirtyFields.Add("RealName");
+            LoadPointIntoPanel(pd);
+            // Центрируем вид на место пометки, чтобы пользователь сразу его увидел.
+            _centerX = x; _centerZ = z;
+            UpdateStatus();
+            RequestRender();
+            LogEditor($"OpenCreateAt из АР: ({x:F1}, {y:F1}, {z:F1}) — пометка серым крестиком.");
+        }
+
+        // Помечаем место будущей точки (серый крестик) — рисуется в OnPaint.
 
         private void LoadPointIntoPanel(PointData pd)
         {
@@ -2110,6 +2382,13 @@ namespace ETS2_Assist_GUI
             if (_createMode)
             {
                 _createMode = false; _selectedGameName = null; _editingCopy = null; _dirtyFields.Clear();
+                // v70: пометка из АР снимается кнопкой «отменить» (требование) —
+                // серый крестик в AR-оверлее исчезает.
+                if (_createModeFromAr)
+                {
+                    _createModeFromAr = false;
+                    MainForm.NotifyArPinCancelled();
+                }
                 UpdateActionButtons(); RequestRender(); return;
             }
             if (!string.IsNullOrEmpty(_selectedGameName) && _pointModel.TryGetValue(_selectedGameName, out var pd))
@@ -2143,6 +2422,15 @@ namespace ETS2_Assist_GUI
             LogEditor($"Точка '{pd.GameName}' удалена/сброшена.");
             _statusBar.SetOperation($"удалено: {pd.GameName}", busy: false);
             MainForm.NotifyPointsOverridesChanged();
+        }
+
+        // v70: безопасные обёртки раскладки (для внешних вызывающих — AR-пометка).
+        public void SuspendLayoutIfPossible() { if (!_disposed) try { SuspendLayout(); } catch { } }
+        public void ResumeLayoutIfPossible()
+        {
+            if (_disposed) return;
+            try { ResumeLayout(true); } catch { }
+            try { ResumeLayout(false); } catch { }
         }
 
         private void CopySelectedAsJson()
@@ -2289,6 +2577,7 @@ namespace ETS2_Assist_GUI
             _disposed = true;
             try { _cts?.Cancel(); } catch { }
             try { _cts?.Dispose(); } catch { }
+            try { _editorRestCts?.Cancel(); } catch { }
             try { _wsReconnectTimer.Stop(); } catch { }
             try { _ws?.Dispose(); } catch { }
             _ws = null;

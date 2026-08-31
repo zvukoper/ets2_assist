@@ -24,6 +24,14 @@ namespace ETS2_Assist_GUI
         public static event Action? PointsOverridesChanged;
         internal static void NotifyPointsOverridesChanged() => PointsOverridesChanged?.Invoke();
 
+        // v70: пометка «Пометить в АР» снята кнопкой «отменить» в редакторе —
+        // в AR-оверлее исчезает серый крестик (команда ar_pin active=false).
+        internal static void NotifyArPinCancelled()
+        {
+            try { Current?.ArClearPin(); }
+            catch { /* AR-канал не запущен — молча */ }
+        }
+
         private System.Windows.Forms.Timer? _pointsOverridesDebounce;
 
         private void HookPointsOverridesChanged(bool subscribe)

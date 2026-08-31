@@ -26,6 +26,9 @@ namespace ETS2_Assist_GUI
 {
     public partial class MainForm : Form
     {
+        // ЕДИНСТВЕННЫЙ экземпляр MainForm (v70: для MapEditorForm/AR-пометки).
+        internal static MainForm? Current { get; private set; }
+
         // UI Components
         private NotifyIcon trayIcon = null!;
         private ContextMenuStrip trayMenu = null!;
@@ -51,6 +54,7 @@ namespace ETS2_Assist_GUI
         private Button btnRandomTarget3 = null!;
         private Button btnRandomTarget4 = null!;
         private Button btnCheckTargets = null!;
+        // v71: btnArPin удалён — «Пометить в АР» = Shift+Ctrl+X
         private Button btnTestPause = null!;
         private Button btnResetRecordingOrigin = null!;
         private Button btnOpenTrack = null!;
@@ -59,6 +63,7 @@ namespace ETS2_Assist_GUI
         private Button btnShowMap = null!;
         private Button btnShowHybrid = null!;
         private Button btnLaunchAR = null!;
+        private Button btnAr2 = null!;   // v76: AR v2.0 (D3D11)
         private Button btnMapEditor = null!;
 
         private RichTextBox logConsole = null!;
@@ -171,6 +176,7 @@ namespace ETS2_Assist_GUI
         public MainForm()
         {
             AppDataPaths.EnsureUserData();
+            Current = this;   // v70: доступ из MapEditorForm/AR-пометки
             try
             {
                 var version = Application.ProductVersion ?? "0.0.0";
@@ -211,7 +217,7 @@ namespace ETS2_Assist_GUI
                 RegisterHotKey(this.Handle, HOTKEY_MARKER, MOD_CONTROL | MOD_SHIFT, (uint)Keys.N.GetHashCode());
                 RegisterHotKey(this.Handle, HOTKEY_TEST, MOD_CONTROL | MOD_SHIFT, (uint)Keys.T.GetHashCode());
                 hotKeyRegistered = true;
-                AppendLog("Hotkeys registered: S (save+pause), R (start/reset rec), X (stop rec), N (marker), T (test)");
+                AppendLog("Hotkeys registered: S (save+pause), R (start/rec), X (AR pin — пометка в АР), N (marker), T (test)");
             }
             catch (Exception ex)
             {
@@ -361,6 +367,8 @@ namespace ETS2_Assist_GUI
 
             btnCheckTargets = new Button { Text = "Проверка точек", Location = new Point(leftX, topY + 380), Size = new Size(120, 20) };
             btnCheckTargets.Click += BtnCheckTargets_Click;
+            // v71: кнопка «Пометить в АР» УДАЛЕНА — функционал перенесён на
+            // хоткей Shift+Ctrl+X (требование 31.08.2026: «с кнопкой отбой»).
 
             btnShowMap = new Button { Text = "Показать карту ✖", Location = new Point(leftX, topY + 410), Size = new Size(130, 30) };
             btnShowMap.Click += (s, e) => {
@@ -414,7 +422,20 @@ namespace ETS2_Assist_GUI
 
             btnMapEditor = new Button { Text = "Редактор карты", Location = new Point(leftX, topY + 560), Size = new Size(230, 30) };
             btnMapEditor.Click += (s, e) => {
-                try { new MapEditorForm().Show(); }
+                try
+                {
+                    // v71: редактор в ОДНОМ экземпляре (фидбек 31.08.2026: повторное
+                    // нажатие множило окна). Уже открыт — ЗАКРЫВАЕМ и открываем новый.
+                    // (v72: Shift+Ctrl+X — НЕ закрывает, а переиспользует окно, см. QuestsManager.)
+                    var existing = Application.OpenForms.OfType<MapEditorForm>().FirstOrDefault();
+                    if (existing != null)
+                    {
+                        existing.Close();
+                        existing.Dispose();
+                        AppendLog("[EDITOR] Предыдущий экземпляр редактора закрыт (новое окно).");
+                    }
+                    new MapEditorForm().Show();
+                }
                 catch (Exception ex) { AppendLog($"[EDITOR] Ошибка открытия редактора: {ex.Message}"); }
             };
 
@@ -422,6 +443,10 @@ namespace ETS2_Assist_GUI
             // (перекрестье дополненной реальности на ближайшую точку 3D).
             btnLaunchAR = new Button { Text = "Запустить AR", Location = new Point(leftX, topY + 600), Size = new Size(230, 30) };
             btnLaunchAR.Click += (s, e) => LaunchArOverlay();
+
+            // v76: AR v2.0 — нативный D3D11-рендер (та же логика/данные, другой движок).
+            btnAr2 = new Button { Text = "AR v2.0 (D3D)", Location = new Point(leftX, topY + 640), Size = new Size(230, 30) };
+            btnAr2.Click += (s, e) => LaunchArOverlayV2();
 
             int consoleLeft = leftX + 240;
             int consoleWidth = 400;
@@ -547,7 +572,7 @@ namespace ETS2_Assist_GUI
 
             this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
-                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnMapEditor, btnLaunchAR,
+                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnMapEditor, btnLaunchAR, btnAr2,
                 logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu, btnTheme
             });
             PositionBuildLabel();
@@ -1235,13 +1260,24 @@ namespace ETS2_Assist_GUI
                         msg[prop.Name] = prop.Value;
                 }
                 _wsSaveServer.WebSocketServices["/"]?.Sessions?.Broadcast(msg.ToString(Formatting.None));
-                AppendLog($"Command '{command}' sent to map.");
+                // ПРАВИЛО ЛОГОВ (31.08.2026): потоковые команды (ar_telemetry и т.п.,
+                // идут 30 раз/с) НЕ пишем в workflow — это спам данными. Только в
+                // app_data.log. Разовые команды (ar_target, map_overrides_data…)
+                // остаются в workflow.
+                if (IsStreamingCommand(command))
+                    Logger.Current?.Data($"Command '{command}' sent to map.");
+                else
+                    AppendLog($"Command '{command}' sent to map.");
             }
             else
             {
                 AppendLog($"Cannot send command '{command}': WebSocket save server is not running.");
             }
         }
+
+        // Потоковые (высокочастотные) команды: лог только в app_data, не в workflow.
+        private static bool IsStreamingCommand(string command) =>
+            command == "ar_telemetry";   // 30 Гц — единственный потоковый канал сейчас
 
         // ================================================================
         // СОХРАНЕНИЕ ТРЕКА
@@ -2253,8 +2289,10 @@ namespace ETS2_Assist_GUI
                         SendCommandToMap("start_recording");
                         break;
                     case HOTKEY_STOP_REC:
-                        AppendLog("Hotkey stop recording (Shift+Ctrl+X)");
-                        SendCommandToMap("stop_recording");
+                        // v71: Shift+Ctrl+X теперь «Пометить в АР» (перенос с кнопки,
+                        // требование 31.08.2026 — «с кнопкой отбой»).
+                        AppendLog("Hotkey AR pin (Shift+Ctrl+X)");
+                        PlacePinFromArAndOpenEditor();
                         break;
                     case HOTKEY_MARKER:
                         if (IsGamePaused())
@@ -2611,6 +2649,64 @@ namespace ETS2_Assist_GUI
                 logger.Data(msg);
         }
 
+        // ================================================================
+        // ЖУРНАЛ ВЫБОРА НОВЫХ ТОЧЕК (v73, дополнено v78): при создании
+        // точки в редакторе карты или пометке в АР — фиксируем в
+        // Logs\new_object_po_selections.txt ТРИ строки:
+        //   <дд.ММ.гггг чч:мм:сс> <Название ближайшего города> <дистанция точка→город, м>
+        //   <координаты JSON {x,y,z}>
+        //   <пустая строка>
+        // ================================================================
+        internal static void LogNewPointSelection(double x, double y, double z)
+        {
+            try
+            {
+                // Ближайший город (по горизонтали) из статической базы.
+                string cityName = "?";
+                double cityDist = -1;
+                try
+                {
+                    var path = Path.Combine(AppDataPaths.StaticDataDirectory, "localized_cities", "cities_sibirmap.json");
+                    if (File.Exists(path))
+                    {
+                        var list = (JObject.Parse(File.ReadAllText(path))["citiesList"] as JArray) ?? new JArray();
+                        double best = double.MaxValue;
+                        foreach (var c in list.OfType<JObject>())
+                        {
+                            if (!double.TryParse((string?)c["x"], NumberStyles.Any, CultureInfo.InvariantCulture, out var cx)) continue;
+                            if (!double.TryParse((string?)c["z"], NumberStyles.Any, CultureInfo.InvariantCulture, out var cz)) continue;
+                            double d2 = (cx - x) * (cx - x) + (cz - z) * (cz - z);
+                            if (d2 < best)
+                            {
+                                best = d2;
+                                cityName = (string?)c["realName"] ?? (string?)c["gameName"] ?? "?";
+                                cityDist = Math.Sqrt(d2);
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");   // тот же Logs, что у Logger
+                Directory.CreateDirectory(dir);
+                var file = Path.Combine(dir, "new_object_po_selections.txt");
+                // v78: дата-время в начале первой строки (требование 31.08.2026).
+                var stamp = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture);
+                var line1 = $"{stamp} {cityName} {(cityDist >= 0 ? cityDist.ToString("F0", CultureInfo.InvariantCulture) : "?")}";
+                var line2 = new JObject { ["x"] = Math.Round(x, 2), ["y"] = Math.Round(y, 2), ["z"] = Math.Round(z, 2) }.ToString(Formatting.None);
+                File.AppendAllText(file,
+                    line1 + Environment.NewLine +
+                    line2 + Environment.NewLine +
+                    Environment.NewLine,
+                    new UTF8Encoding(false));
+                Logger.Current?.Data($"[PINLOG] {line1} | {line2}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Data($"[PINLOG] ошибка записи: {ex.Message}");
+            }
+        }
+
         private void UpdateStartButton()
         {
             if (procManager.IsRunning)
@@ -2822,6 +2918,7 @@ namespace ETS2_Assist_GUI
             StopTriggerServer();
             StopWebSocketSaveServer();
             HookPointsOverridesChanged(false);
+            if (Current == this) Current = null;
             base.OnFormClosed(e);
         }
 

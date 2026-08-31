@@ -1,6 +1,9 @@
 // ================================================================
 // ОБНОВЛЕНИЕ UI
 // ================================================================
+// v75: хелпер литров (fallback — если liters нет, 0).
+function fuelLit(st) { return Number(st.fuelLiters) || 0; }
+
 function updateUI() {
     const speed = hybridState.lastSpeed || 0;
     const engineOn = (hybridState.engine === 'ON');
@@ -60,15 +63,18 @@ function updateUI() {
         dom.brakeIndicator.className = 'indicator brake' + (brakeOn ? ' active' : '');
     }
 
-    // Fuel
+    // Fuel (v75, вар. «а»: литры + % — см. диагностику v74: TruckTel шлёт fuel
+    // только при изменении, круглый % при баке 1465 л замирает на 10-20 с.
+    // Показ ЛИТРОВ рядом с % даёт живое значение (fuel.amount меняется непрерывно).
     const fuel = Math.round(Number(hybridState.fuelPercent) || 0);
-    if (fuel <= 0) {
+    const lit = fuelLit(hybridState);
+    if (fuel <= 0 && lit <= 0) {
         dom.fuelValue.textContent = '0';
         dom.fuelProgress.style.width = '0%';
         dom.fuelProgress.style.backgroundColor = 'transparent';
         dom.fuelCard.classList.remove('warning', 'critical');
     } else {
-        dom.fuelValue.textContent = fuel;
+        dom.fuelValue.textContent = (lit ? (lit.toFixed(0) + ' л') : String(fuel));
         dom.fuelProgress.style.width = fuel + '%';
         dom.fuelProgress.style.backgroundColor = getProgressColor(fuel);
         dom.fuelCard.classList.remove('warning', 'critical');

@@ -115,6 +115,13 @@ function connectSaveWebSocket() {
                             // из редактора карты (delta поверх статических баз).
                             storePointsOverrides(data);
                             break;
+                        case 'ar_pin_map':
+                            // v73: пометка «Пометить в АР» на МИНИКАРТЕ (кружок+крест,
+                            // серый, как в редакторе). Рисует map_draw.js по state.arPinMap.
+                            state.arPinMap = (data.active === true) ?
+                                { x: Number(data.x) || 0, y: Number(data.y) || 0, z: Number(data.z) || 0 } : null;
+                            console.log('[WS] ar_pin_map ' + (state.arPinMap ? 'установлена' : 'снята'));
+                            break;
                         case 'minimap_show':
                             // Миникарта показывается только когда авто-логика включена.
                             if (!minimapAutoOff) {
@@ -264,6 +271,10 @@ function updateRuntimeDebugOverlay() {
     const el = document.getElementById('runtimeDebug');
     if (!el) return;
     const head = Array.isArray(state.headOffset) ? ((((Number(state.headOffset[3]) || 0) % 1 + 1) % 1) * 360) : 0;
+    // Вертикальный угол головы (v67, по требованию 31.08.2026): head.offset[4],
+    // доля оборота → градусы (пример: -0.0357 → -12.9°). Рядом с горизонтальным.
+    const headPitch = Array.isArray(state.headOffset) ? ((((Number(state.headOffset[4]) || 0) % 1 + 1) % 1) * 360) : 0;
+    const pitchSigned = (((Number(state.headOffset?.[4]) || 0) % 1) * 360);
     const scale = Number(state.localScale) || 0;
     const speed = Number(state.speed) || 0;
     const poi = Array.isArray(state.pois) ? state.pois.length : 0;
@@ -275,7 +286,7 @@ function updateRuntimeDebugOverlay() {
     const brake = Number(state.brake) || 0;
     const trailer = state.trailerAttached ? 'ON' : 'OFF';
     const lights = state.lights ? Object.entries(state.lights).filter(([,v])=>v).map(([k])=>k).join(',') || 'off' : 'off';
-    el.textContent = `Head: ${head.toFixed(1)}° | Scale: ${scale.toFixed(2)}× | Speed: ${speed.toFixed(0)} km/h | Fuel: ${fuel.toFixed(0)}% | Brake: ${(brake*100).toFixed(0)}% | Trailer:${trailer} | Lights:${lights} | POI:${poi}/${cat} | Cities:${cities} Roads:${roads} | WS:${telemetryFrames} | STATIC:${staticOk ? 'OK' : 'MISSING'}`;
+    el.textContent = `Head: ${head.toFixed(1)}° | HeadPitch: ${pitchSigned.toFixed(1)}° (${headPitch.toFixed(1)}°n) | Scale: ${scale.toFixed(2)}× | Speed: ${speed.toFixed(0)} km/h | Fuel: ${fuel.toFixed(0)}% | Brake: ${(brake*100).toFixed(0)}% | Trailer:${trailer} | Lights:${lights} | POI:${poi}/${cat} | Cities:${cities} Roads:${roads} | WS:${telemetryFrames} | STATIC:${staticOk ? 'OK' : 'MISSING'}`;
 }
 
 function normalizeHeadOffset(value) {

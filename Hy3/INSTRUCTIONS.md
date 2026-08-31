@@ -172,6 +172,11 @@
 Не оставлять эти файлы устаревшими — они единственный мост памяти между сессиями.
 
 ## Архитектура (кратко)
+- **Редактор карты: фура = треугольник-стрелка (v61, 31.08.2026).** `_truckHeading`
+  парсится из placement[3] (ProcessTelemetry). OnPaint: g.Save→TranslateTransform→
+  RotateTransform(-heading*360)→FillPolygon #ff4d4d + белая обводка 1.5px→Restore(gstate).
+  Эталон формы = миникарта (map_draw.js): нос (0,-8), база ±(5.5,7). ЛОВУШКА: g.Restore()
+  без GraphicsState = CS7036 — только Restore(g.Save()).
 - C# WinForms приложение `ETS2_Assist_GUI`, .NET 10, Windows.
 - Мини-карта — веб-оверлей (WebView2): страница `data/web_pda_map.html`,
   JS в `data/js/` (init.js, ui.js, websocket.js, targets.js, map_draw.js, trail.js, state.js).
@@ -246,6 +251,36 @@
   (nullability) в `MainForm.cs` — не критично, но можно почистить.
 
 ## Список задач (TODO)
+- [x] **РЕШЕНО (v64, 1.0.38.64-LOCALE-PARSE-FIX-08.31-1111) — КОРЕНЬ ВСЕХ «МАСШТАБНЫХ»
+  БАГОВ:** JValue.ToString() на ru-RU даёт «121657,32» (запятая); Invariant TryParse
+  читает «,» как разделитель тысяч → числа ×1e11 мусор («вне границ карты» в редакторе,
+  «приложение не прислало цель» в AR = фура «вне карты → 0 точек в 3км»,
+  «произвольное вращение» стрелки, вероятно и «парадокс ×100 POI» на старом ПК).
+  ПРАВИЛО: числовые JValue читать ТОЛЬКО Value<double>() (культуро-независимо);
+  ToString()+TryParse — ТОЛЬКО для строковых полей из файлов (там точка).
+  Проверка-паттерн: grep «ToString(), NumberStyles». Исправлено: ArTarget.ApplyPlacementJson
+  (все 6 элементов), MapEditorForm.ProcessTelemetry + LoadOverlays, OverridesPipeline
+  (LoadStaticPois, merge x/z). LoadStaticCities не тронут — там координаты-строки («1436.4»).
+- [ ] **ВЕРИФИЦИРОВАТЬ (v64, 1.0.38.64-LOCALE-PARSE-FIX-08.31-1111):** (а) редактор —
+  фура-дельтоид появляется в границах карты, стрелка по ходу движения;
+  (б) AR в движении — перекрестье на ближайшей точке (в app_data: near3km>=1,
+  hasTarget=True); (в) AR на паузе — замирает, оживает после снятия;
+  (г) workflow-лог БЕЗ данных, данные → Logs/app_data.log
+  ([AR] placement/tick, [EDITOR][TELEMETRY][DROP]).
+- [ ] **Крэш редактора при ПЕРВОМ старте (v61, не сделано):** Overflow error в
+  g.DrawPath(_roadsPath) (OnPaint, MapEditorForm ~755) — белый фон, красный крест;
+  исчезает при повторном открытии. Вероятно экстремальная матрица/координаты дорог
+  при первом построении. План: culling сегментов в BuildRoadsPath, clamp масштаба,
+  try/catch вокруг DrawPath (проглатывать paint-исключение, перерисовать после готовности).
+- [ ] **Галочка «Показать в AR» в редакторе (v61, не сделано):** PointData.ShowInAr
+  (int 0/1) + Fields (Group «AR») + FieldJson + ApplyJObjectToPoint + PointDataToJObject;
+  BuildFieldControls уже строит CheckBox для bool — но поле int: использовать ValueType
+  bool c конверсией в OnFieldChanged/ReadPanelIntoPoint ИЛИ сразу bool ShowInAr.
+  Фильтр в MainForm.ArTarget.RefreshArModel: НЕ показывать точки с ShowInAr==0
+  (только отмеченные летят в AR). ar_target остаётся «ближайшая из отмеченных».
+- [ ] **AR не показывает цель/«приложение не прислало цель» (сессия 41):** проверить у
+  пользователя: wsPort в web_data.json; лог [AR] «Модель точек обновлена: N»; если N=0 —
+  причина в статики/overrides; после внедрения «Показать в AR» подбор станет по отмеченным.
 - [ ] **ВЕРИФИЦИРОВАТЬ у пользователя (сессия 40, 30.08.2026, сборка 1.0.38.60-AR-C-TARGET):**
   AR — DUMB-RECEIVER (требование пользователя): страница не грузит точки; приложение само
   подбирает ближайшую (MainForm.ArTarget.cs: свой WS-клиент телеметрии, копия модели
@@ -359,3 +394,63 @@
 - Отвечать на русском языке.
 - Пользователь ценит конкретные правки + сборку + краткий отчёт, а не просто теорию.
 - Память между сессиями ведётся вручную в `Hy3/`.
+
+### [v65 31.08.2026] AR-MIRROR-SEND-ONCE — опубликовано
+- ar_target РАЗОВО (смена цели / форс-ресет: StartArTargetFeed, RefreshArModel, SendMapOverridesToMap). Телеметрия 30 Гц (Timer 33мс). Модель = record ArPoint(...category, color). Payload: category+color.
+- Зеркало: редактор RotateTransform(-h*360) без +180; JS fwd=(sin,cos), right=(-cos,sin). Конус обзора ±35° (heading+headYaw).
+- ar_hud.js CFG: minSize=30 maxSize=96 sizeNearDist=10 sizeFarDist=500 fadeDist=1500. За спиной → стрелка снизу. rAF ~60FPS.
+- МАШИННОЕ ПРАВИЛО (подтверждено v64): числовые JValue — ТОЛЬКО .Value<double>(); ToString+TryParse(InvariantCulture) на ru-RU = запятая → ×1e8 мусор.
+
+### TODO (не завершено)
+- [ ] ВЕРИФИЦИРОВАТЬ v65 у пользователя: зеркало стрелки/AR-проекции, конус с головой, цвет/размер/фэйд метки, стрелка снизу для цели сзади, разовая рассылка (в логе ar_target только при смене).
+- [ ] Краш первого старта редактора: Overflow error в g.DrawPath(_roadsPath) — план: клиппинг в BuildRoadsPath + try/catch DrawPath.
+- [ ] Чекбокс «Показать в AR» (PointData.ShowInAr → Fields/FieldJson/ApplyJObjectToPoint/RefreshArModel filter).
+### [v65 31.08.2026] AR-MIRROR-SEND-ONCE — опубликовано
+- ar_target РАЗОВО (смена цели / форс-ресет: StartArTargetFeed, RefreshArModel, SendMapOverridesToMap). Телеметрия 30 Гц (Timer 33мс). Модель = record ArPoint(...category, color). Payload: category+color.
+- Зеркало: редактор RotateTransform(-h*360) без +180; JS fwd=(sin,cos), right=(-cos,sin). Конус обзора ±35° (heading+headYaw).
+- ar_hud.js CFG: minSize=30 maxSize=96 sizeNearDist=10 sizeFarDist=500 fadeDist=1500. За спиной → стрелка снизу. rAF ~60FPS.
+- МАШИННОЕ ПРАВИЛО (подтверждено v64): числовые JValue — ТОЛЬКО .Value<double>(); ToString+TryParse(InvariantCulture) на ru-RU = запятая -> x1e8 мусор.
+
+### TODO (не завершено)
+- [ ] ВЕРИФИЦИРОВАТЬ v65: зеркало стрелки/AR-проекции, конус с головой, цвет/размер/фэйд метки, стрелка снизу для цели сзади, разовая рассылка.
+- [ ] Краш первого старта редактора: Overflow error в g.DrawPath(_roadsPath) - план: клиппинг в BuildRoadsPath + try/catch DrawPath.
+- [ ] Чекбокс «Показать в AR» (PointData.ShowInAr -> Fields/FieldJson/ApplyJObjectToPoint/RefreshArModel filter).
+### [v66+v67 31.08.2026] AR-VERTICAL-SMOOTH / HEAD-PITCH-FIX — опубликовано
+- v66: ОТКАТ зеркала проекции v65 (fwd=(-sin,-cos), right=(cos,-sin) — КАК НА МИНИКАРТЕ; v65 «зеркало» было ошибкой 180°). Камера=глаз (placement[1]+1.9м), метка ground-якорь (target.y+0.5м). Экстраполяция камеры+lerp позиции. Конус редактора ×0.5 (17.5°). Офлайн: стрелка+конус серые, НЕ удаляются.
+- v67: headPitchSign=+1 (был -1; фидбек «движется вместе с головой» = двойная инверсия). head.offset[4]=pitch (доля оборота; пример: -0.0357=-12.9°). runtimeDebug: HeadPitch.
+- Если знак pitch снова не тот — CFG.headPitchSign в ar_hud.js (±1); калибровка по статус-строке AR «pitch N°».
+- TODO с прошлых сессий (актуально): краш DrawPath первого старта редактора; чекбокс «Показать в AR».
+### [v68 31.08.2026] AR-ROUND-DIM — опубликовано (exe=txt=manifest 1.0.38.68-AR-ROUND-DIM-08.31-1234)
+- AR метка КРУГ; размеры -30% (min 21 / max 67); перекрестье масштабируется как метка (*0.7).
+- drawOutlinedText(text,x,y,font,color,alpha): обводка тоже прозрачнеет (фикс «чернеющего» текста).
+- Питч кузова учитывается в projectPoint (placement[4]*2π + headPitch); знак кузова = TrailSaver.
+- Пороги без изменений: 10м/500м/1.5км. Минимум globalAlpha 0.12 (никогда не исчезает полностью).
+### МАШИННОЕ ПРАВИЛО ЛОГОВ (пользователь, 31.08.2026 — «хватит спамить»)
+- workflow-лог (AppendLog/LogEditor): ТОЛЬКО шаги и переходы состояния (1 строка на событие).
+- ПОТОКОВЫЕ/ВЫСОКОЧАСТОТНЫЕ данные (ar_telemetry 30Гц, координаты, кадры, периодические команды) — ТОЛЬКО app_data (Logger.Data/LogEditorData). См. IsStreamingCommand() в MainForm.SendCommandToMap.
+- Проверка перед коммитом: нет ли AppendLog/LogEditor внутри таймеров/циклов/частых тиков.
+### [v70+v71 31.08.2026] AR-PIN-HEIGHT / PIN-CROSS-VIEWCONE — опубликовано
+- AR: подписи realName/gameName; высоты Y=0 по городам (hCityDist 350 / hLockDist 50, фиксация в _yLock Map); cityYCorrection=-40 (все города выше земли на ~40м — переменная CFG.cityYCorrection в ar_hud.js); fps x2 (~120 расчетов/с, double-step lerp), FPS в статусе; метка круг min15/max33; вне экрана только стрелка+текст.
+- «Поставить в АР» = Shift+Ctrl+X (кнопка удалена); OpenCreateAt(x,z,y,fromArPin) в редакторе (один экземпляр: старое окно ЗАКРЫВАЕТСЯ и открывается новое — правило и для кнопки «Редактор карты»); ar_pin {active,x,y,z}; клик по пустому месту тоже помечает.
+- Конус обзора на миникарте: VIEW_CONE_LEN_M=350, VIEW_CONE_HALF_ANGLE_DEG=17.5 (переменные в map_draw.js — править здесь).
+- ЛОГИ: [OVR][DEBUG] → app_data (Logger.Data). ПРАВИЛО: потоки/данные/файлы — app_data, workflow — только события.
+### МАШИННОЕ ПРАВИЛО Session usage (пользователь, 31.08.2026)
+- ПЕРЕД любой задачей и ПОСЛЕ: проверить https://ollama.com/settings -> Session usage %.
+- Инструмент: ollama_usage_v2.bat (headless Edge под профилем пользователя) -> SESSION: NN.N.
+- Процент В TODO первой задачей; после публикации в резюме — графический прогрессбар [████----] NN.N%.
+- Страница требует входа: если UNKNOWN — спросить процент у пользователя в конце сессии.
+### Session usage (ollama) — РАБОТАЕТ (31.08.2026)
+- Команда: `ollama_usage_v2.bat` -> SESSION: NN.N (разовый вход: ollama_login.bat, выделенный профиль).
+- Эмпирика: в PS5.1 `& msedge --dump-dom` в переменную даёт ПУСТО — только Start-Process -RedirectStandardOutput в файл + чтение файла.
+- Агент: % первой задачей в TODO; после публикации прогрессбар [████░░░] в резюме. Если UNKNOWN — перезапустить ollama_login.bat.
+### [v73 31.08.2026] Первостепенные (все применены) + вторичные
+1. Дороги миникарты: MIN_ROAD_WIDTH=3.5 (=шлейф) — state.js roadWidthStyles ×2.
+2. Рывок высоты AR раз/с КОРЕНЬ: RefreshArModel обнулял _arLastSentGameName каждую секунду → ar_target пересылался → ar.target пересоздавался. Фикс: сигнатура _arModelSig (имя+коорд F1) — ресет ТОЛЬКО при реальном изменении; «Модель точек обновлена» в workflow только при изменении, иначе app_data.
+3. ЕДИНЫЙ радиус AR 1500м (было 3км для городов); reason «нет точек в радиусе 1.5 км»; плашка AR показывает этот текст при пустой цели; fade txtAlpha теперь на ВЕСЬ блок (метка+крестик+стрелка+текст, ctx.save/globalAlpha/restore, <0.03 — не рисуем).
+4. Pin: PinMaxDistM=1500; взгляд выше горизонта/параллельно → сразу 1500м (не 500).
+5. Города при выборе AR-целью: kind='city' тоже проходит displayYFor (компенсация -44).
+6. Конус миникарты: LEN 15м базово, вверх → до 40, вниз → до 5 (head.offset[4]: +вверх/-вниз, k=pitch*10).
+7. Shift+Ctrl+X: ТОЛЬКО пометка АР + ar_pin_map (кружок+крест на миникарте, state.arPinMap); редактор НЕ открываем/НЕ фокусируем. GetArPin ещё используется.
+8. Спам AR: см.п.2; GetCandidatePorts → LogEditorData (app_data).
+9. Logs\new_object_po_selections.txt (3 строки: город+дист / JSON {x,y,z} / пустая) — LogNewPointSelection: клик-создание в редакторе + pin из АР.
+10. КВОТА: >90% Session usage — СПРАШИВАТЬ подтверждение перед задачей.

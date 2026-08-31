@@ -4,6 +4,7 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- Имя выходного EXE (файл). Namespace проекта остаётся ETS2_Assist_GUI. -->
     <AssemblyName>ETS2_Assist</AssemblyName>
@@ -37,8 +38,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>38</VersionSet>
-        <VersionIter>60</VersionIter>
-        <VersionDesc>AR-C-TARGET</VersionDesc>
+        <VersionIter>81</VersionIter>
+        <VersionDesc>AR2-TARGET-BRIDGE</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>
@@ -53,7 +54,11 @@
 </PropertyGroup>
   <ItemGroup>
     <None Remove="data\**\*" />
-    <Content Include="data\**\*">
+    <!-- v78: data\bin возвращён (v77 случайно исключил WebOverlay.exe и ets2c.exe полностью).
+         Копируем ВСЁ из data\bin КРОМЕ WebOverlay.exe.WebView2 (runtime-кэш WebView2,
+         который процесс WebOverlay лочит строками DawnWebGPUCache/DawnGraphiteCache → MSB3027).
+     -->
+    <Content Include="data\**\*" Exclude="data\bin\WebOverlay.exe.WebView2\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
@@ -77,16 +82,17 @@
   -->
   <Target Name="SyncDataToPublish" AfterTargets="Publish">
     <ItemGroup>
-      <_SourceTopDirs Include="data\*\">
+      <_SourceTopDirs Include="data\*\" Exclude="data\bin\">
         <_PublishPath>$(PublishDir)%(Identity)</_PublishPath>
       </_SourceTopDirs>
-      <_DataSourceFiles Include="data\**\*" />
+      <!-- v78: data\bin возвращён; WebOverlay.exe.WebView2 (runtime-кэш) не копируем
+           (процесс лочит DawnWebGPUCache/DawnGraphiteCache → MSB3027).
+       -->
+      <_DataSourceFiles Include="data\**\*" Exclude="data\bin\WebOverlay.exe.WebView2\**" />
     </ItemGroup>
     <RemoveDir Directories="@(_SourceTopDirs->'$(PublishDir)%(Identity)')" />
-    <Copy SourceFiles="@(_DataSourceFiles)"
-          DestinationFiles="@(_DataSourceFiles->'$(PublishDir)data\%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="false" />
-    <Message Text="SyncDataToPublish: скопировано @(_DataSourceFiles->Count()) файлов data -> $(PublishDir)data" Importance="high" />
+    <Copy SourceFiles="@(_DataSourceFiles)" DestinationFiles="@(_DataSourceFiles->'$(PublishDir)data\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="false" />
+    <Message Text="SyncDataToPublish: скопировано @(_DataSourceFiles-&gt;Count()) файлов data -&gt; $(PublishDir)data" Importance="high" />
   </Target>
 
   <ItemGroup>
@@ -109,6 +115,8 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="System.Management" Version="10.0.10" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
     <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
   </ItemGroup>
 </Project>

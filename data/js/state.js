@@ -77,7 +77,9 @@ const state = {
     throttle: 0,
     brake: 0,
     odometer: 0,
-    headOffset: [0,0,0,0,0,0]
+    headOffset: [0,0,0,0,0,0],
+    // v73: пометка «Пометить в АР» на миникарте ({x,y,z} | null) — ar_pin_map.
+    arPinMap: null
 };
 
 // Дополнительные переменные для случайной цели
@@ -89,12 +91,15 @@ state.randomTargets = [];
 
 const TRAIL_LENGTH = -1;
 
+// v74: дороги толще В 2.5 РАЗА (фидбек 31.08.2026). Минимум стал 8.75 px
+// (v73 был равен шлейфу 3.5 — теперь заметно толще).
+const MIN_ROAD_WIDTH = 8.75;
 const roadWidthStyles = {
-    'balt11': 3.5, 'balt7': 2.8, 'balt35': 2.8,
-    'ger13': 3.0, 'ger16': 3.0,
-    'un11_sw': 1.8, 'un11': 1.8,
-    'un7': 1.2, 'un7_sw': 1.2,
-    'road': 1.5, 'default': 1.2,
+    'balt11': 17.5, 'balt7': 14.0, 'balt35': 14.0,
+    'ger13': 15.0, 'ger16': 15.0,
+    'un11_sw': 10.5, 'un11': 10.5,
+    'un7': 8.75, 'un7_sw': 8.75,
+    'road': 10.0, 'default': 8.75,
 };
 
 const EVENT_TYPES = {

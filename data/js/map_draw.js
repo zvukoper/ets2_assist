@@ -293,8 +293,58 @@ function drawMinimap() {
         }
     }
 
+    // КОНУС ОБЗОРА на миникарте (v74): длина в ПРОЦЕНТАХ размера миникарты
+    // (НЕ зависит от зума/метров). 100% = от фуры до края по направлению.
+    //   питч головы: |deg| <= 8°  → стандарт 30%;
+    //                > 20° вверх → до 90%;
+    //                > 35° вниз  → минимум 10%.
+    // (между порогами — линейная интерполяция; положит. offset[4] = вверх, v67-эмпирика)
+    const VIEW_CONE_HALF_ANGLE_DEG = 17.5;  // полуугол
+    const VIEW_CONE_STD_PCT  = 30;          // стандартная длина, % радиуса экрана
+    const VIEW_CONE_UP_PCT   = 90;          // макс при взгляде вверх (>20°)
+    const VIEW_CONE_DOWN_PCT = 10;          // минимум при взгляде вниз (>35°)
+    const VIEW_CONE_FILL = 'rgba(255,210,90,0.16)';
+    const VIEW_CONE_STROKE = 'rgba(255,210,90,0.45)';
+    const truckScreen = worldToScreen2(truckPos.x, truckPos.z); // (v72: ДО конуса)
+    if (state.truck.heading !== undefined && (Math.abs(truckPos.x) + Math.abs(truckPos.z)) > 0.01) {
+        const headPitchDeg = (Array.isArray(state.headOffset) ? (Number(state.headOffset[4]) || 0) : 0) * 360;
+        // Длина в % экранного радиуса (расстояние фура→край по направлению = 100%).
+        let pct = VIEW_CONE_STD_PCT;
+        if (headPitchDeg > 8) {
+            const k = Math.min(1, (headPitchDeg - 8) / Math.max(1, 20 - 8));   // 8..20°
+            pct = VIEW_CONE_STD_PCT + (VIEW_CONE_UP_PCT - VIEW_CONE_STD_PCT) * k;
+        } else if (headPitchDeg < -8) {
+            const k = Math.min(1, (-headPitchDeg - 8) / Math.max(1, 35 - 8));  // -8..-35°
+            pct = VIEW_CONE_STD_PCT + (VIEW_CONE_DOWN_PCT - VIEW_CONE_STD_PCT) * k;
+        }
+        const dirAngle = state.truck.heading +
+            (Array.isArray(state.headOffset) ? (Number(state.headOffset[3]) || 0) * Math.PI * 2 : 0);
+        const cxT = truckScreen.x, cyT = truckScreen.y;
+        // Экранный вектор «вперёд» (в экранных координатах) — через probe-точку.
+        const probeDX = -Math.sin(dirAngle), probeDZ = -Math.cos(dirAngle);  // вперёд (мир)
+        const probeScr = worldToScreen2(truckPos.x + probeDX * 100, truckPos.z + probeDZ * 100);
+        const ux = probeScr.x - cxT, uy = probeScr.y - cyT;
+        const ulen = Math.sqrt(ux * ux + uy * uy) || 1;
+        // lenPx = pct% х расстояния до края миникарты (min(w,h)/2).
+        const lenPx = (Math.min(w, h) / 2) * (pct / 100);
+        const baseAng = Math.atan2(uy, ux);
+        const halfA = VIEW_CONE_HALF_ANGLE_DEG * Math.PI / 180;
+        if (Number.isFinite(baseAng) && Number.isFinite(lenPx) && lenPx > 1) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(cxT, cyT);
+            ctx.arc(cxT, cyT, lenPx, baseAng - halfA, baseAng + halfA);
+            ctx.closePath();
+            ctx.fillStyle = VIEW_CONE_FILL;
+            ctx.fill();
+            ctx.strokeStyle = VIEW_CONE_STROKE;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
     // Грузовик
-    const truckScreen = worldToScreen2(truckPos.x, truckPos.z);
     ctx.save();
     ctx.translate(truckScreen.x, truckScreen.y);
     ctx.beginPath();
@@ -312,6 +362,25 @@ function drawMinimap() {
     ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.restore();
+
+    // ПОМЕТКА «Пометить в АР» на миникарте (v73): серый кружок + перекрестье,
+    // как в редакторе карт — рисуется по state.arPinMap (команда ar_pin_map).
+    if (state.arPinMap) {
+        const pPin = worldToScreen2(state.arPinMap.x, state.arPinMap.z);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(225,225,225,0.95)';
+        ctx.fillStyle = 'rgba(160,160,160,0.95)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(pPin.x, pPin.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pPin.x - 13, pPin.y); ctx.lineTo(pPin.x + 13, pPin.y);
+        ctx.moveTo(pPin.x, pPin.y - 13); ctx.lineTo(pPin.x, pPin.y + 13);
+        ctx.stroke();
+        ctx.restore();
+    }
 
     // ---- Метки greedyPlacement (города, цели) ----
     const cx = w/2, cy = h/2;
@@ -680,7 +749,9 @@ function drawMinimap() {
     }
 
     // Отрисовка маркеров событий
-    for (const marker of state.eventMarkers) {
+    // v74 (фидбек 31.08.2026): ВРЕМЕННО ОТКЛЮЧЕНЫ — иконки остановки/событий сильно
+    // загрязняют шлейф трека. Блок сохранён: включить = убрать `false &&`.
+    for (const marker of (false ? state.eventMarkers : [])) {
         const p = worldToScreen2(marker.x, marker.z);
         if (p.x < -20 || p.x > w+20 || p.y < -20 || p.y > h+20) continue;
 

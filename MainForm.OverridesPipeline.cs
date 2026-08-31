@@ -42,6 +42,11 @@ namespace ETS2_Assist_GUI
                 payload["reason"] = reason;
                 SendCommandToMap("map_overrides_data", payload);
 
+                // Данные карты изменились → AR-цель переотправляется разово (следующий
+                // тик AR): модель точек/координаты могли смениться, страница должна
+                // получить новую точку в той же рассылке, что и миникарта.
+                _arLastSentGameName = null;
+
                 // ДЕТАЛЬНЫЙ ЛОГ payload (для отладки overrides на миникарте): считаем
                 // переопределённые города/POI (те, что есть в overrides) отдельно.
                 int ovrCities = 0, ovrPois = 0, customPois = 0;
@@ -133,8 +138,11 @@ namespace ETS2_Assist_GUI
                             var uid = (string?)item["uid"] ?? prop.Name;
                             if (string.IsNullOrEmpty(uid) || pois.ContainsKey(uid)) continue;
                             if (item["x"] == null || item["z"] == null) continue;
-                            if (!double.TryParse(item["x"].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var x)) continue;
-                            if (!double.TryParse(item["z"].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var z)) continue;
+                            // ФИКС v64: Value<double>() напрямую (ru-RU ToString даёт «,» —
+                            // Invariant TryParse читал её как разделитель тысяч = ×1e8 мусор).
+                            double x = item["x"].Value<double>();
+                            double z = item["z"].Value<double>();
+                            if (double.IsNaN(x) || double.IsInfinity(x) || double.IsInfinity(z)) continue;
                             if (Math.Abs(x) > 1_000_000 && Math.Abs(z) > 1_000_000) { x /= 100; z /= 100; }
                             var nm = (string?)item["realName"] ?? (string?)item["name"] ?? (string?)item["gameName"];
                             pois[uid] = new PointData
@@ -276,7 +284,7 @@ namespace ETS2_Assist_GUI
                     city.IsOverride = true;
                     city.SourceFile = file;
                     mergedCities++;
-                    AppendLog($"[OVR][DEBUG] merge CITY '{key}' ({file})");
+                    Logger.Current?.Data($"[OVR] merge CITY '{key}' ({file})");
                     continue;
                 }
                 // 2) Переопределение POI.
@@ -286,7 +294,7 @@ namespace ETS2_Assist_GUI
                     poi.IsOverride = true;
                     poi.SourceFile = file;
                     mergedPois++;
-                    AppendLog($"[OVR][DEBUG] merge POI '{key}' ({file})");
+                    Logger.Current?.Data($"[OVR] merge POI '{key}' ({file})");
                     continue;
                 }
                 // 3) Цель из test_targets по id.
@@ -294,7 +302,7 @@ namespace ETS2_Assist_GUI
                 {
                     JObjectTargetMergeExtensions.ApplyToTargetEntry(tgt, entry);
                     mergedTargets++;
-                    AppendLog($"[OVR][DEBUG] merge TARGET '{key}' ({file})");
+                    Logger.Current?.Data($"[OVR] merge TARGET '{key}' ({file})");
                     continue;
                 }
                 // 3b) ФИКС (30.08.2026): случайные/квестовые цели (isRandom) из
@@ -320,9 +328,9 @@ namespace ETS2_Assist_GUI
                 up.Category = "custom";
                 pois[key] = up;
                 addedUser++;
-                AppendLog($"[OVR][DEBUG] новая USER-точка '{key}' ({file}) -> pois[custom], coords=({up.X:F1}, {up.Z:F1})");
+                Logger.Current?.Data($"[OVR] новая USER-точка '{key}' ({file}) -> pois[custom], coords=({up.X:F1}, {up.Z:F1})");
             }
-            AppendLog($"[OVR][DEBUG] merge итог: cities+{mergedCities}, pois+{mergedPois}, targets+{mergedTargets}, user+{addedUser}");
+            Logger.Current?.Data($"[OVR] merge итог: cities+{mergedCities}, pois+{mergedPois}, targets+{mergedTargets}, user+{addedUser}");
         }
 
         // ==== ЧТЕНИЕ ФАЙЛОВ OVERRIDES ====
@@ -334,36 +342,36 @@ namespace ETS2_Assist_GUI
             var orderFile = AppDataPaths.MapOverridesLoadOrderFile;
             if (!File.Exists(orderFile))
             {
-                AppendLog("[OVR][DEBUG] load_order.txt ОТСУТСТВУЕТ — overrides не читаются вообще!");
+                AppendLog("[OVR] load_order.txt ОТСУТСТВУЕТ — overrides не читаются вообще!");
                 yield break;
             }
             var orderLines = File.ReadAllLines(orderFile)
                 .Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
-            AppendLog($"[OVR][DEBUG] load_order.txt: [{string.Join(", ", orderLines)}] (снизу=низший приоритет)");
+            Logger.Current?.Data($"[OVR] load_order.txt: [{string.Join(", ", orderLines)}] (снизу=низший приоритет)");
             foreach (var f in orderLines)
             {
                 var path = Path.Combine(dir, f);
                 if (!File.Exists(path))
                 {
-                    AppendLog($"[OVR][DEBUG] файл из load_order не найден: {f} (пропущен)");
+                    Logger.Current?.Data($"[OVR] файл из load_order не найден: {f} (пропущен)");
                     continue;
                 }
                 JArray? list = null;
                 try
                 {
                     list = JObject.Parse(File.ReadAllText(path))["customTargets"] as JArray;
-                    AppendLog($"[OVR][DEBUG] прочитан {f}: записей={list?.Count ?? 0}");
+                    Logger.Current?.Data($"[OVR] прочитан {f}: записей={list?.Count ?? 0}");
                 }
                 catch (Exception ex)
                 {
-                    AppendLog($"[OVR][DEBUG] ОШИБКА чтения {f}: {ex.Message}");
+                    Logger.Current?.Data($"[OVR] ОШИБКА чтения {f}: {ex.Message}");
                 }
                 if (list == null) continue;
                 foreach (var t in list.OfType<JObject>())
                 {
                     var k = (string?)t["gameName"] ?? (string?)t["id"] ?? "?";
                     var crd = (string?)t["coords"] ?? $"{t["x"]},{t["z"]}";
-                    AppendLog($"[OVR][DEBUG]   {f} -> {k}: {crd}");
+                    Logger.Current?.Data($"[OVR]   {f} -> {k}: {crd}");
                     yield return (f, t);
                 }
             }
@@ -489,8 +497,13 @@ namespace ETS2_Assist_GUI
             }
             else
             {
-                if (!double.TryParse(ovr["x"]?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out x)) x = ExtractStatic(target, 0);
-                if (!double.TryParse(ovr["z"]?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out z)) z = ExtractStatic(target, 2);
+                // ФИКС v64: строки-координаты в files пишутся с точкой (Invariant) — здесь
+                // строки, TryParse Invariant корректен. Но если x — JValue-число, ToString()
+                // может дать запятую (ru-RU) → читаем через Value<double>() напрямую.
+                x = ovr["x"]?.Type == JTokenType.Integer || ovr["x"]?.Type == JTokenType.Float
+                    ? ovr["x"].Value<double>() : ExtractStatic(target, 0);
+                z = ovr["z"]?.Type == JTokenType.Integer || ovr["z"]?.Type == JTokenType.Float
+                    ? ovr["z"].Value<double>() : ExtractStatic(target, 2);
             }
             target["x"] = x; target["z"] = z;
             target["coords"] = $"{x.ToString("F2", CultureInfo.InvariantCulture)}, 0.00, {z.ToString("F2", CultureInfo.InvariantCulture)}";

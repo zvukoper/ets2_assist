@@ -17,6 +17,8 @@ function mergeHybridTelemetry(data) {
     const fuelCapacity = Number(data['truck.fuel.capacity']);
     if (Number.isFinite(fuelAmount) && Number.isFinite(fuelCapacity) && fuelCapacity > 0) {
         hybridState.fuelPercent = Math.max(0, Math.min(100, fuelAmount / fuelCapacity * 100));
+        // v75 (вар. «а»): литры — живое значение (fuel.amount меняется непрерывно).
+        hybridState.fuelLiters = fuelAmount;
     } else if (data['truck.fuel'] !== undefined) hybridState.fuelPercent = Number(data['truck.fuel']) || 0;
 
     if (data['rest.stop'] !== undefined) { hybridState.restHours = Math.max(0, Number(data['rest.stop']) / 60); hybridState._restFromTruckTel = true; }

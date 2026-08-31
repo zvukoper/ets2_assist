@@ -190,6 +190,40 @@ namespace ETS2_Assist_GUI
             AppendLog("Проверка точек: пакет overrides принудительно пересобран и отправлен на карту.");
         }
 
+        // «Пометить в АР» (v70): рассчитываем точку пересечения центрального луча
+        // взгляда с плоскостью высоты грузовика, ставим пометку AR (серый крестик)
+        // и открываем её как НОВУЮ точку в редакторе карты (EnterCreateMode).
+        private void BtnArPin_Click(object sender, EventArgs e)
+        {
+            AppendLog("[AR] Кнопка «Пометить в АР» нажата.");
+            PlacePinFromArAndOpenEditor();
+        }
+
+        // «Пометить в АР» (v73 фидбек): ТОЛЬКО пометка в AR-оверлее. Редактор карты
+        // НЕ открываем и НЕ трогаем (Shift+Ctrl+X не должен перекл. фокус с игры).
+        // Точка на миникарте будет видна как pin (отдельная команда ar_pin_map).
+        private void PlacePinFromArAndOpenEditor()
+        {
+            try
+            {
+                ArPlacePinFromViewCenter();
+                var pin = GetArPin();
+                if (pin == null) return;
+                // v73: журнал выбора новой точки (Logs\new_object_po_selections.txt).
+                LogNewPointSelection(pin.Value.x, pin.Value.y, pin.Value.z);
+                // Пометка на миникарте — той же иконкой (кружок+крест).
+                SendCommandToMap("ar_pin_map", new JObject
+                {
+                    ["active"] = true,
+                    ["x"] = pin.Value.x, ["y"] = pin.Value.y, ["z"] = pin.Value.z
+                });
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[AR] Ошибка пометки из АР: {ex.Message}");
+            }
+        }
+
         private void OnClientCommand(JObject data)
         {
             var command = data["command"]?.Value<string>();
@@ -295,6 +329,13 @@ namespace ETS2_Assist_GUI
                     // в test_targets.json (система overrides), затем прислать пакет заново.
                     AppendLog($"[WS] add_target x={data["target"]?["x"]} z={data["target"]?["z"]}");
                     AddTargetToFile(data["target"]);
+                    break;
+                case "ar_pin_set":
+                    // «Пометить в АР» (кнопка миникарты): создаём точку на пересечении
+                    // центрального луча взгляда с плоскостью высоты грузовика, открываем
+                    // её как НОВУЮ точку в редакторе карты (v70).
+                    AppendLog("[WS] ar_pin_set — пометка в АР (создание точки из взгляда).");
+                    PlacePinFromArAndOpenEditor();
                     break;
                 default:
                     AppendLog($"[WS Command] Неизвестная команда: {command}");
