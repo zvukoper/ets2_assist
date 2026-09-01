@@ -69,6 +69,7 @@ namespace ETS2_Assist_GUI
         // (или после рестарта страницы/канала).
         private string? _arLastSentGameName;
         private bool _arTargetMustClear; // прошлый tick: цели не было (нужно разово сказать null)
+        private DateTime _arLastTargetSentAt = DateTime.MinValue;   // v93: дебаунс спама ar_target
 
         // Частота телеметрии (30 Гц): плавная проекция в AR (страница рисует rAF
         // ~60 FPS, интерполируя между кадрами). ar_target в этом тике НЕ шлётся
@@ -146,6 +147,7 @@ namespace ETS2_Assist_GUI
                 _arV2Window = new AR.ArOverlayWindow();
                 _arV2Window.ShowOnScreen(screen);
                 StartArTargetFeed();          // данные идут по существующему каналу
+                SyncAr2Button();
                 AppendLog($"[ARv2] Нативный D3D11-оверлей запущен на экране '{screen.DeviceName}' ({screen.Bounds.Width}x{screen.Bounds.Height}).");
             }
             catch (Exception ex)
@@ -158,6 +160,7 @@ namespace ETS2_Assist_GUI
         {
             try { _arV2Window?.Stop(); } catch { }
             _arV2Window = null;
+            SyncAr2Button();
             AppendLog("[ARv2] Нативный оверлей остановлен.");
         }
 
@@ -267,7 +270,9 @@ namespace ETS2_Assist_GUI
                     YawBase = _arHeading,
                     PitchBody = _arPitch,
                     Roll = _arRoll,
-                    GroundY = _arTruckY
+                    GroundY = _arTruckY,
+                    PlaneOffsetM = AR.ArBridge.PlaneOffsetM,
+                    ShowGrid = AR.ArBridge.ShowGrid
                 };
                 var h = _arLastHead;
                 if (h != null && h.Count >= 4)
@@ -420,9 +425,11 @@ namespace ETS2_Assist_GUI
                             list[idx] = new ArPoint(pd.GameName, pd.RealName, pd.X, pd.Y, pd.Z, kind, false, pd.Category, pd.Color);
                         else
                             list.RemoveAt(idx);
-                        // Список точек изменился (override мог сменить/переместить точку) —
-                        // цель нужно переотправить разово (страница могла хранить старую).
-                        _arLastSentGameName = null;
+                        // v88: НЕ сбрасываем _arLastSentGameName здесь — это происходило
+                        // при КАЖДОМ RefreshArModel (раз в 5с) и ломало событийную модель:
+                        // ar_target переотправлялся каждые 5 секунд (спам при паузе).
+                        // Реальное изменение модели ловит сигнатура sig ниже
+                        // (if (changed) _arLastSentGameName = null;).
                         continue;
                     }
 
@@ -648,6 +655,11 @@ namespace ETS2_Assist_GUI
                     //  см. PublishArV2Target ниже; повторять не нужно.)
                     return;
                 }
+                // v93 ДЕБАУНС: при равных score цель может скакать между двумя
+                // точками каждый тик (fdot меняет знак при повороте) → спам
+                // ar_target в лог. Не шлём чаще 1 раза в 500мс.
+                if ((DateTime.Now - _arLastTargetSentAt).TotalMilliseconds < 500)
+                    return;
 
                 double distM = Math.Sqrt((b.x - _arTruckX) * (b.x - _arTruckX) + (b.z - _arTruckZ) * (b.z - _arTruckZ));
                 SendCommandToMap("ar_target", new JObject
@@ -666,6 +678,7 @@ namespace ETS2_Assist_GUI
                 });
                 _arLastSentGameName = b.gameName;
                 _arTargetMustClear = false;
+                _arLastTargetSentAt = DateTime.Now;   // v93: дебаунс
                 // v81 КОРЕНЬ БАГА v80: _arV2Target нигде не присваивался → в v2-snapshot
                 // Target всегда null → рендеру нечего было рисовать (1193 точки, цели 0
                 // в логе; рассылка ar_target шла только на WS-страницу, не в ArBridge).
@@ -725,7 +738,10 @@ namespace ETS2_Assist_GUI
                 AppendLog("[AR] Пометка невозможна: нет телеметрии фуры.");
                 return;
             }
-            // Ориентация камеры — идентично projectPoint в ar_hud.js:
+            // Ориентация камеры — согласована с pinhole-проекцией (v90):
+            // проекция теперь ТОЧНЫЙ ПОРТ ar_hud.js (эталон, подтверждён
+            // пользователем) — БЕЗ инверсий. Поэтому и луч pin НЕ инвертируем
+            // (v89-инверсия была следствием v87-инверсии проекции; обе убраны).
             // yaw = (heading + headYaw)*2π, «вперёд» = (-sin,-cos).
             double yaw = _arHeading * Math.PI * 2;
             var head = _arLastHead;
@@ -735,20 +751,29 @@ namespace ETS2_Assist_GUI
                 if (double.IsFinite(hy)) yaw += hy * Math.PI * 2;
             }
             double fx = -Math.Sin(yaw), fz = -Math.Cos(yaw);
-            // pitch ТОЛЬКО ГОЛОВЫ (head.offset[4], доля оборота, +вверх / -вниз).
+            // pitch ТОЛЬКО ГОЛОВЫ (head.offset[4], доля оборота).
+            // v94 ФИКС ВЕРТИКАЛИ: знак pitch БЕЗ инверсии (как в JS-эталоне,
+            // headPitchSign=1). v91-инверсия (pitch=-hp*2π) давала инверсию:
+            //   голова вверх (hp>0) → pitch<0 → dirY<0 → t близко (симптом).
+            //   С pitch = +hp*2π:
+            //   голова вверх (hp>0) → pitch>0 → dirY>0 → t=макс (ДАЛЬШЕ) ✓
+            //   голова вниз (hp<0) → pitch<0 → dirY<0 → t ближе ✓
             double pitch = 0;
             if (head != null && head.Count >= 5)
             {
                 double hp = head[4].Value<double>();
                 if (double.IsFinite(hp)) pitch = hp * Math.PI * 2;
             }
-            // Луч к плоскости Y = truckY (высота грузовика).
+            // Луч к плоскости Y = truckY + planeOffset (высота грузовика + смещение).
+            // v96: смещение плоскости земли (Ctrl+Shift+PGUP/PGDN) влияет на
+            // создание новых меток точек — плоскость, куда ставится метка.
             const double PinMaxDistM = 1500.0;
             const double EyeHeightM = 1.9;
+            double planeY = _arTruckY + AR.ArBridge.PlaneOffsetM;
             double dirY = Math.Sin(pitch);        // взгляд вниз (pitch<0) => dirY<0 (вниз)
             double dirXZ = Math.Cos(pitch);       // |компонента в горизонтали|
             double eyeY = _arTruckY + EyeHeightM;
-            double dyPlane = _arTruckY - eyeY;    // до плоскости (−1.9 м)
+            double dyPlane = planeY - eyeY;       // до плоскости (≈ −1.9 м + смещение)
             double t;
             if (dirY > -1e-4 || dyPlane / dirY <= 0)
             {
@@ -763,7 +788,7 @@ namespace ETS2_Assist_GUI
             if (t < 1) t = 1;
             double px = _arTruckX + fx * dirXZ * t;
             double pz = _arTruckZ + fz * dirXZ * t;
-            double py = _arTruckY;                // высота = высота грузовика
+            double py = planeY;                   // высота = плоскость земли (со смещением)
             _arPin = (px, py, pz);
             SendCommandToMap("ar_pin", new JObject
             {
@@ -787,15 +812,16 @@ namespace ETS2_Assist_GUI
         internal (double x, double y, double z)? GetArPin() => _arPin;
 
         // Пометка по явным координатам (создание точки кликом по карте в редакторе):
-        // высота = высота грузовика (требование v70 — плоскость «земли» АР).
+        // высота = плоскость земли АР (truckY + смещение, v96).
         internal void ArPlacePinAtWorld(double x, double z)
         {
             if (!_arTruckKnown) return;            // нет телеметрии — пометку не рисуем
-            _arPin = (x, _arTruckY, z);
+            double py = _arTruckY + AR.ArBridge.PlaneOffsetM;
+            _arPin = (x, py, z);
             SendCommandToMap("ar_pin", new JObject
             {
                 ["active"] = true,
-                ["x"] = x, ["y"] = _arTruckY, ["z"] = z
+                ["x"] = x, ["y"] = py, ["z"] = z
             });
         }
     }

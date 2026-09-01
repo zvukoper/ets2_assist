@@ -1,6 +1,411 @@
-﻿﻿# ETS2_Assist_GUI — заметки сессии (Hy3)
+﻿﻿# ETS2_Assist_GUI — заметки сессии (MemoryAI)
 
 > Папка для памяти между сессиями. Обновляется вручную в конце каждой сессии.
+
+## Сессия 01.09.2026 (Ollama-индикатор v0.4) — фикс empty DOM
+- **ПРОБЛЕМА:** «Error empty DOM» — Edge headless не отдавал DOM.
+- **КОРЕНЬ:** в Node `spawn` аргумент `--user-data-dir="<путь>"` со ВСТРОЕННЫМИ кавычками
+  ломал Edge (код 21, пустой DOM). PowerShell Start-Process экранирует иначе.
+- **ФИКС:** (1) `--user-data-dir=<путь>` БЕЗ встроенных кавычек (Node spawn сам экранирует);
+  (2) DOM пишется в temp-файл через `stdio: ['ignore', fd, 'ignore']` (как ps1
+  RedirectStandardOutput) — pipe stdout у Edge часто пуст.
+- Проверено: code=0, len=32667, session парсится. 19 тестов — ВСЕ ПРОШЛИ.
+- .vsix: ollama-usage-monitor-0.1.0.vsix (32 KB).
+- Файл: src/ollamaUsageClient.ts.
+
+## Сессия 01.09.2026 (Ollama-индикатор v0.3) — отказ от API, парсинг HTML
+- **РЕШЕНИЕ:** у пользователя НЕТ API key (авторизован через `ollama signin`/SSH-ключ,
+  не через API). `ollama.com/api/usage` без ключа → 401. Локальный ollama usage не отдаёт.
+- **ПЕРЕХОД:** extension парсит HTML https://ollama.com/settings через headless Edge
+  с авторизованным профилем `%LOCALAPPDATA%\ETS2_Assist\ollama-edge-profile` (как
+  ollama_usage.ps1). API key/SecretStorage/env УБРАНЫ.
+- **client:** spawn Edge headless → --dump-dom → HTML → parseUsageHtml.
+- **parser:** parseUsageHtml (Session usage NN.N, Resets in X, Weekly usage NN.N, fallback
+  "NN.N % used", запятая-десятичная).
+- **extension:** убраны setApiKey/API_KEY_SECRET/no-key; команды refresh/openSettings.
+- **ТЕСТЫ:** 19 (вкл. HTML-парсинг) — ВСЕ ПРОШЛИ. .vsix: ollama-usage-monitor-0.1.0.vsix.
+- Файлы: src/ollamaUsageClient.ts, src/usageParser.ts, src/extension.ts, src/test/usage.test.ts,
+  package.json.
+
+## Сессия 01.09.2026 (Ollama-индикатор v0.2) — фикс SecretStorage + parser + диагностика
+- **ПРОБЛЕМА:** расширение показывало «🦙 ?» + RangeError: Maximum call stack size exceeded.
+- **КОРЕНЬ 1 (SecretStorage):** getApiKey() возвращал Promise вместо string
+  (`context.secrets.get()` — async) → в header уходило "Bearer [object Promise]".
+  ФИКС: getApiKey → async, client принимает `() => Promise<string|undefined>`, `await`.
+- **КОРЕНЬ 2 (parser):** реальная структура /api/usage = `{ limits: { session: { usage: 0.35 },
+  weekly: { usage: 0.18 } } }` (usage — доля 0..1). Парсер не знал формат limits.
+  ФИКС: добавлен разбор `limits.session.usage`/`limits.weekly.usage` (×100).
+- **ДИАГНОСТИКА:** добавлено пошаговое console.log в activate/refresh/schedule/StatusBar/client
+  (без JSON.stringify). После перезапуска VS Code → Output → Log (Extension Host) виден полный
+  путь выполнения и stack trace.
+- **ТЕСТЫ:** 19 unit-тестов (вкл. реальный формат limits) — ВСЕ ПРОШЛИ.
+- **.vsix:** ollama-usage-monitor-0.1.0.vsix (32.95 KB) пересобран.
+- Файлы: src/extension.ts, src/ollamaUsageClient.ts, src/usageParser.ts, src/statusBar.ts,
+  src/test/usage.test.ts.
+
+## Сессия 01.09.2026 (v39 итер.11 V39-AR2-CONE-PITCH) — конус обзора по питчу
+- **v39.11 ОПУБЛИКОВАН:** 1.0.39.11-V39-AR2-CONE-PITCH-09.01-1737 (exe=txt=manifest MATCH=True).
+- АНАЛИЗ ar_head_ground.csv (4176 строк): подтверждена формула pitchDeg = atan(eyeH/dist),
+  eyeH≈1.9м (проверка: dist=3.7→27°, dist=6.2→17°, dist=100→1.09°).
+- КОНУС ОБЗОРА: полуугол теперь = |питч взгляда| (формула из CSV), clamp 5..45°.
+  Чем ближе земля (больше |питч|) — тем шире конус.
+- МИНИКАРТА (map_draw.js): halfDeg = clamp(|headPitchDeg|, 5, 45) вместо фикс. 17.5°.
+- РЕДАКТОР (MapEditorForm.cs): добавлен _headPitch (head.offset[4]), halfAngleDeg =
+  clamp(|_headPitch*360|, 5, 45) вместо фикс. 17.5°.
+- Файлы: data/js/map_draw.js, MapEditorForm.cs, ETS2_Assist_GUI.csproj (v39.11).
+
+## Сессия 01.09.2026 (v39 итер.10 V39-AR2-PLANE-FILL) — полупрозрачная плоскость + Ollama-индикатор
+- **v39.10 ОПУБЛИКОВАН:** 1.0.39.10-V39-AR2-PLANE-FILL-09.01-1715 (exe=txt=manifest MATCH=True).
+- СЕТКА: добавлена ПОЛУПРОЗРАЧНАЯ 3D-ПЛОСКОСТЬ (залитый прямоугольник через ProjectPoint,
+  как куб, альфа 0.10) + сетка линиями поверх (альфа 0.6). Надёжно видно.
+- Файлы: AR/ArRenderer.cs (DrawPlaneGrid: заливка + линии), ETS2_Assist_GUI.csproj (v39.10).
+- **НОВЫЙ ПРОЕКТ: VS Code extension `ollama-usage-monitor`** (D:\repo\ollama-usage-monitor):
+  - StatusBarItem «🦙 35% 3h», клик → ollama.com/settings.
+  - Источник: GET https://ollama.com/api/usage, Authorization Bearer OLLAMA_API_KEY.
+  - API key: env OLLAMA_API_KEY (read-only) → SecretStorage (fallback), команда setApiKey.
+  - Адаптивный парсер (структура /api/usage не документирована — принимает session/weekly,
+    percent/reset в разных форматах, не выдумывает).
+  - Countdown: Xs/Xm/Xh/Xd Xh; цвет ThemeColor (<50 default, 50-79 warning, >=80 error).
+  - Команды: refresh, setApiKey, openSettings. Settings: enabled/refreshInterval(мин 15)/showEmoji.
+  - 18 unit-тестов (parser, countdown, statusBar, tooltip) — ВСЕ ПРОШЛИ.
+  - .vsix собран: ollama-usage-monitor-0.1.0.vsix (24.32 KB).
+  - Структура: src/{extension,ollamaUsageClient,usageParser,usageFormatter,statusBar,types}.ts.
+
+## Сессия 01.09.2026 (v39 итер.9 V39-AR2-HOTKEY-GUARD) — фикс диалога hotkey
+- **v39.9 ОПУБЛИКОВАН:** 1.0.39.9-V39-AR2-HOTKEY-GUARD-09.01-1711 (exe=txt=manifest MATCH=True).
+- ПРИЧИНА диалога «Failed to register global hotkey» (уточнено пользователем): ошибка
+  появилась при добавлении клавиш плоскости земли (Ctrl+Shift+PGUP/PGDN). RegisterHotKeyChecked
+  НЕ был обёрнут в try/catch → любое исключение (напр. this.Handle до создания окна) уходило
+  в глобальный ThreadException (Program.cs) → диалог «Error» с ОК.
+- ФИКС: RegisterHotKeyChecked обёрнут в try/catch — исключение логируется (AppendLog) и
+  НЕ уходит в глобальный обработчик, диалог не показывается.
+- Файлы: MainForm.cs (try/catch в RegisterHotKeyChecked), ETS2_Assist_GUI.csproj (v39.9).
+
+## Сессия 01.09.2026 (v39 итер.8+, фикс диалога hotkey) — НАЙДЕН ИСТОЧНИК ДИАЛОГА
+- **ДИАГНОСТИКА диалога «Failed to register global hotkey»:**
+  - В исходниках ETS2_Assist такого текста НЕТ (только «Failed to register hotkeys:»
+    в AppendLog → RichTextBox, НЕ диалог).
+  - В бинарнике ETS2_Assist.exe текст «global hotkey» ОТСУТСТВУЕТ (проверено Unicode).
+  - crash.log — записей о hotkey НЕТ (последний краш 15:22 = старый NRE).
+  - Тест занятости всех 9 комбинаций через RegisterHotKey([IntPtr]::Zero): ВСЕ ok=True —
+    комбинации НЕ заняты, регистрация нашего приложения проходит успешно.
+  - **ИСТОЧНИК ДИАЛОГА = OllamaLimits.exe** (отдельное приложение-трей, исходники на
+    диске F:, которого НЕТ). Процесс запускался 11:10 и держался до конца сессии.
+    Он сам регистрирует свой хоткей и при неудаче показывает MessageBox «Failed to
+    register global hotkey» — пользователь ошибочно относил его к ETS2_Assist.
+- ДЕЙСТВИЕ: OllamaLimits.exe остановлен (Stop-Process). Для постоянного решения:
+  исходники недоступны (F:\repo нет) — пересобрать утилиту нечем; вариант — не
+  запускать её, или восстановить проект из бэкапа/копилки.
+- Приложение ETS2_Assist НЕ менялось (правок хоткеев не требуется).
+
+## Сессия 01.09.2026 (v39 итер.8 V39-AR2-GRID-VIS-FIX) — сетка видима + CSV + hotkey-лог
+- **v39.8 ОПУБЛИКОВАН:** 1.0.39.8-V39-AR2-GRID-VIS-FIX-09.01-1653 (exe=txt=manifest MATCH=True).
+- КОРЕНЬ НЕВИДИМОСТИ СЕТКИ (2 ошибки в DrawPlaneGrid):
+  1) fade считался от ЭКРАННЫХ px, делённых на RadiusM (200 МЕТРОВ) → fade≈0 →
+     все отрезки отбрасывались (a<0.02); теперь fade по МИРОВОЙ дистанции линии
+     от грузовика (wdist в AddGridSeg).
+  2) вершины писались в экранных px, а шейдер LineHlsl ждёт NDC → конвертация
+     px→NDC в Emit (ndcX=2x/W-1, ndcY=1-2y/H, w=1).
+- КОРЕНЬ ПУСТОГО CSV: `_lastHeadLogMs = long.MinValue` → `TickCount64 - MinValue`
+  переполнялся в минус, условие `>150` не срабатывало НИКОГДА → файл только заголовок.
+  Фикс: `_lastHeadLogMs = 0` + запись даже при state==null (пишем "-").
+- HOTKEY: RegisterHotKey с SetLastError + MOD_NOREPEAT (0x4000, без автоповтора) +
+  лог Win32-кода ошибки (1409 = занято другой программой). Исследование (subagent):
+  PageUp/PageDown системно НЕ зарезервированы; причина прошлых ошибок — точечные
+  захваты резидентным софтом (END в v39.5); ошибочный текст «Failed to register»
+  печатается только на исключение — в v39.7 ошибок в логе НЕТ.
+- Файлы: AR/ArRenderer.cs (fade по wdist + NDC-вершины + _lastHeadLogMs=0),
+  MainForm.cs (MOD_NOREPEAT + SetLastError + код ошибки), ETS2_Assist_GUI.csproj (v39.8).
+
+## Сессия 01.09.2026 (v39 итер.7 V39-AR2-CSV-CHECKBOX) — CSV + чекбокс + переоценка лимитов
+- **v39.7 ОПУБЛИКОВАН:** 1.0.39.7-V39-AR2-CSV-CHECKBOX-09.01-1641 (exe=txt=manifest MATCH=True).
+- ПЕРЕОЦЕНКА ЛИМИТОВ (задача пользователя): проанализирован ollama_limits_usage.txt,
+  добавлен блок «ПЕРЕОЦЕНКА 01.09.2026» в РАЗДЕЛ 1 с фактическими оценками для экономной
+  модели deepseek-v4-flash (лёгкая 0.5-1%/5м, средняя 1-5%/10-15м, крупная 5-8%/35-50м).
+  ВАЖНО: экономная модель тратит ~x0.3-0.5 от оценок РАЗДЕЛА 1 (не x0.5-0.7); прогнозы
+  в TODO (10-60%) были сильно завышены — факт 0.3-7.2%.
+- ИНСТРУКЦИИ дополнены: правило «ПРОГНОЗ И ФАКТ» в РАЗДЕЛ 2 (формат записи с прогнозом
+  и фактом) + «ПЕРЕОЦЕНКА РАЗДЕЛА 1».
+- ar_head_ground.csv: запись теперь ВСЕГДА (даже при state==null пишем "-"), убран дубль
+  в Logger.Data (мог бросать исключение и глотаться catch).
+- ХОТКЕЙ СЕТКИ УДАЛЁН (HOTKEY_GRID): сетка управляется чекбоксом «Сетка» у кнопки АР2
+  (по умолчанию ВКЛ). Устранён конфликт «failed to register global hotkeys».
+- ПЛОСКОСТЬ влияет на дистанцию под прицелом: ComputeGroundDistance использует
+  groundY = GroundY + PlaneOffsetM.
+- Файлы: AR/ArRenderer.cs (CSV всегда + плоскость в дистанции), MainForm.cs (чекбокс,
+  удалён HOTKEY_GRID), AR/ArBridge.cs (ShowGrid=1 по умолчанию), MemoryAI/ollama_limits_usage.txt
+  (переоценка), MemoryAI/INSTRUCTIONS.md (прогноз vs факт), ETS2_Assist_GUI.csproj (v39.7).
+
+## Сессия 01.09.2026 (v39 итер.6 V39-AR2-CSV-HOTKEY) — CSV + хоткей сетки + инструкции
+- **v39.6 ОПУБЛИКОВАН:** 1.0.39.6-V39-AR2-CSV-HOTKEY-09.01-1620 (exe=txt=manifest MATCH=True).
+- ar_head_ground.csv: файл теперь создаётся СРАЗУ при старте AR2 (EnsureHeadLogFile в
+  Initialize), а не только при первой записи; каждая строка дублируется в app_data.log
+  (Logger.Data) — данные видны даже если CSV-путь недоступен.
+- ХОТКЕЙ СЕТКИ: CTRL+SHIFT+END занят системой → заменён на CTRL+SHIFT+* (Numpad,
+  Keys.Multiply). Остальные хоткеи без изменений.
+- ИНСТРУКЦИИ: добавлено правило — выводить контроль лимитов и прогноз НЕ только первым
+  пунктом TODO, но и отдельным текстовым сообщением ПЕРЕД началом работы, выделенным
+  цветом/шрифтом (📊), чтобы пользователь гарантированно увидел.
+- Файлы: AR/ArRenderer.cs (EnsureHeadLogFile + дубль в app_data), MainForm.cs (хоткей
+  сетки), MemoryAI/INSTRUCTIONS.md (правило вывода лимитов), ETS2_Assist_GUI.csproj (v39.6).
+
+## Сессия 01.09.2026 (v39 итер.5 V39-AR2-HOTKEYS-GRID) — хоткеи + сетка + текст
+- **v39.5 ОПУБЛИКОВАН:** 1.0.39.5-V39-AR2-HOTKEYS-GRID-09.01-1613 (exe=txt=manifest MATCH=True).
+- ХОТКЕИ (уточнены пользователем, v97):
+  - CTRL+SHIFT+ALT+PGUP/PGDN = FOV ±0.5 (было CTRL+SHIFT+PGUP/PGDN).
+  - CTRL+SHIFT+PGUP/PGDN = плоскость земли ±0.25 м (было с ALT).
+  - CTRL+SHIFT+END = вкл/выкл 3D-сетки плоскости (без изменений).
+- РЕГИСТРАЦИЯ ХОТКЕЕВ: добавлен RegisterHotKeyChecked — каждый хоткей отдельно
+  с проверкой результата; один конфликт больше НЕ роняет все (было: весь блок в
+  try → «failed to register global hotkeys»).
+- FOV-текст: шрифт +30% (6.5f → 8.5f).
+- ДИСТАНЦИЯ: текст ПОД крестиком (отступ 2px), шрифт как у FOV (8.5f).
+- СЕТКА: ОРАНЖЕВАЯ (1.0, 0.55, 0.0), полупрозрачная (альфа 0.45 к краю), толщина
+  линий 3px. D3D11 НЕ поддерживает LineWidth в растеризаторе → линии рисуются
+  как прямоугольники (TriangleList, 6 вершин на отрезок, перпендикуляр 1.5px).
+- Файлы: MainForm.cs (хоткеи + RegisterHotKeyChecked), AR/ArRenderer.cs (FOV/дист/
+  сетка), ETS2_Assist_GUI.csproj (v39.5).
+
+## Сессия 01.09.2026 (v39 итер.4 V39-AR2-GRID-SHADOW) — AR2: сетка, тени, хоткеи
+- **v39.4 ОПУБЛИКОВАН:** 1.0.39.4-V39-AR2-GRID-SHADOW-09.01-1600 (exe=txt=manifest MATCH=True).
+- КУБ: инверсия yaw (`yaw = -s.YawHead*2π`) — голова вправо → куб вправо (было влево).
+- ТЕКСТ: мягкая тень (drop shadow) по умолчанию — 3 прохода FillPath со смещением
+  вниз-вправо и убывающей альфой (читаемость на светлом фоне).
+- ПРИЦЕЛ: полупрозрачная тень (тёмный квадрат 9×9, альфа 0.35) под микрокрестиком.
+- ДИСТАНЦИЯ: шрифт ×2 меньше (6f), текст ВЫШЕ крестика вплотную (отступ 2px).
+- FOV-индикатор: шрифт ×2 меньше (6.5f), ниже к краю (отступ 4px), под текстом
+  полупрозрачная плашка (DrawBox 0.35); в скобках — высота плоскости земли.
+- 3D-СЕТКА ПЛОСКОСТИ (Ctrl+Shift+END): DrawPlaneGrid — сетка 200м/шаг 20м на
+  плоскости Y=GroundY+PlaneOffsetM, затухание к краю, линии через ProjectPoint
+  (та же проекция, что метки → метка «приклеена» к сетке). Новые пайплайны:
+  LineHlsl (LineList) + EllipseHlsl (мягкий овал).
+- ТЕНЬ ТОЧКИ: DrawPinShadow — если pin.Y ≠ planeY, рисует овальное пятно на
+  плоскости в XZ точки (100% на плоскости); если ровно на плоскости — не рисует.
+- ХОТКЕИ (v96): Ctrl+Shift+END = сетка; Ctrl+Shift+Alt+PGUP/PGDN = плоскость ±0.25м
+  (ArBridge.PlaneOffsetM, clamp ±10м). FOV остался Ctrl+Shift+PGUP/PGDN.
+- ПЛОСКОСТЬ влияет ТОЛЬКО на создание новых меток (ArPlacePinFromViewCenter/
+  ArPlacePinAtWorld используют planeY = truckY + PlaneOffsetM).
+- Файлы: AR/ArRenderer.cs (куб, тень текста, прицел, дистанция, FOV, сетка, тень
+  точки, Line/Ellipse пайплайны), AR/ArBridge.cs (PlaneOffsetM, ShowGrid),
+  AR/ArGameState.cs (PlaneOffsetM, ShowGrid), MainForm.ArTarget.cs (pin на planeY),
+  MainForm.cs (хоткеи GRID/PLANE_UP/PLANE_DOWN + unregister).
+
+## Сессия 01.09.2026 (v39 итер.3 V39-STARTUP-NULLGUARD) — фикс NRE на старте
+- **v39.3 ОПУБЛИКОВАН:** 1.0.39.3-V39-STARTUP-NULLGUARD-09.01-1524 (exe=txt=manifest MATCH=True).
+- Симптом: сплеш исчезает, затем Startup Error
+  "Object reference not set to an instance of an object" в UpdateStartButton().
+- КОРЕНЬ: в v39.2 я добавил вызов UpdateStartButton() в ApplyTheme(), а ApplyTheme()
+  вызывается из InitializeComponents() — РАНЬШЕ InitializeProcessManager(), где
+  создаётся procManager. Итог: procManager == null при этом вызове → NRE.
+- Фикс: guard-проверка `if (procManager == null) return;` в UpdateStartButton()
+  и UpdateFeatureButtonsEnabled().
+- Урок: НЕ вызывать методы состояния (UpdateStartButton/UpdateIndicators) из
+  ApplyTheme/InitializeComponents до инициализации полей (procManager/lang).
+
+## Сессия 01.09.2026 (v39 итер.2 V39-AR2-QUESTS-UI) — фиксы AR2 + тогглы
+- **v39.2 ОПУБЛИКОВАН:** 1.0.39.2-V39-AR2-QUESTS-UI-09.01-1520 (exe=txt=manifest MATCH=True).
+- Фикс X3503 "VMain missing semantics": в MarkerHlsl `struct VS_OUT` имел
+  `float2 px;` без семантики (`: PX` отсутствовал) → компилятор выдавал ошибку и
+  АР2 не стартовал. У всех членов VS_OUT обязана быть семантика (как в Cube/Box).
+- Спам WebSocket "подключился/отключился/синхронизация UI" — это НОРМАЛЬНОЕ
+  поведение (клиент карты переподключается, напр. перезагрузка страницы), но лог
+  засорялся. Убраны строки OnOpen (подкл/синх), OnClose (откл) из лога.
+- Кнопка тоггла АР2 (AR v2.0 (D3D)) добавлена в РЕДАКТОР карты (toolbar),
+  синхронизация состояния по таймеру 500мс, Lime при запуске.
+- Цвет тогглов: все вкл/выкл (Start/Stop, карта, АР2) — Lime при запущенном
+  состоянии; убрать красный (в основном у btnStart был LightCoral при запуске).
+  Вспомогательный: DefaultButtonColor() по теме; SetControlTheme не трогает
+  кнопки с Tag="Toggle"; после темы ресинк через UpdateStartButton().
+- Пока система не запущена: функциональные кнопки левой панели (overlay,
+  цели, карта, AR, AR2, тест, сброс записи) неактивны, кроме РЕДАКТОРА КАРТЫ
+  (работает без данных/запуска). Реализация: UpdateFeatureButtonsEnabled().
+
+## ВЕРСИЯ 39 (СТАРТ, C=39, итерация 1) — 09.01.2026
+- Поднята C-версия 38→39, счётчик итераций сброшен до 1.
+- **ЦЕЛИ ВЕРСИИ 39** (считается законченной, когда):
+  1) AR2-оверлей: отрисовка точек/маркеров, связка точек с AR2
+     (маркеры POI/квестовых точек в оверлее);
+  2) Динамические квесты (несколько небольших сюжетных квестов);
+  3) Кафе с меню покупок и инвентарём.
+- Итоговая строка: 1.0.39.1-V39-AR2-QUESTS-09.01-1508, бейджи MATCH=True.
+- Лимиты: старт 33.3% (RESET 2 ч), конец 33.7% (0.4%, лёгкая — публикация+бейджи).
+
+## Сессия 01.09.2026 (v95 AR2-CUBE-MARKER-DIAG) — маркер, куб, диагностика
+- **v95 ОПУБЛИКОВАН:** 1.0.38.95-AR2-CUBE-MARKER-DIAG-09.01-1503 (exe=txt=manifest OK).
+- Фидбек: (1) метка pin рисуется на высоте камеры (горизонт) — КОРЕНЬ: pinhole
+  не добавлял eyeH к camY (JS ставит глаза camY+1.9). Фикс: `eyeY = camY+1.9`
+  в CabinArProjection.Project; (2) микрокрестик из 5px по центру экрана;
+  (3) дистанция до земли по прицельной точке под крестиком; (4) файл
+  ar_head_ground.csv (время, pitch головы, дистанция) — каждые 150мс для
+  калибровки конуса обзора; (5) дефолт FOV 95°; (6) маркер: сплошная точка
+  ×2 меньше с чёрной полупрозрачной обводкой 3px; (7) текст ПОИ на 1 строку
+  ниже точки; (8) FOV-текст «AR Overlay FOV: NN.N°» с обводкой 3px;
+  (9) убраны прогрессбары осей и тест-шарик; (10) 3D-куб (зелёный, свет
+  сверху, чёрные грани) в правом нижнем углу, вращается по yaw/pitch головы.
+- Маркер-шейдер (MarkerHlsl) переписан: точка по пиксель-расстоянию + чёрная
+  обводка 3px (полупрозрачная 0.6).
+- 3D-куб: отдельный пайплайн (CubeHlsl + CreateCubePipeline + DrawHeadCube),
+  CPU-поворот вершин по yaw/pitch головы, освещение сверху, NDC из экранных px.
+
+## Сессия 01.09.2026 (v94 AR2-FOV-PGUP-PINVERT) — FOV PGUP/PGDN + инверсия pin
+- **v94 ОПУБЛИКОВАН:** 1.0.38.94-AR2-FOV-PGUP-PINVERT-09.01-1410 (exe=txt=manifest OK).
+- Фидбек: (1) установка метки новой точки неправильная — взгляд выше горизонта →
+  точка ближе, взгляд вниз → точка на макс. дистанции (инверсия вертикали);
+  (2) колесо мыши не перехватывается → заменить на PGUP/PGDN; (3) дефолтный FOV 65°.
+- Фикс 1 (инверсия pin): v91-инверсия (pitch=-hp*2π) давала инверсию. В v94
+  `pitch = +hp*2π` (как в JS-эталоне headPitchSign=1): голова вверх → точка
+  дальше, вниз → ближе.
+- Фикс 2 (FOV-хоткеи): колесо убрано (не перехватывалось). Добавлены
+  RegisterHotKey CTRL+SHIFT+PGUP (FOV +0.5) и CTRL+SHIFT+PGDN (FOV −0.5),
+  обработка в WndProc (HOTKEY_FOV_UP/DOWN), clamp 40..120.
+- Фикс 3 (дефолт FOV): 75° → 65° в ArBridge.FovDegrees, ArRenderer.CabinFovDegrees,
+  CabinArProjection.CabinFovDegrees.
+- Лимиты: старт 22.3% (RESET 3 ч).
+
+## Сессия 01.09.2026 (v93 AR2-TEXT-FIX-DEBOUNCE) — текст + спам ar_target
+- **v93 ОПУБЛИКОВАН:** 1.0.38.93-AR2-TEXT-FIX-DEBOUNCE-09.01-1344 (exe=txt=manifest OK).
+- Фидбек: (1) FOV-текст нечитаем и накладывается на прогрессбары; (2) все тексты
+  у точек стали мелкими/нечитаемыми (потеряли выравнивание, шрифт уменьшился);
+  (3) спам `Command 'ar_target' sent to map.` в лог.
+- Фикс 1 (FOV): белый с чёрной обводкой (MakeTextSprite уже рисует обводку),
+  сдвинут вправо от прогрессбаров (x=52), шрифт 13 bold.
+- Фикс 2 (мелкий текст) — КОРЕНЬ: в `MakeTextSprite` обводка рисовалась через
+  GraphicsPath с `font.Size*ss` (3×), а заливка через DrawString с ОРИГИНАЛЬНЫМ
+  шрифтом (1×) → после даунскейла заливка ~4px, «шрифт уменьшился». Фикс: заливка
+  тоже в 3× (`scaledFont = font.Size*ss`).
+- Фикс 3 (спам ar_target): цель скакала между двумя равноценными POI (в логе
+  `0x4CE0A768` ↔ `0x63DF0050`) при повороте → `_arLastSentGameName` менялся каждый
+  тик. Добавлен дебаунс `_arLastTargetSentAt` — не чаще 1 раза в 500мс.
+- Лимиты: старт 19.8% (RESET 3 ч).
+
+## Сессия 01.09.2026 (v92 AR2-FOV-CALIB) — калибровка FOV АР2 (Ctrl+колесо)
+- **v92 ОПУБЛИКОВАН:** 1.0.38.92-AR2-FOV-CALIB-09.01-1332 (exe=txt=manifest OK).
+- Требование: вывести FOV АР2-проекции в левый нижний угол; Ctrl+колесо меняет
+  FOV с шагом 0.5° (вверх +, вниз −). Колесо перехватывает ПРИЛОЖЕНИЕ (не AR2 —
+  окно click-through), AR2 — dumb-приёмник.
+- Реализация:
+  1. `ArBridge.FovDegrees` — dumb-приёмник (Volatile.Read/Write, старт 75°).
+  2. `MainForm.WndProc` — перехват `WM_MOUSEWHEEL` + Ctrl → FOV ±0.5,
+     clamp 40..120, лог `[ARv2] FOV = NN.N°`.
+  3. `ArRenderer` — читает `ArBridge.FovDegrees` каждый кадр (вместо статик
+     CabinFovDegrees); рисует `FOV NN.N°` (Consolas 12 bold, жёлтый) в левом
+     нижнем углу через `_fovTxt`.
+- Лимиты: старт 18.8% (RESET 3 ч).
+
+## Сессия 01.09.2026 (v91 AR-PIN-VERT-FIX) — инверсия вертикали pin-луча
+- **v91 ОПУБЛИКОВАН:** 1.0.38.91-AR-PIN-VERT-FIX-09.01-1323 (exe=txt=manifest OK).
+- Фидбек: горизонталь и миникарта теперь ПРАВИЛЬНЫЕ (v90 сработал); осталась
+  инверсия вертикали в AR2: голова вверх → точка БЛИЖЕ к грузовику (должно
+  дальше), голова вниз → точка дальше (должно ближе).
+- КОРЕНЬ: знак pitch головы в данных инвертирован относительно «+вверх».
+  С `pitch = hp*2π` голова вверх (hp<0) → dirY<0 → t ближе (симптом).
+- ФИКС v91: `pitch = -hp*2π` в `ArPlacePinFromViewCenter`. Теперь:
+  голова вверх (hp<0) → pitch>0 → dirY>0 → t=макс (дальше) ✓;
+  голова вниз (hp>0) → pitch<0 → dirY<0 → t ближе ✓.
+- Лимиты: старт 14.1% (RESET 4 ч).
+
+## Сессия 01.09.2026 (v90 AR2-JS-PORT-FIX) — точный порт JS-проекции
+- **v90 ОПУБЛИКОВАН:** 1.0.38.90-AR2-JS-PORT-FIX-09.01-1308 (exe=txt=manifest OK).
+- Фидбек (удержание Shift+Ctrl+X): (1) голова вверх → метка на миникарте
+  ПРИБЛИЖАЕТСЯ к грузовику (должно наоборот) — инверсия вертикали;
+  (2) голова влево → метка вправо (должно наоборот) — инверсия горизонтали;
+  (3) в AR2 метка вообще за пределами экрана.
+- КОРЕНЬ (2 бага в C# pinhole, добавленных в v86/v87):
+  1. **Двойной сдвиг центра по X**: `u = cx + (ndcX+1)*0.5*W` уже центрирует
+     вокруг W/2, а потом ещё добавлял `cx` (=W/2) → метки уезжали на пол-экрана
+     вправо → «всегда за экраном» (симптом 3).
+  2. **Инверсии (v87/v89)**: я инвертировал проекцию и pin-луч, но эталон
+     ar_hud.js НЕ инвертирован → инверсии на миникарте (симптомы 1, 2).
+- ФИКС v90: `CabinArProjection.Project` = ТОЧНЫЙ ПОРТ projectPoint ar_hud.js:
+  yaw НЕ инвертирован, f один для u и v (без aspect), центр = W/2,H/2,
+  wy = worldY - camY (без +eyeH). FOV = 75° (эталон JS). Pin-луч возвращён
+  к конвенции JS (без инверсий). Убраны ProjectionCenterX/Y (не нужны).
+- Лимиты: старт 11.4% (RESET 4 ч).
+
+## Сессия 01.09.2026 (v89 AR-PIN-AXIS-FIX) — инверсия pin-метки (новая точка)
+- **v89 ОПУБЛИКОВАН:** 1.0.38.89-AR-PIN-AXIS-FIX-09.01-1250 (exe=txt=manifest OK).
+- Фидбек: смотрю вперёд, ставлю новую точку — маркер рисуется «как будто сзади».
+  Инверсия + перепутана ось грузовика.
+- КОРЕНЬ: pin (новая точка) ставится по лучу взгляда с НЕинвертированным
+  yaw/pitch, а рисуется через pinhole-проекцию, которую в v87 ИНВЕРТИРОВАЛИ
+  (камера крутится — мир стоит). Получалась ДВОЙНАЯ инверсия: точка ставится
+  впереди, а проекция рисует её сзади.
+- ФИКС v89: согласовал луч pin с проекцией — в `ArPlacePinFromViewCenter`
+  инвертировал yaw/pitch так же, как в `CabinArProjection`:
+  `yaw = -(_arHeading + headYaw)*2π`, `pitch = -hp*2π`.
+- Лимиты: старт 9.8% (RESET 4 ч).
+
+## Сессия 01.09.2026 (v88 AR-EVENT-ONLY) — спам ar_target при паузе
+- **v88 ОПУБЛИКОВАН:** 1.0.38.88-AR-EVENT-ONLY-09.01-1220 (exe=txt=manifest OK).
+- Фидбек: приложение периодически шлёт `Command 'ar_target' sent to map`, а при
+  паузе игры — спам этой командой. Требование: АР получает данные ТОЛЬКО по
+  событиям (обновление/сохранение/создание точек), НЕ по таймерам/регулярно.
+- КОРЕНЬ: в `RefreshArModel` (вызывается раз в 5с) внутри цикла по overrides
+  стояло `_arLastSentGameName = null;` — сбрасывалось при КАЖДОМ вызове, даже
+  если override не менялся. Это ломало событийную модель: `_arLastSentGameName`
+  всегда null → `ar_target` переотправлялся каждые 5 секунд (спам при паузе,
+  когда позиция статична и цель одна).
+- ФИКС v88: убрал сброс из цикла. Реальное изменение модели ловит сигнатура
+  `sig` ниже (`if (changed) _arLastSentGameName = null;`) — событийная модель
+  сохранена: ar_target уходит ТОЛЬКО при смене цели/модели.
+- Лимиты: старт 7.8% (RESET 5 ч).
+
+## Сессия 01.09.2026 (v87 AR2-AXIS-FIX-HQTEXT) — инверсия осей + качественный текст
+- **v87 ОПУБЛИКОВАН:** 1.0.38.87-AR2-AXIS-FIX-HQTEXT-09.01-1211 (exe=txt=manifest OK).
+- Фидбек v86: рендер СУЩЕСТВЕННО улучшился; остались (1) углы головы и цели
+  ИНВЕРТИРОВАНЫ по обеим осям (наклон вниз → цели вниз; вправо → вправо),
+  (2) текст новой цели рваный/пиксельный.
+- Фикс 1 (инверсия, CabinArProjection): поворот камеры применялся В ТУ ЖЕ
+  сторону, что и смещение метки. Правильно — камера крутится, мир стоит:
+  world→camera требует INVERSE(Rcamera) (копилка §4). В v87 углы камеры
+  инвертированы: `yaw = -(yawBody+yawHead)*2π`, `bp/hp = -pitch*2π`.
+  Ожидание: наклон головы вниз → цели поднимаются на экране; голова вправо →
+  цели уходят влево (мир неподвижен).
+- Фикс 2 (текст, MakeTextSprite): SSAA ×3 (`TextSSAA=3`) — рендер в 3×
+  разрешении + HighQualityBicubic даунскейл; обводка мягкая — GraphicsPath +
+  AddString + 3 кольца Pen с затуханием альфы (вместо 8-направленного
+  штриха DrawString — был «рваный»); PixelOffsetMode.HighQuality.
+  Прогрессбары/маркер не тронуты.
+- Лимиты: старт 0.8% (RESET 5 ч).
+
+## Сессия 01.09.2026 (v86 AR2-PINHOLE-DIAG) — диагностика подёргиваний/плавания
+- **v86 ОПУБЛИКОВАН:** 1.0.38.86-AR2-PINHOLE-DIAG-09.01-1139 (exe=txt=manifest OK).
+- Фидбек-проблемы: (1) подёргивания точек при вращении головы (рендер проверен —
+  плавный; подозрение на редкие пакеты телеметрии); (2) метки «плавают» в сторону
+  вращения (несоответствие FOV проекции и камеры игры).
+- Сделано:
+  1. **Прогрессбары диагностики** (`ArRenderer.DrawHeadDiagnosticBars`): 2
+     вертикальные полосы слева во всю высоту (yaw — зелёная, pitch — голубая),
+     прямо от углов головы; автокалибровка 0/100% по мин/макс наблюдённых
+     значений (окно только расширяется). Ступеньки в анимации = редкие пакеты
+     телеметрии; плавность = телеметрия ОК, проблема в проекции.
+  2. **`AR/CabinArProjection.cs` (НОВЫЙ модуль)** — pinhole-проекция по копилке
+     «Определение текущей камеры и коррекция FOV» (§4/5/8/9): FOV=65° КОНФИГ
+     (не зашит), вертикальный FOV выводится из aspect (§5), ProjectionCenterX/Y
+     (0.5/0.5 конфиг, §8), ПОЛНЫЙ пересчёт каждый кадр (§6 — без previous+delta).
+     Разделение ответственности (§9): projection не знает про WS/UI/lifetime.
+  3. `ArRenderer.ProjectPoint` — A/B-переключатель `UsePinholeProjection`
+     (default=true): pinhole (v86) или старый путь v85 (копия JS). Конфиги —
+     статические поля (CabinFovDegrees=65, ProjectionCenter=0.5/0.5).
+- Найдено при анализе: старый путь v85 нарушал копилку §5 (FOV=75 зашит,
+  вертикальный FOV не из aspect) → боковое «плавание» при поворотах ожидаемо.
+- Лимиты ollama: старт 3.3% (RESET 24 мин) — задача планировалась ~10-14%.
+- Следующая крупная часть копилки (не начата): CameraModeDetector (CABIN/OTHER)
+  — требует screen capture, отдельная задача.
+
+## Сессия 01.09.2026 — система учёта лимитов ollama (новая)
+- Создан `MemoryAI\ollama_limits_usage.txt` — учёт расхода Session usage:
+  - РАЗДЕЛ 1: ресурсозатратность типовых задач (оценки, уточняются по логу);
+  - РАЗДЕЛ 2: лог затрат лимитов и времени.
+- В `MemoryAI/INSTRUCTIONS.md` добавлен раздел «Контроль лимитов ollama»:
+  - проверять ПЕРЕД задачей (первый пункт TODO) и ПОСЛЕ всех задач;
+  - в долгих задачах — каждые ~5 мин; предупреждать о пороге 90% и 95%;
+  - если `SESSION: UNKNOWN` — `ollama_login.bat` и ждать авторизации;
+  - после задачи — запись в `ollama_limits_usage.txt` (% и время);
+  - раз в день — перечитывать и обновлять РАЗДЕЛ 1, использовать для прогноза.
+- Первая запись лога: настройка системы учёта | 0.7% -> 1% | 0.3% | ~1 мин | лёгкая.
+- Текущая версия проекта: v85 (AR2-JS-PROJ, 1.0.38.85-AR2-JS-PROJ-08.31-2218).
+  Следующая задача по AR2 — см. CURRENT_TASK.md (горизонталь при повороте головы).
 
 ## Сессия v81 — ИТОГИ ТЕСТА ПОЛЬЗОВАТЕЛЕЙ (31.08.2026, 18:34–18:36)
 - Симптомы: розовый кружок РОВНО В ЦЕНТРЕ экрана (появляется/пропадает);
@@ -4209,7 +4614,7 @@ placement[0] = JSON-число (JValue). JValue.ToString() в ru-RU-культу
 ## Сессия 43 (31.08.2026 21:46) — AR2: ТЕКСТ + РУЧКИ ОСЕЙ (83), CURRENT_TASK.md
 
 ### Новое правило пользователя (запомнено в INSTRUCTIONS)
-Решаемая задача пишется в `Hy3/CURRENT_TASK.md` с фикс-разделами (Текущая задача /
+Решаемая задача пишется в `MemoryAI/CURRENT_TASK.md` с фикс-разделами (Текущая задача /
 Что уже сделано / Что обнаружено / Текущая архитектура / Изменённые файлы / Что осталось /
 Известные проблемы / Следующий шаг). Обновлять при каждом шаге. UTF-8 с BOM.
 
@@ -4227,7 +4632,7 @@ Company (#ff78c8), И её горизонталь инвертирована (X 
 3. Мини-фиксы API Vortice 3.8.3 по пути: CS0104 Color → System.Drawing.Color;
    OptionFlags не существует у Texture2DDescription; initial data = SubresourceData
    (правило «сверять API рефлексией» снова подтверждено).
-4. NEW `Hy3/CURRENT_TASK.md` (BOM).
+4. NEW `MemoryAI/CURRENT_TASK.md` (BOM).
 
 ### Версия / сборка
 - **`1.0.38.83-AR2-TEXT-AXIS-08.31-2146`** — exe=build.txt=manifest. 0 ошибок.

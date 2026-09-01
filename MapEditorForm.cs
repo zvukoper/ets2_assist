@@ -40,6 +40,7 @@ namespace ETS2_Assist_GUI
         private double _truckHeading;
         // УГОЛ ПОВОРОТА ГОЛОВЫ (truck.head.offset[3], доля оборота) — для конуса обзора.
         private double _headYaw;
+        private double _headPitch;   // v102: питч головы (head.offset[4], доля оборота) — для конуса
 
         private bool _truckKnown;
         private DateTime _truckLastSeen = DateTime.MinValue;
@@ -76,6 +77,9 @@ namespace ETS2_Assist_GUI
 
         private readonly MapPanel _mapPanel = new() { Dock = DockStyle.Fill, BackColor = Color.FromArgb(15, 18, 23) };
         private readonly FlowLayoutPanel _toolbar = new() { Dock = DockStyle.Bottom, Height = 46, Padding = new Padding(6), WrapContents = false };
+        // v39: кнопка тоггла AR v2.0 (D3D) в редакторе карты.
+        private readonly Button _btnAr2 = new() { Text = "AR v2.0 (D3D)", Width = 120, Height = 30, FlatStyle = FlatStyle.Flat, ForeColor = Color.LightGray, Tag = "Toggle" };
+        private readonly System.Windows.Forms.Timer _ar2SyncTimer = new() { Interval = 500 };
         // Статусная строка (8px): левая половина — индикация состояний (окружность-индикатор + текст),
         // правая — выполняемые операции (вращающийся индикатор / зелёная галочка + текст).
         // Клик по строке открывает папку логов приложения.
@@ -209,6 +213,20 @@ namespace ETS2_Assist_GUI
             _toolbar.Controls.Add(showAll);
             _toolbar.Controls.Add(reloadTargets);
             _toolbar.Controls.Add(_onlySelectedChk);
+
+            // v39: кнопка вкл/выкл АР2 в редакторе карты.
+            _btnAr2.BackColor = Color.FromArgb(40, 48, 62);
+            _btnAr2.Click += (s, e) => MainForm.Current?.LaunchArOverlayV2();
+            _toolbar.Controls.Add(_btnAr2);
+
+            // v39: синхронизация состояния АР2 (Lime при запуске) из редактора.
+            _ar2SyncTimer.Tick += (s, e) => {
+                bool on = MainForm.Current?.IsAr2Running == true;
+                _btnAr2.Text = on ? "AR v2.0 — ON" : "AR v2.0 (D3D)";
+                _btnAr2.BackColor = on ? Color.Lime : Color.FromArgb(40, 48, 62);
+            };
+            _ar2SyncTimer.Start();
+
 
             _sidebar.AfterSelect += (s, e) =>
             {
@@ -783,7 +801,9 @@ namespace ETS2_Assist_GUI
                 double cx = _truckX.Value, cz = _truckZ.Value;
                 // Экранные координаты вершины конуса.
                 var p0 = WorldToScreen(cx, cz);
-                const double halfAngleDeg = 17.5;
+                // v102: полуугол = |питч взгляда| (формула atan(eyeH/dist) из
+                // ar_head_ground.csv), clamp 5..45°. Питч головы — доля оборота.
+                double halfAngleDeg = Math.Clamp(Math.Abs(_headPitch * 360.0), 5.0, 45.0);
                 // v74: длина = min(1.5 км, половина диагонали экрана в метрах).
                 double maxPx = Math.Sqrt(_mapPanel.Width * _mapPanel.Width + _mapPanel.Height * _mapPanel.Height) / 2.0;
                 double rWorld = Math.Min(1500.0, maxPx * _scale);
@@ -1566,6 +1586,12 @@ namespace ETS2_Assist_GUI
                 {
                     double hy = headArr[3].Value<double>();
                     if (double.IsFinite(hy)) _headYaw = hy;
+                }
+                // v102: питч головы (head.offset[4]) — для полуугла конуса обзора.
+                if (headArr != null && headArr.Count >= 5 && headArr[4] != null)
+                {
+                    double hp = headArr[4].Value<double>();
+                    if (double.IsFinite(hp)) _headPitch = hp;
                 }
                 // АНТИ-СПАМ (урок логов 30.08.2026): при паузе TruckTel шлёт только
                 // frame.render_time/simulation_time — «placement отсутствует» приходило

@@ -299,7 +299,8 @@ function drawMinimap() {
     //                > 20° вверх → до 90%;
     //                > 35° вниз  → минимум 10%.
     // (между порогами — линейная интерполяция; положит. offset[4] = вверх, v67-эмпирика)
-    const VIEW_CONE_HALF_ANGLE_DEG = 17.5;  // полуугол
+    // v102: ПОЛУУГОЛ конуса = |питч взгляда| (формула из ar_head_ground.csv:
+    //   pitchDeg = atan(eyeH/dist), eyeH≈1.9м). Чем ближе земля — тем шире конус.
     const VIEW_CONE_STD_PCT  = 30;          // стандартная длина, % радиуса экрана
     const VIEW_CONE_UP_PCT   = 90;          // макс при взгляде вверх (>20°)
     const VIEW_CONE_DOWN_PCT = 10;          // минимум при взгляде вниз (>35°)
@@ -328,7 +329,9 @@ function drawMinimap() {
         // lenPx = pct% х расстояния до края миникарты (min(w,h)/2).
         const lenPx = (Math.min(w, h) / 2) * (pct / 100);
         const baseAng = Math.atan2(uy, ux);
-        const halfA = VIEW_CONE_HALF_ANGLE_DEG * Math.PI / 180;
+        // v102: полуугол = |питч взгляда| (формула atan(eyeH/dist)), clamp 5..45°.
+        const halfDeg = Math.min(45, Math.max(5, Math.abs(headPitchDeg)));
+        const halfA = halfDeg * Math.PI / 180;
         if (Number.isFinite(baseAng) && Number.isFinite(lenPx) && lenPx > 1) {
             ctx.save();
             ctx.beginPath();

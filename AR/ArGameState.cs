@@ -33,6 +33,13 @@ namespace ETS2_Assist_GUI.AR
 
         public double GroundY;                 // высота «земли» под фурой (placement[1])
 
+        // v96: смещение плоскости земли (м) — влияет на создание новых меток
+        // и на отрисовку 3D-сетки. Читается из ArBridge.PlaneOffsetM.
+        public double PlaneOffsetM;
+
+        // v96: показывать ли 3D-сетку плоскости (Ctrl+Shift+END).
+        public bool ShowGrid;
+
         // Текущая цель (ar_target, разово при смене)
         public ArMarker? Target;
 

@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Threading;
 
 namespace ETS2_Assist_GUI.AR
 {
@@ -29,5 +30,39 @@ namespace ETS2_Assist_GUI.AR
         private static long _lastPublishTick;
 
         public static void MarkPublished() => _lastPublishTick = Environment.TickCount64;
+
+        // ================================================================
+        // v92: FOV АР2-проекции — DUMB-ПРИЁМНИК. Приложение (MainForm.WndProc,
+        // Ctrl+колесо) меняет это значение; рендер-поток читает его каждый кадр.
+        // Никакого перехвата колеса в AR2-окне (оно click-through).
+        // ================================================================
+        private static double _fovDegrees = 95.0;   // v95: дефолт 95° (подобран пользователем)
+        public static double FovDegrees
+        {
+            get => Volatile.Read(ref _fovDegrees);
+            set => Volatile.Write(ref _fovDegrees, value);
+        }
+
+        // ================================================================
+        // v96: СМЕЩЕНИЕ ПЛОСКОСТИ ЗЕМЛИ (м). Меняется приложением через
+        // Ctrl+Shift+PGUP/PGDN (±0.25 м). Влияет ТОЛЬКО на создание новых
+        // меток точек (pin) и на отрисовку 3D-сетки плоскости в AR2.
+        // Рендер-поток читает каждый кадр (dumb-приёмник).
+        // ================================================================
+        private static double _planeOffsetM = 0.0;
+        public static double PlaneOffsetM
+        {
+            get => Volatile.Read(ref _planeOffsetM);
+            set => Volatile.Write(ref _planeOffsetM, value);
+        }
+
+        // v96: показывать ли 3D-сетку плоскости (Ctrl+Shift+* / чекбокс).
+        // v99: по умолчанию ВКЛ (сетка рисуется сразу).
+        private static int _showGrid = 1;
+        public static bool ShowGrid
+        {
+            get => Volatile.Read(ref _showGrid) != 0;
+            set => Volatile.Write(ref _showGrid, value ? 1 : 0);
+        }
     }
 }

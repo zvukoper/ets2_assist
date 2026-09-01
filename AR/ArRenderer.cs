@@ -1,12 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Numerics;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
 using Vortice.Mathematics;
 using Compiler = Vortice.D3DCompiler.Compiler;
-using Vortice.Mathematics;
 
 namespace ETS2_Assist_GUI.AR
 {
@@ -73,36 +74,40 @@ namespace ETS2_Assist_GUI.AR
             // Шейдеры маркера (inline HLSL, компиляция на старте; см. маркер.hlsl план).
             CreateMarkerPipeline();
             CreateTextPipeline();   // v83: текстовый конвейер (имя/дистанция/углы)
-            CreateTestPipeline();   // v84: тестовый объект (плавный кружок, проверка рендера)
             CreateBoxPipeline();    // v85: боксовый конвейер (центр. пиксель, линии креста pin)
+            CreateCubePipeline();   // v95: 3D-куб (ориентация головы)
+            CreateLinePipeline();   // v96: линии (3D-сетка плоскости)
+            CreateEllipsePipeline();// v96: мягкие эллипсы (тень точки на плоскости)
+            EnsureHeadLogFile();    // v98: создать ar_head_ground.csv сразу при старте AR2
         }
 
         // ---------- МАРКЕР v2.0 (первый GPU-элемент) ----------
-        // Круг с чёрной обводкой и тёмным центром — AR-метка (как в AR v1 JS).
-        // Позиция задаётся constant buffer (u,v пиксели + размер + цвет) — вся
-        // динамика через пер-кадровый CB (архитектурное правило).
+        // v95: СПЛОШНАЯ ТОЧКА (без отверстия) с чёрной ПОЛУПРОЗРАЧНОЙ обводкой
+        // 3px, цвет = категория, альфа по дистанции. Радиус уже ×2 меньше (C#).
         private const string MarkerHlsl = """
             struct VS_IN { float2 pos : POS; };
-            struct VS_OUT { float4 pos : SV_POSITION; float2 uv : UV; };
-            cbuffer Screen : register(b0) { float2 Viewport; float2 CircleCenter; };
-            // v85: цвет и альфа задаются на C# (цвет категории точки, как в AR v1).
+            struct VS_OUT { float4 pos : SV_POSITION; float2 uv : UV; float2 px : PX; };
+            cbuffer Screen : register(b0) { float2 Viewport; float2 _pad; };
             cbuffer Params : register(b1) { float4 Circle; float4 Tint; }; /* Circle: xy=center px, z=radius px, w=alpha; Tint: rgb */
             VS_OUT VMain(VS_IN i) {
                 VS_OUT o;
-                // Квадрат [0..1] растягиваем в px вокруг центра круга.
                 float2 px = Circle.xy + (i.pos - 0.5) * 2 * Circle.z;
                 float2 ndc = float2(px.x / Viewport.x * 2 - 1, 1 - px.y / Viewport.y * 2);
                 o.pos = float4(ndc, 0, 1);
-                o.uv = i.pos - 0.5;    // [-0.5..0.5]
+                o.uv = i.pos - 0.5;
+                o.px = px;
                 return o;
             }
             float4 PMain(VS_OUT i) : SV_TARGET {
-                float r = length(i.uv) * 2;                     // 0..1 по радиусу
-                float dot0  = 1 - smoothstep(0.16, 0.22, r);    // тёмный центр (как AR v1)
-                float ring  = smoothstep(0.74, 0.84, r);        // чёрная обводка
-                float edge  = 1 - smoothstep(0.92, 1.00, r);    // за краем — прозрачно
-                float3 col = lerp(Tint.rgb, float3(0, 0, 0), max(dot0, ring));
-                return float4(col, edge * Circle.w);
+                float dpx = distance(i.px, Circle.xy);   // пикселей от центра
+                float R = Circle.z;
+                // Точка (сплошная, цвет категории): сглаженный край.
+                float body = smoothstep(R + 0.5, R - 1.0, dpx);
+                // Чёрная ПОЛУПРОЗРАЧНАЯ обводка 3px (0.6 альфы).
+                float ring = smoothstep(R - 3.5, R - 2.5, dpx) * smoothstep(R + 0.5, R - 1.0, dpx);
+                float3 col = lerp(Tint.rgb, float3(0, 0, 0), ring);
+                float a = Circle.w * (body * 1.0 + ring * 0.6);
+                return float4(col, a);
             }
             """;
 
@@ -111,90 +116,6 @@ namespace ETS2_Assist_GUI.AR
         private ID3D11InputLayout? _il;
         private ID3D11Buffer? _vb, _cbScreen, _cbParams;
         private ID3D11BlendState? _blend;
-
-        // ==================== ТЕСТОВЫЙ ОБЪЕКТ (v84) ====================
-        // Плавно движущийся кружок в левом верхнем углу, НИ к чему не привязан.
-        // Цель — проверить эффективность/плавность рендера AR2 (vsync-каденс).
-        // Позиция = синусоида по времени (влево-вправо), радиус 24px, цвет голубой.
-        private const string TestHlsl = """
-            struct VS_IN { float2 pos : POS; };
-            struct VS_OUT { float4 pos : SV_POSITION; float2 uv : UV; };
-            cbuffer Screen : register(b0) { float2 Viewport; float2 _pad; };
-            cbuffer Params : register(b1) { float4 C; /* xy=center px, z=radius px, w=unused */ }
-            VS_OUT VMain(VS_IN i) {
-                VS_OUT o;
-                float2 px = C.xy + (i.pos - 0.5) * 2 * C.z;
-                o.pos = float4(px.x / Viewport.x * 2 - 1, 1 - px.y / Viewport.y * 2, 0, 1);
-                o.uv = i.pos - 0.5;
-                return o;
-            }
-            float4 PMain(VS_OUT i) : SV_TARGET {
-                float r = length(i.uv) * 2;
-                float a = 1 - smoothstep(0.90, 0.99, r);
-                return float4(0.3, 0.8, 1.0, a);
-            }
-            """;
-        private ID3D11VertexShader? _tvs2;
-        private ID3D11PixelShader? _tps2;
-        private ID3D11InputLayout? _til2;
-        private ID3D11Buffer? _tvb2, _tcbParams2;
-        private long _testStartMs;
-
-        private void CreateTestPipeline()
-        {
-            var vsRes = Compiler.Compile(TestHlsl, "VMain", "test", "vs_5_0", out var vsBlob, out _);
-            if (vsRes.Failure || vsBlob == null) return;
-            var psRes = Compiler.Compile(TestHlsl, "PMain", "test", "ps_5_0", out var psBlob, out _);
-            if (psRes.Failure || psBlob == null) return;
-            _tvs2 = _device!.CreateVertexShader(vsBlob, null);
-            _tps2 = _device.CreatePixelShader(psBlob, null);
-            _til2 = _device.CreateInputLayout(new[]
-            {
-                new InputElementDescription("POS", 0, Format.R32G32_Float, 0, 0)
-            }, vsBlob);
-            var verts = new[]
-            {
-                new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 1),
-                new Vector2(0, 1), new Vector2(1, 0), new Vector2(1, 1),
-            };
-            _tvb2 = _device.CreateBuffer<Vector2>(verts, BindFlags.VertexBuffer,
-                ResourceUsage.Default, CpuAccessFlags.None, ResourceOptionFlags.None);
-            _tcbParams2 = _device.CreateBuffer(new BufferDescription(
-                16, BindFlags.ConstantBuffer, ResourceUsage.Dynamic, CpuAccessFlags.Write));
-            _testStartMs = Environment.TickCount64;
-        }
-
-        // Рисует тестовый кружок: центр по синусоиде времени (плавно влево-вправо).
-        private void DrawTestObject()
-        {
-            if (_tvs2 == null || _tps2 == null || _til2 == null || _tvb2 == null || _tcbParams2 == null) return;
-            double t = (Environment.TickCount64 - _testStartMs) / 1000.0;
-            // Плавная анимация: x = 120 + 90*sin(2π·0.5·t), y = 90 (левый верхний угол).
-            float cx = (float)(120 + 90 * Math.Sin(2 * Math.PI * 0.5 * t));
-            float cy = 90f;
-            float r = 24f;
-            var ctx = _context!;
-            unsafe
-            {
-                var mp = ctx.Map(_tcbParams2!, MapMode.WriteDiscard, Vortice.Direct3D11.MapFlags.None);
-                var p = (float*)mp.DataPointer;
-                p[0] = cx; p[1] = cy; p[2] = r; p[3] = 0f;
-                ctx.Unmap(_tcbParams2!);
-            }
-            ctx.IASetInputLayout(_til2);
-            ctx.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
-            ctx.IASetVertexBuffer(0, _tvb2, 8, 0);
-            ctx.VSSetShader(_tvs2);
-            ctx.VSSetConstantBuffer(0, _cbScreen);
-            ctx.VSSetConstantBuffer(1, _tcbParams2);
-            ctx.PSSetShader(_tps2!);
-            ctx.PSSetConstantBuffer(0, _cbScreen);
-            ctx.PSSetConstantBuffer(1, _tcbParams2);
-            ctx.OMSetBlendState(_blend);
-            ctx.OMSetRenderTargets(_rtv, null);
-            ctx.RSSetViewport(new Vortice.Mathematics.Viewport(0, 0, _width, _height));
-            ctx.Draw(6, 0);
-        }
 
         private void CreateMarkerPipeline()
         {
@@ -361,6 +282,148 @@ namespace ETS2_Assist_GUI.AR
             ctx.Draw(6, 0);
         }
 
+        // ==================== ЛИНИИ (v96: 3D-сетка плоскости) ====================
+        // Отрисовка отрезков (LineList) с заданным цветом/альфой. Вершины в NDC.
+        private const string LineHlsl = """
+            struct VS_IN { float4 pos : POS; float4 col : COL; };
+            struct VS_OUT { float4 pos : SV_POSITION; float4 col : COL; };
+            VS_OUT LMain(VS_IN i) {
+                VS_OUT o;
+                o.pos = i.pos;      // NDC уже посчитан на C#
+                o.col = i.col;
+                return o;
+            }
+            float4 LMainP(VS_OUT i) : SV_TARGET {
+                return i.col;
+            }
+            """;
+        private ID3D11VertexShader? _lvs;
+        private ID3D11PixelShader? _lps;
+        private ID3D11InputLayout? _lil;
+        private ID3D11Buffer? _lvb;
+
+        private void CreateLinePipeline()
+        {
+            var vs = Compiler.Compile(LineHlsl, "LMain", "line", "vs_5_0", out var vsBlob, out _);
+            var ps = Compiler.Compile(LineHlsl, "LMainP", "line", "ps_5_0", out var psBlob, out _);
+            if (vs.Failure || vsBlob == null || ps.Failure || psBlob == null) return;
+            _lvs = _device!.CreateVertexShader(vsBlob, null);
+            _lps = _device.CreatePixelShader(psBlob, null);
+            _lil = _device.CreateInputLayout(new[]
+            {
+                new InputElementDescription("POS", 0, Format.R32G32B32A32_Float, 0, 0),
+                new InputElementDescription("COL", 0, Format.R32G32B32A32_Float, 16, 0),
+            }, vsBlob);
+            _lvb = _device.CreateBuffer(new BufferDescription(
+                4096 * 32, BindFlags.VertexBuffer, ResourceUsage.Dynamic, CpuAccessFlags.Write));
+        }
+
+        // Отрисовка набора отрезков (TriangleList, 6 вершин на отрезок = 2 треуг.).
+        // Толщина линий 3px достигается расширением отрезка в прямоугольник
+        // (D3D11 не поддерживает LineWidth в растеризаторе). verts — float[count*6*8].
+        private void DrawLines(float[] verts, int count)
+        {
+            if (_lvs == null || _lps == null || _lil == null || _lvb == null || count <= 0) return;
+            var ctx = _context!;
+            unsafe
+            {
+                var mp = ctx.Map(_lvb!, MapMode.WriteDiscard, Vortice.Direct3D11.MapFlags.None);
+                System.Runtime.InteropServices.Marshal.Copy(verts, 0, mp.DataPointer, count * 6 * 8);
+                ctx.Unmap(_lvb!);
+            }
+            ctx.IASetInputLayout(_lil);
+            ctx.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
+            ctx.IASetVertexBuffer(0, _lvb, 32, 0);
+            ctx.VSSetShader(_lvs);
+            ctx.PSSetShader(_lps!);
+            ctx.OMSetBlendState(_tblend);
+            ctx.OMSetRenderTargets(_rtv, null);
+            ctx.RSSetViewport(new Vortice.Mathematics.Viewport(0, 0, _width, _height));
+            ctx.Draw((uint)(count * 6), 0);
+        }
+
+        // ==================== ЭЛЛИПСЫ (v96: мягкая тень точки на плоскости) ====================
+        // Мягкий овал (псевдо-тень) с затуханием альфы к краю. Центр/радиусы в px.
+        private const string EllipseHlsl = """
+            struct VS_IN { float2 pos : POS; };
+            struct VS_OUT { float4 pos : SV_POSITION; float2 uv : UV; float2 px : PX; };
+            cbuffer Screen : register(b0) { float2 Viewport; float2 _pad; };
+            cbuffer Params : register(b1) { float4 Ell; /* xy=center px, z=rx, w=ry */ float4 Tint; /* rgb + alpha */ };
+            VS_OUT EMain(VS_IN i) {
+                VS_OUT o;
+                float2 px = Ell.xy + (i.pos - 0.5) * 2 * float2(Ell.z, Ell.w);
+                float2 ndc = float2(px.x / Viewport.x * 2 - 1, 1 - px.y / Viewport.y * 2);
+                o.pos = float4(ndc, 0, 1);
+                o.uv = i.pos - 0.5;
+                o.px = px;
+                return o;
+            }
+            float4 EMainP(VS_OUT i) : SV_TARGET {
+                float2 d = (i.px - Ell.xy) / float2(Ell.z, Ell.w);   // нормализованное расстояние
+                float r = length(d);
+                float a = smoothstep(1.0, 0.35, r);   // мягкий край (затухание к центру)
+                return float4(Tint.rgb, Tint.w * a);
+            }
+            """;
+        private ID3D11VertexShader? _evs;
+        private ID3D11PixelShader? _eps;
+        private ID3D11InputLayout? _eil;
+        private ID3D11Buffer? _evb, _ecb;
+
+        private void CreateEllipsePipeline()
+        {
+            var vs = Compiler.Compile(EllipseHlsl, "EMain", "ellipse", "vs_5_0", out var vsBlob, out _);
+            var ps = Compiler.Compile(EllipseHlsl, "EMainP", "ellipse", "ps_5_0", out var psBlob, out _);
+            if (vs.Failure || vsBlob == null || ps.Failure || psBlob == null) return;
+            _evs = _device!.CreateVertexShader(vsBlob, null);
+            _eps = _device.CreatePixelShader(psBlob, null);
+            _eil = _device.CreateInputLayout(new[]
+            {
+                new InputElementDescription("POS", 0, Format.R32G32_Float, 0, 0)
+            }, vsBlob);
+            var verts = new[]
+            {
+                new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 1),
+                new Vector2(0, 1), new Vector2(1, 0), new Vector2(1, 1),
+            };
+            _evb = _device.CreateBuffer<Vector2>(verts, BindFlags.VertexBuffer,
+                ResourceUsage.Default, CpuAccessFlags.None, ResourceOptionFlags.None);
+            _ecb = _device.CreateBuffer(new BufferDescription(
+                32, BindFlags.ConstantBuffer, ResourceUsage.Dynamic, CpuAccessFlags.Write));
+        }
+
+        // Мягкий овал (псевдо-тень) с центром (u,v), радиусами rx/ry, цветом и альфой.
+        private void DrawEllipse(float u, float v, float rx, float ry, float r, float g, float b, float a)
+        {
+            if (_evs == null || _eps == null || _eil == null || _evb == null || _ecb == null) return;
+            var ctx = _context!;
+            unsafe
+            {
+                var mp0 = ctx.Map(_cbScreen!, MapMode.WriteDiscard, Vortice.Direct3D11.MapFlags.None);
+                var p0 = (float*)mp0.DataPointer;
+                p0[0] = _width; p0[1] = _height; p0[2] = 0f; p0[3] = 0f;
+                ctx.Unmap(_cbScreen!);
+                var mp = ctx.Map(_ecb!, MapMode.WriteDiscard, Vortice.Direct3D11.MapFlags.None);
+                var p = (float*)mp.DataPointer;
+                p[0] = u; p[1] = v; p[2] = rx; p[3] = ry;
+                p[4] = r; p[5] = g; p[6] = b; p[7] = a;
+                ctx.Unmap(_ecb!);
+            }
+            ctx.IASetInputLayout(_eil);
+            ctx.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
+            ctx.IASetVertexBuffer(0, _evb, 8, 0);
+            ctx.VSSetShader(_evs);
+            ctx.VSSetConstantBuffer(0, _cbScreen);
+            ctx.VSSetConstantBuffer(1, _ecb);
+            ctx.PSSetShader(_eps!);
+            ctx.PSSetConstantBuffer(0, _cbScreen);
+            ctx.PSSetConstantBuffer(1, _ecb);
+            ctx.OMSetBlendState(_tblend);
+            ctx.OMSetRenderTargets(_rtv, null);
+            ctx.RSSetViewport(new Vortice.Mathematics.Viewport(0, 0, _width, _height));
+            ctx.Draw(6, 0);
+        }
+
         // Цвет метки: как в редакторе карт / CATEGORY_COLORS ar_hud.js (v85).
         private static (float r, float g, float b) ColorFor(ArMarker t)
         {
@@ -404,6 +467,262 @@ namespace ETS2_Assist_GUI.AR
             => d < 1000 ? Math.Round(d) + " м"
                         : (d / 1000.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + " км";
 
+        // ================================================================
+        // v95: ПРОБА 3D-ОБЪЕКТА — зелёный куб с чёрными гранями в правом
+        // нижнем углу. Вращается строго по ориентации ГОЛОВЫ (yaw+pitch).
+        // Свет ровно сверху (освещение граней по углу к +Y).
+        // Реализация: треугольниковый пайплайн (CPU поворот/проекция).
+        // Оболочка чёрная (1.045×) → внутри зелёные грани (1.0×, освещённые):
+        // так получаем чёрные грани/кант. Источник света сверху.
+        // ================================================================
+        private const string CubeHlsl = """
+            struct VS_IN { float4 pos : POS; float4 col : COL; };
+            struct VS_OUT { float4 pos : SV_POSITION; float4 col : COL; };
+            VS_OUT VMain(VS_IN i) {
+                VS_OUT o;
+                o.pos = float4(i.pos.xy, 0, 1);   // NDC уже посчитан на C#
+                o.col = i.col;
+                return o;
+            }
+            float4 PMain(VS_OUT i) : SV_TARGET {
+                return i.col;
+            }
+            """;
+        private ID3D11VertexShader? _cvsh;
+        private ID3D11PixelShader? _cpsh;
+        private ID3D11InputLayout? _cil;
+        private ID3D11Buffer? _cvb;
+        private const int CubeVerts = 36;   // 12 треугольников × 3
+
+        private void CreateCubePipeline()
+        {
+            var vs = Compiler.Compile(CubeHlsl, "VMain", "cube", "vs_5_0", out var vsBlob, out _);
+            var ps = Compiler.Compile(CubeHlsl, "PMain", "cube", "ps_5_0", out var psBlob, out _);
+            if (vs.Failure || vsBlob == null || ps.Failure || psBlob == null) return;
+            _cvsh = _device!.CreateVertexShader(vsBlob, null);
+            _cpsh = _device.CreatePixelShader(psBlob, null);
+            _cil = _device.CreateInputLayout(new[]
+            {
+                new InputElementDescription("POS", 0, Format.R32G32B32A32_Float, 0, 0),
+                new InputElementDescription("COL", 0, Format.R32G32B32A32_Float, 16, 0),
+            }, vsBlob);
+            _cvb = _device.CreateBuffer(new BufferDescription(
+                (uint)(CubeVerts * 32), BindFlags.VertexBuffer, ResourceUsage.Dynamic, CpuAccessFlags.Write));
+        }
+
+        private void DrawHeadCube(ArGameState? s)
+        {
+            if (s == null || _cvsh == null || _cpsh == null || _cil == null || _cvb == null) return;
+
+            // Базовая геометрия куба ±1 и 6 граней (по 2 треуг. каждый).
+            (float x, float y, float z)[] corner = {
+                (-1,-1,-1),(1,-1,-1),(1,1,-1),(-1,1,-1),
+                (-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1) };
+            int[][] faceTris = {
+                new int[]{0,1,2, 0,2,3}, new int[]{5,4,7, 5,7,6}, // -Z,+Z
+                new int[]{0,3,7, 0,7,4}, new int[]{1,5,6, 1,6,2}, // -X,+X
+                new int[]{0,4,5, 0,5,1}, new int[]{3,2,6, 3,6,7}, // -Y,+Y
+            };
+            // Нормали граней (±X,±Y,±Z) для освещения сверху.
+            (float nx,float ny,float nz)[] fn = {
+                (0,0,-1),(0,0,1),(-1,0,0),(1,0,0),(0,-1,0),(0,1,0) };
+
+            double yaw = -s.YawHead * Math.PI * 2;   // v96: инверсия — голова вправо → куб вправо
+            double pitch = s.PitchHead * Math.PI * 2;
+            double cy = Math.Cos(yaw), sy = Math.Sin(yaw);
+            double cp = Math.Cos(pitch), sp = Math.Sin(pitch);
+
+            // Сборка вершины: поворот (yaw→pitch), мир→экран, NDC, цвет.
+            float[] vb = new float[CubeVerts * 8];
+            int o = 0;
+            for (int f = 0; f < 6; f++)
+            {
+                var n = fn[f];
+                // Свет сверху: освещение = 0.35 + 0.65*max(0, n·L), L=(0,1,0).
+                double light = 0.35 + 0.65 * Math.Max(0, n.ny);
+                float g = (float)(0.35 * light), gg2 = (float)(0.75 * light), bg = (float)(0.25 * light);
+                // Чуть темнее на −X/−Z (боковые тени).
+                double side = 1.0 - 0.25 * Math.Max(0, -n.nx - n.nz);
+                g *= (float)side; gg2 *= (float)side; bg *= (float)side;
+                for (int t = 0; t < 6; t++)
+                {
+                    int vi = faceTris[f][t];
+                    double x = corner[vi].x, y = corner[vi].y, z = corner[vi].z;
+                    // yaw вокруг Y.
+                    double x1 = x * cy + z * sy, z1 = -x * sy + z * cy;
+                    // pitch вокруг X.
+                    double y2 = y * cp - z1 * sp, z2 = y * sp + z1 * cp;
+                    // Ортографическая проекция в экранные px (правый нижний угол).
+                    // z задаёт «квази-глубину» для лёгкого перспективного масштаба.
+                    double persp = 1.0 + z2 * 0.06;    // ближе = чуть крупнее
+                    float sx = (float)(x1 * 46 * persp);
+                    float sy2 = (float)(y2 * 39 * persp);
+                    float nx2 = 2.0f * ((sx + 110f) / _width) - 1.0f;
+                    float ny2 = 1.0f - 2.0f * ((sy2 + 110f) / _height);
+                    vb[o++] = nx2; vb[o++] = ny2; vb[o++] = 0; vb[o++] = 0;
+                    vb[o++] = g; vb[o++] = gg2; vb[o++] = bg; vb[o++] = 1f;
+                }
+            }
+
+            var ctx = _context!;
+            unsafe
+            {
+                var mp = ctx.Map(_cvb!, MapMode.WriteDiscard, Vortice.Direct3D11.MapFlags.None);
+                System.Runtime.InteropServices.Marshal.Copy(vb, 0, mp.DataPointer, vb.Length);
+                ctx.Unmap(_cvb!);
+            }
+            ctx.IASetInputLayout(_cil);
+            ctx.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
+            ctx.IASetVertexBuffer(0, _cvb, 32, 0);
+            ctx.VSSetShader(_cvsh);
+            ctx.PSSetShader(_cpsh!);
+            ctx.OMSetBlendState(_tblend);
+            ctx.OMSetRenderTargets(_rtv, null);
+            ctx.RSSetViewport(new Vortice.Mathematics.Viewport(0, 0, _width, _height));
+            ctx.Draw(CubeVerts, 0);
+        }
+
+        // ================================================================
+        // v96: 3D-СЕТКА ПЛОСКОСТИ ЗЕМЛИ (Ctrl+Shift+END).
+        // Плоскость Y = GroundY + PlaneOffsetM (та же, куда ставится метка
+        // новой точки). Сетка в радиусе 200 м от грузовика, плавно уходит
+        // в прозрачность к краю. Линии проецируются через ProjectPoint
+        // (та же проекция, что и метки) — поэтому метка «приклеена» к сетке.
+        // v101: ПОЛУПРОЗРАЧНАЯ 3D-ПЛОСКОСТЬ (залитый прямоугольник через
+        // ProjectPoint, как куб) + сетка линиями поверх — надёжно видно.
+        // ================================================================
+        private void DrawPlaneGrid(ArGameState? s)
+        {
+            if (s == null || _lvs == null || _lps == null || _lil == null || _lvb == null) return;
+            const double RadiusM = 200.0;
+            const double StepM = 20.0;          // шаг сетки
+            double planeY = s.GroundY + s.PlaneOffsetM;
+
+            // --- 1) ПОЛУПРОЗРАЧНАЯ ПЛОСКОСТЬ (залитый прямоугольник) ---
+            // 4 угла плоскости проецируем через ProjectPoint → 2 треугольника.
+            var corners = new (float u, float v, bool ok)[4];
+            corners[0] = Proj(s, planeY, -RadiusM, -RadiusM);
+            corners[1] = Proj(s, planeY, RadiusM, -RadiusM);
+            corners[2] = Proj(s, planeY, RadiusM, RadiusM);
+            corners[3] = Proj(s, planeY, -RadiusM, RadiusM);
+            if (corners[0].ok && corners[1].ok && corners[2].ok && corners[3].ok)
+            {
+                // Заливка: 2 треугольника (0,1,2) и (0,2,3), полупрозрачный оранжевый.
+                float[] planeVerts = new float[6 * 8];
+                int po = 0;
+                void PEmit(float x, float y)
+                {
+                    planeVerts[po++] = 2f * (x / _width) - 1f;
+                    planeVerts[po++] = 1f - 2f * (y / _height);
+                    planeVerts[po++] = 0; planeVerts[po++] = 1f;
+                    planeVerts[po++] = 1.0f; planeVerts[po++] = 0.55f; planeVerts[po++] = 0.0f;
+                    planeVerts[po++] = 0.10f;   // полупрозрачная заливка
+                }
+                PEmit(corners[0].u, corners[0].v);
+                PEmit(corners[1].u, corners[1].v);
+                PEmit(corners[2].u, corners[2].v);
+                PEmit(corners[0].u, corners[0].v);
+                PEmit(corners[2].u, corners[2].v);
+                PEmit(corners[3].u, corners[3].v);
+                DrawLines(planeVerts, 1);   // 6 вершин = 1 "отрезок" (2 треуг.)
+            }
+
+            // --- 2) СЕТКА ЛИНИЯМИ поверх плоскости ---
+            var segs = new List<(float u1, float v1, float u2, float v2, float wdist)>();
+            int n = (int)Math.Round(RadiusM / StepM);
+            for (int i = -n; i <= n; i++)
+            {
+                double coord = i * StepM;
+                AddGridSeg(segs, s, planeY, -RadiusM, coord, RadiusM, coord);
+                AddGridSeg(segs, s, planeY, coord, -RadiusM, coord, RadiusM);
+            }
+            if (segs.Count == 0) return;
+
+            const float LineHalfW = 1.5f;   // половина толщины (3px)
+            float[] verts = new float[segs.Count * 6 * 8];
+            int o = 0;
+            float lr = 1.0f, lg = 0.55f, lb = 0.0f;
+            foreach (var sg in segs)
+            {
+                double fade = Math.Clamp(1.0 - sg.wdist / RadiusM, 0.0, 1.0);
+                float a = (float)(0.6 * fade);   // линии ярче плоскости
+                if (a < 0.02f) continue;
+
+                float dx = sg.u2 - sg.u1, dy = sg.v2 - sg.v1;
+                float len = (float)Math.Sqrt(dx * dx + dy * dy);
+                if (len < 1e-3f) continue;
+                float px = -dy / len * LineHalfW, py = dx / len * LineHalfW;
+
+                float ax = sg.u1 + px, ay = sg.v1 + py;
+                float bx = sg.u1 - px, by = sg.v1 - py;
+                float cx2 = sg.u2 - px, cy2 = sg.v2 - py;
+                float dx2 = sg.u2 + px, dy2 = sg.v2 + py;
+
+                void Emit(float x, float y)
+                {
+                    verts[o++] = 2f * (x / _width) - 1f;
+                    verts[o++] = 1f - 2f * (y / _height);
+                    verts[o++] = 0; verts[o++] = 1f;
+                    verts[o++] = lr; verts[o++] = lg; verts[o++] = lb; verts[o++] = a;
+                }
+                Emit(ax, ay); Emit(bx, by); Emit(cx2, cy2);
+                Emit(ax, ay); Emit(cx2, cy2); Emit(dx2, dy2);
+            }
+            int count = o / (6 * 8);
+            if (count <= 0) return;
+            DrawLines(verts, count);
+        }
+
+        // Проецирует мировую точку на плоскость в экранные px (для заливки плоскости).
+        private (float u, float v, bool ok) Proj(ArGameState s, double planeY, double x, double z)
+        {
+            var p = ProjectPoint(x, planeY, z, s);
+            if (!p.HasValue || !p.Value.inFront) return (0, 0, false);
+            return (p.Value.u, p.Value.v, true);
+        }
+
+        // Добавляет отрезок сетки (проецирует обе точки; отбрасывает за спиной).
+        // v99: также считает МИРОВУЮ дистанцию середины отрезка до грузовика (fade).
+        private void AddGridSeg(List<(float u1, float v1, float u2, float v2, float wdist)> segs,
+            ArGameState s, double planeY, double x1, double z1, double x2, double z2)
+        {
+            var p1 = ProjectPoint(x1, planeY, z1, s);
+            var p2 = ProjectPoint(x2, planeY, z2, s);
+            if (!p1.HasValue || !p2.HasValue) return;
+            if (!p1.Value.inFront || !p2.Value.inFront) return;
+            // Мировая дистанция середины отрезка от грузовика (для затухания).
+            double mcx = (x1 + x2) / 2 - s.CamX, mcz = (z1 + z2) / 2 - s.CamZ;
+            double wdist = Math.Sqrt(mcx * mcx + mcz * mcz);
+            segs.Add((p1.Value.u, p1.Value.v, p2.Value.u, p2.Value.v, (float)wdist));
+        }
+
+        // ================================================================
+        // v96: МЯГКОЕ ПЯТНО (псевдо-тень) под меткой новой точки на плоскости.
+        // Если метка (pin) стоит НЕ на плоскости (Y ≠ planeY) — рисуем овальное
+        // пятно на плоскости в XZ-координатах точки (100% лежит на плоскости).
+        // Если метка ровно на плоскости (Y == planeY) — тень не нужна.
+        // ================================================================
+        private void DrawPinShadow(ArGameState? s)
+        {
+            if (s?.Pin == null) return;
+            var pin = s.Pin.Value;
+            double planeY = s.GroundY + s.PlaneOffsetM;
+            // Если метка ровно на плоскости — тень не нужна.
+            if (Math.Abs(pin.Y - planeY) < 0.001) return;
+
+            // Проецируем точку на плоскости (XZ метки, Y = planeY).
+            var pp = ProjectPoint(pin.X, planeY, pin.Z, s);
+            if (!pp.HasValue || !pp.Value.inFront) return;
+
+            // Размер пятна: зависит от высоты метки над плоскостью (чем выше — тем больше).
+            double h = Math.Abs(pin.Y - planeY);
+            float rx = (float)(18 + h * 6);
+            float ry = rx * 0.45f;   // овал, сплюснутый по вертикали (вид сверху-сбоку)
+            // Прозрачность: чем выше — тем прозрачнее (мягче).
+            float a = (float)Math.Clamp(0.5 - h * 0.02, 0.12, 0.5);
+            DrawEllipse(pp.Value.u, pp.Value.v, rx, ry, 0f, 0f, 0f, a);
+        }
+
         // Высота отображения цели: КОПИЯ displayYFor ar_hud.js (v70/v72):
         // Y≠0 — как есть (+0.5 groundOffset); Y=0 — от ближайшего города,
         // <350 м плавный переход к высоте фуры, НЧ-фильтр 0.08, захват <50 м.
@@ -432,6 +751,19 @@ namespace ETS2_Assist_GUI.AR
         }
 
         // ================================================================
+        // v86: PINHOLE-ПРОЕКЦИЯ (CabinArProjection — копилка FOV, §4/5/8/9):
+        // FOV=65° конфиг, вертикальный FOV из aspect, ProjectionCenter.
+        // Переключатель UsePinholeProjection (конфиг) — A/B-сравнение со
+        // старым путём v85 для диагностики «плавания» при повороте головы.
+        // ================================================================
+        public static bool UsePinholeProjection = true;   // v86: A/B-переключатель
+        // v92: FOV берётся из dumb-приёмника ArBridge.FovDegrees (меняется
+        // приложением через Ctrl+колесо). Статик CabinFovDegrees оставлен как
+        // стартовое значение, но рендер читает ArBridge каждый кадр.
+        public static double CabinFovDegrees = 95.0;      // v95: стартовое 95° (подобрано пользователем)
+        private readonly CabinArProjection _pinhole = new();
+
+        // ================================================================
         // ПРОЕКЦИЯ (v85): ТОЧНАЯ КОПИЯ projectPoint из ar_hud.js (AR v1,
         // подтверждена пользователем «практически идеально»):
         //   yaw = YawBase*2π + YawHead*2π (YawHead здесь — ДОЛЯ ОБОРОТА, как в JS);
@@ -442,11 +774,27 @@ namespace ETS2_Assist_GUI.AR
         //   (двойное умножение на 2π) и зеркала ломали знак целиком.
         //   КОМПОЗИТНЫЙ ПИТЧ (v75 JS): 1) кузов вращает луч вокруг right,
         //   2) голова добавляется сверху (тот же приём).
+        // v86: при UsePinholeProjection=true — маршрут через CabinArProjection
+        // (pinhole, FOV 65° конфиг, projection center); иначе — старый путь v85.
         // ================================================================
         private (float u, float v, bool inFront, double dist, double depth)? ProjectPoint(
             double wx, double wy, double wz, ArGameState? s)
         {
             if (s == null) return null;
+            if (UsePinholeProjection)
+            {
+                // PINHOLE-путь (v86): общая геометрия, конфиг FOV/центра.
+                var r = _pinhole.Project(wx, wy, wz,
+                    s.CamX, s.CamY, s.CamZ,
+                    s.YawBase, s.PitchBody, s.YawHead, s.PitchHead,
+                    _width, _height);
+                _pinhole.CabinFovDegrees = ArBridge.FovDegrees;   // v92: из dumb-приёмника
+                bool inFront = r.depth > 0.5;
+                double dist3 = Math.Sqrt((wx - s.CamX) * (wx - s.CamX) +
+                                         (wy - s.CamY) * (wy - s.CamY) +
+                                         (wz - s.CamZ) * (wz - s.CamZ));
+                return (r.u, r.v, inFront, dist3, r.depth);
+            }
             // YawHead в ArGameState — ДОЛЯ ОБОРОТА (как head.offset в TruckTel),
             // поэтому ×2π — как в JS (c.yawHead уже рад, тут приводим к тому же).
             double yaw = s.YawBase * Math.PI * 2 + s.YawHead * Math.PI * 2;
@@ -496,6 +844,46 @@ namespace ETS2_Assist_GUI.AR
         private static float LerpTo(float cur, float target)
             => cur + (target - cur) * SmoothK;
 
+        // ================================================================
+        // v95: ДИСТАНЦИЯ до земли по ПРИЦЕЛЬНОЙ точке (центр экрана).
+        // Луч взгляда: глаза (camY + eyeH), направление по yaw + композитный
+        // питч (кузов → голова). Пересечение с плоскостью Y = groundY
+        // (где «стоят колёса»). Возвращает горизонтальную(3D) дистанцию, м.
+        // ================================================================
+        private static double ComputeGroundDistance(ArGameState? s)
+        {
+            if (s == null) return double.NaN;
+            const double eyeH = 1.9;
+            double eyeY = s.CamY + eyeH;
+            // v99: плоскость земли = GroundY + PlaneOffsetM (влияет на дистанцию
+            // под прицельной точкой — та же плоскость, куда ставится метка).
+            double groundY = s.GroundY + s.PlaneOffsetM;
+            double dy = groundY - eyeY;                 // глаза → земля
+            if (dy >= 0) return double.NaN;             // камера ниже земли — нет цели
+
+            // Направление луча (как в projectPoint, но единичное, из центра экрана).
+            double yaw = s.YawBase * Math.PI * 2 + s.YawHead * Math.PI * 2;
+            double fwdX = -Math.Sin(yaw), fwdZ = -Math.Cos(yaw);
+
+            // Луч из центра экрана = направление взгляда.
+            // fwd (горизонт) и up строятся через композитный питч (кузов → голова).
+            double bp = s.PitchBody * Math.PI * 2;
+            double hp = s.PitchHead * Math.PI * 2;
+            double pitchTotal = bp + hp;
+            double fwdLen = Math.Cos(pitchTotal);       // горизонтальная часть
+            double dirY = Math.Sin(pitchTotal);          // вертикальная часть (+вверх)
+            double dirX = fwdX * fwdLen;
+            double dirZ = fwdZ * fwdLen;
+            if (dirY >= -1e-6) return double.NaN;        // смотрим выше горизонта
+
+            double t = dy / dirY;                        // t>0
+            if (t <= 0) return double.NaN;
+            double gx = s.CamX + dirX * t;
+            double gz = s.CamZ + dirZ * t;
+            // Горизонтальная дистанция от грузовика до точки на земле.
+            return Math.Sqrt((gx - s.CamX) * (gx - s.CamX) + (gz - s.CamZ) * (gz - s.CamZ));
+        }
+
         /// <summary>История проекции цели для отрисовки.</summary>
         public readonly record struct MarkerProjection(float U, float V, bool Visible, double Dist);
 
@@ -516,16 +904,69 @@ namespace ETS2_Assist_GUI.AR
             var ctx = _context;
             ctx.ClearRenderTargetView(_rtv, new Color4(0, 0, 0, 1)); // чёрный = COLORKEY-прозрачность
 
-            // v84: тестовый объект (плавный кружок в левом верхнем углу) — проверка плавности.
-            DrawTestObject();
-
             // ============================================================
-            // v85: ПРИЦЕЛЬНЫЙ ПИКСЕЛЬ (как render() в ar_hud.js): fillRect
-            // 1.5×1.5, rgba(255,255,255,0.45), ВСЕГДА (независимо от цели).
+            // v95: ПРИЦЕЛЬНЫЙ МИКРО-КРЕСТИК по центру экрана — 5 пикселей
+            // (центр + вверх/вниз/влево/вправо), белый 0.9. Всегда.
+            // v96: под крестиком — ПОЛУПРОЗРАЧНАЯ МЯГКАЯ ТЕНЬ (тёмный квадрат
+            // с размытыми краями), чтобы крестик читался и на светлом фоне.
             // ============================================================
-            DrawBox(_width / 2f - 0.75f, _height / 2f - 0.75f, 1.5f, 1.5f, 1f, 1f, 1f, 0.45f);
+            float ccx = _width / 2f, ccy = _height / 2f;
+            // Тень: тёмный полупрозрачный квадрат 9×9 под крестиком (смещён на 1px вниз-вправо).
+            DrawBox(ccx - 4.5f + 1f, ccy - 4.5f + 1f, 9f, 9f, 0f, 0f, 0f, 0.35f);
+            DrawBox(ccx - 0.5f, ccy - 0.5f, 1f, 1f, 1f, 1f, 1f, 0.9f);   // центр
+            DrawBox(ccx - 0.5f, ccy - 2.5f, 1f, 1f, 1f, 1f, 1f, 0.65f);  // вверх
+            DrawBox(ccx - 0.5f, ccy + 1.5f, 1f, 1f, 1f, 1f, 1f, 0.65f);  // вниз
+            DrawBox(ccx - 2.5f, ccy - 0.5f, 1f, 1f, 1f, 1f, 1f, 0.65f);  // влево
+            DrawBox(ccx + 1.5f, ccy - 0.5f, 1f, 1f, 1f, 1f, 1f, 0.65f);  // вправо
 
             float m = 70f;   // edgeMargin (CFG / ar_hud.js)
+
+            // ============================================================
+            // v95: 3D-КУБ (ориентация головы) в правом нижнем углу.
+            // ============================================================
+            try { DrawHeadCube(state); } catch { /* не должно ломать рендер */ }
+
+            // ============================================================
+            // v96: 3D-СЕТКА ПЛОСКОСТИ ЗЕМЛИ (Ctrl+Shift+END) + мягкая тень
+            // под меткой новой точки. Сетка рисуется ПОД метками/крестиком.
+            // ============================================================
+            try
+            {
+                if (state != null && state.ShowGrid) DrawPlaneGrid(state);
+                DrawPinShadow(state);
+            }
+            catch { /* сетка/тень не должны ломать рендер */ }
+
+            // ============================================================
+            // v95: ДИСТАНЦИЯ до земли по ПРИЦЕЛЬНОЙ точке (центр экрана).
+            // Луч взгляда (глаза + yaw/композитный питч) ∩ плоскость Y=groundY
+            // (где «стоят колёса»). Отрисовка текста ниже микрокрестика.
+            // + ЗАПИСЬ ДАННЫХ (головной питч + дистанция) в файл для калибровки
+            // конуса обзора (миникарта/редактор) — v95.
+            // ============================================================
+            try
+            {
+                // Регистрация данных: [time, headPitchDeg, distM] — раз в ~150мс.
+                // v99: пишем ВСЕГДА (даже при state==null — "-"), чтобы файл заполнялся.
+                if ((Environment.TickCount64 - _lastHeadLogMs) > 150)
+                {
+                    _lastHeadLogMs = Environment.TickCount64;
+                    double pitchDeg = state != null ? (state.PitchHead * 360.0) : double.NaN;
+                    double gd = ComputeGroundDistance(state);
+                    string line = $"{DateTime.Now:HH:mm:ss.fff}\t{(double.IsFinite(pitchDeg) ? pitchDeg.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) : "-")}\t{(double.IsFinite(gd) ? gd.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) : "-")}";
+                    AppendDataLog(line);
+                }
+
+                using var gFont = new Font("Consolas", 8.5f, FontStyle.Bold);   // v97: шрифт как у FOV (8.5f)
+                string gText = "—";
+                double gd2 = ComputeGroundDistance(state);
+                if (double.IsFinite(gd2) && gd2 > 0) gText = FmtDist(gd2);
+                EnsureText(ref _gndTxt, gText, gFont, System.Drawing.Color.White, 2f);
+                if (_gndTxt != null)
+                    // v97: текст дистанции ПОД крестиком (отступ 2px), шрифт как у FOV.
+                    DrawTextSprite(_gndTxt, _width / 2f - _gndTxt.Width / 2f, _height / 2f + 2f);
+            }
+            catch { /* не должно ломать рендер */ }
 
             // ============================================================
             // v85: ПОМЕТКА (PIN) — DUMB-ПРИЁМНИК (v73 JS): ArBridge.Pin ставится
@@ -583,6 +1024,7 @@ namespace ETS2_Assist_GUI.AR
                     else { _smTarget.U = LerpTo(_smTarget.U, u); _smTarget.V = LerpTo(_smTarget.V, v); }
 
                     // Размер/прозрачность по дистанции (sizeAlphaFor JS).
+                    // v95: точка в ДВА раза меньше (радиус = size/4 вместо size/2).
                     double d = Math.Max(0, pr.Value.dist);
                     float size = d <= 10 ? 33f : d >= 500 ? 15f :
                         (float)(33 + (15 - 33) * (d - 10) / (500 - 10));
@@ -590,7 +1032,7 @@ namespace ETS2_Assist_GUI.AR
                         Math.Clamp(1f - (float)((d - 500) / (1500 - 500)), 0.12f, 1f);
 
                     var (mr, mg, mb) = ColorFor(tg);
-                    DrawCircle(_smTarget.U, _smTarget.V, size / 2f, mr, mg, mb, alpha);
+                    DrawCircle(_smTarget.U, _smTarget.V, size / 4f, mr, mg, mb, alpha);
 
                     // Подписи (v70 JS): строка 1 = realName · дистанция; строка 2 (v85)=
                     // СИСТЕМНОЕ ИМЯ мелким шрифтом (требование), если отличается.
@@ -605,7 +1047,7 @@ namespace ETS2_Assist_GUI.AR
                                 "  \u00B7  " + FmtDist(pr.Value.dist),
                                 nameFont, System.Drawing.Color.White);
                             float tu = _smTarget.U - _txt1!.Width / 2f;
-                            float tv = _smTarget.V + 34f;
+                            float tv = _smTarget.V + size / 4f + _txt1.Height + 6f;  // v95: 1 пустая строка ниже точки
                             DrawTextSprite(_txt1, tu, tv, alpha);
                             if (!string.IsNullOrEmpty(tg.GameName) && tg.GameName != tg.RealName)
                             {
@@ -621,6 +1063,31 @@ namespace ETS2_Assist_GUI.AR
                 }
             }
             else _smTarget = null;
+
+            // ============================================================
+            // v92/v93: ИНДИКАТОР FOV в левом нижнем углу (Ctrl+Shift+PGUP/PGDN).
+            // v95: текст «AR Overlay FOV: NN.N°» с обводкой 3px (по умолчанию).
+            // v96: шрифт в 2 раза меньше (6.5f), ниже к краю (отступ на строку),
+            // под текстом — ПОЛУПРОЗРАЧНАЯ ПЛАШКА; в скобках — высота плоскости.
+            // ============================================================
+            try
+            {
+                using var fovFont = new Font("Consolas", 8.5f, FontStyle.Bold);   // v97: +30% (было 6.5f)
+                string fovText = "AR Overlay FOV: " + ArBridge.FovDegrees.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + "°";
+                // v96: высота плоскости земли в скобках рядом с FOV.
+                if (Math.Abs(ArBridge.PlaneOffsetM) > 0.001)
+                    fovText += "  (" + ArBridge.PlaneOffsetM.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + " м)";
+                EnsureText(ref _fovTxt, fovText, fovFont, System.Drawing.Color.White, 3f);
+                if (_fovTxt != null)
+                {
+                    float fovX = 12f;
+                    float fovY = _height - _fovTxt.Height - 4f;   // v96: ниже к краю (отступ 4px)
+                    // Полупрозрачная плашка под текстом (тёмная, скруглённая).
+                    DrawBox(fovX - 4f, fovY - 2f, _fovTxt.Width + 8f, _fovTxt.Height + 4f, 0f, 0f, 0f, 0.35f);
+                    DrawTextSprite(_fovTxt, fovX, fovY);
+                }
+            }
+            catch { /* индикатор не должен ломать рендер */ }
 
             _swapChain!.Present(1, 0u);   // vsync: каденс + отсутствие спин-цикла (bitblt; waitable недоступен)
         }
@@ -679,6 +1146,43 @@ namespace ETS2_Assist_GUI.AR
             public void Dispose() { Srv?.Dispose(); Tex?.Dispose(); }
         }
         private TextSprite? _txt1, _txt2, _pinTxt;   // 1 = «имя · дистанция», 2 = системное имя (v85), pin = «Новая точка»
+        private TextSprite? _fovTxt;                 // v92: индикатор FOV (левый нижний угол)
+        private TextSprite? _gndTxt;                 // v95: дистанция до земли по прицел.
+        private long _lastHeadLogMs = 0;             // v99 ФИКС: 0 вместо long.MinValue —
+                                                     // TickCount64 - MinValue переполнялся
+                                                     // в минус, условие >150 не срабатывало
+                                                     // НИКОГДА → CSV был пуст.
+        private static string? _headLogPath;         // v95: файл регистрации угла/дистанции
+
+        // v95: пишет данные угла головы и дистанции до земли по прицелу на диск.
+        // v99: запись ВСЕГДА (даже при state==null пишем "-"), файл создаётся при
+        // первом обращении. Каталог — тот же, что у Logger (гарантированно рабочий).
+        private static void AppendDataLog(string line)
+        {
+            try
+            {
+                EnsureHeadLogFile();
+                if (_headLogPath != null)
+                    File.AppendAllText(_headLogPath, line + Environment.NewLine, new System.Text.UTF8Encoding(false));
+            }
+            catch { /* лог не должен ломать рендер */ }
+        }
+
+        // v98: гарантирует создание CSV-файла (заголовок) при первом обращении.
+        private static void EnsureHeadLogFile()
+        {
+            try
+            {
+                if (_headLogPath != null) return;
+                var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+                Directory.CreateDirectory(dir);
+                _headLogPath = Path.Combine(dir, "ar_head_ground.csv");
+                File.AppendAllText(_headLogPath,
+                    "time\theadPitchDeg\tdistToGroundM" + Environment.NewLine,
+                    new System.Text.UTF8Encoding(false));
+            }
+            catch { _headLogPath = null; }
+        }
 
         private void CreateTextPipeline()
         {
@@ -733,31 +1237,88 @@ namespace ETS2_Assist_GUI.AR
             _tblend = _device.CreateBlendState(bd);
         }
 
-        // GDI-пререндер строки в BGRA-спрайт (белый/цветной текст + чёрная обводка 8-напр.).
-        private TextSprite MakeTextSprite(string text, Font font, System.Drawing.Color fill)
+        // GDI-пререндер строки в BGRA-спрайт.
+        // v87 КАЧЕСТВО: SSAA ×3 — рендер в 3× разрешении + даунскейл
+        // HighQualityBicubic → гладкие края без «рваной» обводки/пикселей.
+        // Обводка мягкая: 12-направления (шаг 30°) с гауссовым затуханием
+        // радиуса + один слой размытия (DrawImage с альфой) — как blur.
+        private const int TextSSAA = 3;   // суперсэмплинг текста (2..4; 1 = выкл)
+
+        private TextSprite MakeTextSprite(string text, Font font, System.Drawing.Color fill, float outline = 3f)
         {
+            // 1) Размер при целевом разрешении.
             int w, h;
             using (var mg = Graphics.FromHwnd(IntPtr.Zero))
             {
                 var sz = mg.MeasureString(text, font);
-                w = (int)Math.Ceiling(sz.Width) + 10;
-                h = (int)Math.Ceiling(sz.Height) + 10;
+                w = (int)Math.Ceiling(sz.Width) + 12;
+                h = (int)Math.Ceiling(sz.Height) + 12;
             }
-            using var bmp = new Bitmap(Math.Max(2, w), Math.Max(2, h), System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(bmp))
+            int ss = Math.Max(1, TextSSAA);
+            int W = w * ss, H = h * ss;
+            const int pad = 6;               // внутренний отступ (в финальных px)
+            int padS = pad * ss;
+
+            using var hi = new Bitmap(Math.Max(2, W), Math.Max(2, H), System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(hi))
             {
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-                for (int dx = -2; dx <= 2; dx += 2)
-                    for (int dy = -2; dy <= 2; dy += 2)
-                    {
-                        if (dx == 0 && dy == 0) continue;
-                        using var sh = new SolidBrush(System.Drawing.Color.FromArgb(200, 0, 0, 0));
-                        g.DrawString(text, font, sh, 5 + dx, 5 + dy);
-                    }
-                using var br = new SolidBrush(fill);
-                g.DrawString(text, font, br, 5, 5);
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+
+                // v96: МЯГКАЯ ТЕНЬ (drop shadow) — размытый чёрный силуэт текста,
+                // смещённый вниз-вправо. Даёт читаемость на СВЕТЛОМ фоне (обводка
+                // тонкая, тень — мягкая). Рисуем ДО обводки/заливки.
+                // Мягкость: 3 прохода FillPath с растущим радиусом и убывающей альфой
+                // (имитация blur) + смещение (2px в ss-масштабе).
+                for (int sh = 3; sh >= 1; sh--)
+                {
+                    using var shadowPath = new System.Drawing.Drawing2D.GraphicsPath();
+                    shadowPath.AddString(text, font.FontFamily, (int)font.Style, font.Size * ss,
+                        new PointF(padS + 2 * ss + sh, padS + 2 * ss + sh), StringFormat.GenericTypographic);
+                    int shA = 30 + sh * 20;   // внешние слои прозрачнее
+                    using var shadowBrush = new SolidBrush(System.Drawing.Color.FromArgb(shA, 0, 0, 0));
+                    g.FillPath(shadowBrush, shadowPath);
+                }
+
+                // МЯГКАЯ ОБВОДКА (v87): штрих с затуханием альфы по радиусу
+                // (имитация Gaussian blur обводки как в drawOutlinedText JS).
+                // v95: толщина = outline (в целевых px) × 2 для чёткости.
+                using var path = new System.Drawing.Drawing2D.GraphicsPath();
+                path.AddString(text, font.FontFamily, (int)font.Style, font.Size * ss,
+                    new PointF(padS, padS), StringFormat.GenericTypographic);
+                float outlinePx = outline * ss;   // толщина обводки в ss-пикселях
+                for (int ring = 3; ring >= 1; ring--)
+                {
+                    int a = 55 + ring * 30;      // внешние кольца прозрачнее
+                    float width = (outlinePx * 0.45f) / (4 - ring);
+                    using var pen = new Pen(System.Drawing.Color.FromArgb(
+                        Math.Min(255, a * 2), 0, 0, 0), Math.Max(1.2f, width));
+                    pen.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
+                    g.DrawPath(pen, path);
+                }
+                // Заливка текста — v93 ФИКС: рисовать в ТОМ ЖЕ 3× масштабе, что и
+                // обводка (раньше DrawString с оригинальным шрифтом 1× → после
+                // даунскейла заливка ~4px, «шрифт уменьшился до нечитаемого»).
+                using (var scaledFont = new Font(font.FontFamily, font.Size * ss, font.Style))
+                using (var br = new SolidBrush(fill))
+                {
+                    g.DrawString(text, scaledFont, br, padS, padS);
+                }
             }
+
+            // 2) Даунсэмпл ×ss → финальный спрайт (сглаживание + мягкость).
+            using var bmp = new Bitmap(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g2 = Graphics.FromImage(bmp))
+            {
+                g2.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g2.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g2.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                g2.DrawImage(hi, new Rectangle(0, 0, w, h),
+                    new Rectangle(0, 0, W, H), GraphicsUnit.Pixel);
+            }
+
             var rect = new System.Drawing.Rectangle(0, 0, w, h);
             var data = bmp.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly,
                                     System.Drawing.Imaging.PixelFormat.Format32bppArgb);
@@ -784,14 +1345,15 @@ namespace ETS2_Assist_GUI.AR
             finally { bmp.UnlockBits(data); }
         }
 
-        // Кэш по контенту: пересоздаём спрайт ТОЛЬКО когда строка сменилась.
-        private void EnsureText(ref TextSprite? sprite, string text, Font font, System.Drawing.Color fill)
+        // Кэш по контенту: пересоздаём спрайт ТОЛЬКО когда строка/шрифт сменилась.
+        // v95: outline — толщина чёрной обводки в px.
+        private void EnsureText(ref TextSprite? sprite, string text, Font font, System.Drawing.Color fill, float outline = 3f)
         {
             if (sprite != null && sprite.Text == text) return;
             try
             {
                 sprite?.Dispose();
-                sprite = MakeTextSprite(text, font, fill);
+                sprite = MakeTextSprite(text, font, fill, outline);
             }
             catch { sprite = null; }
         }
@@ -828,7 +1390,7 @@ namespace ETS2_Assist_GUI.AR
 
         public void Dispose()
         {
-            _txt1?.Dispose(); _txt2?.Dispose(); _pinTxt?.Dispose();
+            _txt1?.Dispose(); _txt2?.Dispose(); _pinTxt?.Dispose(); _fovTxt?.Dispose();
             _tsampler?.Dispose();
             _tblend?.Dispose();
             _tcbRect?.Dispose();
@@ -841,11 +1403,20 @@ namespace ETS2_Assist_GUI.AR
             _bil?.Dispose();
             _bps?.Dispose();
             _bvs?.Dispose();
-            _tcbParams2?.Dispose();
-            _tvb2?.Dispose();
-            _til2?.Dispose();
-            _tps2?.Dispose();
-            _tvs2?.Dispose();
+            _cvb?.Dispose();
+            _cil?.Dispose();
+            _cpsh?.Dispose();
+            _cvsh?.Dispose();
+            _lvb?.Dispose();
+            _lil?.Dispose();
+            _lps?.Dispose();
+            _lvs?.Dispose();
+            _ecb?.Dispose();
+            _evb?.Dispose();
+            _eil?.Dispose();
+            _eps?.Dispose();
+            _evs?.Dispose();
+            _gndTxt?.Dispose();
             _rtv?.Dispose();
             _vb?.Dispose();
             _vs?.Dispose();

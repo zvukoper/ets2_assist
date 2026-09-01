@@ -64,6 +64,7 @@ namespace ETS2_Assist_GUI
         private Button btnShowHybrid = null!;
         private Button btnLaunchAR = null!;
         private Button btnAr2 = null!;   // v76: AR v2.0 (D3D11)
+        private CheckBox chkAr2Grid = null!;   // v99: чекбокс «Сетка» рядом с кнопкой АР2
         private Button btnMapEditor = null!;
 
         private RichTextBox logConsole = null!;
@@ -110,10 +111,14 @@ namespace ETS2_Assist_GUI
         private const int HOTKEY_STOP_REC = 9002;
         private const int HOTKEY_MARKER = 9003;
         private const int HOTKEY_TEST = 9004;
-
+        private const int HOTKEY_FOV_UP = 9005;     // v97: CTRL+SHIFT+ALT+PGUP — FOV +0.5
+        private const int HOTKEY_FOV_DOWN = 9006;    // v97: CTRL+SHIFT+ALT+PGDN — FOV −0.5
+        private const int HOTKEY_PLANE_UP = 9008;    // v97: CTRL+SHIFT+PGUP — плоскость земли +0.25 м
+        private const int HOTKEY_PLANE_DOWN = 9009;  // v97: CTRL+SHIFT+PGDN — плоскость земли −0.25 м
         private bool hotKeyRegistered = false;
 
-        [DllImport("user32.dll")]
+        // v100: SetLastError — для чтения кода ошибки (1409 = занято другим процессом).
+        [DllImport("user32.dll", SetLastError = true)]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
         [DllImport("user32.dll")]
@@ -122,6 +127,7 @@ namespace ETS2_Assist_GUI
         private const uint MOD_CONTROL = 0x0002;
         private const uint MOD_SHIFT = 0x0004;
         private const uint MOD_ALT = 0x0001;
+        private const uint MOD_NOREPEAT = 0x4000;   // v100: без автоповтора (удержание = спам WM_HOTKEY)
 
         // ========== УПРАВЛЕНИЕ UI И ПАУЗОЙ ==========
         private bool _uiShown = false;
@@ -211,13 +217,21 @@ namespace ETS2_Assist_GUI
 
             try
             {
-                RegisterHotKey(this.Handle, HOTKEY_SAVE, MOD_CONTROL | MOD_SHIFT, (uint)Keys.S.GetHashCode());
-                RegisterHotKey(this.Handle, HOTKEY_START_REC, MOD_CONTROL | MOD_SHIFT, (uint)Keys.R.GetHashCode());
-                RegisterHotKey(this.Handle, HOTKEY_STOP_REC, MOD_CONTROL | MOD_SHIFT, (uint)Keys.X.GetHashCode());
-                RegisterHotKey(this.Handle, HOTKEY_MARKER, MOD_CONTROL | MOD_SHIFT, (uint)Keys.N.GetHashCode());
-                RegisterHotKey(this.Handle, HOTKEY_TEST, MOD_CONTROL | MOD_SHIFT, (uint)Keys.T.GetHashCode());
+                // v97: регистрация каждого хоткея отдельно с проверкой результата —
+                // один конфликт не должен ронять остальные (было: весь блок в try,
+                // любой сбой = «failed to register global hotkeys»).
+                RegisterHotKeyChecked(HOTKEY_SAVE, MOD_CONTROL | MOD_SHIFT, Keys.S, "S (save+pause)");
+                RegisterHotKeyChecked(HOTKEY_START_REC, MOD_CONTROL | MOD_SHIFT, Keys.R, "R (start/rec)");
+                RegisterHotKeyChecked(HOTKEY_STOP_REC, MOD_CONTROL | MOD_SHIFT, Keys.X, "X (AR pin)");
+                RegisterHotKeyChecked(HOTKEY_MARKER, MOD_CONTROL | MOD_SHIFT, Keys.N, "N (marker)");
+                RegisterHotKeyChecked(HOTKEY_TEST, MOD_CONTROL | MOD_SHIFT, Keys.T, "T (test)");
+                // v97: CTRL+SHIFT+ALT+PGUP/PGDN — FOV; CTRL+SHIFT+PGUP/PGDN — плоскость; CTRL+SHIFT+END — сетка.
+                RegisterHotKeyChecked(HOTKEY_FOV_UP, MOD_CONTROL | MOD_SHIFT | MOD_ALT, Keys.PageUp, "Ctrl+Shift+Alt+PGUP (FOV +)");
+                RegisterHotKeyChecked(HOTKEY_FOV_DOWN, MOD_CONTROL | MOD_SHIFT | MOD_ALT, Keys.PageDown, "Ctrl+Shift+Alt+PGDN (FOV −)");
+                RegisterHotKeyChecked(HOTKEY_PLANE_UP, MOD_CONTROL | MOD_SHIFT, Keys.PageUp, "Ctrl+Shift+PGUP (plane +)");
+                RegisterHotKeyChecked(HOTKEY_PLANE_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.PageDown, "Ctrl+Shift+PGDN (plane −)");
                 hotKeyRegistered = true;
-                AppendLog("Hotkeys registered: S (save+pause), R (start/rec), X (AR pin — пометка в АР), N (marker), T (test)");
+                AppendLog("Hotkeys registered: S, R, X (AR pin), N, T, Ctrl+Shift+Alt+PGUP/PGDN (FOV), Ctrl+Shift+PGUP/PGDN (plane)");
             }
             catch (Exception ex)
             {
@@ -229,16 +243,32 @@ namespace ETS2_Assist_GUI
                 Task.Run(async () => await StartSystemAsync());
             }
 
-            if (AppSettings.StartMinimized)
-            {
-                this.Hide();
-            }
-
-            RefreshTrackList();
-            LoadRecordingSettings();
-
             this.Shown += (_, _) => EnsureStartupForeground();
             _ = Task.Run(WaitForInstanceSignal);
+        }
+
+        // v97: регистрация одного хоткея с проверкой результата. Если конкретная
+        // комбинация занята (RegisterHotKey вернул false) — логируем и продолжаем,
+        // не роняя остальные хоткеи.
+        // v100: MOD_NOREPEAT (без автоповтора) + лог Win32-кода ошибки (1409 = занято).
+        // v101: try/catch — любое исключение (напр. Handle до создания окна) НЕ
+        // уходит в глобальный ThreadException (Program.cs) и НЕ показывает диалог
+        // «Error» с ОК; логируем и продолжаем.
+        private void RegisterHotKeyChecked(int id, uint modifiers, Keys key, string desc)
+        {
+            try
+            {
+                bool ok = RegisterHotKey(this.Handle, id, modifiers | MOD_NOREPEAT, (uint)key);
+                if (!ok)
+                {
+                    int err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                    AppendLog($"[HOTKEY] Не удалось зарегистрировать: {desc} — код {err} ({(err == 1409 ? "занята другой программой" : "см. RegisterHotKey docs")})");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[HOTKEY] Ошибка регистрации {desc}: {ex.Message}");
+            }
         }
 
         private void WaitForInstanceSignal()
@@ -332,7 +362,7 @@ namespace ETS2_Assist_GUI
             int leftX = 20;
             int topY = mainMenu.Height + 20;
 
-            btnStart = new Button { Text = "Start", Location = new Point(leftX, topY), Size = new Size(120, 30) };
+            btnStart = new Button { Text = "Start", Location = new Point(leftX, topY), Size = new Size(120, 30), Tag = "Toggle" };
             btnStart.Click += (s, e) => StartSystem();
 
             btnStop = new Button { Text = "Stop", Location = new Point(leftX, topY + 40), Size = new Size(120, 30), Enabled = false };
@@ -370,7 +400,7 @@ namespace ETS2_Assist_GUI
             // v71: кнопка «Пометить в АР» УДАЛЕНА — функционал перенесён на
             // хоткей Shift+Ctrl+X (требование 31.08.2026: «с кнопкой отбой»).
 
-            btnShowMap = new Button { Text = "Показать карту ✖", Location = new Point(leftX, topY + 410), Size = new Size(130, 30) };
+            btnShowMap = new Button { Text = "Показать карту ✖", Location = new Point(leftX, topY + 410), Size = new Size(130, 30), Tag = "Toggle" };
             btnShowMap.Click += (s, e) => {
                 _minimapAutoLogic = !_minimapAutoLogic;
                 btnShowMap.Text = _minimapAutoLogic ? "Показать карту ✔" : "Показать карту ✖";
@@ -390,6 +420,7 @@ namespace ETS2_Assist_GUI
                 }
                 _lastMinimapVisible = null; // заставить авто-логику перевычислить на след. тике
                 _lastMinimapAuto = null;
+                SyncShowMapButton();
                 UpdateStartButton();
             };
 
@@ -445,8 +476,25 @@ namespace ETS2_Assist_GUI
             btnLaunchAR.Click += (s, e) => LaunchArOverlay();
 
             // v76: AR v2.0 — нативный D3D11-рендер (та же логика/данные, другой движок).
-            btnAr2 = new Button { Text = "AR v2.0 (D3D)", Location = new Point(leftX, topY + 640), Size = new Size(230, 30) };
+            btnAr2 = new Button { Text = "AR v2.0 (D3D)", Location = new Point(leftX, topY + 640), Size = new Size(230, 30), Tag = "Toggle" };
             btnAr2.Click += (s, e) => LaunchArOverlayV2();
+
+            // v99: чекбокс «Сетка» рядом с кнопкой АР2 — вкл/выкл 3D-сетки плоскости.
+            // По умолчанию ВКЛ (сетка рисуется сразу). Синхронизируется с ArBridge.ShowGrid.
+            chkAr2Grid = new CheckBox
+            {
+                Text = "Сетка",
+                Location = new Point(leftX, topY + 675),
+                Size = new Size(230, 24),
+                Checked = true,   // v99: сетка по умолчанию включена
+                ForeColor = Color.LightGray,
+                BackColor = Color.FromArgb(30, 30, 30)
+            };
+            chkAr2Grid.CheckedChanged += (s, e) =>
+            {
+                AR.ArBridge.ShowGrid = chkAr2Grid.Checked;
+                AppendLog($"[ARv2] 3D-сетка плоскости {(chkAr2Grid.Checked ? "ВКЛ" : "ВЫКЛ")} (чекбокс)");
+            };
 
             int consoleLeft = leftX + 240;
             int consoleWidth = 400;
@@ -590,10 +638,17 @@ namespace ETS2_Assist_GUI
             this.ForeColor = fore;
             btnTheme.Text = _darkTheme ? "Тема: тёмная" : "Тема: светлая";
             foreach (Control c in this.Controls) SetControlTheme(c, back, fore);
+            // v39: после смены темы восстановить свечение тоггл-кнопок.
+            UpdateStartButton();
         }
 
         private static void SetControlTheme(Control c, Color back, Color fore)
         {
+            // v39: тоггл-кнопки (Start/Stop/карта/AR2) красятся отдельно — не трогать.
+            if (c is Button b && b.Tag is string t && t == "Toggle")
+            {
+                return;
+            }
             switch (c)
             {
                 case Button _:
@@ -1117,12 +1172,10 @@ namespace ETS2_Assist_GUI
 
             protected override void OnOpen()
             {
-                _log?.Invoke("[WebSocket] Клиент карты подключился");
                 try
                 {
                     var command = _uiSyncCommand?.Invoke() ?? "show_ui";
                     Send(JsonConvert.SerializeObject(new { command }));
-                    _log?.Invoke($"[WebSocket] Новому клиенту отправлена синхронизация UI: {command}");
                 }
                 catch (Exception ex) { _log?.Invoke($"[WebSocket] UI sync error: {ex.Message}"); }
             }
@@ -1174,7 +1227,6 @@ namespace ETS2_Assist_GUI
 
             protected override void OnClose(CloseEventArgs e)
             {
-                _log?.Invoke("[WebSocket] Клиент карты отключился");
             }
 
             protected override void OnError(WebSocketSharp.ErrorEventArgs e)
@@ -2275,6 +2327,23 @@ namespace ETS2_Assist_GUI
         protected override void WndProc(ref Message m)
         {
             const int WM_HOTKEY = 0x0312;
+            const int WM_MOUSEWHEEL = 0x020A;
+            if (m.Msg == WM_MOUSEWHEEL)
+            {
+                // v92: Ctrl+колесо — калибровка FOV АР2-проекции (шаг 0.5°).
+                // Колесо вверх (+120) → FOV +0.5; вниз (−120) → FOV −0.5.
+                // Приложение перехватывает колесо (AR2-окно click-through),
+                // а dumb-приёмник ArBridge.FovDegrees получает новое значение.
+                if ((ModifierKeys & Keys.Control) == Keys.Control)
+                {
+                    int delta = (short)((m.WParam.ToInt64() >> 16) & 0xFFFF);
+                    double step = delta > 0 ? 0.5 : -0.5;
+                    double fov = AR.ArBridge.FovDegrees + step;
+                    AR.ArBridge.FovDegrees = Math.Clamp(fov, 40.0, 120.0);
+                    AppendLog($"[ARv2] FOV = {AR.ArBridge.FovDegrees:F1}° (Ctrl+колесо)");
+                    return;   // событие обработано
+                }
+            }
             if (m.Msg == WM_HOTKEY)
             {
                 int id = m.WParam.ToInt32();
@@ -2308,6 +2377,26 @@ namespace ETS2_Assist_GUI
                     case HOTKEY_TEST:
                         AppendLog("Hotkey test (Shift+Ctrl+T) - showing test window");
                         ShowTestWindow();
+                        break;
+                    case HOTKEY_FOV_UP:
+                        // v97: Ctrl+Shift+Alt+PGUP — FOV +0.5 (калибровка АР2).
+                        AR.ArBridge.FovDegrees = Math.Clamp(AR.ArBridge.FovDegrees + 0.5, 40.0, 120.0);
+                        AppendLog($"[ARv2] FOV = {AR.ArBridge.FovDegrees:F1}° (Ctrl+Shift+Alt+PGUP)");
+                        break;
+                    case HOTKEY_FOV_DOWN:
+                        // v97: Ctrl+Shift+Alt+PGDN — FOV −0.5 (калибровка АР2).
+                        AR.ArBridge.FovDegrees = Math.Clamp(AR.ArBridge.FovDegrees - 0.5, 40.0, 120.0);
+                        AppendLog($"[ARv2] FOV = {AR.ArBridge.FovDegrees:F1}° (Ctrl+Shift+Alt+PGDN)");
+                        break;
+                    case HOTKEY_PLANE_UP:
+                        // v97: Ctrl+Shift+PGUP — плоскость земли +0.25 м.
+                        AR.ArBridge.PlaneOffsetM = Math.Clamp(AR.ArBridge.PlaneOffsetM + 0.25, -10.0, 10.0);
+                        AppendLog($"[ARv2] Плоскость земли = {AR.ArBridge.PlaneOffsetM:F2} м (Ctrl+Shift+PGUP)");
+                        break;
+                    case HOTKEY_PLANE_DOWN:
+                        // v97: Ctrl+Shift+PGDN — плоскость земли −0.25 м.
+                        AR.ArBridge.PlaneOffsetM = Math.Clamp(AR.ArBridge.PlaneOffsetM - 0.25, -10.0, 10.0);
+                        AppendLog($"[ARv2] Плоскость земли = {AR.ArBridge.PlaneOffsetM:F2} м (Ctrl+Shift+PGDN)");
                         break;
                 }
                 return;
@@ -2578,6 +2667,10 @@ namespace ETS2_Assist_GUI
                     UnregisterHotKey(this.Handle, HOTKEY_STOP_REC);
                     UnregisterHotKey(this.Handle, HOTKEY_MARKER);
                     UnregisterHotKey(this.Handle, HOTKEY_TEST);
+                    UnregisterHotKey(this.Handle, HOTKEY_FOV_UP);
+                    UnregisterHotKey(this.Handle, HOTKEY_FOV_DOWN);
+                    UnregisterHotKey(this.Handle, HOTKEY_PLANE_UP);
+                    UnregisterHotKey(this.Handle, HOTKEY_PLANE_DOWN);
                 }
                 trayIcon.Visible = false;
                 Application.Exit();
@@ -2709,16 +2802,60 @@ namespace ETS2_Assist_GUI
 
         private void UpdateStartButton()
         {
+            // v39.3: поле procManager может быть ещё null (ApplyTheme в InitializeComponents
+            // вызывается раньше InitializeProcessManager). Guard-проверка на старт.
+            if (procManager == null) return;
             if (procManager.IsRunning)
             {
                 btnStart.Text = lang.Get("btn_stop") ?? "Stop";
-                btnStart.BackColor = Color.LightCoral;
+                btnStart.BackColor = Color.Lime;   // v39: запущено → Lime (без красного)
             }
             else
             {
                 btnStart.Text = lang.Get("btn_start") ?? "Start";
-                btnStart.BackColor = Color.LightGreen;
+                btnStart.BackColor = DefaultButtonColor();
             }
+            SyncAr2Button();
+            SyncShowMapButton();
+            UpdateFeatureButtonsEnabled();
+        }
+
+        // v39: цвет кнопки по умолчанию (зависит от темы).
+        private Color DefaultButtonColor() => _darkTheme ? Color.FromArgb(60, 60, 60) : SystemColors.Control;
+
+        // v39: тоггл AR v2.0 (D3D) — Lime при запущенном оверлее.
+        internal bool IsAr2Running => _arV2Window != null && _arV2Window.IsRunning;
+
+        internal void SyncAr2Button()
+        {
+            if (btnAr2 == null) return;
+            bool on = IsAr2Running;
+            btnAr2.Text = on ? "AR v2.0 (D3D) — ON" : "AR v2.0 (D3D)";
+            btnAr2.BackColor = on ? Color.Lime : DefaultButtonColor();
+        }
+
+        // v39: тоггл «показать карту» — Lime при включённом режиме «всегда».
+        private void SyncShowMapButton()
+        {
+            if (btnShowMap == null) return;
+            btnShowMap.BackColor = _minimapAutoLogic ? Color.Lime : DefaultButtonColor();
+        }
+
+        // v39: пока система не запущена, функциональные кнопки левой части
+        // неактивны, кроме кнопки редактора карты (работает без данных/запуска).
+        private void UpdateFeatureButtonsEnabled()
+        {
+            if (procManager == null) return;
+            bool run = procManager.IsRunning;
+            var featureButtons = new[]
+            {
+                btnRestartOverlay, btnRandomTarget, btnRandomTarget2, btnRandomTarget3,
+                btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid,
+                btnTestPause, btnResetRecordingOrigin, btnLaunchAR, btnAr2
+            };
+            foreach (var b in featureButtons)
+                if (b != null) b.Enabled = run;
+            // btnMapEditor остаётся всегда активным.
         }
 
         private void UpdateIndicators()
@@ -2914,6 +3051,10 @@ namespace ETS2_Assist_GUI
                 UnregisterHotKey(this.Handle, HOTKEY_STOP_REC);
                 UnregisterHotKey(this.Handle, HOTKEY_MARKER);
                 UnregisterHotKey(this.Handle, HOTKEY_TEST);
+                UnregisterHotKey(this.Handle, HOTKEY_FOV_UP);
+                UnregisterHotKey(this.Handle, HOTKEY_FOV_DOWN);
+                UnregisterHotKey(this.Handle, HOTKEY_PLANE_UP);
+                UnregisterHotKey(this.Handle, HOTKEY_PLANE_DOWN);
             }
             StopTriggerServer();
             StopWebSocketSaveServer();
