@@ -1,14 +1,94 @@
 ﻿# Текущая задача:
-AR v2.0: финальная калибровка осей (v87) + качественный текст.
-Фидбек v86: рендер улучшился; углы головы/цели инвертированы (обе оси),
-текст рваный. v87: инверсия камеры (inverse(R)) + SSAA ×3 текст.
+AR v2.0: сетка R=100 м (v40.7), прозрачность ×2 (BaseA=0.25, Bayer-дизеринг).
+Дефолт высоты сетки = ПОЛОТНО ДОРОГИ (колёса): PlaneOffsetM=−0.75 (высота опорной
+точки кузова TruckTel над дорогой Actros). Высота глаз водителя Actros: 2.25 м от
+полотна → EyeHeightM=1.5 над опорной точкой (4 места кода).
 
-# СТАТУС СЕССИИ 01.09.2026 (пауза, продолжение через ~2ч):
-- Опубликовано v39.4..v39.11 (AR2: сетка/плоскость/конус/хоткеи/CSV) — последняя
-  v39.11-V39-AR2-CONE-PITCH-09.01-1737.
-- Ollama-индикатор v0.4 (VS Code extension) — РАБОТАЕТ (парсинг HTML через headless Edge).
-- Расход лимитов: ~16.4% (RESET 4ч). Модель deepseek-v4-flash:cloud.
-- СЛЕДУЮЩИЙ ШАГ: продолжить с TODO-списка INSTRUCTIONS.md (квесты/Кафе — цели версии 39).
+# КАЛИБРОВКА ПОЛЬЗОВАТЕЛЯ (КОНЕЦ СЕССИИ 01.09.2026, ПРИМЕНИТЬ В СЛЕДУЮЩИХ ШАГАХ):
+- **FOV = 99** (вместо 100) — «точки плавают меньше».
+- **PlaneOffset = −0.62** (вместо −0.75) — «точки плавают меньше».
+- В код НЕ вносить (пользователь: «сейчас код не меняем») — применить в СЛЕДУЮЩЕЙ
+  сессии: ArBridge.FovDegrees 100→99, _planeOffsetM −0.75→−0.62 (+ CabinArProjection/
+  ArRenderer CabinFovDegrees 100→99 для консистентности), публикация v39.20.
+- Тест-артефакт «пустые большие квадраты» — ОТЛОЖЕН (возврат по готовности).
+
+# СТАТУС СЕССИИ 01.09.2026 — ЗАВЕРШЕНА (20 итераций v39.12–v39.19; калибровка FOV=99/−0.62 — на следующую сессию):
+- **v39.19-V39-AR2-EYE-CALIB-09.01-2148** — последняя публикация (exe=txt=manifest MATCH).
+- Ключевые решения сессии: квад-сетка через куб-пайплайн (видимость), Bayer-dither
+  альфа (COLORKEY не умеет альфу), круг R=100 м, EyeHeightM=1.5 (Actros), слои
+  (сетка первая, текст последним), хоткеи с автоповтором, снэп пина к перекрестьям.
+- Лимиты: сессия ~42% (с 0.7% и 2 сбросами); модель glm5.3-flash:cloud.
+- ПЕРВЫЙ ШАГ СЛЕДУЮЩЕЙ СЕССИИ: применить калибровку FOV=99/−0.62 + публикация,
+  затем тест у пользователя; далее — чекбокс «Показать в AR», CameraModeDetector.
+
+# Что уже сделано (v39.19, 01.09.2026 21:48, 1.0.39.19-V39-AR2-EYE-CALIB):
+- RadiusM 30→100 (MaxSegs 16000), BaseA 0.5→0.25 (прозрачность ×2 к v40.6).
+- EyeHeightM 1.9→1.5 (глаза Actros 2.25 м от полотна − 0.75 опорная точка) ×4 места.
+- Фикс повреждённой строки комментария (CS1513 — пойман сборкой до публикации).
+- Публикация v39.19 (exe=txt=manifest MATCH).
+
+# Что уже сделано (v39.18, 01.09.2026 21:33, 1.0.39.18-V39-AR2-DITHER-ALPHA):
+- CubeHlsl PMain: 4×4 Bayer-матрица (a → паттерн цвет/чёрный), a>=0.999 — pass.
+- DrawPlaneGrid: R=30 м (Ø60), вся сетка шаг 1 м, MaxSegs=4000, BaseA=0.5.
+- MainForm.ArTarget.ArPlacePinFromViewCenter: px/pz = Math.Round (перекрестья сетки).
+- Публикация v39.18 (exe=txt=manifest MATCH).
+
+# Что уже сделано (v39.17, 01.09.2026 21:16, 1.0.39.17-V39-AR2-GRID-CIRC):
+- Сетка-круг Ø200 м (halfLen=√(R²−dk²)), BaseA 0.25, HalfW 1 (2px).
+- Хоткеи: шаг ÷2 + автоповтор (repeat=true, без MOD_NOREPEAT).
+- Публикация v39.17 (exe=txt=manifest MATCH).
+
+# Что уже сделано (v39.17, 01.09.2026 21:16, 1.0.39.17-V39-AR2-GRID-CIRC):
+- ArRenderer.cs DrawPlaneGrid: круг Ø200 м (R=100, halfLen=√(R²−dk²), min InnerM
+  для 1-м зоны), BaseA 0.25 (прозрачность ×2), HalfW 1 (линии 2px), шаги 1м/10м.
+- MainForm.cs: RegisterHotKeyChecked(..., repeat=true) — без MOD_NOREPEAT для
+  FOV/плоскости (автоповтор при удержании); шаги ÷2 (FOV 0.25, плоскость 0.125).
+- Публикация v39.17 (exe=txt=manifest MATCH).
+
+# Что уже сделано (v39.16, 01.09.2026 20:59, 1.0.39.16-V39-AR2-GRID-STYLE):
+- DrawPlaneGrid: полые квадраты (грани-полосы 4px, BaseA=0.5), VertAlpha
+  (1.0 до центр+25%H, →0 к низу), DistFade, WalkLine, MaxSegs=24000.
+- RenderFrame: сетка ПЕРВАЯ (дальний слой), прицел/куб/pin/текст поверх.
+- Публикация v39.16 (exe=txt=manifest MATCH).
+
+# Что уже сделано (v39.16, 01.09.2026 20:59, 1.0.39.16-V39-AR2-GRID-STYLE):
+- ArRenderer.cs DrawPlaneGrid: полые квадраты (грани-полосы 4px, HalfW=2,
+  BaseA=0.5), VertAlpha (1.0 до центр+25%H, →0 к низу), DistFade (1−d/400),
+  WalkLine (сегменты с отбраковкой, шаг 1м/30м + 10м/400м), MaxSegs=24000,
+  snap к мировым координатам, NDC на C# (куб-пайплайн).
+- RenderFrame: сетка ПЕРВАЯ (дальний слой), прицел/куб/pin/текст — поверх;
+  DrawPinShadow вынесен в отдельный try после куба.
+- Публикация v39.16 (exe=txt=manifest MATCH).
+
+# Что уже сделано (v39.15, 01.09.2026 20:39, 1.0.39.15-V39-AR2-GRID-QUADS):
+- ArRenderer.cs: DrawPlaneGrid — квады 1×1 м через куб-пайплайн (RadiusM=60,
+  MaxQuads=12000, snap, fade). ПЛИТА v39.14 отключена (код сохранён).
+- MainForm.cs: FOV = Ctrl+Shift+HOME/END (ALT убран), WM_HOTKEY обновлён.
+- Публикация v39.15 (exe=txt=manifest MATCH).
+
+# Что уже сделано (v39.14, 01.09.2026 20:18, 1.0.39.14-V39-AR2-DBG-CUBE):
+- MainForm.cs: chkAr2Grid добавлен в Controls.AddRange (КОРЕНЬ), справа от кнопки
+  АР2 (leftX+234, topY+646), красная рамка в Paint (отладка), кнопка АР2 230px.
+- ArRenderer.cs: DrawGroundDebugCube — яркая НЕпрозрачная плита 40×40×1 м на
+  плоскости земли (25 м впереди по yaw), painter's sort, пайплайн куба головы.
+- Калибровки: FOV=100 (ArBridge + CabinArProjection + ArRenderer), PlaneOffsetM=−0.75.
+- Публикация v39.14: 1.0.39.14-V39-AR2-DBG-CUBE-09.01-2018 (exe=txt=manifest MATCH).
+
+# Что уже сделано (v39.13, 01.09.2026 20:04, 1.0.39.13-V39-AR2-PLANE-PITCH-FIX):
+- Галочка «Сетка» слева от кнопки АР2 (в v39.14 переставлена СПРАВА + AddRange-фикс).
+- DrawPlaneFillCpu: CPU-заливка плоскости через ProjectPoint→NDC + CubeHlsl + _planeVb,
+  оранжевый a=0.38, _tblend. Вызывается первой в DrawPlaneGrid.
+- CabinArProjection.Project: bodyPitch *= forwardness² (вперёд=полный, вбок=≈0).
+  EnablePitchCompensation=true.
+- Публикация v39.13: 1.0.39.13-V39-AR2-PLANE-PITCH-FIX-09.01-2004 (exe=txt=manifest OK).
+
+# Что уже сделано (v39.12, 01.09.2026 19:34, 1.0.39.12-V39-AR2-PLANE-PIN-FIX):
+- Удалён CSV-конвейер: EnsureHeadLogFile из Initialize; блок AppendDataLog из RenderFrame;
+  поля _lastHeadLogMs/_headLogPath. (Файлы AR/ArRenderer.cs.)
+- PublishArV2Snapshot: высота пина = _arTruckY + ArBridge.PlaneOffsetM — каждый кадр,
+  X/Z из хранимого пина. Пин «приклеен» к плоскости, движется с ней при её сдвиге.
+  (MainForm.ArTarget.cs.)
+- Публикация v39.12: 1.0.39.12-V39-AR2-PLANE-PIN-FIX-09.01-1934 (exe=txt=manifest OK).
 
 # Что уже сделано (v98, 01.09.2026 16:20, 1.0.39.6-V39-AR2-CSV-HOTKEY):
 - ar_head_ground.csv: создаётся СРАЗУ при старте AR2 (EnsureHeadLogFile в Initialize),
@@ -102,7 +182,7 @@ AR v2.0: финальная калибровка осей (v87) + качеств
 - CameraModeDetector (CABIN/OTHER) — следующий этап копилки (screen capture).
 - Чекбокс «Показать в AR» (PointData.ShowInAr) — из TODO v65.
 - **ПЕРЕОЦЕНКА ЛИМИТОВ (задача пользователя, 01.09.2026) — ВЫПОЛНЕНО в v39.7:** анализ
-  `MemoryAI\ollama_limits_usage.txt` сделан, добавлен блок «ПЕРЕОЦЕНКА 01.09.2026» в РАЗДЕЛ 1
+  `MemoryAI\ollama_limits_usage.md` сделан, добавлен блок «ПЕРЕОЦЕНКА 01.09.2026» в РАЗДЕЛ 1
   (фактические оценки для экономной модели deepseek-v4-flash: лёгкая 0.5-1%/5м, средняя
   1-5%/10-15м, крупная 5-8%/35-50м). Инструкции дополнены правилом «ПРОГНОЗ И ФАКТ» в РАЗДЕЛ 2
   (формат записи с прогнозом и фактом). ВАЖНО: экономная модель тратит ~x0.3-0.5 от оценок

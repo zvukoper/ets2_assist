@@ -281,7 +281,14 @@ namespace ETS2_Assist_GUI
                     if (h.Count >= 5) s.PitchHead = h[4].Value<double>();
                 }
                 if (_arPin.HasValue)
-                    s.Pin = (_arPin.Value.x, _arPin.Value.y, _arPin.Value.z);
+                {
+                    // v40: метка «приклеена» к плоскости земли — высота ВСЕГДА
+                    // truckY + PlaneOffsetM (X/Z хранимые). При изменении смещения
+                    // плоскости (Ctrl+Shift+PGUP/PGDN) метка движется вместе с ней.
+                    var pin = _arPin.Value;
+                    double pinY = _arTruckY + AR.ArBridge.PlaneOffsetM;
+                    s.Pin = (pin.x, pinY, pin.z);
+                }
 
                 // Города (уже с компенсацией −44 м) — как в payload ar_telemetry.
                 if (_arPoints.Count > 0)
@@ -768,7 +775,7 @@ namespace ETS2_Assist_GUI
             // v96: смещение плоскости земли (Ctrl+Shift+PGUP/PGDN) влияет на
             // создание новых меток точек — плоскость, куда ставится метка.
             const double PinMaxDistM = 1500.0;
-            const double EyeHeightM = 1.9;
+            const double EyeHeightM = 1.5;   // v40.7: Actros — глаза 2.25 м от полотна − 0.75 (опорная точка)
             double planeY = _arTruckY + AR.ArBridge.PlaneOffsetM;
             double dirY = Math.Sin(pitch);        // взгляд вниз (pitch<0) => dirY<0 (вниз)
             double dirXZ = Math.Cos(pitch);       // |компонента в горизонтали|
@@ -788,6 +795,10 @@ namespace ETS2_Assist_GUI
             if (t < 1) t = 1;
             double px = _arTruckX + fx * dirXZ * t;
             double pz = _arTruckZ + fz * dirXZ * t;
+            // v40.6 СНЭП К СЕТКЕ: точка может создаваться ТОЛЬКО в перекрестьях
+            // метровой сетки (Math.Round → ближайшее целое).
+            px = Math.Round(px);
+            pz = Math.Round(pz);
             double py = planeY;                   // высота = плоскость земли (со смещением)
             _arPin = (px, py, pz);
             SendCommandToMap("ar_pin", new JObject

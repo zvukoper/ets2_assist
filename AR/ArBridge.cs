@@ -36,7 +36,7 @@ namespace ETS2_Assist_GUI.AR
         // Ctrl+колесо) меняет это значение; рендер-поток читает его каждый кадр.
         // Никакого перехвата колеса в AR2-окне (оно click-through).
         // ================================================================
-        private static double _fovDegrees = 95.0;   // v95: дефолт 95° (подобран пользователем)
+        private static double _fovDegrees = 100.0;   // v40.1: временная калибровка пользователя (было 95)
         public static double FovDegrees
         {
             get => Volatile.Read(ref _fovDegrees);
@@ -49,7 +49,8 @@ namespace ETS2_Assist_GUI.AR
         // меток точек (pin) и на отрисовку 3D-сетки плоскости в AR2.
         // Рендер-поток читает каждый кадр (dumb-приёмник).
         // ================================================================
-        private static double _planeOffsetM = 0.0;
+        // v40.1: временная калибровка пользователя (было 0.0): плоскость ниже truckY
+        private static double _planeOffsetM = -0.75;
         public static double PlaneOffsetM
         {
             get => Volatile.Read(ref _planeOffsetM);

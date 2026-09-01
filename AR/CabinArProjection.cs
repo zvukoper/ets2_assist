@@ -27,11 +27,22 @@ namespace ETS2_Assist_GUI.AR
         /// <summary>FOV кабины в градусах (ГОРИЗОНТАЛЬНЫЙ, конфигурируемый).
         /// v90: 75° — совпадает с эталоном ar_hud.js (CFG.fovDeg=75, подтверждён
         /// пользователем «практически идеально»).</summary>
-        public double CabinFovDegrees { get; set; } = 95.0;   // v95: дефолт 95°
+        public double CabinFovDegrees { get; set; } = 100.0;   // v40.1: временная калибровка пользователя (было 95)
 
         /// <summary>Центр проекции в долях экрана (0.5 = центр viewport).</summary>
         public double ProjectionCenterX { get; set; } = 0.5;
         public double ProjectionCenterY { get; set; } = 0.5;
+
+        /// <summary>
+        /// v40: ВЕРТИКАЛЬНАЯ КОМПЕНСАЦИЯ ПИТЧА ГРУЗОВИКА.
+        /// Чем ближе взгляд к ПРОДОЛЬНОЙ ОСИ грузовика — тем сильнее питч кузова
+        /// влияет на вертикальное положение точки (горизонт наклонён). Когда
+        /// смотрим В БОК (≈90° к оси) — питч кузова НЕ должен смещать боковую
+        /// точку (её вертикальный угол задаёт только голова). Компенсация =
+        /// ослабление питча кузова пропорционально боковому углу взгляда.
+        /// Это «приклеивает» точки к мировым координатам при движении в гору/с горы.
+        /// </summary>
+        public static bool EnablePitchCompensation = true;
 
         /// <summary>
         /// Полная pinhole-проекция мировой точки на экран.
@@ -54,7 +65,7 @@ namespace ETS2_Assist_GUI.AR
             // v95 КОРЕНЬ «метка на горизонте»: JS ставит глаза на
             // camY = placement + eyeHeight (1.9 м), а C# передавал placement.
             // Без +eyeH точка на земле (worldY=placement) давала wy=0 → горизонт.
-            const double EyeHeightM = 1.9;
+            const double EyeHeightM = 1.5;   // v40.7: Actros — глаза 2.25 м от полотна − 0.75 (опорная точка)
             double eyeY = camY + EyeHeightM;
             double wy = worldY - eyeY;
 
@@ -68,7 +79,19 @@ namespace ETS2_Assist_GUI.AR
             double rdot = (worldX - camX) * rightX + (worldZ - camZ) * rightZ;
 
             // 3) Питч кузова (placement[4], доля оборота) — вокруг right.
-            double bodyPitch = pitchBody * Math.PI * 2;
+            // v40 КОМПЕНСАЦИЯ: насколько точка «впереди» оси грузовика (0..1).
+            //   Вперёд (к оси) → компенсация мала (вертикальный угол головы уже
+            //   совпадает с питчем грузовика) → питч кузова применяем ПОЛНОСТЬЮ.
+            //   В бок (90° к оси) → компенсация максимальна (питч кузова НЕ влияет
+            //   на вертикаль боковой точки) → питч кузова почти обнуляем.
+            double forwardness = 1.0;
+            if (EnablePitchCompensation)
+            {
+                double mag = Math.Abs(fdot0) + Math.Abs(rdot);
+                if (mag > 1e-9) forwardness = Math.Abs(fdot0) / mag;   // ↑ вперёд, ↓ вбок
+                forwardness = forwardness * forwardness;               // резче к 0 в боку
+            }
+            double bodyPitch = pitchBody * Math.PI * 2 * forwardness;
             double cosB = Math.Cos(bodyPitch), sinB = Math.Sin(bodyPitch);
             double fwd1 = fdot0 * cosB + wy * sinB;
             double up1 = wy * cosB - fdot0 * sinB;

@@ -111,8 +111,8 @@ namespace ETS2_Assist_GUI
         private const int HOTKEY_STOP_REC = 9002;
         private const int HOTKEY_MARKER = 9003;
         private const int HOTKEY_TEST = 9004;
-        private const int HOTKEY_FOV_UP = 9005;     // v97: CTRL+SHIFT+ALT+PGUP — FOV +0.5
-        private const int HOTKEY_FOV_DOWN = 9006;    // v97: CTRL+SHIFT+ALT+PGDN — FOV −0.5
+        private const int HOTKEY_FOV_UP = 9005;     // v40.2: CTRL+SHIFT+HOME — FOV +0.5
+        private const int HOTKEY_FOV_DOWN = 9006;    // v40.2: CTRL+SHIFT+END — FOV −0.5
         private const int HOTKEY_PLANE_UP = 9008;    // v97: CTRL+SHIFT+PGUP — плоскость земли +0.25 м
         private const int HOTKEY_PLANE_DOWN = 9009;  // v97: CTRL+SHIFT+PGDN — плоскость земли −0.25 м
         private bool hotKeyRegistered = false;
@@ -225,13 +225,14 @@ namespace ETS2_Assist_GUI
                 RegisterHotKeyChecked(HOTKEY_STOP_REC, MOD_CONTROL | MOD_SHIFT, Keys.X, "X (AR pin)");
                 RegisterHotKeyChecked(HOTKEY_MARKER, MOD_CONTROL | MOD_SHIFT, Keys.N, "N (marker)");
                 RegisterHotKeyChecked(HOTKEY_TEST, MOD_CONTROL | MOD_SHIFT, Keys.T, "T (test)");
-                // v97: CTRL+SHIFT+ALT+PGUP/PGDN — FOV; CTRL+SHIFT+PGUP/PGDN — плоскость; CTRL+SHIFT+END — сетка.
-                RegisterHotKeyChecked(HOTKEY_FOV_UP, MOD_CONTROL | MOD_SHIFT | MOD_ALT, Keys.PageUp, "Ctrl+Shift+Alt+PGUP (FOV +)");
-                RegisterHotKeyChecked(HOTKEY_FOV_DOWN, MOD_CONTROL | MOD_SHIFT | MOD_ALT, Keys.PageDown, "Ctrl+Shift+Alt+PGDN (FOV −)");
-                RegisterHotKeyChecked(HOTKEY_PLANE_UP, MOD_CONTROL | MOD_SHIFT, Keys.PageUp, "Ctrl+Shift+PGUP (plane +)");
-                RegisterHotKeyChecked(HOTKEY_PLANE_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.PageDown, "Ctrl+Shift+PGDN (plane −)");
+                // v102: калибровочные хоткеи с АВТОПОВТОРОМ при удержании (repeat=true —
+                // без MOD_NOREPEAT) и шагом ÷2 (FOV 0.25°, плоскость 0.125 м).
+                RegisterHotKeyChecked(HOTKEY_FOV_UP, MOD_CONTROL | MOD_SHIFT, Keys.Home, "Ctrl+Shift+HOME (FOV +)", repeat: true);
+                RegisterHotKeyChecked(HOTKEY_FOV_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.End, "Ctrl+Shift+END (FOV −)", repeat: true);
+                RegisterHotKeyChecked(HOTKEY_PLANE_UP, MOD_CONTROL | MOD_SHIFT, Keys.PageUp, "Ctrl+Shift+PGUP (plane +)", repeat: true);
+                RegisterHotKeyChecked(HOTKEY_PLANE_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.PageDown, "Ctrl+Shift+PGDN (plane −)", repeat: true);
                 hotKeyRegistered = true;
-                AppendLog("Hotkeys registered: S, R, X (AR pin), N, T, Ctrl+Shift+Alt+PGUP/PGDN (FOV), Ctrl+Shift+PGUP/PGDN (plane)");
+                AppendLog("Hotkeys registered: S, R, X (AR pin), N, T, Ctrl+Shift+HOME/END (FOV), Ctrl+Shift+PGUP/PGDN (plane)");
             }
             catch (Exception ex)
             {
@@ -247,18 +248,17 @@ namespace ETS2_Assist_GUI
             _ = Task.Run(WaitForInstanceSignal);
         }
 
-        // v97: регистрация одного хоткея с проверкой результата. Если конкретная
-        // комбинация занята (RegisterHotKey вернул false) — логируем и продолжаем,
-        // не роняя остальные хоткеи.
-        // v100: MOD_NOREPEAT (без автоповтора) + лог Win32-кода ошибки (1409 = занято).
         // v101: try/catch — любое исключение (напр. Handle до создания окна) НЕ
         // уходит в глобальный ThreadException (Program.cs) и НЕ показывает диалог
         // «Error» с ОК; логируем и продолжаем.
-        private void RegisterHotKeyChecked(int id, uint modifiers, Keys key, string desc)
+        // v102: repeat=true — БЕЗ MOD_NOREPEAT: Windows шлёт WM_HOTKEY при удержании
+        // (автоповтор калибровки без постоянного нажатия).
+        private void RegisterHotKeyChecked(int id, uint modifiers, Keys key, string desc, bool repeat = false)
         {
             try
             {
-                bool ok = RegisterHotKey(this.Handle, id, modifiers | MOD_NOREPEAT, (uint)key);
+                uint mods = modifiers | (repeat ? 0u : MOD_NOREPEAT);
+                bool ok = RegisterHotKey(this.Handle, id, mods, (uint)key);
                 if (!ok)
                 {
                     int err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
@@ -476,19 +476,26 @@ namespace ETS2_Assist_GUI
             btnLaunchAR.Click += (s, e) => LaunchArOverlay();
 
             // v76: AR v2.0 — нативный D3D11-рендер (та же логика/данные, другой движок).
+            // v40.1: галочка «Сетка» СПРАВА от кнопки АР2 (одна строка).
+            // ФИКС НЕВИДИМОСТИ: чекбокс НЕ добавлялся в Controls формы (создавался,
+            // но не отображался). Теперь добавлен в AddRange + отладочная красная рамка.
             btnAr2 = new Button { Text = "AR v2.0 (D3D)", Location = new Point(leftX, topY + 640), Size = new Size(230, 30), Tag = "Toggle" };
             btnAr2.Click += (s, e) => LaunchArOverlayV2();
 
-            // v99: чекбокс «Сетка» рядом с кнопкой АР2 — вкл/выкл 3D-сетки плоскости.
-            // По умолчанию ВКЛ (сетка рисуется сразу). Синхронизируется с ArBridge.ShowGrid.
             chkAr2Grid = new CheckBox
             {
                 Text = "Сетка",
-                Location = new Point(leftX, topY + 675),
-                Size = new Size(230, 24),
+                Location = new Point(leftX + 234, topY + 646),
+                Size = new Size(90, 24),
                 Checked = true,   // v99: сетка по умолчанию включена
                 ForeColor = Color.LightGray,
                 BackColor = Color.FromArgb(30, 30, 30)
+            };
+            // v40.1 ОТЛАДКА: красная рамка вокруг галочки (видимость/позиция).
+            chkAr2Grid.Paint += (s, e) =>
+            {
+                using var pen = new Pen(Color.Red, 2f);
+                e.Graphics.DrawRectangle(pen, 0, 0, chkAr2Grid.Width - 1, chkAr2Grid.Height - 1);
             };
             chkAr2Grid.CheckedChanged += (s, e) =>
             {
@@ -618,9 +625,9 @@ namespace ETS2_Assist_GUI
                 Location = new Point(this.ClientSize.Width - 210, this.ClientSize.Height - 25)
             };
 
-            this.Controls.AddRange(new Control[] {
+                       this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
-                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnMapEditor, btnLaunchAR, btnAr2,
+                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnMapEditor, btnLaunchAR, btnAr2, chkAr2Grid,
                 logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu, btnTheme
             });
             PositionBuildLabel();
@@ -2379,24 +2386,24 @@ namespace ETS2_Assist_GUI
                         ShowTestWindow();
                         break;
                     case HOTKEY_FOV_UP:
-                        // v97: Ctrl+Shift+Alt+PGUP — FOV +0.5 (калибровка АР2).
-                        AR.ArBridge.FovDegrees = Math.Clamp(AR.ArBridge.FovDegrees + 0.5, 40.0, 120.0);
-                        AppendLog($"[ARv2] FOV = {AR.ArBridge.FovDegrees:F1}° (Ctrl+Shift+Alt+PGUP)");
+                        // v102: Ctrl+Shift+HOME — FOV +0.25 (шаг ÷2), автоповтор при удержании.
+                        AR.ArBridge.FovDegrees = Math.Clamp(AR.ArBridge.FovDegrees + 0.25, 40.0, 120.0);
+                        AppendLog($"[ARv2] FOV = {AR.ArBridge.FovDegrees:F2}° (Ctrl+Shift+HOME)");
                         break;
                     case HOTKEY_FOV_DOWN:
-                        // v97: Ctrl+Shift+Alt+PGDN — FOV −0.5 (калибровка АР2).
-                        AR.ArBridge.FovDegrees = Math.Clamp(AR.ArBridge.FovDegrees - 0.5, 40.0, 120.0);
-                        AppendLog($"[ARv2] FOV = {AR.ArBridge.FovDegrees:F1}° (Ctrl+Shift+Alt+PGDN)");
+                        // v102: Ctrl+Shift+END — FOV −0.25 (шаг ÷2), автоповтор при удержании.
+                        AR.ArBridge.FovDegrees = Math.Clamp(AR.ArBridge.FovDegrees - 0.25, 40.0, 120.0);
+                        AppendLog($"[ARv2] FOV = {AR.ArBridge.FovDegrees:F2}° (Ctrl+Shift+END)");
                         break;
                     case HOTKEY_PLANE_UP:
-                        // v97: Ctrl+Shift+PGUP — плоскость земли +0.25 м.
-                        AR.ArBridge.PlaneOffsetM = Math.Clamp(AR.ArBridge.PlaneOffsetM + 0.25, -10.0, 10.0);
-                        AppendLog($"[ARv2] Плоскость земли = {AR.ArBridge.PlaneOffsetM:F2} м (Ctrl+Shift+PGUP)");
+                        // v102: Ctrl+Shift+PGUP — плоскость +0.125 м (шаг ÷2), автоповтор.
+                        AR.ArBridge.PlaneOffsetM = Math.Clamp(AR.ArBridge.PlaneOffsetM + 0.125, -10.0, 10.0);
+                        AppendLog($"[ARv2] Плоскость земли = {AR.ArBridge.PlaneOffsetM:F3} м (Ctrl+Shift+PGUP)");
                         break;
                     case HOTKEY_PLANE_DOWN:
-                        // v97: Ctrl+Shift+PGDN — плоскость земли −0.25 м.
-                        AR.ArBridge.PlaneOffsetM = Math.Clamp(AR.ArBridge.PlaneOffsetM - 0.25, -10.0, 10.0);
-                        AppendLog($"[ARv2] Плоскость земли = {AR.ArBridge.PlaneOffsetM:F2} м (Ctrl+Shift+PGDN)");
+                        // v102: Ctrl+Shift+PGDN — плоскость −0.125 м (шаг ÷2), автоповтор при удержании.
+                        AR.ArBridge.PlaneOffsetM = Math.Clamp(AR.ArBridge.PlaneOffsetM - 0.125, -10.0, 10.0);
+                        AppendLog($"[ARv2] Плоскость земли = {AR.ArBridge.PlaneOffsetM:F3} м (Ctrl+Shift+PGDN)");
                         break;
                 }
                 return;
