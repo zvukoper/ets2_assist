@@ -33,6 +33,14 @@ namespace ETS2_Assist_GUI.AR
 
         private int _width, _height;
 
+        private bool _gridWarpActive;
+
+        private PerspectiveWarp.Homography _gridWarp =
+            PerspectiveWarp.Homography.Identity;
+
+        private const double PerspectiveCalibrationSquareSizeM = 10.0;
+        private const double PerspectiveCalibrationForwardDistanceM = 20.0;
+
         /// <summary>Прогноз задержки pipeline, мс (подбирается экспериментально).</summary>
         public float PredictionSeconds { get; set; } = 0.006f;
 
@@ -305,6 +313,77 @@ namespace ETS2_Assist_GUI.AR
             ctx.OMSetRenderTargets(_rtv, null);
             ctx.RSSetViewport(new Vortice.Mathematics.Viewport(0, 0, _width, _height));
             ctx.Draw(6, 0);
+        }
+
+        // Одноцветный отрезок (толщина 1px) в экранных px через cube-пайплайн.
+        private void DrawLine(float x1, float y1, float x2, float y2, float r, float g, float b, float a)
+        {
+            if (_cvsh == null || _cpsh == null || _cil == null || _planeVb == null) return;
+            float dx = x2 - x1, dy = y2 - y1;
+            float len = MathF.Sqrt(dx * dx + dy * dy);
+            if (len < 1e-3f) return;
+            const float halfW = 0.5f;
+            float px = -dy / len * halfW, py = dx / len * halfW;
+            float[] vb = new float[6 * 8];
+            int o = 0;
+            void Emit(float x, float y)
+            {
+                vb[o++] = 2f * (x / _width) - 1f;
+                vb[o++] = 1f - 2f * (y / _height);
+                vb[o++] = 0; vb[o++] = 1f;
+                vb[o++] = r * a; vb[o++] = g * a; vb[o++] = b * a; vb[o++] = a;
+            }
+            float ax = x1 + px, ay = y1 + py, bx = x1 - px, by = y1 - py;
+            float cx = x2 - px, cy = y2 - py, dx2 = x2 + px, dy2 = y2 + py;
+            Emit(ax, ay); Emit(bx, by); Emit(cx, cy);
+            Emit(ax, ay); Emit(cx, cy); Emit(dx2, dy2);
+            var ctx = _context!;
+            unsafe
+            {
+                var mp = ctx.Map(_planeVb!, MapMode.WriteDiscard, Vortice.Direct3D11.MapFlags.None);
+                System.Runtime.InteropServices.Marshal.Copy(vb, 0, mp.DataPointer, vb.Length);
+                ctx.Unmap(_planeVb!);
+            }
+            ctx.IASetInputLayout(_cil);
+            ctx.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
+            ctx.IASetVertexBuffer(0, _planeVb, 32, 0);
+            ctx.VSSetShader(_cvsh);
+            ctx.PSSetShader(_cpsh!);
+            ctx.OMSetBlendState(_tblend);
+            ctx.OMSetRenderTargets(_rtv, null);
+            ctx.RSSetViewport(new Vortice.Mathematics.Viewport(0, 0, _width, _height));
+            ctx.Draw(6, 0);
+        }
+
+        // Жёлтая управляющая точка калибровки: центр 3×3 px + перекрестье.
+        private void DrawPerspectiveHandle(float x, float y)
+        {
+            const float halfSize = 1.5f;
+            const float crossSize = 4.0f;
+
+            // Центральный квадрат 3×3 px.
+            DrawBox(
+                x - halfSize,
+                y - halfSize,
+                halfSize * 2f,
+                halfSize * 2f,
+                1.0f, 1.0f, 0.0f, 1.0f);
+
+            // Горизонтальная линия перекрестья.
+            DrawLine(
+                x - crossSize,
+                y,
+                x + crossSize,
+                y,
+                1.0f, 1.0f, 0.0f, 1.0f);
+
+            // Вертикальная линия перекрестья.
+            DrawLine(
+                x,
+                y - crossSize,
+                x,
+                y + crossSize,
+                1.0f, 1.0f, 0.0f, 1.0f);
         }
 
         // ==================== ЛИНИИ (v96: 3D-сетка плоскости) ====================
@@ -790,6 +869,46 @@ namespace ETS2_Assist_GUI.AR
             const float PointA = 0.9f;     // ярко-красные точки
             const int MaxSegs = 100000;
 
+            // ============================================================
+            // PERSPECTIVE WARP: каждый кадр пересчитываем source-точки
+            // (четыре угла квадрата 10×10 м впереди) и обновляем homography.
+            // Первый кадр — Initialize, все следующие — UpdatePerspectiveSources.
+            // ============================================================
+            double yaw = s.YawBase * Math.PI * 2.0 + s.YawHead * Math.PI * 2.0;
+            double forwardX = -Math.Sin(yaw);
+            double forwardZ = -Math.Cos(yaw);
+            double centerX = s.CamX + forwardX * PerspectiveCalibrationForwardDistanceM;
+            double centerZ = s.CamZ + forwardZ * PerspectiveCalibrationForwardDistanceM;
+            const double half = PerspectiveCalibrationSquareSizeM * 0.5;
+
+            var warpSource = new Vector2[4];
+            var wp0 = ProjectPoint(centerX - half, planeY, centerZ - half, s);
+            var wp1 = ProjectPoint(centerX + half, planeY, centerZ - half, s);
+            var wp2 = ProjectPoint(centerX + half, planeY, centerZ + half, s);
+            var wp3 = ProjectPoint(centerX - half, planeY, centerZ + half, s);
+
+            if (wp0.HasValue && wp1.HasValue && wp2.HasValue && wp3.HasValue &&
+                wp0.Value.inFront && wp1.Value.inFront && wp2.Value.inFront && wp3.Value.inFront)
+            {
+                warpSource[0] = new Vector2(wp0.Value.u, wp0.Value.v);
+                warpSource[1] = new Vector2(wp1.Value.u, wp1.Value.v);
+                warpSource[2] = new Vector2(wp2.Value.u, wp2.Value.v);
+                warpSource[3] = new Vector2(wp3.Value.u, wp3.Value.v);
+
+                if (!ArBridge.PerspectiveWarpInitialized)
+                {
+                    ArBridge.InitializePerspectiveWarp(warpSource);
+                }
+                else
+                {
+                    ArBridge.UpdatePerspectiveSources(warpSource);
+                }
+            }
+
+            // Активируем warp для отрисовки сетки (только здесь).
+            _gridWarp = ArBridge.GetPerspectiveWarp();
+            _gridWarpActive = true;
+
             float[] vb = new float[MaxSegs * 6 * 8];
             int o = 0;
 
@@ -1060,45 +1179,88 @@ namespace ETS2_Assist_GUI.AR
                 double dist3 = Math.Sqrt((wx - s.CamX) * (wx - s.CamX) +
                                          (wy - s.CamY) * (wy - s.CamY) +
                                          (wz - s.CamZ) * (wz - s.CamZ));
-                return (r.u, r.v, inFront, dist3, r.depth);
+
+                float outU = r.u;
+                float outV = r.v;
+
+                if (_gridWarpActive)
+                {
+                    if (_gridWarp.TryTransform(
+                            new Vector2(outU, outV),
+                            out Vector2 warped))
+                    {
+                        outU = warped.X;
+                        outV = warped.Y;
+                    }
+                }
+
+                return (
+                    outU,
+                    outV,
+                    inFront,
+                    dist3,
+                    r.depth);
             }
-            // YawHead в ArGameState — ДОЛЯ ОБОРОТА (как head.offset в TruckTel),
-            // поэтому ×2π — как в JS (c.yawHead уже рад, тут приводим к тому же).
-            double yaw = s.YawBase * Math.PI * 2 + s.YawHead * Math.PI * 2;
-            const double eyeH = 1.5;   // v40.7: Actros — глаза 2.25 м от полотна − 0.75 (опорная точка)
-            double ex = s.CamX, ey = s.CamY + eyeH, ez = s.CamZ;
+            else
+            {
+                // YawHead в ArGameState — ДОЛЯ ОБОРОТА (как head.offset в TruckTel),
+                // поэтому ×2π — как в JS (c.yawHead уже рад, тут приводим к тому же).
+                double yaw = s.YawBase * Math.PI * 2 + s.YawHead * Math.PI * 2;
+                const double eyeH = 1.5;   // v40.7: Actros — глаза 2.25 м от полотна − 0.75 (опорная точка)
+                double ex = s.CamX, ey = s.CamY + eyeH, ez = s.CamZ;
 
-            double rx = wx - ex, rz = wz - ez;
-            double ry = wy - ey;
+                double rx = wx - ex, rz = wz - ez;
+                double ry = wy - ey;
 
-            double s1 = Math.Sin(yaw), c1 = Math.Cos(yaw);
-            double fwdX = -s1, fwdZ = -c1;
-            double rightX = c1, rightZ = -s1;
+                double s1 = Math.Sin(yaw), c1 = Math.Cos(yaw);
+                double fwdX = -s1, fwdZ = -c1;
+                double rightX = c1, rightZ = -s1;
 
-            double fdot0 = rx * fwdX + rz * fwdZ;
-            double rdot = rx * rightX + rz * rightZ;
+                double fdot0 = rx * fwdX + rz * fwdZ;
+                double rdot = rx * rightX + rz * rightZ;
 
-            // 1) ПИТЧ КУЗОВА — поворот луча вокруг right (как в JS v75):
-            double bodyPitch = s.PitchBody * Math.PI * 2;
-            double cosB = Math.Cos(bodyPitch), sinB = Math.Sin(bodyPitch);
-            double fwd1 = fdot0 * cosB + ry * sinB;
-            double up1 = ry * cosB - fdot0 * sinB;
+                // 1) ПИТЧ КУЗОВА — поворот луча вокруг right (как в JS v75):
+                double bodyPitch = s.PitchBody * Math.PI * 2;
+                double cosB = Math.Cos(bodyPitch), sinB = Math.Sin(bodyPitch);
+                double fwd1 = fdot0 * cosB + ry * sinB;
+                double up1 = ry * cosB - fdot0 * sinB;
 
-            // 2) ПИТЧ ГОЛОВЫ — добавляется к кузову (та же ось right):
-            double headPitch = s.PitchHead * Math.PI * 2;
-            double cosH = Math.Cos(headPitch), sinH = Math.Sin(headPitch);
-            double depth = fwd1 * cosH + up1 * sinH;
-            double up = up1 * cosH - fwd1 * sinH;
+                // 2) ПИТЧ ГОЛОВЫ — добавляется к кузову (та же ось right):
+                double headPitch = s.PitchHead * Math.PI * 2;
+                double cosH = Math.Cos(headPitch), sinH = Math.Sin(headPitch);
+                double depth = fwd1 * cosH + up1 * sinH;
+                double up = up1 * cosH - fwd1 * sinH;
 
-            if (depth <= 0.5) return (0, 0, false, 0, depth);   // за спиной/слишком близко
+                if (depth <= 0.5) return (0, 0, false, 0, depth);   // за спиной/слишком близко
 
-            double fovTan = Math.Tan(75.0 * Math.PI / 180 / 2);
-            double f = _width * 0.5 / fovTan;
-            double u = _width / 2.0 + f * (rdot / depth);
-            double v = _height / 2.0 - f * (up / depth);
-            if (!double.IsFinite(u) || !double.IsFinite(v)) return (0, 0, false, 0, depth);
-            double dist = Math.Sqrt(rx * rx + ry * ry + rz * rz);
-            return ((float)u, (float)v, true, dist, depth);
+                double fovTan = Math.Tan(75.0 * Math.PI / 180 / 2);
+                double f = _width * 0.5 / fovTan;
+                double u = _width / 2.0 + f * (rdot / depth);
+                double v = _height / 2.0 - f * (up / depth);
+                if (!double.IsFinite(u) || !double.IsFinite(v)) return (0, 0, false, 0, depth);
+                double dist = Math.Sqrt(rx * rx + ry * ry + rz * rz);
+
+                float outU = (float)u;
+                float outV = (float)v;
+
+                if (_gridWarpActive)
+                {
+                    if (_gridWarp.TryTransform(
+                            new Vector2(outU, outV),
+                            out Vector2 warped))
+                    {
+                        outU = warped.X;
+                        outV = warped.Y;
+                    }
+                }
+
+                return (
+                    outU,
+                    outV,
+                    true,
+                    dist,
+                    depth);
+            }
         }
 
         // Сглаживание экранных позиций (как CFG.smooth/ar_hud.js): метка без рывков
@@ -1160,6 +1322,29 @@ namespace ETS2_Assist_GUI.AR
             // внутри RenderFrame; этот метод no-op (оставлен для API).
         }
 
+        private void DrawPerspectiveCalibrationHandles()
+        {
+            if (!ArBridge.PerspectiveWarpInitialized)
+                return;
+
+            Vector2[] points =
+                ArBridge.GetPerspectivePoints();
+
+            if (points.Length != 4)
+                return;
+
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 p = points[i];
+
+                if (!float.IsFinite(p.X) ||
+                    !float.IsFinite(p.Y))
+                    continue;
+
+                DrawPerspectiveHandle(p.X, p.Y);
+            }
+        }
+
         /// <summary>ОДИН кадр. Всё между «взять latest» и Present — лёгкое (архитектура).</summary>
         public void RenderFrame()
         {
@@ -1172,17 +1357,27 @@ namespace ETS2_Assist_GUI.AR
             // v100: полностью прозрачный clear (RGB=0, A=0) — не COLORKEY.
             ctx.ClearRenderTargetView(_rtv, new Color4(0f, 0f, 0f, 0f));
 
-            // ============================================================
-            // v40.4 ПОРЯДОК СЛОЁВ: сетка ПЛОСКОСТИ — САМЫЙ ДАЛЬНИЙ СЛОЙ,
-            // рисуется ПЕРВОЙ (сразу после очистки). Всё остальное
-            // (прицел, куб, pin, маркер, текст) — поверх, обводка/тени текста
-            // больше не искажаются сеткой.
-            // ============================================================
             try
             {
-                if (state != null && state.ShowGrid) DrawPlaneGrid(state);
+                if (state != null && state.ShowGrid)
+                    DrawPlaneGrid(state);
             }
-            catch { /* сетка не должна ломать рендер */ }
+            catch
+            {
+            }
+            finally
+            {
+                _gridWarpActive = false;
+            }
+
+            try
+            {
+                if (state != null && state.ShowGrid)
+                    DrawPerspectiveCalibrationHandles();
+            }
+            catch
+            {
+            }
 
             // ============================================================
             // v95: ПРИЦЕЛЬНЫЙ МИКРО-КРЕСТИК по центру экрана — 5 пикселей
