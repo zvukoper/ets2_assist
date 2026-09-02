@@ -777,23 +777,22 @@ namespace ETS2_Assist_GUI.AR
 
         // ================================================================
         // v40.7: СЕТКА = КРУГ R=100 м ВОКРУГ ГРУЗОВИКА, ШАГ 1 м.
-        // DITHER-АЛЬФА (Bayer 4×4) — COLORKEY-окно без альфы.
-        //   A = 0.25 × верт-градиент × дистанция   (прозрачность ×2 к v40.6)
-        //   - дистанция: 1 − wdist/100 (0 на краю круга R=100 м).
+        // ОРАНЖЕВЫЕ тонкие линии (1px) + ярко-КРАСНЫЕ точки в узлах квадратов.
+        // Точки — только в «верхних-левых»/чётных узлах (углах клеток 2×2), 2px.
         // ================================================================
         private void DrawPlaneGrid(ArGameState? s)
         {
             if (s == null || _cvsh == null || _cpsh == null || _cil == null) return;
             double planeY = s.GroundY + s.PlaneOffsetM;
-            const double RadiusM = 100.0;   // v40.7: радиус 100 м (пользователь)
-            const float HalfW = 1.0f;       // линии 2px
-            const float BaseA = 0.25f;      // v40.7: прозрачность ×2 (0.5 → 0.25)
-            const int MaxSegs = 16000;
+            const double RadiusM = 100.0;
+            const float HalfW = 0.45f;     // тонкая линия ~1px
+            const float BaseA = 0.45f;     // оранжевые линии (на 30% непрозрачнее: 0.35→0.455)
+            const float PointA = 0.9f;     // ярко-красные точки
+            const int MaxSegs = 100000;
 
             float[] vb = new float[MaxSegs * 6 * 8];
             int o = 0;
 
-            // Вертикальный градиент экрана: 1.0 (центр..+25%) → 0.0 (низ).
             float VertAlpha(float vPx)
             {
                 float center = _height / 2f;
@@ -803,7 +802,6 @@ namespace ETS2_Assist_GUI.AR
                 return Math.Clamp(1f - t, 0f, 1f);
             }
 
-            // Дистанционное затухание: 1 у фуры → 0 на краю круга (R=100 м).
             float DistFade(double wx, double wz)
             {
                 double dx = wx - s.CamX, dz = wz - s.CamZ;
@@ -811,9 +809,7 @@ namespace ETS2_Assist_GUI.AR
                 return (float)Math.Clamp(1.0 - d / RadiusM, 0.0, 1.0);
             }
 
-            // Полоса-грань (толстая линия): прямоугольник из отрезка u1v1→u2v2,
-            // альфа пер-вершинная (a1/a2) — градиент вдоль грани.
-            void EmitSeg(float u1, float v1, float u2, float v2, float a1, float a2)
+            void EmitSeg(float u1, float v1, float u2, float v2, float a1, float a2, float r, float g, float b)
             {
                 if (o + 6 * 8 > vb.Length) return;
                 float dx = u2 - u1, dy = v2 - v1;
@@ -825,7 +821,7 @@ namespace ETS2_Assist_GUI.AR
                     vb[o++] = 2f * (x / _width) - 1f;
                     vb[o++] = 1f - 2f * (y / _height);
                     vb[o++] = 0; vb[o++] = 1f;
-                    vb[o++] = 1.0f; vb[o++] = 0.62f; vb[o++] = 0.0f; vb[o++] = a;
+                    vb[o++] = r * a; vb[o++] = g * a; vb[o++] = b * a; vb[o++] = a;
                 }
                 float ax = u1 + px, ay = v1 + py, bx = u1 - px, by = v1 - py;
                 float cx = u2 - px, cy = v2 - py, dx2 = u2 + px, dy2 = v2 + py;
@@ -833,43 +829,93 @@ namespace ETS2_Assist_GUI.AR
                 Emit(ax, ay, a1); Emit(cx, cy, a2); Emit(dx2, dy2, a2);
             }
 
-            // Проходит линию (постоянный x либо z) шагами, эмітит видимые сегменты.
-            void WalkLine(bool vertical, double fixedCoord, double from, double to, double step)
+            // Заливка клетки (2 треугольника) заданным цветом/альфой.
+            void EmitQuad(float u0, float v0, float u1, float v1, float u2, float v2, float u3, float v3, float a, float r, float g, float b)
             {
-                for (double d = from; d < to - 1e-6; d += step)
+                if (o + 6 * 8 > vb.Length) return;
+                void Emit(float x, float y)
                 {
-                    double a0 = d, a1 = Math.Min(d + step, to);
-                    double x1, z1, x2, z2;
-                    if (vertical) { x1 = x2 = fixedCoord; z1 = a0; z2 = a1; }
-                    else { z1 = z2 = fixedCoord; x1 = a0; x2 = a1; }
-                    var p1 = ProjectPoint(x1, planeY, z1, s);
-                    var p2 = ProjectPoint(x2, planeY, z2, s);
-                    if (p1 == null || p2 == null || !p1.Value.inFront || !p2.Value.inFront) continue;
-                    float f1 = BaseA * DistFade(x1, z1) * VertAlpha(p1.Value.v);
-                    float f2 = BaseA * DistFade(x2, z2) * VertAlpha(p2.Value.v);
-                    if (f1 < 0.015f && f2 < 0.015f) continue;
-                    EmitSeg(p1.Value.u, p1.Value.v, p2.Value.u, p2.Value.v, f1, f2);
+                    vb[o++] = 2f * (x / _width) - 1f;
+                    vb[o++] = 1f - 2f * (y / _height);
+                    vb[o++] = 0; vb[o++] = 1f;
+                    vb[o++] = r * a; vb[o++] = g * a; vb[o++] = b * a; vb[o++] = a;
                 }
+                Emit(u0, v0); Emit(u1, v1); Emit(u2, v2);
+                Emit(u0, v0); Emit(u2, v2); Emit(u3, v3);
             }
 
-            // Snap линий к мировой сетке; длина линии = 2·√(R²−dk²) — КРУГ R=30 м.
             long camXi = (long)Math.Round(s.CamX);
             long camZi = (long)Math.Round(s.CamZ);
 
-            // Вся сетка = шаг 1 м, линии до окружности R=30 м.
-            for (long k = camXi - 30; k <= camXi + 30; k++)
+            // 0. ШАХМАТНАЯ заливка (белый, 60% прозрачнее = альфа 0.4).
+            // Заливаем клетки 1×1 м, где (x+z) чётное.
+            for (long x = camXi - 100; x < camXi + 100; x++)
+            {
+                for (long z = camZi - 100; z < camZi + 100; z++)
+                {
+                    if (((x + z) & 1) != 0) continue;   // шахматный порядок
+                    var p00 = ProjectPoint(x, planeY, z, s);
+                    var p10 = ProjectPoint(x + 1, planeY, z, s);
+                    var p11 = ProjectPoint(x + 1, planeY, z + 1, s);
+                    var p01 = ProjectPoint(x, planeY, z + 1, s);
+                    if (p00 == null || p10 == null || p11 == null || p01 == null) continue;
+                    if (!p00.Value.inFront || !p10.Value.inFront || !p11.Value.inFront || !p01.Value.inFront) continue;
+                    float a = 0.4f * DistFade(x + 0.5, z + 0.5) * VertAlpha((p00.Value.v + p11.Value.v) * 0.5f);
+                    if (a < 0.015f) continue;
+                    EmitQuad(p00.Value.u, p00.Value.v, p10.Value.u, p10.Value.v,
+                             p11.Value.u, p11.Value.v, p01.Value.u, p01.Value.v, a, 1f, 1f, 1f);
+                }
+            }
+
+            // 1. ОРАНЖЕВАЯ сетка 1 м (все линии, чёткие и тонкие).
+            for (long k = camXi - 100; k <= camXi + 100; k++)
             {
                 double dk = Math.Abs(k - s.CamX);
                 if (dk >= RadiusM) continue;
                 double halfLen = Math.Sqrt(RadiusM * RadiusM - dk * dk);
-                WalkLine(true, k, camZi - halfLen, camZi + halfLen, 1.0);
+                for (double z = camZi - halfLen; z < camZi + halfLen - 1e-6; z += 1.0)
+                {
+                    double z0 = z, z1 = Math.Min(z + 1.0, camZi + halfLen);
+                    var p1 = ProjectPoint(k, planeY, z0, s);
+                    var p2 = ProjectPoint(k, planeY, z1, s);
+                    if (p1 == null || p2 == null || !p1.Value.inFront || !p2.Value.inFront) continue;
+                    float f1 = BaseA * DistFade(k, z0) * VertAlpha(p1.Value.v);
+                    float f2 = BaseA * DistFade(k, z1) * VertAlpha(p2.Value.v);
+                    if (f1 < 0.015f && f2 < 0.015f) continue;
+                    EmitSeg(p1.Value.u, p1.Value.v, p2.Value.u, p2.Value.v, f1, f2, 1.0f, 0.62f, 0.0f);
+                }
             }
-            for (long k = camZi - 30; k <= camZi + 30; k++)
+            for (long k = camZi - 100; k <= camZi + 100; k++)
             {
                 double dk = Math.Abs(k - s.CamZ);
                 if (dk >= RadiusM) continue;
                 double halfLen = Math.Sqrt(RadiusM * RadiusM - dk * dk);
-                WalkLine(false, k, camXi - halfLen, camXi + halfLen, 1.0);
+                for (double x = camXi - halfLen; x < camXi + halfLen - 1e-6; x += 1.0)
+                {
+                    double x0 = x, x1 = Math.Min(x + 1.0, camXi + halfLen);
+                    var p1 = ProjectPoint(x0, planeY, k, s);
+                    var p2 = ProjectPoint(x1, planeY, k, s);
+                    if (p1 == null || p2 == null || !p1.Value.inFront || !p2.Value.inFront) continue;
+                    float f1 = BaseA * DistFade(x0, k) * VertAlpha(p1.Value.v);
+                    float f2 = BaseA * DistFade(x1, k) * VertAlpha(p2.Value.v);
+                    if (f1 < 0.015f && f2 < 0.015f) continue;
+                    EmitSeg(p1.Value.u, p1.Value.v, p2.Value.u, p2.Value.v, f1, f2, 1.0f, 0.62f, 0.0f);
+                }
+            }
+
+            // 2. ЯРКО-КРАСНЫЕ точки 4px В КАЖДОМ пересечении линий (каждый целый X и Z).
+            for (long x = camXi - 60; x <= camXi + 60; x++)
+            {
+                for (long z = camZi - 60; z <= camZi + 60; z++)
+                {
+                    var p = ProjectPoint(x, planeY, z, s);
+                    if (p == null || !p.Value.inFront) continue;
+                    float a = PointA * DistFade(x, z) * VertAlpha(p.Value.v);
+                    if (a < 0.015f) continue;
+                    float u = p.Value.u, v = p.Value.v;
+                    EmitSeg(u - 2, v, u + 2, v, a, a, 1f, 0f, 0f);
+                    EmitSeg(u, v - 2, u, v + 2, a, a, 1f, 0f, 0f);
+                }
             }
 
             if (o <= 0) return;

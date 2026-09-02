@@ -144,7 +144,16 @@ namespace ETS2_Assist_GUI.AR
     {
         public delegate IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
-        public static readonly WndProc DefaultProc = (h, m, w, l) => DefWindowProcW(h, m, w, l);
+private const uint WM_NCHITTEST = 0x0084;
+private static readonly IntPtr HTTRANSPARENT = new(-1);
+
+public static readonly WndProc DefaultProc = (h, m, w, l) =>
+{
+    if (m == WM_NCHITTEST)
+        return HTTRANSPARENT;
+
+    return DefWindowProcW(h, m, w, l);
+};
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         private static extern IntPtr DefWindowProcW(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);

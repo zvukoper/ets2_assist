@@ -227,8 +227,18 @@ namespace ETS2_Assist_GUI
                 RegisterHotKeyChecked(HOTKEY_TEST, MOD_CONTROL | MOD_SHIFT, Keys.T, "T (test)");
                 // v102: калибровочные хоткеи с АВТОПОВТОРОМ при удержании (repeat=true —
                 // без MOD_NOREPEAT) и шагом ÷2 (FOV 0.25°, плоскость 0.125 м).
-                RegisterHotKeyChecked(HOTKEY_FOV_UP, MOD_CONTROL | MOD_SHIFT, Keys.Home, "Ctrl+Shift+HOME (FOV +)", repeat: true);
-                RegisterHotKeyChecked(HOTKEY_FOV_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.End, "Ctrl+Shift+END (FOV −)", repeat: true);
+RegisterHotKeyChecked(
+    HOTKEY_FOV_UP,
+    MOD_CONTROL | MOD_SHIFT,
+    Keys.Insert,
+    "Ctrl+Shift+INSERT (FOV +)",
+    repeat: true);
+RegisterHotKeyChecked(
+    HOTKEY_FOV_DOWN,
+    MOD_CONTROL | MOD_SHIFT,
+    Keys.Delete,
+    "Ctrl+Shift+DELETE (FOV −)",
+    repeat: true);
                 RegisterHotKeyChecked(HOTKEY_PLANE_UP, MOD_CONTROL | MOD_SHIFT, Keys.PageUp, "Ctrl+Shift+PGUP (plane +)", repeat: true);
                 RegisterHotKeyChecked(HOTKEY_PLANE_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.PageDown, "Ctrl+Shift+PGDN (plane −)", repeat: true);
                 hotKeyRegistered = true;
