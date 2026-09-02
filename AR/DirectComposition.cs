@@ -4,128 +4,270 @@ using System.Runtime.InteropServices;
 namespace ETS2_Assist_GUI.AR
 {
     /// <summary>
-    /// DirectComposition (dcomp.dll) — минимальные COM-интерфейсы для связки
-    /// D3D11 composition swap chain → IDCompositionVisual → target окна.
-    /// Vortice не содержит DComp-биндингов (проверено рефлексией 3.8.3),
-    /// пакет Vortice.DirectComposition недоступен офлайн — реализуем вручную.
-    /// Схема (Microsoft): D3D11 device → IDXGIDevice → DCompositionCreateDevice
-    /// → CreateTargetForHwnd → CreateVisual → SetContent(swapChain) →
-    /// SetRoot(visual) → Commit.
+    /// Минимальный native DirectComposition binding для:
+    /// D3D11 device -> IDXGIDevice -> DCompositionCreateDevice
+    /// -> CreateTargetForHwnd -> CreateVisual -> SetContent
+    /// -> SetRoot -> Commit.
     ///
-    /// ВАЖНО (фикс E_NOINTERFACE 0x80004002): первый аргумент DCompositionCreateDevice
-    /// — нативный IDXGIDevice*. НЕЛЬЗЯ передавать SharpGen-обёртку как object с
-    /// [MarshalAs(IUnknown)] — маршаллер создаст CCW, реализующий только IUnknown,
-    /// и DComp не сможет QueryInterface на IDXGIDevice. Передаём IntPtr (NativePointer).
+    /// Используются реальные IID из dcomp.h.
     /// </summary>
     internal static class DirectComposition
     {
         private const string Dll = "dcomp.dll";
 
+        private static readonly Guid IID_IDCompositionDevice =
+            new("C37EA93A-E7AA-450D-B16F-9746CB0407F3");
+
+        private static readonly Guid IID_IDCompositionTarget =
+            new("EACDD04C-C9BE-4E17-88F4-D1B12B0E3D89");
+
+        private static readonly Guid IID_IDCompositionVisual =
+            new("4D93059D-097B-4651-9A60-F0F25116E2F3");
+
         [DllImport(Dll)]
         private static extern int DCompositionCreateDevice(
-            IntPtr dxgiDevice,                       // IDXGIDevice* (нативный указатель)
-            [MarshalAs(UnmanagedType.LPStruct)] Guid iid,
-            out IntPtr compositionDevice);           // IDCompositionDevice*
+            IntPtr dxgiDevice,
+            [In] ref Guid iid,
+            out IntPtr dcompositionDevice);
 
-        private static readonly Guid IID_IDCompositionDevice = new("C37EA93A-E7AA-450D-B16F-974D6A6A6E6E");
-        private static readonly Guid IID_IDCompositionTarget = new("EACDD04C-C9BE-4AB4-A7E6-5F8990D434EE");
-        private static readonly Guid IID_IDCompositionVisual = new("4D93059D-097B-43CC-8860-2FBF2A9E2C78");
-
-        /// <summary>Создаёт IDCompositionDevice из нативного IDXGIDevice* (IntPtr).</summary>
         public static object CreateDevice(IntPtr dxgiDevicePtr)
         {
-            int hr = DCompositionCreateDevice(dxgiDevicePtr, IID_IDCompositionDevice, out IntPtr devPtr);
-            if (hr < 0) throw new InvalidOperationException($"DCompositionCreateDevice HRESULT=0x{hr:X8}");
-            return Marshal.GetObjectForIUnknown(devPtr);   // RCW → IDCompositionDevice
+            if (dxgiDevicePtr == IntPtr.Zero)
+                throw new ArgumentException("IDXGIDevice pointer is null.", nameof(dxgiDevicePtr));
+
+            Guid iid = IID_IDCompositionDevice;
+
+            int hr = DCompositionCreateDevice(
+                dxgiDevicePtr,
+                ref iid,
+                out IntPtr devPtr);
+
+            if (hr < 0)
+                throw new InvalidOperationException(
+                    $"DCompositionCreateDevice HRESULT=0x{hr:X8}");
+
+            if (devPtr == IntPtr.Zero)
+                throw new InvalidOperationException(
+                    "DCompositionCreateDevice returned null device pointer.");
+
+            try
+            {
+                return Marshal.GetObjectForIUnknown(devPtr);
+            }
+            finally
+            {
+                Marshal.Release(devPtr);
+            }
         }
 
-        /// <summary>IDCompositionDevice::CreateTargetForHwnd → IDCompositionTarget.</summary>
-        public static object CreateTargetForHwnd(object device, IntPtr hwnd, bool topmost)
+        public static object CreateTargetForHwnd(
+            object device,
+            IntPtr hwnd,
+            bool topmost)
         {
-            var dev = (IDCompositionDevice)device;
-            int hr = dev.CreateTargetForHwnd(hwnd, topmost, out var target);
-            if (hr < 0) throw new InvalidOperationException($"CreateTargetForHwnd HRESULT=0x{hr:X8}");
+            if (device is not IDCompositionDevice dev)
+                throw new InvalidOperationException(
+                    "Object does not implement IDCompositionDevice.");
+
+            int hr = dev.CreateTargetForHwnd(
+                hwnd,
+                topmost,
+                out var target);
+
+            if (hr < 0)
+                throw new InvalidOperationException(
+                    $"CreateTargetForHwnd HRESULT=0x{hr:X8}");
+
             return target;
         }
 
-        /// <summary>IDCompositionDevice::CreateVisual → IDCompositionVisual.</summary>
         public static object CreateVisual(object device)
         {
-            var dev = (IDCompositionDevice)device;
+            if (device is not IDCompositionDevice dev)
+                throw new InvalidOperationException(
+                    "Object does not implement IDCompositionDevice.");
+
             int hr = dev.CreateVisual(out var visual);
-            if (hr < 0) throw new InvalidOperationException($"CreateVisual HRESULT=0x{hr:X8}");
+
+            if (hr < 0)
+                throw new InvalidOperationException(
+                    $"CreateVisual HRESULT=0x{hr:X8}");
+
             return visual;
         }
 
-        /// <summary>IDCompositionVisual::SetContent(swapChain). swapChain — нативный IUnknown*.</summary>
         public static void SetContent(object visual, IntPtr swapChainPtr)
         {
-            ((IDCompositionVisual)visual).SetContent(swapChainPtr);
+            if (visual is not IDCompositionVisual v)
+                throw new InvalidOperationException(
+                    "Object does not implement IDCompositionVisual.");
+
+            if (swapChainPtr == IntPtr.Zero)
+                throw new ArgumentException(
+                    "SwapChain pointer is null.",
+                    nameof(swapChainPtr));
+
+            int hr = v.SetContent(swapChainPtr);
+
+            if (hr < 0)
+                throw new InvalidOperationException(
+                    $"IDCompositionVisual.SetContent HRESULT=0x{hr:X8}");
         }
 
-        /// <summary>IDCompositionTarget::SetRoot(visual).</summary>
         public static void SetRoot(object target, object visual)
         {
-            ((IDCompositionTarget)target).SetRoot((IDCompositionVisual)visual);
+            if (target is not IDCompositionTarget t)
+                throw new InvalidOperationException(
+                    "Object does not implement IDCompositionTarget.");
+
+            if (visual is not IDCompositionVisual v)
+                throw new InvalidOperationException(
+                    "Object does not implement IDCompositionVisual.");
+
+            int hr = t.SetRoot(v);
+
+            if (hr < 0)
+                throw new InvalidOperationException(
+                    $"IDCompositionTarget.SetRoot HRESULT=0x{hr:X8}");
         }
 
-        /// <summary>IDCompositionDevice::Commit().</summary>
         public static void Commit(object device)
         {
-            ((IDCompositionDevice)device).Commit();
+            if (device is not IDCompositionDevice dev)
+                throw new InvalidOperationException(
+                    "Object does not implement IDCompositionDevice.");
+
+            int hr = dev.Commit();
+
+            if (hr < 0)
+                throw new InvalidOperationException(
+                    $"IDCompositionDevice.Commit HRESULT=0x{hr:X8}");
         }
 
-        // ================= COM-интерфейсы (vtable-вызовы) =================
-        // Каждый интерфейс наследует IUnknown (3 метода) + свои методы.
+        // ============================================================
+        // IDCompositionDevice
+        // ============================================================
 
-        [ComImport, Guid("C37EA93A-E7AA-450D-B16F-974D6A6A6E6E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [ComImport]
+        [Guid("C37EA93A-E7AA-450D-B16F-9746CB0407F3")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
         private interface IDCompositionDevice
         {
-            // IUnknown
-            void _VtblGap0(); // QueryInterface
-            void _VtblGap1(); // AddRef
-            void _VtblGap2(); // Release
-            // IDCompositionDevice
-            [PreserveSig] int Commit();
-            [PreserveSig] int WaitForCommitCompletion();
-            [PreserveSig] int GetFrameStatistics(IntPtr statistics);
-            [PreserveSig] int CreateTargetForHwnd(IntPtr hwnd, [MarshalAs(UnmanagedType.Bool)] bool topmost, out IDCompositionTarget target);
-            [PreserveSig] int CreateVisual(out IDCompositionVisual visual);
-            // ... остальные методы не нужны
+            [PreserveSig]
+            int Commit();
+
+            [PreserveSig]
+            int WaitForCommitCompletion();
+
+            [PreserveSig]
+            int GetFrameStatistics(IntPtr statistics);
+
+            [PreserveSig]
+            int CreateTargetForHwnd(
+                IntPtr hwnd,
+                [MarshalAs(UnmanagedType.Bool)] bool topmost,
+                out IDCompositionTarget target);
+
+            [PreserveSig]
+            int CreateVisual(out IDCompositionVisual visual);
         }
 
-        [ComImport, Guid("EACDD04C-C9BE-4AB4-A7E6-5F8990D434EE"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        // ============================================================
+        // IDCompositionTarget
+        // ============================================================
+
+        [ComImport]
+        [Guid("EACDD04C-117E-4E17-88F4-D1B12B0E3D89")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
         private interface IDCompositionTarget
         {
-            void _VtblGap0();
-            void _VtblGap1();
-            void _VtblGap2();
-            [PreserveSig] int SetRoot(IDCompositionVisual visual);
+            [PreserveSig]
+            int SetRoot(IDCompositionVisual visual);
         }
 
-        [ComImport, Guid("4D93059D-097B-43CC-8860-2FBF2A9E2C78"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        // ============================================================
+        // IDCompositionVisual
+        //
+        // ВАЖНО:
+        // Для COM interface порядок методов в vtable обязателен.
+        // Нельзя оставлять произвольные "gap" методы.
+        // ============================================================
+
+        [ComImport]
+        [Guid("4D93059D-097B-4651-9A60-F0F25116E2F3")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
         private interface IDCompositionVisual
         {
-            void _VtblGap0();
-            void _VtblGap1();
-            void _VtblGap2();
-            [PreserveSig] int SetOffsetX(float x);
-            [PreserveSig] int SetOffsetY(float y);
-            [PreserveSig] int SetTransform(IntPtr matrix);
-            [PreserveSig] int SetTransformParent(IDCompositionVisual visual);
-            [PreserveSig] int SetEffect(IntPtr effect);
-            [PreserveSig] int SetOverlayMode(int mode);
-            [PreserveSig] int SetClip(IntPtr clip);
-            [PreserveSig] int SetBorderMode(int mode);
-            [PreserveSig] int SetAlphaMode(int mode);
-            [PreserveSig] int SetBackFaceVisibility(int visibility);
-            [PreserveSig] int SetBitmapInterpolationMode(int mode);
-            [PreserveSig] int SetContent(object content);
-            [PreserveSig] int SetContent(IntPtr content);
-            [PreserveSig] int AddVisual(IDCompositionVisual visual, [MarshalAs(UnmanagedType.Bool)] bool insertAbove, IDCompositionVisual reference);
-            [PreserveSig] int RemoveVisual(IDCompositionVisual visual);
-            [PreserveSig] int RemoveAllVisuals();
-            [PreserveSig] int SetCompositeMode(int mode);
+            // vtable 3
+            [PreserveSig]
+            int SetOffsetX(float offsetX);
+
+            // vtable 4
+            [PreserveSig]
+            int SetOffsetX_Animation(IntPtr animation);
+
+            // vtable 5
+            [PreserveSig]
+            int SetOffsetY(float offsetY);
+
+            // vtable 6
+            [PreserveSig]
+            int SetOffsetY_Animation(IntPtr animation);
+
+            // vtable 7
+            [PreserveSig]
+            int SetTransform(IntPtr matrix);
+
+            // vtable 8
+            [PreserveSig]
+            int SetTransform_Animation(IntPtr transform);
+
+            // vtable 9
+            [PreserveSig]
+            int SetTransformParent(IDCompositionVisual visual);
+
+            // vtable 10
+            [PreserveSig]
+            int SetEffect(IntPtr effect);
+
+            // vtable 11
+            [PreserveSig]
+            int SetBitmapInterpolationMode(int mode);
+
+            // vtable 12
+            [PreserveSig]
+            int SetBorderMode(int mode);
+
+            // vtable 13
+            [PreserveSig]
+            int SetClip(IntPtr clip);
+
+            // vtable 14
+            [PreserveSig]
+            int SetClip_Animation(IntPtr clip);
+
+            // vtable 15
+            [PreserveSig]
+            int SetContent(IntPtr content);
+
+            // vtable 16
+            [PreserveSig]
+            int AddVisual(
+                IDCompositionVisual visual,
+                [MarshalAs(UnmanagedType.Bool)] bool insertAbove,
+                IDCompositionVisual referenceVisual);
+
+            // vtable 17
+            [PreserveSig]
+            int RemoveVisual(IDCompositionVisual visual);
+
+            // vtable 18
+            [PreserveSig]
+            int RemoveAllVisuals();
+
+            // vtable 19
+            [PreserveSig]
+            int SetCompositeMode(int mode);
         }
     }
 }
