@@ -2,6 +2,57 @@
 
 > Папка для памяти между сессиями. Обновляется вручную в конце каждой сессии.
 
+## Сессия 02.09.2026 (v39 итер.21 V39-AR2-DCOMP-FIX) — фикс E_NOINTERFACE в DComp
+- **ОШИБКА ПОЛЬЗОВАТЕЛЯ:** `[ARv2] Ошибка запуска: DCompositionCreateDevice HRESULT=0x80004002`
+  (= E_NOINTERFACE).
+- **КОРЕНЬ:** первый аргумент `DCompositionCreateDevice` — нативный `IDXGIDevice*`.
+  Передача SharpGen-обёртки `IDXGIDevice` как `object` с `[MarshalAs(UnmanagedType.IUnknown)]`
+  заставляла маршаллер создать **CCW**, реализующий ТОЛЬКО `IUnknown` (не `IDXGIDevice`) →
+  DComp не мог QueryInterface → E_NOINTERFACE.
+- **ФИКС (v100.1):** передавать нативный указатель `IntPtr`:
+  - `DCompositionCreateDevice(IntPtr dxgiDevice, ...)` — из `dxgiDevice.NativePointer`;
+  - `IDCompositionVisual::SetContent(IntPtr swapChainPtr)` — из `_swapChain.NativePointer`
+    (та же проблема CCW для swap chain);
+  - результат `DCompositionCreateDevice` — через `Marshal.GetObjectForIUnknown(devPtr)` (RCW).
+- **v39.21 ОПУБЛИКОВАН:** 1.0.39.21-V39-AR2-DCOMP-FIX-09.02-1029 (exe=txt=manifest MATCH,
+  data 397 файлов).
+- Файлы: AR/DirectComposition.cs (IntPtr вместо object), AR/ArRenderer.cs (NativePointer).
+- **УРОК (машинное правило):** SharpGen-обёртки (Vortice) НЕЛЬЗЯ передавать в P/Invoke как
+  `object` с `[MarshalAs(IUnknown)]` — маршаллер создаёт CCW только с IUnknown. Для COM-функций,
+  ожидающих конкретный интерфейс, передавать `NativePointer` (IntPtr).
+
+## Сессия 02.09.2026 (v39 итер.20 V39-AR2-DCOMP-ALPHA) — DirectComposition per-pixel alpha
+- **ЗАДАЧА (копилка «Апгрейд прозрачности рендера.md»):** убрать COLORKEY/Bayer-dither,
+  настоящая per-pixel alpha через DirectComposition + composition swap chain.
+- **КОРЕНЬ «рваных краёв» (подтверждён ТЗ):** окно AR2 = WS_EX_LAYERED + LWA_COLORKEY
+  (чёрный = прозрачный) — альфы нет ВООБЩЕ; Bayer имитировал полупрозрачность шахматным
+  паттерном «цвет/чёрный» → пиксельные рваные края.
+- **РЕАЛИЗАЦИЯ v100 (все пункты ТЗ):**
+  - ArOverlayWindow: WS_EX_LAYERED/LWA_COLORKEY УДАЛЕНЫ; добавлен WS_EX_NOREDIRECTIONBITMAP;
+  - swap chain: CreateSwapChainForComposition + FlipSequential + AlphaMode.Premultiplied
+    (было CreateSwapChainForHwnd + Sequential + Ignore);
+  - DComp через P/Invoke dcomp.dll (АР/DirectComposition.cs): DCompositionCreateDevice →
+    CreateTargetForHwnd(topmost) → CreateVisual → SetContent(swapChain) → SetRoot → Commit.
+    Vortice 3.8.3 DComp-биндингов НЕ ИМЕЕТ (проверено рефлексией), пакета нет в офлайн-кэше
+    — COM-интерфейсы объявлены вручную ([ComImport] vtable);
+  - Clear = (0,0,0,0); ВСЕ blend states: SourceBlend=One/InverseSourceAlpha (premultiplied);
+  - шейдеры (marker/box/line/ellipse/cube): return RGB*A; Bayer 4×4 из CubeHlsl УДАЛЁН;
+  - текст: GDI-спрайт premultiply-ится при создании (p[0..2]*=a/255) — blend Src=ONE;
+  - Plane fill: pa=0.38 сохранена (настоящая прозрачность); pin-shadow мягкий овал;
+  - Resize: SetContent+Commit после ResizeBuffers; Dispose: DComp до swap chain.
+- **ОШИБКА СБОРКИ CS0579 ( AssemblyInfo duplicates) — КОРЕНЬ НАЙДЕН:** probe_dcomp/
+  (временный probe-проект для проверки Vortice-биндингов) попадал в компиляцию основного —
+  его obj\...\probe_dcomp.AssemblyInfo.cs дублировал assembly-атрибуты. ФИКС: probe_dcomp
+  удалён (CreateSwapChainForComposition в Vortice подтверждён, IDXGIDevice есть).
+- **v39.20 ОПУБЛИКОВАН:** 1.0.39.20-V39-AR2-DCOMP-ALPHA-09.02-1019 (exe=txt=manifest MATCH,
+  data 397 файлов). Проверка exe перед publish (не запущен) — правило соблюдено.
+- Файлы: AR/ArOverlayWindow.cs (NOREDIRECTIONBITMAP), AR/ArRenderer.cs (composition swap
+  chain + premultiplied шейдеры + clear 0), AR/DirectComposition.cs (NEW), csproj (v39.20).
+- **ТЕСТ (у пользователя, acceptance ТЗ):** пустой кадр = игра видна БЕЗ чёрной маски;
+  a=0.5 — реальная полупрозрачность (НЕ шахматная); тень — плавный градиент;
+  click-through/topmost работают; при движении нет чёрных ореолов. Если DComp-init упал —
+  в логе HRESULT (fallback на COLORKEY НЕ предусмотрен по ТЗ).
+
 ## Сессия 01.09.2026 — НОВАЯ ЛОГИКА ЛИМИТОВ (проценты первичны)
 - **Пользователь уточнил интерпретацию:** основной ресурс = ПРОЦЕНТЫ. **100% = конец**
   (агент отключается до RESET, затем 0% и продолжение). RESET — не «второй ресурс»,

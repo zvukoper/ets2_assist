@@ -20,11 +20,11 @@ namespace ETS2_Assist_GUI.AR
     public sealed class ArOverlayWindow : IDisposable
     {
         private const int GWL_EXSTYLE = -20;
-        private const int WS_EX_LAYERED = 0x00080000;
         private const int WS_EX_TRANSPARENT = 0x00000020;
         private const int WS_EX_TOPMOST = 0x00000008;
         private const int WS_EX_NOACTIVATE = 0x08000000;
         private const int WS_EX_TOOLWINDOW = 0x00000080;
+        private const int WS_EX_NOREDIRECTIONBITMAP = 0x00200000;
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -34,11 +34,6 @@ namespace ETS2_Assist_GUI.AR
         private static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int X, int Y, int cx, int cy, uint uFlags);
         private static readonly IntPtr HWND_TOPMOST = new(-1);
         private const uint SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_NOACTIVATE = 0x0010, SWP_FRAMECHANGED = 0x0020;
-
-        // D2D1-alpha для пер-пиксельной прозрачности слоёного окна.
-        [DllImport("user32.dll")]
-        private static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte alpha, uint dwFlags);
-        private const uint LWA_COLORKEY = 0x00000001, LWA_ALPHA = 0x00000002;
 
         // Показ/скрытие окна.
         [DllImport("user32.dll")]
@@ -118,13 +113,14 @@ namespace ETS2_Assist_GUI.AR
             RegisterClassEx(ref wc);
 
             IntPtr hwnd = CreateWindowEx(
-                WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW,
+                WS_EX_NOREDIRECTIONBITMAP | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW,
                 "ETS2Assist_ARv2", "ETS2 AR v2.0 (D3D)",
                 0x80000000u /*WS_POPUP*/,
                 b.X, b.Y, b.Width, b.Height,
                 IntPtr.Zero, IntPtr.Zero, wc.hInstance, IntPtr.Zero);
 
-            SetLayeredWindowAttributes(hwnd, 0x000000, 0, LWA_COLORKEY); // чёрный=прозрачный
+            // v100: DirectComposition-окно — БЕЗ COLORKEY/LAYERED. Прозрачность
+            // каждого пикселя задаётся premultiplied alpha swap chain через DComp.
             SetWindowPos(hwnd, new IntPtr(-1), 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
             ShowWindow(hwnd, 5 /*SW_SHOW*/);
             return hwnd;

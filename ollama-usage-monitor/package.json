@@ -1,0 +1,65 @@
+{
+  "name": "ollama-usage-monitor",
+  "displayName": "Ollama Usage Monitor",
+  "description": "Compact Status Bar indicator for Ollama Cloud session/weekly usage.",
+  "version": "0.2.0",
+  "publisher": "ets2assist",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ollamaUsage.refresh",
+        "title": "Ollama Usage: Refresh"
+      },
+      {
+        "command": "ollamaUsage.openSettings",
+        "title": "Ollama Usage: Open Settings"
+      },
+      {
+        "command": "ollamaUsage.logout",
+        "title": "Ollama Usage: Switch Account (Logout/Login)"
+      }
+    ],
+    "configuration": {
+      "title": "Ollama Usage Monitor",
+      "properties": {
+        "ollamaUsage.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the Ollama usage status bar item."
+        },
+        "ollamaUsage.refreshInterval": {
+          "type": "number",
+          "default": 5,
+          "minimum": 5,
+          "description": "Refresh interval in seconds (minimum 5)."
+        },
+        "ollamaUsage.showEmoji": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the llama emoji prefix in the status bar."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "node --test out/test/*.test.js",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}

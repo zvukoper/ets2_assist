@@ -102,6 +102,11 @@
 Формат: `[дата время] задача | модель | старт% -> конец% | затрачено% |
 прогноз: ~X%/~Yмин | факт: Z%/~Wмин | класс`
 
+### 02.09.2026 (glm5.3-flash:cloud)
+
+- `[10:30]` **v39.20 AR2-DCOMP-ALPHA** — DirectComposition per-pixel alpha (COLORKEY/Bayer удалены; composition swap chain; DComp через P/Invoke; все шейдеры premultiplied) + диагностика CS0579 (probe-проект в компиляции) + публикация + MemoryAI — **35,4 → ~38%** (~2.5%), ~40 мин, крупная — прогноз ~4.6%/1.5ч сработал с запасом
+- `[09:00]` Расширение ollama-usage-monitor v0.2.0 (polling 5с, data-time ресет, русский countdown, запись в ollama_parsed_usage.txt, смена аккаунта) + vsix — ~2%, ~25 мин, средняя
+
 ### 01.09.2026, дообеденная сессия (deepseek-v4-flash:cloud)
 
 - `[11:10]` Настройка системы учёта лимитов (создание файла + правила в INSTRUCTIONS.md) — **0.7 → 1%** (0.3%), ~1 мин, лёгкая

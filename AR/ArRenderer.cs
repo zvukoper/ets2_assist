@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
@@ -25,6 +26,11 @@ namespace ETS2_Assist_GUI.AR
         private IDXGISwapChain1? _swapChain;
         private ID3D11RenderTargetView? _rtv;
 
+        // DirectComposition (v100): device/target/visual для per-pixel alpha.
+        private object? _dcompDevice;
+        private object? _dcompTarget;
+        private object? _dcompVisual;
+
         private int _width, _height;
 
         /// <summary>Прогноз задержки pipeline, мс (подбирается экспериментально).</summary>
@@ -43,11 +49,9 @@ namespace ETS2_Assist_GUI.AR
                     FeatureLevel.Level_11_1, FeatureLevel.Level_11_0
                 }, out _device!, out _context!);
 
-            // Требования bitblt-модели для COLORKEY-окна (v80):
-            // SwapEffect.Sequential + Scaling.Stretch + Flags.None.
-            // DX: Scaling.None валиден ТОЛЬКО для flip-свопчейн (на Windows 10
-            // с bitblt даёт DXGI_ERROR_INVALID_CALL — найдено логами 18:14 v79).
-            // Флаг waitable тоже только flip. Каденс задаёт vsync Present(1).
+            // v100: COMPOSITION swap chain (DirectComposition per-pixel alpha).
+            // CreateSwapChainForComposition требует flip model + premultiplied alpha.
+            // COLORKEY/bitblt (SwapEffect.Sequential + AlphaMode.Ignore) УДАЛЕНЫ.
             var sc = new SwapChainDescription1
             {
                 Width = (uint)width,
@@ -58,18 +62,17 @@ namespace ETS2_Assist_GUI.AR
                 BufferUsage = Usage.RenderTargetOutput,
                 BufferCount = 2,
                 Scaling = Scaling.Stretch,
-                SwapEffect = SwapEffect.Sequential,  // bitblt — COLORKEY работает
-                AlphaMode = AlphaMode.Ignore,
+                SwapEffect = SwapEffect.FlipSequential,   // composition требует flip
+                AlphaMode = AlphaMode.Premultiplied,      // premultiplied alpha
                 Flags = SwapChainFlags.None
             };
-            _swapChain = _factory.CreateSwapChainForHwnd(
-                _device, hwnd, sc,
-                new SwapChainFullscreenDescription { Windowed = true },
-                null);
-            // v79:MaximumFrameLatency валиден только под waitable; без него каденс = vsync.
+            _swapChain = _factory.CreateSwapChainForComposition(_device, sc, null);
 
             using (ID3D11Texture2D back = _swapChain.GetBuffer<ID3D11Texture2D>(0))
                 _rtv = _device.CreateRenderTargetView(back);
+
+            // v100: DirectComposition — device/target/visual/commit.
+            InitDirectComposition(hwnd);
 
             // Шейдеры маркера (inline HLSL, компиляция на старте; см. маркер.hlsl план).
             CreateMarkerPipeline();
@@ -78,6 +81,25 @@ namespace ETS2_Assist_GUI.AR
             CreateCubePipeline();   // v95: 3D-куб (ориентация головы)
             CreateLinePipeline();   // v96: линии (3D-сетка плоскости)
             CreateEllipsePipeline();// v96: мягкие эллипсы (тень точки на плоскости)
+        }
+
+        // ================================================================
+        // v100: DirectComposition initialization (per-pixel alpha).
+        // D3D11 device → IDXGIDevice → DCompositionCreateDevice →
+        // CreateTargetForHwnd → CreateVisual → SetContent(swapChain) →
+        // SetRoot(visual) → Commit.
+        // ================================================================
+        private void InitDirectComposition(IntPtr hwnd)
+        {
+            using var dxgiDevice = _device!.QueryInterface<Vortice.DXGI.IDXGIDevice>();
+            // v100: передаём НАТИВНЫЙ IDXGIDevice* (NativePointer), а не SharpGen-обёртку —
+            // иначе DCompositionCreateDevice вернёт E_NOINTERFACE (0x80004002).
+            _dcompDevice = DirectComposition.CreateDevice(dxgiDevice.NativePointer);
+            _dcompTarget = DirectComposition.CreateTargetForHwnd(_dcompDevice, hwnd, true);
+            _dcompVisual = DirectComposition.CreateVisual(_dcompDevice);
+            DirectComposition.SetContent(_dcompVisual, _swapChain!.NativePointer);
+            DirectComposition.SetRoot(_dcompTarget, _dcompVisual);
+            DirectComposition.Commit(_dcompDevice);
         }
 
         // ---------- МАРКЕР v2.0 (первый GPU-элемент) ----------
@@ -105,8 +127,9 @@ namespace ETS2_Assist_GUI.AR
                 // Чёрная ПОЛУПРОЗРАЧНАЯ обводка 3px (0.6 альфы).
                 float ring = smoothstep(R - 3.5, R - 2.5, dpx) * smoothstep(R + 0.5, R - 1.0, dpx);
                 float3 col = lerp(Tint.rgb, float3(0, 0, 0), ring);
-                float a = Circle.w * (body * 1.0 + ring * 0.6);
-                return float4(col, a);
+                float a = saturate(Circle.w * (body * 1.0 + ring * 0.6));
+                // v100: premultiplied alpha (RGB*A) — для composition swap chain.
+                return float4(col * a, a);
             }
             """;
 
@@ -159,7 +182,8 @@ namespace ETS2_Assist_GUI.AR
             bd.RenderTarget[0] = new RenderTargetBlendDescription
             {
                 BlendEnable = true,
-                SourceBlend = Blend.SourceAlpha,
+                // v100: premultiplied alpha — shader возвращает RGB*A, поэтому Src=ONE.
+                SourceBlend = Blend.One,
                 DestinationBlend = Blend.InverseSourceAlpha,
                 BlendOperation = BlendOperation.Add,
                 SourceBlendAlpha = Blend.One,
@@ -185,7 +209,9 @@ namespace ETS2_Assist_GUI.AR
                 return o;
             }
             float4 BMainP(VS_OUT i) : SV_TARGET {
-                return float4(Tint.rgb, Tint.w);
+                // v100: premultiplied alpha.
+                float a = saturate(Tint.w);
+                return float4(Tint.rgb * a, a);
             }
             """;
         private ID3D11VertexShader? _bvs;
@@ -293,7 +319,9 @@ namespace ETS2_Assist_GUI.AR
                 return o;
             }
             float4 LMainP(VS_OUT i) : SV_TARGET {
-                return i.col;
+                // v100: premultiplied alpha.
+                float a = saturate(i.col.a);
+                return float4(i.col.rgb * a, a);
             }
             """;
         private ID3D11VertexShader? _lvs;
@@ -361,7 +389,9 @@ namespace ETS2_Assist_GUI.AR
                 float2 d = (i.px - Ell.xy) / float2(Ell.z, Ell.w);   // нормализованное расстояние
                 float r = length(d);
                 float a = smoothstep(1.0, 0.35, r);   // мягкий край (затухание к центру)
-                return float4(Tint.rgb, Tint.w * a);
+                a = saturate(Tint.w * a);
+                // v100: premultiplied alpha.
+                return float4(Tint.rgb * a, a);
             }
             """;
         private ID3D11VertexShader? _evs;
@@ -483,22 +513,11 @@ namespace ETS2_Assist_GUI.AR
                 o.col = i.col;
                 return o;
             }
-            // v40.6 DITHER-АЛЬФА (COLORKEY-окно не умеет пер-пиксельную альфу:
-            // blend с чёрным даёт потемнение). Альфа вершины конвертируется в
-            // 4×4 Bayer-паттерн «цвет/чёрный» — глаз интегрирует шахматный
-            // паттерн как ПОЛУПРОЗРАЧНОСТЬ. Чёрный = ключ прозрачности окна.
+            // v100: per-pixel alpha (premultiplied). Bayer/dither УДАЛЁН —
+            // DirectComposition swap chain поддерживает настоящую прозрачность.
             float4 PMain(VS_OUT i) : SV_TARGET {
-                float a = i.col.a;
-                if (a >= 0.999f) return float4(i.col.rgb, 1.0f);   // непрозрачное — как есть
-                static const float bayer[16] = {
-                    0.0/16, 8.0/16, 2.0/16, 10.0/16,
-                    12.0/16, 4.0/16, 14.0/16, 6.0/16,
-                    3.0/16, 11.0/16, 1.0/16, 9.0/16,
-                    15.0/16, 7.0/16, 13.0/16, 5.0/16 };
-                uint2 px = (uint2)i.pos.xy;
-                uint idx = (px.x & 3) + ((px.y & 3) << 2);
-                if (a >= bayer[idx]) return float4(i.col.rgb, 1.0f);
-                return float4(0, 0, 0, 1.0f);   // чёрный → COLORKEY-прозрачность
+                float a = saturate(i.col.a);
+                return float4(i.col.rgb * a, a);
             }
             """;
         private ID3D11VertexShader? _cvsh;
@@ -1091,8 +1110,8 @@ namespace ETS2_Assist_GUI.AR
 
         public void WaitForNextFrame()
         {
-            // v79: waitable-объекта нет (bitblt). Каденс задаёт vsync Present(1)
-            // внутри RenderFrame — этот метод теперь no-op (оставлен для API).
+            // v100: composition swap chain (flip) — каденс задаёт vsync Present(1)
+            // внутри RenderFrame; этот метод no-op (оставлен для API).
         }
 
         /// <summary>ОДИН кадр. Всё между «взять latest» и Present — лёгкое (архитектура).</summary>
@@ -1104,7 +1123,8 @@ namespace ETS2_Assist_GUI.AR
             var state = ArBridge.Game.Latest;
 
             var ctx = _context;
-            ctx.ClearRenderTargetView(_rtv, new Color4(0, 0, 0, 1)); // чёрный = COLORKEY-прозрачность
+            // v100: полностью прозрачный clear (RGB=0, A=0) — не COLORKEY.
+            ctx.ClearRenderTargetView(_rtv, new Color4(0f, 0f, 0f, 0f));
 
             // ============================================================
             // v40.4 ПОРЯДОК СЛОЁВ: сетка ПЛОСКОСТИ — САМЫЙ ДАЛЬНИЙ СЛОЙ,
@@ -1286,7 +1306,7 @@ namespace ETS2_Assist_GUI.AR
             }
             catch { /* индикатор не должен ломать рендер */ }
 
-            _swapChain!.Present(1, 0u);   // vsync: каденс + отсутствие спин-цикла (bitblt; waitable недоступен)
+            _swapChain!.Present(1, 0u);   // v100: composition swap chain — vsync каденс (flip model)
         }
 
         public void Resize(int width, int height)
@@ -1296,6 +1316,12 @@ namespace ETS2_Assist_GUI.AR
             _swapChain!.ResizeBuffers(0, (uint)width, (uint)height, Format.B8G8R8A8_UNorm, SwapChainFlags.None);
             using (ID3D11Texture2D back = _swapChain.GetBuffer<ID3D11Texture2D>(0))
                 _rtv = _device!.CreateRenderTargetView(back);
+            // v100: после ResizeBuffers обновить content visual (DComp).
+            if (_dcompVisual != null && _swapChain != null)
+            {
+                DirectComposition.SetContent(_dcompVisual, _swapChain.NativePointer);
+                if (_dcompDevice != null) DirectComposition.Commit(_dcompDevice);
+            }
         }
 
         // ==================== РАМКА ОТСЕЧЕНИЯ + ПРЕДИКЦИЯ НЕ В AR2 (v83 не нужно — рендер идёт на vsync GPU) ====================
@@ -1322,8 +1348,9 @@ namespace ETS2_Assist_GUI.AR
             Texture2D    Txt   : register(t0);
             SamplerState Smpl  : register(s0);
             float4 TMainP(VS_OUT i) : SV_TARGET {
-                float4 c = Txt.Sample(Smpl, i.uv);   // BGRA: текст + обводка + альфа
+                float4 c = Txt.Sample(Smpl, i.uv);   // BGRA: текст + обводка + альфа (premultiplied)
                 c.w *= TintW.w;                      // v85: множитель альфы (затухание по дистанции)
+                // v100: premultiplied — RGB уже умножены на alpha в спрайте.
                 return c;
             }
             """;
@@ -1388,7 +1415,8 @@ namespace ETS2_Assist_GUI.AR
             bd.RenderTarget[0] = new RenderTargetBlendDescription
             {
                 BlendEnable = true,
-                SourceBlend = Blend.SourceAlpha,
+                // v100: premultiplied alpha (текст-спрайт уже premultiplied BGRA).
+                SourceBlend = Blend.One,
                 DestinationBlend = Blend.InverseSourceAlpha,
                 BlendOperation = BlendOperation.Add,
                 SourceBlendAlpha = Blend.One,
@@ -1486,6 +1514,28 @@ namespace ETS2_Assist_GUI.AR
                                     System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             try
             {
+                // v100: premultiply BGRA-пиксели (GDI даёт straight alpha, а blend
+                // Src=ONE требует premultiplied). Текст меняется редко (кэш) — ок.
+                unsafe
+                {
+                    byte* row = (byte*)data.Scan0;
+                    for (int y = 0; y < h; y++)
+                    {
+                        byte* p = row + y * data.Stride;
+                        for (int x = 0; x < w; x++)
+                        {
+                            byte a = p[3];
+                            if (a == 0) { p[0] = 0; p[1] = 0; p[2] = 0; }
+                            else if (a < 255)
+                            {
+                                p[0] = (byte)(p[0] * a / 255);
+                                p[1] = (byte)(p[1] * a / 255);
+                                p[2] = (byte)(p[2] * a / 255);
+                            }
+                            p += 4;
+                        }
+                    }
+                }
                 var texDesc = new Texture2DDescription
                 {
                     Width = (uint)w,
@@ -1583,10 +1633,27 @@ namespace ETS2_Assist_GUI.AR
             _vb?.Dispose();
             _vs?.Dispose();
             _ps?.Dispose();
+            // v100: освободить DirectComposition ДО swap chain/device (use-after-free).
+            ReleaseCom(_dcompVisual);
+            ReleaseCom(_dcompTarget);
+            ReleaseCom(_dcompDevice);
+            _dcompVisual = _dcompTarget = _dcompDevice = null;
             _swapChain?.Dispose();
             _device?.Dispose();
             _context?.Dispose();
             _factory?.Dispose();
+        }
+
+        // Освобождение COM-объекта DirectComposition (IDCompositionDevice/Visual/Target).
+        private static void ReleaseCom(object? obj)
+        {
+            if (obj == null) return;
+            try
+            {
+                if (obj is IDisposable d) d.Dispose();
+                else Marshal.ReleaseComObject(obj);
+            }
+            catch { /* ignore */ }
         }
     }
 }

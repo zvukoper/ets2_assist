@@ -1,4 +1,4 @@
-﻿{
+{
     "static_data_policy":  "preserve-existing",
     "required_static":  [
                             "GeoJson/roads.geojson",
@@ -6,7 +6,7 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build":  "1.0.39.3-V39-STARTUP-NULLGUARD-09.01-1524",
+    "build": "1.0.39.21-V39-AR2-DCOMP-FIX-09.02-1029",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }
