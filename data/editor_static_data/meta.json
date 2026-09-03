@@ -1,0 +1,23 @@
+{
+    "comment":  "SDO categories reference (meta.json). Категория = ключ; объекты = *.json в этой папке. name = читабельное название категории/объектов на карте (пусто/нет = ключ); color = \"#rrggbb\" (пусто/нет = цвет по умолчанию); icon = имя png 50x50 из папки icons\\ (пусто/нет = цветная точка; если задан — объекты категории отображаются иконкой вместо кружка). Стиль подписи: font_size = размер шрифта (по умолчанию 9); font_color = \"#rrggbb\" (пусто/нет = белый); font_weight = \"normal\" | \"bold\" (по умолчанию normal).",
+    "categories":  {
+        "5ka": {
+            "name": "Пятёрочка",
+            "color": "#ff0000",
+            "icon": "5ka.png"
+        },
+        "Easter eggs": {
+            "name": "",
+            "color": "",
+            "icon": ""
+        },
+        "Города": {
+            "name": "Города",
+            "color": "#ffdd88",
+            "icon": "",
+            "font_size": 9.5,
+            "font_color": "#ffdd88",
+            "font_weight": "bold"
+        }
+    }
+}

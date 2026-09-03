@@ -71,6 +71,7 @@ namespace ETS2_Assist_GUI
         // --- Тип точки (только в редакторе, НЕ сохраняется в overrides) ---
         public bool IsCity;   // точка — город (из localized_cities)
         public bool IsPoi;    // точка — POI (из оверлеев)
+        public bool IsSdo;    // точка — SDO (Static Data Objects, выгрузка редактора игры)
 
         // Поверхностная копия (все поля — значимые/строковые) для отмены/сравнения в редакторе.
         public PointData Clone() => (PointData)MemberwiseClone();

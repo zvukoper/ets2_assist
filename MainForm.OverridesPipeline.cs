@@ -75,6 +75,13 @@ namespace ETS2_Assist_GUI
             // 2) Статика POI (Overlays.json), ключ = uid.
             var pois = LoadStaticPois();
 
+            // 2.5) SDO (Static Data Objects, выгрузка редактора игры) — тоже в pois:
+            // единый dumb-receiver миникарты, category = читабельное имя из meta.json,
+            // name = meta.name + имя объекта (uid / easter-имя), color из meta.color.
+            // uid уникальны (0x…), коллизии с Overlays.json практически исключены —
+            // SDO поверх POI (в словаре это уже так: «последний побеждает»).
+            LoadSdoPointsInto(pois);
+
             // 3) Цели из test_targets.json (заранее очищаем от устаревших кулдаунов).
             var targets = LoadTestTargets();
 
@@ -120,6 +127,37 @@ namespace ETS2_Assist_GUI
             }
             catch (Exception ex) { AppendLog($"[OVR] Города (статика): {ex.Message}"); }
             return cities;
+        }
+
+        // ==== SDO (Static Data Objects, выгрузка редактора игры) ====
+
+        // Добавляет SDO в словарь POI (ключ = uid). Категория = читабельное имя из
+        // meta.json; color — из meta.color; координаты уже в игровой СК.
+        private static void LoadSdoPointsInto(Dictionary<string, PointData> pois)
+        {
+            try
+            {
+                foreach (var p in SdoLoader.LoadAll())
+                {
+                    if (string.IsNullOrEmpty(p.GameName)) continue;
+                    pois[p.GameName] = new PointData
+                    {
+                        GameName = p.GameName,
+                        RealName = p.RealName,
+                        Category = p.Category,
+                        Enabled = true,
+                        X = p.X, Y = p.Y, Z = p.Z,
+                        Color = SdoMeta.ColorHexOf(p.Category),
+                        IsPoi = true,
+                        IsSdo = true
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[OVR] SDO (статика): " + ex.Message);
+                Logger.Current?.Data("[OVR] SDO (статика): " + ex.Message);
+            }
         }
 
         private Dictionary<string, PointData> LoadStaticPois()
@@ -403,6 +441,14 @@ namespace ETS2_Assist_GUI
             var arr = new JArray();
             foreach (var p in pois)
             {
+                // SDO: иконка категории (meta.json, png 50x50 в editor_static_data\icons).
+                // Миникарта рисует иконку вместо цветного кружка; без иконки — кружок.
+                string? icon = null;
+                if (p.IsSdo)
+                {
+                    var meta = SdoMeta.Categories.TryGetValue(p.Category, out var metaItem) ? metaItem : null;
+                    if (meta != null && !string.IsNullOrWhiteSpace(meta.Icon)) icon = meta.Icon;
+                }
                 arr.Add(new JObject
                 {
                     ["uid"] = p.GameName,
@@ -410,6 +456,7 @@ namespace ETS2_Assist_GUI
                     ["name"] = p.RealName,
                     ["x"] = p.X, ["z"] = p.Z,
                     ["color"] = p.Color,
+                    ["icon"] = icon,
                     ["hidden"] = p.Hidden == 1 || !p.Enabled,
                     ["overridden"] = p.IsOverride
                 });

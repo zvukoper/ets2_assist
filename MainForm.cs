@@ -194,7 +194,9 @@ namespace ETS2_Assist_GUI
             }
             // Минимальная ширина гарантирует, что правая панель индикаторов
             // (список + действия + индикаторы) помещается и не обрезает текст.
-            this.MinimumSize = new Size(1180, 480);
+            // v39.24b: минимальная ВЫСОТА 740 — чтобы нижний ряд кнопок (АР2 на
+            // topY+640, высота 30) гарантированно влезал при любом сохранённом баунде.
+            this.MinimumSize = new Size(1180, 740);
             ApplySavedWindowBounds();
             this.FormClosing += (s, e) =>
             {
@@ -486,26 +488,18 @@ RegisterHotKeyChecked(
             btnLaunchAR.Click += (s, e) => LaunchArOverlay();
 
             // v76: AR v2.0 — нативный D3D11-рендер (та же логика/данные, другой движок).
-            // v40.1: галочка «Сетка» СПРАВА от кнопки АР2 (одна строка).
-            // ФИКС НЕВИДИМОСТИ: чекбокс НЕ добавлялся в Controls формы (создавался,
-            // но не отображался). Теперь добавлен в AddRange + отладочная красная рамка.
-            btnAr2 = new Button { Text = "AR v2.0 (D3D)", Location = new Point(leftX, topY + 640), Size = new Size(230, 30), Tag = "Toggle" };
+            // v39.24: кнопка СУЖЕНА (230→150), чекбокс «Сетка» СПРАВА вплотную (x+154).
+            btnAr2 = new Button { Text = "AR v2.0 (D3D)", Location = new Point(leftX, topY + 640), Size = new Size(150, 30), Tag = "Toggle" };
             btnAr2.Click += (s, e) => LaunchArOverlayV2();
 
             chkAr2Grid = new CheckBox
             {
                 Text = "Сетка",
-                Location = new Point(leftX + 234, topY + 646),
-                Size = new Size(90, 24),
+                Location = new Point(leftX + 154, topY + 646),
+                Size = new Size(76, 24),
                 Checked = true,   // v99: сетка по умолчанию включена
                 ForeColor = Color.LightGray,
                 BackColor = Color.FromArgb(30, 30, 30)
-            };
-            // v40.1 ОТЛАДКА: красная рамка вокруг галочки (видимость/позиция).
-            chkAr2Grid.Paint += (s, e) =>
-            {
-                using var pen = new Pen(Color.Red, 2f);
-                e.Graphics.DrawRectangle(pen, 0, 0, chkAr2Grid.Width - 1, chkAr2Grid.Height - 1);
             };
             chkAr2Grid.CheckedChanged += (s, e) =>
             {
@@ -3014,12 +3008,12 @@ RegisterHotKeyChecked(
         private void ApplySavedWindowBounds()
         {
             const int defaultWidth = 1180;
-            const int defaultHeight = 700;
+            const int defaultHeight = 740;
 
             var savedWidth = AppSettings.WindowWidth.GetValueOrDefault(defaultWidth);
             var savedHeight = AppSettings.WindowHeight.GetValueOrDefault(defaultHeight);
             savedWidth = Math.Max(800, savedWidth);
-            savedHeight = Math.Max(500, savedHeight);
+            savedHeight = Math.Max(740, savedHeight); // v39.24: АР2-кнопка не должна обрезаться
 
             var hasSavedPosition = AppSettings.WindowX.HasValue && AppSettings.WindowY.HasValue;
             if (!hasSavedPosition)

@@ -1,0 +1,62 @@
+{
+    "category":  "weigh_station",
+    "source":  "overlay_weigh_station.txt",
+    "easter":  false,
+    "count":  6,
+    "objects":  [
+                    {
+                        "uid":  "0x63DF00506F8000E5",
+                        "sector":  "sec+0039-0013",
+                        "sectorX":  39,
+                        "sectorZ":  -13,
+                        "x":  156679,
+                        "y":  106.555,
+                        "z":  -50876.4
+                    },
+                    {
+                        "uid":  "0x63DF0050C6800005",
+                        "sector":  "sec+0040-0017",
+                        "sectorX":  40,
+                        "sectorZ":  -17,
+                        "x":  161559,
+                        "y":  111.094,
+                        "z":  -65927.6
+                    },
+                    {
+                        "uid":  "0x63DF00519A0000E7",
+                        "sector":  "sec+0039-0013",
+                        "sectorX":  39,
+                        "sectorZ":  -13,
+                        "x":  156661,
+                        "y":  106.543,
+                        "z":  -50876.8
+                    },
+                    {
+                        "uid":  "0x63DF0051B2000C73",
+                        "sector":  "sec+0044-0022",
+                        "sectorX":  44,
+                        "sectorZ":  -22,
+                        "x":  176430,
+                        "y":  105.727,
+                        "z":  -87790.4
+                    },
+                    {
+                        "uid":  "0x63DF0051D7000C71",
+                        "sector":  "sec+0044-0022",
+                        "sectorX":  44,
+                        "sectorZ":  -22,
+                        "x":  176434,
+                        "y":  105.664,
+                        "z":  -87805.1
+                    },
+                    {
+                        "uid":  "0x63DF0052A78008A4",
+                        "sector":  "sec+0037-0021",
+                        "sectorX":  37,
+                        "sectorZ":  -21,
+                        "x":  149824,
+                        "y":  106.23,
+                        "z":  -83265.3
+                    }
+                ]
+}

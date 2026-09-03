@@ -1,0 +1,53 @@
+{
+    "category":  "paid_parking",
+    "source":  "overlay_paid_parking.txt",
+    "easter":  false,
+    "count":  5,
+    "objects":  [
+                    {
+                        "uid":  "0x55F11C3B9A800000",
+                        "sector":  "sec+0040-0023",
+                        "sectorX":  40,
+                        "sectorZ":  -23,
+                        "x":  163592,
+                        "y":  94.3633,
+                        "z":  -88391.9
+                    },
+                    {
+                        "uid":  "0x562C131971000000",
+                        "sector":  "sec+0041-0022",
+                        "sectorX":  41,
+                        "sectorZ":  -22,
+                        "x":  167345,
+                        "y":  97.8555,
+                        "z":  -87313.4
+                    },
+                    {
+                        "uid":  "0x56A48C0DEB800000",
+                        "sector":  "sec+0038-0022",
+                        "sectorX":  38,
+                        "sectorZ":  -22,
+                        "x":  155945,
+                        "y":  108.926,
+                        "z":  -86780.6
+                    },
+                    {
+                        "uid":  "0x5743F9E46A000000",
+                        "sector":  "sec+0039-0022",
+                        "sectorX":  39,
+                        "sectorZ":  -22,
+                        "x":  156082,
+                        "y":  108.871,
+                        "z":  -86721.2
+                    },
+                    {
+                        "uid":  "0x58B4A50BF6800000",
+                        "sector":  "sec+0043-0024",
+                        "sectorX":  43,
+                        "sectorZ":  -24,
+                        "x":  175041,
+                        "y":  110.25,
+                        "z":  -94716.4
+                    }
+                ]
+}

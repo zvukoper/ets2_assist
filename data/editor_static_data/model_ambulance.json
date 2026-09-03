@@ -1,0 +1,71 @@
+{
+    "category":  "ambulance",
+    "source":  "model_ambulance.txt",
+    "easter":  false,
+    "count":  7,
+    "objects":  [
+                    {
+                        "uid":  "0x4c44509067800000",
+                        "sector":  "sec+0037-0021",
+                        "sectorX":  37,
+                        "sectorZ":  -21,
+                        "x":  148483,
+                        "y":  115.848,
+                        "z":  -80099.7
+                    },
+                    {
+                        "uid":  "0x4cb92e544ac00001",
+                        "sector":  "sec+0039-0022",
+                        "sectorX":  39,
+                        "sectorZ":  -22,
+                        "x":  159166,
+                        "y":  102.328,
+                        "z":  -87376.9
+                    },
+                    {
+                        "uid":  "0x572e1c9266800001",
+                        "sector":  "sec+0039-0023",
+                        "sectorX":  39,
+                        "sectorZ":  -23,
+                        "x":  157615,
+                        "y":  105.609,
+                        "z":  -88426.3
+                    },
+                    {
+                        "uid":  "0x572e1decab000000",
+                        "sector":  "sec+0039-0023",
+                        "sectorX":  39,
+                        "sectorZ":  -23,
+                        "x":  157607,
+                        "y":  105.516,
+                        "z":  -88422.9
+                    },
+                    {
+                        "uid":  "0x572e1dfecf000000",
+                        "sector":  "sec+0039-0023",
+                        "sectorX":  39,
+                        "sectorZ":  -23,
+                        "x":  157603,
+                        "y":  105.523,
+                        "z":  -88448.2
+                    },
+                    {
+                        "uid":  "0x4eab052053c00001",
+                        "sector":  "sec+0037-0021",
+                        "sectorX":  37,
+                        "sectorZ":  -21,
+                        "x":  151677,
+                        "y":  116.746,
+                        "z":  -81328.9
+                    },
+                    {
+                        "uid":  "0x572e1ea28a000001",
+                        "sector":  "sec+0039-0023",
+                        "sectorX":  39,
+                        "sectorZ":  -23,
+                        "x":  157619,
+                        "y":  105.633,
+                        "z":  -88410.2
+                    }
+                ]
+}

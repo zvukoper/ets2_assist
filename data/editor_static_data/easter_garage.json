@@ -1,0 +1,18 @@
+{
+    "category":  "Easter eggs",
+    "source":  "easter_garage.txt",
+    "easter":  true,
+    "count":  1,
+    "objects":  [
+                    {
+                        "uid":  "0x4cce11d4ffc00000",
+                        "sector":  "sec+0040-0023",
+                        "sectorX":  40,
+                        "sectorZ":  -23,
+                        "x":  160053,
+                        "y":  96.6328,
+                        "z":  -88421.9,
+                        "name":  "garage"
+                    }
+                ]
+}

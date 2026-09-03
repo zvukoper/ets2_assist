@@ -1,0 +1,53 @@
+{
+    "category":  "ru_border",
+    "source":  "overlay_ru_border.txt",
+    "easter":  false,
+    "count":  5,
+    "objects":  [
+                    {
+                        "uid":  "0x3B87E664CD400000",
+                        "sector":  "sec+0040-0012",
+                        "sectorX":  40,
+                        "sectorZ":  -12,
+                        "x":  163150,
+                        "y":  139.809,
+                        "z":  -46531.2
+                    },
+                    {
+                        "uid":  "0x3B87E7A0ABC00000",
+                        "sector":  "sec+0040-0017",
+                        "sectorX":  40,
+                        "sectorZ":  -17,
+                        "x":  162276,
+                        "y":  111,
+                        "z":  -65623.3
+                    },
+                    {
+                        "uid":  "0x57A24D73A8000000",
+                        "sector":  "sec+0043-0022",
+                        "sectorX":  43,
+                        "sectorZ":  -22,
+                        "x":  175326,
+                        "y":  118.52,
+                        "z":  -84157.2
+                    },
+                    {
+                        "uid":  "0x5E48E1054B000000",
+                        "sector":  "sec+0045-0023",
+                        "sectorX":  45,
+                        "sectorZ":  -23,
+                        "x":  182681,
+                        "y":  142.074,
+                        "z":  -89305.5
+                    },
+                    {
+                        "uid":  "0x61E9089037800001",
+                        "sector":  "sec+0044-0023",
+                        "sectorX":  44,
+                        "sectorZ":  -23,
+                        "x":  176092,
+                        "y":  105.008,
+                        "z":  -88041.6
+                    }
+                ]
+}
