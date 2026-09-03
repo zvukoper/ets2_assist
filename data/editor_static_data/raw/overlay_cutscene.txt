@@ -1,0 +1,54 @@
+Tags: 'asbsum'  Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x4E9799B431000001) ;[03/09/2026 16:44:15] (sec+0037-0021);149671;78.0469;-83680.4
+Tags: 'ekatkol'  Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x4A51A3647CC00001) ;[03/09/2026 16:44:15] (sec+0037-0020);150474;115.004;-78064.8
+Tags: 'sumtum1'  Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5743857612000001) ;[03/09/2026 16:44:15] (sec+0040-0023);160887;94.3945;-88456.3
+Tags: 'sumyal'  Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x574377D38D000001) ;[03/09/2026 16:44:15] (sec+0041-0022);165387;95.1289;-87985.7
+Tags: 'tatlaish'  Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x4A5199EC07C00001) ;[03/09/2026 16:44:15] (sec+0030-0014);122386;33.3828;-53994.6
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3C8AAA148A400001) ;[03/09/2026 16:44:15] (sec+0039-0014);157245;92.6055;-55896.5
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3C8ABF80AF400001) ;[03/09/2026 16:44:15] (sec+0039-0016);157978;95.9141;-63148.9
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3C8AC6203AC00001) ;[03/09/2026 16:44:15] (sec+0040-0017);161411;111;-65913.7
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3C8ACE14B6800001) ;[03/09/2026 16:44:15] (sec+0039-0017);159497;113.383;-67128.7
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3C8B9794D5800000) ;[03/09/2026 16:44:15] (sec+0039-0018);157498;125.492;-70732.5
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3C8BAF043E800001) ;[03/09/2026 16:44:15] (sec+0040-0012);161636;158.859;-47581.6
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3CD0B47C20800001) ;[03/09/2026 16:44:15] (sec+0039-0018);156572;120.941;-69450.7
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3CD0C91437400001) ;[03/09/2026 16:44:15] (sec+0040-0017);162614;111.02;-65588
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3CD0D2F044400001) ;[03/09/2026 16:44:15] (sec+0038-0015);155687;102.32;-59489.6
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3CD0F93435C00000) ;[03/09/2026 16:44:15] (sec+0039-0015);156567;91.5039;-57259.4
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3CD0FCA468800000) ;[03/09/2026 16:44:15] (sec+0039-0013);156970;105;-51398
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3CD10D783A400001) ;[03/09/2026 16:44:15] (sec+0039-0013);156196;99.0469;-49907.4
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3CD116A860400001) ;[03/09/2026 16:44:15] (sec+0039-0013);159698;116.734;-49905.2
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x3CD11C9026C00001) ;[03/09/2026 16:44:15] (sec+0040-0012);160016;123.219;-47907.8
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x40CF1D24C1400000) ;[03/09/2026 16:44:15] (sec+0039-0019);159903;111.98;-72642.2
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x4147D17C40C00001) ;[03/09/2026 16:44:15] (sec+0040-0019);163429;111.113;-75911
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x46CF82D451C00001) ;[03/09/2026 16:44:15] (sec+0037-0017);150429;143.227;-67122.4
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x46CF92804DC00000) ;[03/09/2026 16:44:15] (sec+0038-0017);155429;127.664;-66544.1
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x4708437081800001) ;[03/09/2026 16:44:15] (sec+0037-0016);148126;113.961;-62873.1
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x47A3E8A04AC00001) ;[03/09/2026 16:44:15] (sec+0037-0016);150841;107.719;-62944.7
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x47BF52E813C00001) ;[03/09/2026 16:44:15] (sec+0038-0017);153279;72.3008;-64107.7
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x4CA24B7C67000001) ;[03/09/2026 16:44:15] (sec+0040-0023);160055;98.1484;-88277.9
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x4CA265506C000001) ;[03/09/2026 16:44:15] (sec+0030-0014);120259;32.6367;-52979.7
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5012D3EB28000001) ;[03/09/2026 16:44:15] (sec+0029-0014);119624;51.3789;-55850.7
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5066BBD54D000000) ;[03/09/2026 16:44:15] (sec+0029-0015);118949;10.1914;-56323.1
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x50CA6C2BD2800001) ;[03/09/2026 16:44:15] (sec+0030-0015);120863;24.8906;-59298.3
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x51D8D02B71000001) ;[03/09/2026 16:44:15] (sec+0040-0020);160444;110.004;-78387.9
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5232037A57000001) ;[03/09/2026 16:44:15] (sec+0039-0020);156584;103.867;-77086
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x53BD5A886E000000) ;[03/09/2026 16:44:15] (sec+0043-0023);174520;109.844;-91856.4
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x574351ED15000001) ;[03/09/2026 16:44:15] (sec+0041-0022);167924;103.289;-87422.2
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x57438B7441000001) ;[03/09/2026 16:44:15] (sec+0040-0023);161492;94.4219;-89114.7
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5743BDD9A5000001) ;[03/09/2026 16:44:15] (sec+0039-0023);157296;103.668;-88035.2
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5743E1A2F9000001) ;[03/09/2026 16:44:15] (sec+0039-0022);156089;108.867;-86930.6
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x57440C3CE5000001) ;[03/09/2026 16:44:15] (sec+0039-0022);156995;108.852;-87463.5
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5749479714000001) ;[03/09/2026 16:44:15] (sec+0040-0017);160593;115.219;-67946
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x57586D2534000001) ;[03/09/2026 16:44:15] (sec+0040-0019);163037;116.109;-73180.7
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x57AC7AA402800001) ;[03/09/2026 16:44:15] (sec+0043-0022);175625;118.52;-84279
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5A5A7283B2800001) ;[03/09/2026 16:44:15] (sec+0047-0025);189787;118.57;-97584.2
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5AF1A627F8800001) ;[03/09/2026 16:44:15] (sec+0047-0025);189880;118.465;-99188.2
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5AF1B99549000001) ;[03/09/2026 16:44:15] (sec+0047-0025);189632;118.5;-98568.2
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5AF1DCE55B800001) ;[03/09/2026 16:44:15] (sec+0046-0025);185773;119;-97250.7
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5AF1EE5A1F000000) ;[03/09/2026 16:44:15] (sec+0045-0025);182832;119.578;-97331.2
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5AF200E410800001) ;[03/09/2026 16:44:15] (sec+0044-0025);179927;123.832;-96615.3
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5AF2045D8D800001) ;[03/09/2026 16:44:15] (sec+0043-0024);174987;110.25;-94673.1
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x5D56BD7B2C000000) ;[03/09/2026 16:44:15] (sec+0047-0025);188116;114.219;-99787.1
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x616B749C35800001) ;[03/09/2026 16:44:15] (sec+0044-0022);178911;132.273;-85429.2
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x64323C850B800001) ;[03/09/2026 16:44:15] (sec+0047-0025);188945;114.238;-99435.9
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x64FB1D5980000000) ;[03/09/2026 16:44:15] (sec+0048-0026);194371;104.996;-103060
+Type: 'Viewpoint'  Source data: (map - custom cutscene)  (uid 0x64FB972893000001) ;[03/09/2026 16:44:15] (sec+0037-0012);148971;69.5508;-45434.6
