@@ -2,6 +2,30 @@
 
 > Папка для памяти между сессиями. Обновляется вручную в конце каждой сессии.
 
+## Сессия 05.09.2026 (1) — ЗАВЕРШЕНИЕ (v39.35 подтверждена пользователем: «Всё заработало»)
+- **v39.35-CONSOLE-SCANCODE-UNICODE-09.04-2353** — подтверждена пользователем (консоль открывается,
+  Unicode-ввод работает, Find открывается/закрывается). Сессия успешно завершена.
+- **⚠️ НАПОМНИТЬ В СЛЕДУЮЩЕЙ СЕССИИ (исправить):** после ввода команды goto в консоль ETS2 —
+  нужно НАЖАТЬ ENTER и ЗАКРЫТЬ консоль той же клавишей, что и вызывалась (scan code 0x29).
+  Сейчас: консоль появляется, команда вводится, НО не активируется — команда так и стоит введённой
+  (Enter и закрытие не срабатывают / не выполняются). В `RunTeleportGameSync`: после TypeUnicodeText(cmd)
+  → PressKey(Enter) → нужен ещё раз PressScanCode(SCANCODE_CONSOLE) для закрытия консоли. Проверить,
+  что Enter реально нажимается и команда выполняется.
+- **Лимиты сессии:** ~23% (старт завершения), RESET ~51м. Модель deepseek-v4-flash:cloud.
+- Файлы: только память + коммит (код не менялся). Пользователь коммитит сам.
+
+## Сессия 04.09.2026 (10) — консоль ETS2 scan code + Unicode-ввод + закрытие Find (v39.35)
+- **v39.35-CONSOLE-SCANCODE-UNICODE-09.04-2353** (exe=txt=manifest MATCH, R2R=false, data 551).
+  Лимиты 20,6% → 22,8%, RESET 1ч 6м. Модель deepseek-v4-flash:cloud.
+- **КОНСОЛЬ ETS2:** VK_OEM_3 (виртуальная клавиша) не открывал консоль — заменён на физический
+  scan code 0x29 (клавиша ` / ё) через KEYEVENTF_SCANCODE (PressScanCode/OpenEts2Console).
+- **ВВОД goto:** TypeText (VkKeyScan, зависел от раскладки → «?????» на русской) заменён на
+  TypeUnicodeText (KEYEVENTF_UNICODE — не зависит от раскладки). VkKeyScan/VkKeyScanW удалены.
+- **ЗАКРЫТИЕ FIND:** после BM_CLICK кнопки Find — поиск кнопки Close (BM_CLICK), fallback ESC.
+- **OFFSET КАМЕРЫ РЕДАКТОРА:** TeleportToEditorFindAsync — X+2, Y+4, Z (чтобы не провалиться в объект).
+- **ПРОВЕРКА FOREGROUND:** после WaitForForegroundWindow — GetForegroundWindow()==gameHandle.
+- Константы: KEYEVENTF_SCANCODE=0x8, KEYEVENTF_UNICODE=0x4, SCANCODE_CONSOLE=0x29 (в QuestsManager.cs).
+
 ## Сессия 04.09.2026 (9) — фикс MOUSEINPUT dx/dy (int) → INPUT=40 (v39.34)
 - **v39.34-INPUT-SIZE-40-FIX-09.04-2337** (exe=txt=manifest MATCH, R2R=false, data 551).
   Лимиты 19,6% → 20,3%, RESET 1ч 22м. Модель deepseek-v4-flash:cloud.

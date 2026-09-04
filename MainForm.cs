@@ -2512,6 +2512,12 @@ RegisterHotKeyChecked(
 
                 LogConsoleData("[TELEPORT] foreground confirmed");
 
+                if (GetForegroundWindow() != gameHandle)
+                {
+                    LogConsoleError("[TELEPORT] Foreground changed before console input.");
+                    return;
+                }
+
                 // 2) Снять паузу, если игра на паузе.
                 if (IsGamePaused() || _pausedIntent)
                 {
@@ -2531,17 +2537,23 @@ RegisterHotKeyChecked(
                 }
                 Thread.Sleep(250);
 
-                // 3) Открыть консоль (клавиша ё/` = VK_OEM_3).
-                if (!PressKey((byte)VK_OEM_3))
+                // 3) Открыть консоль ETS2 физической клавишей ` / ё (scan code 0x29).
+                if (!OpenEts2Console())
                 {
-                    LogConsoleError("[TELEPORT] Не удалось отправить клавишу консоли.");
+                    LogConsoleError("[TELEPORT] Не удалось отправить физическую клавишу консоли ETS2.");
                     return;
                 }
-                Thread.Sleep(250);
 
-                // 4) Ввести команду goto.
-                TypeText(cmd);
-                Thread.Sleep(250);
+                LogConsoleData("[TELEPORT] console key sent");
+
+                // 4) Ввести команду goto через Unicode (не зависит от раскладки).
+                if (!TypeUnicodeText(cmd))
+                {
+                    LogConsoleError("[TELEPORT] Не удалось ввести Unicode-команду goto.");
+                    return;
+                }
+
+                Thread.Sleep(100);
 
                 // 5) ENTER.
                 if (!PressKey((byte)Keys.Enter))
@@ -2556,8 +2568,6 @@ RegisterHotKeyChecked(
                 LogConsoleError("[TELEPORT] Ошибка: " + ex.Message);
             }
         }
-
-        private const int VK_OEM_3 = 0xC0; // клавиша ё/` (консоль ETS2)
 
         // ================================================================
         // ТЕЛЕПОРТ В РЕДАКТОРЕ (v39.30): Ctrl+Shift+T.
@@ -2578,9 +2588,16 @@ RegisterHotKeyChecked(
 
             var target = editor.ResolveTeleportTarget();
 
-            string xStr = target.X.ToString("F2", CultureInfo.InvariantCulture);
-            string yStr = target.Y.ToString("F2", CultureInfo.InvariantCulture);
-            string zStr = target.Z.ToString("F2", CultureInfo.InvariantCulture);
+            // Камера редактора: смещение от цели (+2, +4, 0) — чтобы не провалиться в объект.
+            double editorX = target.X + 2.0;
+            double editorY = target.Y + 4.0;
+            double editorZ = target.Z;
+
+            string xStr = editorX.ToString("F2", CultureInfo.InvariantCulture);
+            string yStr = editorY.ToString("F2", CultureInfo.InvariantCulture);
+            string zStr = editorZ.ToString("F2", CultureInfo.InvariantCulture);
+
+            LogConsoleData($"[TELEPORT-ED] target: X={xStr}, Y={yStr}, Z={zStr}; offset=(+2,+4,0)");
 
             return Task.Run(() => RunTeleportEditorSync(xStr, yStr, zStr));
         }
@@ -2679,7 +2696,45 @@ RegisterHotKeyChecked(
 
                 SendMessage(findButton, BM_CLICK, IntPtr.Zero, IntPtr.Zero);
 
-                LogConsoleOk("[TELEPORT-ED] Find clicked.");
+                LogConsoleData("[TELEPORT-ED] Find clicked.");
+
+                Thread.Sleep(150);
+
+                // Явно закрываем Find после выполнения поиска.
+                if (TryFindButtonByText(findWindow, "Close", out IntPtr closeButton))
+                {
+                    LogConsoleData($"[TELEPORT-ED] Close button: HWND=0x{closeButton.ToInt64():X}");
+
+                    SendMessage(closeButton, BM_CLICK, IntPtr.Zero, IntPtr.Zero);
+
+                    Thread.Sleep(100);
+
+                    if (!IsWindowVisible(findWindow))
+                    {
+                        LogConsoleOk("[TELEPORT-ED] Find closed.");
+                        return;
+                    }
+                }
+
+                // Fallback: ESC.
+                LogConsoleData("[TELEPORT-ED] Close button did not close Find; sending ESC.");
+
+                if (!PressKey((byte)Keys.Escape))
+                {
+                    LogConsoleWarn("[TELEPORT-ED] Не удалось отправить ESC.");
+                    return;
+                }
+
+                Thread.Sleep(100);
+
+                if (!IsWindowVisible(findWindow))
+                {
+                    LogConsoleOk("[TELEPORT-ED] Find closed by ESC.");
+                }
+                else
+                {
+                    LogConsoleWarn("[TELEPORT-ED] Окно Find осталось открытым.");
+                }
             }
             catch (Exception ex)
             {
@@ -3082,44 +3137,93 @@ RegisterHotKeyChecked(
             return SendKeyboardInputs(inputs, $"Key 0x{vk:X2}");
         }
 
-        // Печатает строку через SendInput (ASCII-символы). Для переключения раскладки при
-        // необходимости используем ScanCode (wScan) — но для goto-команды хватает латиницы.
-        private void TypeText(string text)
+        // Ввод строки через KEYEVENTF_UNICODE (не зависит от раскладки Windows).
+        private bool TypeUnicodeText(string text)
         {
-            INPUT[] inputs = new INPUT[text.Length * 2];
-            int idx = 0;
+            if (string.IsNullOrEmpty(text))
+                return true;
+
+            List<INPUT> inputs = new(text.Length * 2);
+
             foreach (char ch in text)
             {
-                short vk = VkKeyScan(ch); // 0xFFFF если не картрируется
-                if (vk == -1) continue;
-                bool isShift = (vk & 0x0100) != 0; // старший байт — модификатор Shift
-                byte keyCode = (byte)(vk & 0xFF);
-                if (isShift)
+                inputs.Add(new INPUT
                 {
-                    inputs[idx].type = INPUT_KEYBOARD;
-                    inputs[idx].union.keyboard = new KEYBDINPUT { wVk = 0x10 };
-                    idx++;
-                }
-                inputs[idx].type = INPUT_KEYBOARD;
-                inputs[idx].union.keyboard = new KEYBDINPUT { wVk = keyCode };
-                idx++;
-                inputs[idx].type = INPUT_KEYBOARD;
-                inputs[idx].union.keyboard = new KEYBDINPUT { wVk = keyCode, dwFlags = KEYEVENTF_KEYUP };
-                idx++;
-                if (isShift)
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        keyboard = new KEYBDINPUT
+                        {
+                            wVk = 0,
+                            wScan = ch,
+                            dwFlags = KEYEVENTF_UNICODE
+                        }
+                    }
+                });
+
+                inputs.Add(new INPUT
                 {
-                    inputs[idx].type = INPUT_KEYBOARD;
-                    inputs[idx].union.keyboard = new KEYBDINPUT { wVk = 0x10, dwFlags = KEYEVENTF_KEYUP };
-                    idx++;
-                }
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        keyboard = new KEYBDINPUT
+                        {
+                            wVk = 0,
+                            wScan = ch,
+                            dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP
+                        }
+                    }
+                });
             }
-            if (idx > 0) SendKeyboardInputs(inputs, "TypeText");
+
+            return SendKeyboardInputs(inputs.ToArray(), "UnicodeText");
         }
 
-        [DllImport("user32.dll")]
-        private static extern short VkKeyScan(char ch);
-        [DllImport("user32.dll")]
-        private static extern short VkKeyScanW(char ch);
+        // Отправка физического scan code (не зависит от раскладки). Для консоли ETS2.
+        private bool PressScanCode(ushort scanCode, string operation)
+        {
+            INPUT[] inputs =
+            {
+                new INPUT
+                {
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        keyboard = new KEYBDINPUT
+                        {
+                            wVk = 0,
+                            wScan = scanCode,
+                            dwFlags = KEYEVENTF_SCANCODE
+                        }
+                    }
+                },
+                new INPUT
+                {
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        keyboard = new KEYBDINPUT
+                        {
+                            wVk = 0,
+                            wScan = scanCode,
+                            dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP
+                        }
+                    }
+                }
+            };
+
+            return SendKeyboardInputs(inputs, operation);
+        }
+
+        // Открытие консоли ETS2 физической клавишей ` / ё (scan code 0x29).
+        private bool OpenEts2Console()
+        {
+            if (!PressScanCode(SCANCODE_CONSOLE, "ETS2 Console"))
+                return false;
+
+            Thread.Sleep(250);
+            return true;
+        }
 
         // Универсальный разбор ответа эндпоинта паузы. Поддерживает:
         // "true"/true, "false"/false, {"paused":...}, числовое значение.

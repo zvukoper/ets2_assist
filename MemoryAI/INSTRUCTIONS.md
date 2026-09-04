@@ -22,6 +22,12 @@
 - Любая фраза «запомни …» или «учти …» означает: кратко записать факт в память
   (`INSTRUCTIONS.md` и/или `WORKLOG.md`) — БЕЗ излишеств, но так, чтобы в следующей
   сессии всё было понятно. Не нужно переспрашивать, просто зафиксируй.
+- **⚠️ НАПОМНИТЬ В СЛЕДУЮЩЕЙ СЕССИИ (исправить; требование пользователя 05.09.2026):**
+  телепорт в игру (Ctrl+T) — после ввода команды goto в консоль ETS2 нужно нажать ENTER и
+  ЗАКРЫТЬ консоль той же клавишей, что и вызывалась (scan code 0x29). Сейчас команда вводится,
+  но НЕ активируется (стоит введённой). В `RunTeleportGameSync` после TypeUnicodeText(cmd) →
+  PressKey(Enter) → добавить PressScanCode(SCANCODE_CONSOLE) для закрытия консоли. Проверить,
+  что Enter реально нажимается и команда выполняется.
 - После КАЖДОГО изменения: дополнять `WORKLOG.md` и обновлять `INSTRUCTIONS.md`
   (новые задачи, планы, нереализованные прототипы, нерешённые проблемы).
 - **Перед КАЖДОЙ задачей/правкой — сверяться с папкой логов приложения**
@@ -419,6 +425,14 @@
   (nullability) в `MainForm.cs` — не критично, но можно почистить.
 
 ## Список задач (TODO)
+- [x] **Консоль ETS2 scan code + Unicode + закрытие Find (04.09.2026, v39.35-CONSOLE-SCANCODE-
+  UNICODE):** консоль ETS2 открывается физическим scan code 0x29 (KEYEVENTF_SCANCODE, PressScanCode/
+  OpenEts2Console) вместо VK_OEM_3 (виртуальная клавиша не работала); goto вводится через
+  KEYEVENTF_UNICODE (TypeUnicodeText, не зависит от раскладки — раньше «?????» на русской);
+  VkKeyScan/VkKeyScanW удалены; Find закрывается после BM_CLICK (кнопка Close, fallback ESC);
+  offset камеры редактора X+2/Y+4/Z; проверка foreground (GetForegroundWindow==gameHandle).
+  Константы: KEYEVENTF_SCANCODE=0x8, KEYEVENTF_UNICODE=0x4, SCANCODE_CONSOLE=0x29 (QuestsManager.cs).
+  Публикация v39.35 (exe=txt=manifest MATCH).
 - [x] **Фикс MOUSEINPUT dx/dy (04.09.2026, v39.34-INPUT-SIZE-40-FIX):** в MOUSEINPUT поля dx/dy были
   IntPtr (8 байт) вместо int (4 байта) → INPUT=48 (вместо 40) → SendInput sent=0 → Ctrl+F и VK_OEM_3
   не срабатывали. ФИКС: dx/dy → int; убран Size=32 у INPUTUNION. Теперь INPUT=40. SendKeyboardInputs

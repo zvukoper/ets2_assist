@@ -62,9 +62,12 @@ namespace ETS2_Assist_GUI
         private const int VK_F1 = 0x70;
         private const int VK_PAUSE = 0x13;
         private const int SW_RESTORE = 9;
-        private const uint KEYEVENTF_KEYUP = 0x02;
-        private const uint KEYEVENTF_EXTENDEDKEY = 0x01;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
+        private const uint KEYEVENTF_SCANCODE = 0x0008;
+        private const uint KEYEVENTF_UNICODE = 0x0004;
         private const uint INPUT_KEYBOARD = 1;
+
+        private const ushort SCANCODE_CONSOLE = 0x0029;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct INPUT
