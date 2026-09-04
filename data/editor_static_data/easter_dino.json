@@ -1,0 +1,18 @@
+{
+    "category":  "Easter eggs",
+    "source":  "easter_dino.txt",
+    "easter":  true,
+    "count":  1,
+    "objects":  [
+                    {
+                        "uid":  "0x56f40cbb69800000",
+                        "sector":  "sec+0031-0014",
+                        "sectorX":  31,
+                        "sectorZ":  -14,
+                        "x":  146554,
+                        "y":  111.602,
+                        "z":  -60999.9,
+                        "name":  "Динозавр"
+                    }
+                ]
+}
