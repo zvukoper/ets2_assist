@@ -2,6 +2,21 @@
 
 > Папка для памяти между сессиями. Обновляется вручную в конце каждой сессии.
 
+## Сессия 04.09.2026 (8) — фикс SendInput (размер INPUT) + WM_GETTEXT (v39.33)
+- **v39.33-INPUT-FIX-WMGETTEXT-09.04-2329** (exe=txt=manifest MATCH, R2R=false, data 551).
+  Лимиты 17,8% → 19,4%, RESET 1ч 30м. Модель deepseek-v4-flash:cloud.
+- **КОРЕНЬ 1 — SendInput сломан:** структура INPUT в QuestsManager.cs имела неверный размер union
+  (MOUSEINPUT/HARDWAREINPUT пустые) → Marshal.SizeOf<INPUT>() ≠ нативному → SendInput возвращал
+  ошибку → Ctrl+F и VK_OEM_3 не срабатывали. ФИКС: INPUTUNION (Explicit, Size=32) + полные
+  MOUSEINPUT/HARDWAREINPUT. Диагностика: `[INPUT] sizeof(INPUT)=40` (x64).
+- **КОРЕНЬ 2 — проверка WM_SETTEXT через GetWindowText:** GetWindowText НЕ читает текст Edit-контрола
+  из другого процесса. ФИКС: проверка через WM_GETTEXT (SendMessage со StringBuilder).
+- **SendKeyboardInputs:** обёртка SendInput с проверкой результата (sent == inputs.Length) и
+  логированием ошибки (Marshal.GetLastWin32Error). PressKey/PressCtrlF/TypeText переведены на неё
+  и на новую структуру INPUTUNION. Вызовы в телепортах проверяют результат (return false → abort).
+- ЛОВУШКА: структуры INPUT/INPUTUNION/KEYBDINPUT/MOUSEINPUT/HARDWAREINPUT — private, в partial-классе
+  MainForm (QuestsManager.cs). Размер INPUT на x64 = 40 (type 4 + union 32 + padding 4).
+
 ## Сессия 04.09.2026 (7) — телепорт через Win32 (Find/Position/BM_CLICK) (v39.32)
 - **v39.32-TELEPORT-WIN32-FIND-09.04-2315** (exe=txt=manifest MATCH, R2R=false, data 551).
   Лимиты 15,2% → 17,5%, RESET 1ч 44м. Модель deepseek-v4-flash:cloud.

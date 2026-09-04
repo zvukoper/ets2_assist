@@ -67,22 +67,27 @@ namespace ETS2_Assist_GUI
         private const uint INPUT_KEYBOARD = 1;
 
         [StructLayout(LayoutKind.Sequential)]
-        struct INPUT
+        private struct INPUT
         {
             public uint type;
-            public MOUSEKEYBDHARDWAREINPUT union;
+            public INPUTUNION union;
         }
 
-        [StructLayout(LayoutKind.Explicit)]
-        struct MOUSEKEYBDHARDWAREINPUT
+        [StructLayout(LayoutKind.Explicit, Size = 32)]
+        private struct INPUTUNION
         {
-            [FieldOffset(0)] public MOUSEINPUT mouse;
-            [FieldOffset(0)] public KEYBDINPUT keyboard;
-            [FieldOffset(0)] public HARDWAREINPUT hardware;
+            [FieldOffset(0)]
+            public MOUSEINPUT mouse;
+
+            [FieldOffset(0)]
+            public KEYBDINPUT keyboard;
+
+            [FieldOffset(0)]
+            public HARDWAREINPUT hardware;
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        struct KEYBDINPUT
+        private struct KEYBDINPUT
         {
             public ushort wVk;
             public ushort wScan;
@@ -92,10 +97,23 @@ namespace ETS2_Assist_GUI
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        struct MOUSEINPUT { /* не используется */ }
+        private struct MOUSEINPUT
+        {
+            public IntPtr dx;
+            public IntPtr dy;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
 
         [StructLayout(LayoutKind.Sequential)]
-        struct HARDWAREINPUT { /* не используется */ }
+        private struct HARDWAREINPUT
+        {
+            public uint uMsg;
+            public ushort wParamL;
+            public ushort wParamH;
+        }
 
         // Состояние КАЖДОЙ активной случайной цели (поддержка нескольких одновременно).
         // Ключ — уникальный id цели (генерится в миникарте).

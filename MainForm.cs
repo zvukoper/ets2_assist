@@ -2532,7 +2532,11 @@ RegisterHotKeyChecked(
                 Thread.Sleep(250);
 
                 // 3) Открыть консоль (клавиша ё/` = VK_OEM_3).
-                PressKey((byte)VK_OEM_3);
+                if (!PressKey((byte)VK_OEM_3))
+                {
+                    LogConsoleError("[TELEPORT] Не удалось отправить клавишу консоли.");
+                    return;
+                }
                 Thread.Sleep(250);
 
                 // 4) Ввести команду goto.
@@ -2540,7 +2544,11 @@ RegisterHotKeyChecked(
                 Thread.Sleep(250);
 
                 // 5) ENTER.
-                PressKey((byte)Keys.Enter);
+                if (!PressKey((byte)Keys.Enter))
+                {
+                    LogConsoleError("[TELEPORT] Не удалось отправить Enter.");
+                    return;
+                }
                 LogConsoleOk("[TELEPORT] Команда goto отправлена в игру.");
             }
             catch (Exception ex)
@@ -2583,6 +2591,8 @@ RegisterHotKeyChecked(
         {
             try
             {
+                LogConsoleData($"[INPUT] sizeof(INPUT)={Marshal.SizeOf<INPUT>()}, expected={(IntPtr.Size == 8 ? 40 : 28)}");
+
                 LogConsoleData($"[TELEPORT-ED] target: X={xStr}, Y={yStr}, Z={zStr}");
 
                 if (!TryFindEts2Window("Map editor", out IntPtr editorHandle, out int editorPid))
@@ -2603,7 +2613,11 @@ RegisterHotKeyChecked(
 
                 LogConsoleData("[TELEPORT-ED] foreground confirmed");
 
-                PressCtrlF();
+                if (!PressCtrlF())
+                {
+                    LogConsoleError("[TELEPORT-ED] Не удалось отправить Ctrl+F через SendInput.");
+                    return;
+                }
 
                 LogConsoleData("[TELEPORT-ED] Ctrl+F sent");
 
@@ -2683,15 +2697,65 @@ RegisterHotKeyChecked(
             return ForceForegroundWindow(hWnd, reason);
         }
 
-        // CTRL+F (открыть Find в активном окне).
-        private void PressCtrlF()
+        // CTRL+F (открыть Find в активном окне). Возвращает true, если SendInput прошёл полностью.
+        private bool PressCtrlF()
         {
-            INPUT[] inputs = new INPUT[4];
-            inputs[0].type = INPUT_KEYBOARD; inputs[0].union.keyboard.wVk = 0x11; // Ctrl down
-            inputs[1].type = INPUT_KEYBOARD; inputs[1].union.keyboard.wVk = (byte)Keys.F; // F down
-            inputs[2].type = INPUT_KEYBOARD; inputs[2].union.keyboard.wVk = (byte)Keys.F; inputs[2].union.keyboard.dwFlags = KEYEVENTF_KEYUP;
-            inputs[3].type = INPUT_KEYBOARD; inputs[3].union.keyboard.wVk = 0x11; inputs[3].union.keyboard.dwFlags = KEYEVENTF_KEYUP;
-            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            INPUT[] inputs =
+            {
+                new INPUT
+                {
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        keyboard = new KEYBDINPUT { wVk = 0x11 }
+                    }
+                },
+                new INPUT
+                {
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        keyboard = new KEYBDINPUT { wVk = (ushort)Keys.F }
+                    }
+                },
+                new INPUT
+                {
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        keyboard = new KEYBDINPUT { wVk = (ushort)Keys.F, dwFlags = KEYEVENTF_KEYUP }
+                    }
+                },
+                new INPUT
+                {
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        keyboard = new KEYBDINPUT { wVk = 0x11, dwFlags = KEYEVENTF_KEYUP }
+                    }
+                }
+            };
+
+            return SendKeyboardInputs(inputs, "Ctrl+F");
+        }
+
+        // Отправляет массив INPUT через SendInput с проверкой результата (v39.33).
+        // SendInput возвращает число успешно вставленных событий; если меньше ожидаемого —
+        // операция не завершилась (неверный размер структуры INPUT и т.п.).
+        private bool SendKeyboardInputs(INPUT[] inputs, string operation)
+        {
+            uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+
+            if (sent != inputs.Length)
+            {
+                int error = Marshal.GetLastWin32Error();
+
+                LogConsoleError($"[{operation}] SendInput failed: sent={sent}/{inputs.Length}, error={error}");
+
+                return false;
+            }
+
+            return true;
         }
 
         // v39.32: Win32 API для телепорта в редактор (окно Find, поля Position, кнопка Find).
@@ -2721,6 +2785,9 @@ RegisterHotKeyChecked(
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, StringBuilder lParam);
+
         [DllImport("user32.dll")]
         private static extern bool IsWindowVisible(IntPtr hWnd);
 
@@ -2739,6 +2806,7 @@ RegisterHotKeyChecked(
         }
 
         private const uint WM_SETTEXT = 0x000C;
+        private const uint WM_GETTEXT = 0x000D;
         private const uint BM_CLICK = 0x00F5;
 
         // v39.32: поиск окна eurotrucks2.exe по заголовку (titlePart). Возвращает HWND и PID.
@@ -2916,7 +2984,8 @@ RegisterHotKeyChecked(
             return true;
         }
 
-        // v39.32: установка текста в Edit напрямую через WM_SETTEXT + проверка.
+        // v39.33: установка текста в Edit напрямую через WM_SETTEXT + проверка через WM_GETTEXT
+        // (GetWindowText НЕ читает текст Edit-контрола из другого процесса — только WM_GETTEXT).
         private static bool SetEditTextDirect(IntPtr hEdit, string value)
         {
             if (hEdit == IntPtr.Zero)
@@ -2924,12 +2993,13 @@ RegisterHotKeyChecked(
 
             SendMessage(hEdit, WM_SETTEXT, IntPtr.Zero, value);
 
-            int len = GetWindowTextLength(hEdit);
+            StringBuilder buffer = new(256);
 
-            StringBuilder actual = new(len + 1);
-            GetWindowText(hEdit, actual, actual.Capacity);
+            SendMessage(hEdit, WM_GETTEXT, (IntPtr)buffer.Capacity, buffer);
 
-            return string.Equals(actual.ToString(), value, StringComparison.Ordinal);
+            string actual = buffer.ToString();
+
+            return string.Equals(actual, value, StringComparison.Ordinal);
         }
 
         // v39.32: поиск кнопки по точному тексту (кнопка «Find»).
@@ -2979,16 +3049,29 @@ RegisterHotKeyChecked(
         }
 
         // Отправляет одно нажатие/отпускание клавиши через SendInput (глобально в активное окно).
-        private void PressKey(byte vk)
+        private bool PressKey(byte vk)
         {
-            INPUT[] inputs = new INPUT[2];
-            inputs[0].type = INPUT_KEYBOARD;
-            inputs[0].union.keyboard.wVk = vk;
-            inputs[0].union.keyboard.dwFlags = 0;
-            inputs[1].type = INPUT_KEYBOARD;
-            inputs[1].union.keyboard.wVk = vk;
-            inputs[1].union.keyboard.dwFlags = KEYEVENTF_KEYUP;
-            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            INPUT[] inputs =
+            {
+                new INPUT
+                {
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        keyboard = new KEYBDINPUT { wVk = vk }
+                    }
+                },
+                new INPUT
+                {
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        keyboard = new KEYBDINPUT { wVk = vk, dwFlags = KEYEVENTF_KEYUP }
+                    }
+                }
+            };
+
+            return SendKeyboardInputs(inputs, $"Key 0x{vk:X2}");
         }
 
         // Печатает строку через SendInput (ASCII-символы). Для переключения раскладки при
@@ -3001,23 +3084,28 @@ RegisterHotKeyChecked(
             {
                 short vk = VkKeyScan(ch); // 0xFFFF если не картрируется
                 if (vk == -1) continue;
-                ushort scan = (ushort)(text.Length == 0 ? 0 : VkKeyScanW(ch));
                 bool isShift = (vk & 0x0100) != 0; // старший байт — модификатор Shift
                 byte keyCode = (byte)(vk & 0xFF);
-                if (isShift) { inputs[idx].type = INPUT_KEYBOARD; inputs[idx].union.keyboard.wVk = 0x10; inputs[idx].union.keyboard.dwFlags = 0; idx++; }
+                if (isShift)
+                {
+                    inputs[idx].type = INPUT_KEYBOARD;
+                    inputs[idx].union.keyboard = new KEYBDINPUT { wVk = 0x10 };
+                    idx++;
+                }
                 inputs[idx].type = INPUT_KEYBOARD;
-                inputs[idx].union.keyboard.wVk = keyCode;
-                inputs[idx].union.keyboard.wScan = 0;
-                inputs[idx].union.keyboard.dwFlags = 0;
+                inputs[idx].union.keyboard = new KEYBDINPUT { wVk = keyCode };
                 idx++;
                 inputs[idx].type = INPUT_KEYBOARD;
-                inputs[idx].union.keyboard.wVk = keyCode;
-                inputs[idx].union.keyboard.wScan = 0;
-                inputs[idx].union.keyboard.dwFlags = KEYEVENTF_KEYUP;
+                inputs[idx].union.keyboard = new KEYBDINPUT { wVk = keyCode, dwFlags = KEYEVENTF_KEYUP };
                 idx++;
-                if (isShift) { inputs[idx].type = INPUT_KEYBOARD; inputs[idx].union.keyboard.wVk = 0x10; inputs[idx].union.keyboard.dwFlags = KEYEVENTF_KEYUP; idx++; }
+                if (isShift)
+                {
+                    inputs[idx].type = INPUT_KEYBOARD;
+                    inputs[idx].union.keyboard = new KEYBDINPUT { wVk = 0x10, dwFlags = KEYEVENTF_KEYUP };
+                    idx++;
+                }
             }
-            if (idx > 0) SendInput((uint)idx, inputs, Marshal.SizeOf<INPUT>());
+            if (idx > 0) SendKeyboardInputs(inputs, "TypeText");
         }
 
         [DllImport("user32.dll")]

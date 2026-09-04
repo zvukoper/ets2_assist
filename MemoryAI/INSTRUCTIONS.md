@@ -419,6 +419,13 @@
   (nullability) в `MainForm.cs` — не критично, но можно почистить.
 
 ## Список задач (TODO)
+- [x] **Фикс SendInput + WM_GETTEXT (04.09.2026, v39.33-INPUT-FIX-WMGETTEXT):** структура INPUT в
+  QuestsManager.cs имела неверный размер union (MOUSEINPUT/HARDWAREINPUT пустые) → SendInput
+  возвращал ошибку → Ctrl+F и VK_OEM_3 не срабатывали. ФИКС: INPUTUNION (Explicit, Size=32) +
+  полные MOUSEINPUT/HARDWAREINPUT (размер INPUT на x64 = 40). Проверка WM_SETTEXT через WM_GETTEXT
+  (GetWindowText НЕ читает текст Edit из другого процесса). SendKeyboardInputs — обёртка SendInput
+  с проверкой результата (sent == inputs.Length) + логированием ошибки. PressKey/PressCtrlF/TypeText
+  переведены на новую структуру и проверку результата. Публикация v39.33 (exe=txt=manifest MATCH).
 - [x] **Телепорт через Win32 (04.09.2026, v39.32-TELEPORT-WIN32-FIND):** телепорт в редактор
   (Ctrl+Shift+T) переведён на Win32: TryFindEts2Window (процесс eurotrucks2 + заголовок «Map editor»)
   → WaitForForegroundWindow → PressCtrlF → ожидание окна Find (TryFindVisibleWindowByProcessAndTitle)
