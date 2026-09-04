@@ -2,6 +2,17 @@
 
 > Папка для памяти между сессиями. Обновляется вручную в конце каждой сессии.
 
+## Сессия 04.09.2026 (9) — фикс MOUSEINPUT dx/dy (int) → INPUT=40 (v39.34)
+- **v39.34-INPUT-SIZE-40-FIX-09.04-2337** (exe=txt=manifest MATCH, R2R=false, data 551).
+  Лимиты 19,6% → 20,3%, RESET 1ч 22м. Модель deepseek-v4-flash:cloud.
+- **КОРЕНЬ:** в MOUSEINPUT поля dx/dy были `IntPtr` (8 байт) вместо `int` (4 байта) → MOUSEINPUT=48,
+  union=48, INPUT=48 (вместо 40) → SendInput возвращал sent=0 → Ctrl+F и VK_OEM_3 не срабатывали.
+  ФИКС: dx/dy → `int`; убран `Size = 32` у INPUTUNION (Explicit без фикс. размера). Теперь INPUT=40.
+- **SendKeyboardInputs:** добавлена проверка `cbSize == 40` (иначе abort с ошибкой) + проверка
+  результата SendInput (sent == inputs.Length) + логирование ошибки.
+- ЛОВУШКА: MOUSEINPUT.dx/dy в Win32 — LONG (int), НЕ IntPtr. Размер INPUT на x64 = 40
+  (type 4 + union 32 + padding 4).
+
 ## Сессия 04.09.2026 (8) — фикс SendInput (размер INPUT) + WM_GETTEXT (v39.33)
 - **v39.33-INPUT-FIX-WMGETTEXT-09.04-2329** (exe=txt=manifest MATCH, R2R=false, data 551).
   Лимиты 17,8% → 19,4%, RESET 1ч 30м. Модель deepseek-v4-flash:cloud.

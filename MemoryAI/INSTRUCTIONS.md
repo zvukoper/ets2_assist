@@ -419,6 +419,11 @@
   (nullability) в `MainForm.cs` — не критично, но можно почистить.
 
 ## Список задач (TODO)
+- [x] **Фикс MOUSEINPUT dx/dy (04.09.2026, v39.34-INPUT-SIZE-40-FIX):** в MOUSEINPUT поля dx/dy были
+  IntPtr (8 байт) вместо int (4 байта) → INPUT=48 (вместо 40) → SendInput sent=0 → Ctrl+F и VK_OEM_3
+  не срабатывали. ФИКС: dx/dy → int; убран Size=32 у INPUTUNION. Теперь INPUT=40. SendKeyboardInputs
+  проверяет cbSize==40 + результат SendInput. ЛОВУШКА: MOUSEINPUT.dx/dy в Win32 — LONG (int), НЕ IntPtr.
+  Публикация v39.34 (exe=txt=manifest MATCH).
 - [x] **Фикс SendInput + WM_GETTEXT (04.09.2026, v39.33-INPUT-FIX-WMGETTEXT):** структура INPUT в
   QuestsManager.cs имела неверный размер union (MOUSEINPUT/HARDWAREINPUT пустые) → SendInput
   возвращал ошибку → Ctrl+F и VK_OEM_3 не срабатывали. ФИКС: INPUTUNION (Explicit, Size=32) +

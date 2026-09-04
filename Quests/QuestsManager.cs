@@ -73,7 +73,7 @@ namespace ETS2_Assist_GUI
             public INPUTUNION union;
         }
 
-        [StructLayout(LayoutKind.Explicit, Size = 32)]
+        [StructLayout(LayoutKind.Explicit)]
         private struct INPUTUNION
         {
             [FieldOffset(0)]
@@ -99,8 +99,8 @@ namespace ETS2_Assist_GUI
         [StructLayout(LayoutKind.Sequential)]
         private struct MOUSEINPUT
         {
-            public IntPtr dx;
-            public IntPtr dy;
+            public int dx;
+            public int dy;
             public uint mouseData;
             public uint dwFlags;
             public uint time;

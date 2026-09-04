@@ -38,8 +38,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>39</VersionSet>
-        <VersionIter>33</VersionIter>
-        <VersionDesc>INPUT-FIX-WMGETTEXT</VersionDesc>
+        <VersionIter>34</VersionIter>
+        <VersionDesc>INPUT-SIZE-40-FIX</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>

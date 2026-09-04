@@ -2744,13 +2744,21 @@ RegisterHotKeyChecked(
         // операция не завершилась (неверный размер структуры INPUT и т.п.).
         private bool SendKeyboardInputs(INPUT[] inputs, string operation)
         {
-            uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+            int cbSize = Marshal.SizeOf<INPUT>();
+
+            if (cbSize != 40)
+            {
+                LogConsoleError($"[{operation}] Invalid INPUT size: {cbSize}, expected 40.");
+                return false;
+            }
+
+            uint sent = SendInput((uint)inputs.Length, inputs, cbSize);
 
             if (sent != inputs.Length)
             {
                 int error = Marshal.GetLastWin32Error();
 
-                LogConsoleError($"[{operation}] SendInput failed: sent={sent}/{inputs.Length}, error={error}");
+                LogConsoleError($"[{operation}] SendInput failed: sent={sent}/{inputs.Length}, error={error}, cbSize={cbSize}");
 
                 return false;
             }
