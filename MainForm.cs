@@ -2495,16 +2495,22 @@ RegisterHotKeyChecked(
                     "goto {0:F2};{1:F2};{2:F2};{3:F2};{4:F2}", camX, camY, camZ, camA, camE);
                 LogConsoleData($"[TELEPORT] команда: {cmd}");
 
-                // 1) Фокус в окно игры (на UI-потоке — AttachThreadInput корректно переводит фокус).
-                var gameHandle = FindGameWindowHandle();
-                if (gameHandle == IntPtr.Zero)
+                // 1) Фокус в окно игры (по процессу eurotrucks2 + заголовку «Euro Truck Simulator»).
+                if (!TryFindEts2Window("Euro Truck Simulator", out IntPtr gameHandle, out int gamePid))
                 {
-                    LogConsoleError("Телепортация не прошла — окно игры не найдено.");
+                    LogConsoleError("[TELEPORT] eurotrucks2.exe с заголовком 'Euro Truck Simulator' не найден.");
                     return;
                 }
-                if (!FocusWindowOnUi(gameHandle, "teleport"))
-                    LogConsoleWarn("[TELEPORT] Не удалось надёжно переключиться в игру, продолжаю...");
-                Thread.Sleep(250);
+
+                LogConsoleData($"[TELEPORT] window: PID={gamePid}, HWND=0x{gameHandle.ToInt64():X}, title='{GetWindowTitle(gameHandle)}'");
+
+                if (!WaitForForegroundWindow(gameHandle, "teleport"))
+                {
+                    LogConsoleError("[TELEPORT] Не удалось передать foreground окну игры.");
+                    return;
+                }
+
+                LogConsoleData("[TELEPORT] foreground confirmed");
 
                 // 2) Снять паузу, если игра на паузе.
                 if (IsGamePaused() || _pausedIntent)
@@ -2555,55 +2561,111 @@ RegisterHotKeyChecked(
         private Task TeleportToEditorFindAsync()
         {
             var editor = Application.OpenForms.OfType<MapEditorForm>().FirstOrDefault();
+
             if (editor == null)
             {
-                LogConsoleError("Телепортация не прошла — редактор карты не открыт (откройте его).");
+                LogConsoleError("[TELEPORT-ED] MapEditorForm не открыт.");
                 return Task.CompletedTask;
             }
+
             var target = editor.ResolveTeleportTarget();
-            double teleY = target.Y + 3.0;
+
             string xStr = target.X.ToString("F2", CultureInfo.InvariantCulture);
-            string yStr = teleY.ToString("F2", CultureInfo.InvariantCulture);
+            string yStr = target.Y.ToString("F2", CultureInfo.InvariantCulture);
             string zStr = target.Z.ToString("F2", CultureInfo.InvariantCulture);
+
             return Task.Run(() => RunTeleportEditorSync(xStr, yStr, zStr));
         }
 
-        // v39.31: синхронная реализация телепорта в редакторе (в фоновом потоке, чтобы не
-        // блокировать UI). Задержка 250 мс между КАЖДЫМ действием (в т.ч. между X/Y/Z).
+        // v39.32: телепорт в редактор через Win32: окно Find → поля Position (WM_SETTEXT) →
+        // кнопка Find (BM_CLICK). Без TypeText/Tab.
         private void RunTeleportEditorSync(string xStr, string yStr, string zStr)
         {
             try
             {
-                LogConsoleData($"[TELEPORT-ED] цель в редакторе: X={xStr}, Y={yStr}, Z={zStr}");
+                LogConsoleData($"[TELEPORT-ED] target: X={xStr}, Y={yStr}, Z={zStr}");
 
-                // 1) Фокус в окно редактора карты (заголовок «Map editor») — на UI-потоке.
-                IntPtr edHandle = FindWindowByTitle("Map editor");
-                if (edHandle == IntPtr.Zero)
+                if (!TryFindEts2Window("Map editor", out IntPtr editorHandle, out int editorPid))
                 {
-                    LogConsoleError("Телепортация не прошла — окно редактора карты (Map editor) не найдено.");
+                    LogConsoleError("[TELEPORT-ED] eurotrucks2.exe с заголовком 'Map editor' не найден.");
                     return;
                 }
-                if (!FocusWindowOnUi(edHandle, "teleport-editor"))
-                    LogConsoleWarn("[TELEPORT-ED] Не удалось надёжно переключиться в окно редактора, продолжаю...");
-                Thread.Sleep(250);
 
-                // 2) CTRL+F — открыть окно Find.
+                string editorTitle = GetWindowTitle(editorHandle);
+
+                LogConsoleData($"[TELEPORT-ED] window: PID={editorPid}, HWND=0x{editorHandle.ToInt64():X}, title='{editorTitle}'");
+
+                if (!WaitForForegroundWindow(editorHandle, "teleport-editor"))
+                {
+                    LogConsoleError("[TELEPORT-ED] Не удалось передать foreground окну Map Editor.");
+                    return;
+                }
+
+                LogConsoleData("[TELEPORT-ED] foreground confirmed");
+
                 PressCtrlF();
-                Thread.Sleep(250);
 
-                // 3) Заполнить поля Position (X, Y, Z) — каждое с паузой 250 мс.
-                TypeText(xStr);
-                Thread.Sleep(250);
-                PressKey((byte)Keys.Tab);
-                Thread.Sleep(250);
-                TypeText(yStr);
-                Thread.Sleep(250);
-                PressKey((byte)Keys.Tab);
-                Thread.Sleep(250);
-                TypeText(zStr);
-                Thread.Sleep(250);
+                LogConsoleData("[TELEPORT-ED] Ctrl+F sent");
 
-                LogConsoleOk("[TELEPORT-ED] Координаты вписаны в Position (окно Find) — завершите кнопкой в редакторе.");
+                IntPtr findWindow = IntPtr.Zero;
+
+                Stopwatch sw = Stopwatch.StartNew();
+
+                while (sw.ElapsedMilliseconds < 2000)
+                {
+                    if (TryFindVisibleWindowByProcessAndTitle(editorPid, "Find", out findWindow))
+                        break;
+
+                    Thread.Sleep(30);
+                }
+
+                if (findWindow == IntPtr.Zero)
+                {
+                    LogConsoleError("[TELEPORT-ED] Окно Find не появилось за 2 секунды.");
+                    return;
+                }
+
+                LogConsoleData($"[TELEPORT-ED] Find window: HWND=0x{findWindow.ToInt64():X}");
+
+                if (!TryFindPositionEdits(findWindow, out IntPtr xEdit, out IntPtr yEdit, out IntPtr zEdit))
+                {
+                    LogConsoleError("[TELEPORT-ED] Не удалось однозначно найти три Edit-поля Position.");
+                    return;
+                }
+
+                LogConsoleData($"[TELEPORT-ED] Position edits: X=0x{xEdit.ToInt64():X}, Y=0x{yEdit.ToInt64():X}, Z=0x{zEdit.ToInt64():X}");
+
+                if (!SetEditTextDirect(xEdit, xStr))
+                {
+                    LogConsoleError($"[TELEPORT-ED] Не удалось установить X={xStr}.");
+                    return;
+                }
+
+                if (!SetEditTextDirect(yEdit, yStr))
+                {
+                    LogConsoleError($"[TELEPORT-ED] Не удалось установить Y={yStr}.");
+                    return;
+                }
+
+                if (!SetEditTextDirect(zEdit, zStr))
+                {
+                    LogConsoleError($"[TELEPORT-ED] Не удалось установить Z={zStr}.");
+                    return;
+                }
+
+                LogConsoleData($"[TELEPORT-ED] Position set: X={xStr}, Y={yStr}, Z={zStr}");
+
+                if (!TryFindButtonByText(findWindow, "Find", out IntPtr findButton))
+                {
+                    LogConsoleError("[TELEPORT-ED] Кнопка Find не найдена.");
+                    return;
+                }
+
+                LogConsoleData($"[TELEPORT-ED] Find button: HWND=0x{findButton.ToInt64():X}");
+
+                SendMessage(findButton, BM_CLICK, IntPtr.Zero, IntPtr.Zero);
+
+                LogConsoleOk("[TELEPORT-ED] Find clicked.");
             }
             catch (Exception ex)
             {
@@ -2632,26 +2694,7 @@ RegisterHotKeyChecked(
             SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
         }
 
-        // Поиск окна по подстроке заголовка.
-        private static IntPtr FindWindowByTitle(string titlePart)
-        {
-            IntPtr found = IntPtr.Zero;
-            EnumWindows((hWnd, lParam) =>
-            {
-                int len = GetWindowTextLength(hWnd);
-                if (len == 0) return true;
-                var sb = new StringBuilder(len + 1);
-                GetWindowText(hWnd, sb, sb.Capacity);
-                if (sb.ToString().IndexOf(titlePart, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    found = hWnd;
-                    return false; // стоп
-                }
-                return true;
-            }, IntPtr.Zero);
-            return found;
-        }
-
+        // v39.32: Win32 API для телепорта в редактор (окно Find, поля Position, кнопка Find).
         [DllImport("user32.dll")]
         private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
@@ -2660,18 +2703,279 @@ RegisterHotKeyChecked(
         [DllImport("user32.dll")]
         private static extern int GetWindowTextLength(IntPtr hWnd);
 
-        private static IntPtr FindGameWindowHandle()
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumChildWindows(IntPtr hWndParent, EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, string? lParam);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
         {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+
+            public int Width => Right - Left;
+            public int Height => Bottom - Top;
+            public int CenterX => Left + Width / 2;
+            public int CenterY => Top + Height / 2;
+        }
+
+        private const uint WM_SETTEXT = 0x000C;
+        private const uint BM_CLICK = 0x00F5;
+
+        // v39.32: поиск окна eurotrucks2.exe по заголовку (titlePart). Возвращает HWND и PID.
+        private static bool TryFindEts2Window(string titlePart, out IntPtr hWnd, out int processId)
+        {
+            hWnd = IntPtr.Zero;
+            processId = 0;
+
             try
             {
-                foreach (var p in Process.GetProcessesByName("eurotrucks2"))
+                Process[] processes = Process.GetProcessesByName("eurotrucks2");
+
+                foreach (Process process in processes)
                 {
-                    try { if (p.MainWindowHandle != IntPtr.Zero) return p.MainWindowHandle; }
-                    finally { p.Dispose(); }
+                    try
+                    {
+                        IntPtr candidate = process.MainWindowHandle;
+                        if (candidate == IntPtr.Zero)
+                            continue;
+
+                        string title = process.MainWindowTitle ?? string.Empty;
+
+                        if (title.IndexOf(titlePart, StringComparison.OrdinalIgnoreCase) < 0)
+                            continue;
+
+                        hWnd = candidate;
+                        processId = process.Id;
+                        return true;
+                    }
+                    finally
+                    {
+                        process.Dispose();
+                    }
                 }
             }
-            catch { }
-            return IntPtr.Zero;
+            catch
+            {
+            }
+
+            return false;
+        }
+
+        // v39.32: ожидание, пока указанное окно станет foreground (с фокусом через UI-поток).
+        private bool WaitForForegroundWindow(IntPtr hWnd, string reason, int timeoutMs = 1500)
+        {
+            if (hWnd == IntPtr.Zero)
+                return false;
+
+            if (!FocusWindowOnUi(hWnd, reason))
+                return false;
+
+            Stopwatch sw = Stopwatch.StartNew();
+
+            while (sw.ElapsedMilliseconds < timeoutMs)
+            {
+                if (GetForegroundWindow() == hWnd)
+                    return true;
+
+                Thread.Sleep(25);
+            }
+
+            return GetForegroundWindow() == hWnd;
+        }
+
+        // v39.32: поиск видимого окна процесса по подстроке заголовка (для окна Find).
+        private static bool TryFindVisibleWindowByProcessAndTitle(int processId, string titlePart, out IntPtr hWnd)
+        {
+            IntPtr found = IntPtr.Zero;
+
+            EnumWindows((candidate, lParam) =>
+            {
+                if (!IsWindowVisible(candidate))
+                    return true;
+
+                GetWindowThreadProcessId(candidate, out uint pid);
+
+                if (pid != (uint)processId)
+                    return true;
+
+                int len = GetWindowTextLength(candidate);
+                if (len <= 0)
+                    return true;
+
+                StringBuilder sb = new(len + 1);
+                GetWindowText(candidate, sb, sb.Capacity);
+
+                if (sb.ToString().IndexOf(titlePart, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    found = candidate;
+                    return false;
+                }
+
+                return true;
+            }, IntPtr.Zero);
+
+            hWnd = found;
+            return hWnd != IntPtr.Zero;
+        }
+
+        // v39.32: поиск дочернего контрола с ТОЧНЫМ текстом (label «Position»).
+        private static bool TryFindControlByExactText(IntPtr parent, string expectedText, out IntPtr result, out RECT resultRect)
+        {
+            IntPtr found = IntPtr.Zero;
+            RECT foundRect = default;
+
+            EnumChildWindows(parent, (hWnd, lParam) =>
+            {
+                int len = GetWindowTextLength(hWnd);
+                if (len <= 0)
+                    return true;
+
+                StringBuilder text = new(len + 1);
+                GetWindowText(hWnd, text, text.Capacity);
+
+                if (!string.Equals(text.ToString().Trim(), expectedText, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                if (!GetWindowRect(hWnd, out RECT rect))
+                    return true;
+
+                found = hWnd;
+                foundRect = rect;
+                return false;
+            }, IntPtr.Zero);
+
+            result = found;
+            resultRect = foundRect;
+            return result != IntPtr.Zero;
+        }
+
+        // v39.32: поиск ровно трёх Edit-контролов на строке label «Position» (X, Y, Z).
+        private static bool TryFindPositionEdits(IntPtr findWindow, out IntPtr xEdit, out IntPtr yEdit, out IntPtr zEdit)
+        {
+            xEdit = IntPtr.Zero;
+            yEdit = IntPtr.Zero;
+            zEdit = IntPtr.Zero;
+
+            if (!TryFindControlByExactText(findWindow, "Position", out _, out RECT positionRect))
+                return false;
+
+            List<(IntPtr Handle, RECT Rect)> candidates = new();
+
+            EnumChildWindows(findWindow, (hWnd, lParam) =>
+            {
+                StringBuilder className = new(64);
+                GetClassName(hWnd, className, className.Capacity);
+
+                if (!string.Equals(className.ToString(), "Edit", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                if (!GetWindowRect(hWnd, out RECT rect))
+                    return true;
+
+                int verticalTolerance = Math.Max(8, positionRect.Height / 2);
+
+                if (Math.Abs(rect.CenterY - positionRect.CenterY) > verticalTolerance)
+                    return true;
+
+                if (rect.Left <= positionRect.Right)
+                    return true;
+
+                candidates.Add((hWnd, rect));
+                return true;
+            }, IntPtr.Zero);
+
+            candidates.Sort((a, b) => a.Rect.Left.CompareTo(b.Rect.Left));
+
+            if (candidates.Count != 3)
+                return false;
+
+            xEdit = candidates[0].Handle;
+            yEdit = candidates[1].Handle;
+            zEdit = candidates[2].Handle;
+
+            return true;
+        }
+
+        // v39.32: установка текста в Edit напрямую через WM_SETTEXT + проверка.
+        private static bool SetEditTextDirect(IntPtr hEdit, string value)
+        {
+            if (hEdit == IntPtr.Zero)
+                return false;
+
+            SendMessage(hEdit, WM_SETTEXT, IntPtr.Zero, value);
+
+            int len = GetWindowTextLength(hEdit);
+
+            StringBuilder actual = new(len + 1);
+            GetWindowText(hEdit, actual, actual.Capacity);
+
+            return string.Equals(actual.ToString(), value, StringComparison.Ordinal);
+        }
+
+        // v39.32: поиск кнопки по точному тексту (кнопка «Find»).
+        private static bool TryFindButtonByText(IntPtr parent, string expectedText, out IntPtr button)
+        {
+            IntPtr found = IntPtr.Zero;
+
+            EnumChildWindows(parent, (hWnd, lParam) =>
+            {
+                StringBuilder className = new(64);
+                GetClassName(hWnd, className, className.Capacity);
+
+                if (!string.Equals(className.ToString(), "Button", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                int len = GetWindowTextLength(hWnd);
+                if (len <= 0)
+                    return true;
+
+                StringBuilder text = new(len + 1);
+                GetWindowText(hWnd, text, text.Capacity);
+
+                if (!string.Equals(text.ToString().Trim(), expectedText, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                found = hWnd;
+                return false;
+            }, IntPtr.Zero);
+
+            button = found;
+            return button != IntPtr.Zero;
+        }
+
+        // v39.32: получение заголовка окна.
+        private static string GetWindowTitle(IntPtr hWnd)
+        {
+            int len = GetWindowTextLength(hWnd);
+
+            if (len <= 0)
+                return string.Empty;
+
+            StringBuilder sb = new(len + 1);
+
+            GetWindowText(hWnd, sb, sb.Capacity);
+
+            return sb.ToString();
         }
 
         // Отправляет одно нажатие/отпускание клавиши через SendInput (глобально в активное окно).

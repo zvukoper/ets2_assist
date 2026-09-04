@@ -419,6 +419,17 @@
   (nullability) в `MainForm.cs` — не критично, но можно почистить.
 
 ## Список задач (TODO)
+- [x] **Телепорт через Win32 (04.09.2026, v39.32-TELEPORT-WIN32-FIND):** телепорт в редактор
+  (Ctrl+Shift+T) переведён на Win32: TryFindEts2Window (процесс eurotrucks2 + заголовок «Map editor»)
+  → WaitForForegroundWindow → PressCtrlF → ожидание окна Find (TryFindVisibleWindowByProcessAndTitle)
+  → TryFindPositionEdits (label «Position» + ровно 3 Edit) → SetEditTextDirect (WM_SETTEXT X/Y/Z) →
+  TryFindButtonByText («Find») → SendMessage BM_CLICK. Телепорт в игру (Ctrl+T): TryFindEts2Window
+  («Euro Truck Simulator») → WaitForForegroundWindow → консоль → goto → Enter. Удалены
+  FindWindowByTitle/FindGameWindowHandle. Добавлены Win32 API: GetClassName, EnumChildWindows,
+  GetWindowRect, GetWindowThreadProcessId (out uint), SendMessage ×2, IsWindowVisible, RECT,
+  WM_SETTEXT, BM_CLICK. ЛОВУШКИ: (1) не удалять DllImport/RECT при замене блока; (2) CS1628 —
+  out-параметры нельзя использовать в лямбдах EnumWindows/EnumChildWindows (локальные переменные).
+  Публикация v39.32 (exe=txt=manifest MATCH, R2R=false).
 - [x] **Фиксы телепорта/кнопок/консоли (04.09.2026, v39.31-TELEPORT-FIX-DELAYS):** padding кнопок
   видимости убран (AutoSize+Padding 0, текст не обрезается); телепорт в игру вынесен в Task.Run
   (RunTeleportGameSync) — синхронные SCS pipe/REST (.Result) и SendInput больше НЕ блокируют UI

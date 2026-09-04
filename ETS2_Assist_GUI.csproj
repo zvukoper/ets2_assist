@@ -38,8 +38,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>39</VersionSet>
-        <VersionIter>31</VersionIter>
-        <VersionDesc>TELEPORT-FIX-DELAYS</VersionDesc>
+        <VersionIter>32</VersionIter>
+        <VersionDesc>TELEPORT-WIN32-FIND</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>

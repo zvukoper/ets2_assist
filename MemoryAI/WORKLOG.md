@@ -2,6 +2,23 @@
 
 > Папка для памяти между сессиями. Обновляется вручную в конце каждой сессии.
 
+## Сессия 04.09.2026 (7) — телепорт через Win32 (Find/Position/BM_CLICK) (v39.32)
+- **v39.32-TELEPORT-WIN32-FIND-09.04-2315** (exe=txt=manifest MATCH, R2R=false, data 551).
+  Лимиты 15,2% → 17,5%, RESET 1ч 44м. Модель deepseek-v4-flash:cloud.
+- **ТЕЛЕПОРТ В РЕДАКТОРЕ (Ctrl+Shift+T) — Win32 вместо TypeText/Tab:** TryFindEts2Window
+  (процесс eurotrucks2 + заголовок «Map editor») → WaitForForegroundWindow (фокус через UI-поток,
+  ожидание foreground до 1.5с) → PressCtrlF → ожидание окна Find (TryFindVisibleWindowByProcessAndTitle,
+  до 2с) → TryFindPositionEdits (label «Position» + ровно 3 Edit на той же строке) →
+  SetEditTextDirect (WM_SETTEXT X/Y/Z) → TryFindButtonByText («Find») → SendMessage BM_CLICK.
+- **ТЕЛЕПОРТ В ИГРУ (Ctrl+T):** TryFindEts2Window («Euro Truck Simulator») → WaitForForegroundWindow →
+  консоль (VK_OEM_3) → goto → Enter. (goto-команда не менялась.)
+- **УДАЛЕНЫ:** FindWindowByTitle, FindGameWindowHandle (заменены на TryFindEts2Window).
+- **ДОБАВЛЕНЫ Win32 API:** GetClassName, EnumChildWindows, GetWindowRect, GetWindowThreadProcessId
+  (out uint), SendMessage ×2 (string/IntPtr), IsWindowVisible, RECT, WM_SETTEXT, BM_CLICK.
+- **ЛОВУШКИ:** (1) при замене блока случайно удалились DllImport/RECT — восстанавливать;
+  (2) CS1628 — нельзя использовать out-параметры внутри лямбд EnumWindows/EnumChildWindows —
+  использовать локальные переменные, присваивать out после.
+
 ## Сессия 04.09.2026 (6) — ОБНОВЛЕНИЕ ПРОТОКОЛА ШАГОВ №0/№1/№1.5
 - Пользователь обновил INSTRUCTIONS.md: во ШАГАХ №0/№1/№1.5 явно добавлено «работу по задачам
   **НЕ начинаем**» до подтверждения пользователя. Теперь это подчёркнуто: ШАГ №0 (анализ запроса,
