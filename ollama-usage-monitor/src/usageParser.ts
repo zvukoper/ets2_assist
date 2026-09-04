@@ -16,7 +16,18 @@ export function parseUsageHtml(html: string): UsageInfo {
     weeklyPercent: null,
     weeklyResetAt: null,
     account: null,
+    status: 'ok',
   };
+
+  // Если страница — форма входа (профиль разлогинен), данных нет.
+  // Надёжный признак — <title>Вход</title> / <title>Sign in</title>.
+  // (hosted-authkit / sign-in встречаются в скриптах и на залогиненной странице,
+  // поэтому по ним одним определять НЕЛЬЗЯ.)
+  const isLoginPage = /<title>\s*(Вход|Sign in|Log in|Login)\s*<\/title>/i.test(html);
+  if (isLoginPage) {
+    out.status = 'login';
+    return out;
+  }
 
   // Session usage: "Session usage ... NN.N"
   const m = /Session usage[^0-9%]*([0-9]+(?:[.,][0-9]+)?)/.exec(html);

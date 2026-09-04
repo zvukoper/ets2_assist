@@ -1,0 +1,17 @@
+{
+    "category":  "carshop",
+    "source":  "model_carshop.txt",
+    "easter":  false,
+    "count":  1,
+    "objects":  [
+                    {
+                        "uid":  "0x439bf31445400001",
+                        "sector":  "sec+0037-0015",
+                        "sectorX":  37,
+                        "sectorZ":  -15,
+                        "x":  150414,
+                        "y":  107.945,
+                        "z":  -59400
+                    }
+                ]
+}

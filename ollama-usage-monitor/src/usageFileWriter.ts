@@ -18,6 +18,10 @@ export function writeParsedUsageFile(usage: UsageInfo): string | null {
   const reset = usage.sessionResetAt === null ? 'UNKNOWN' : formatCountdown(usage.sessionResetAt);
   const content = `${pct}\n${reset}\n`;
   try {
+    // Файл может отсутствовать (например, удалён или ещё не создавался) —
+    // создаём его (и папку MemoryAI, если её нет) при записи.
+    const dir = path.dirname(file);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(file, content, 'utf8');
     return file;
   } catch (e) {
@@ -26,14 +30,18 @@ export function writeParsedUsageFile(usage: UsageInfo): string | null {
   }
 }
 
-/** Ищет <workspaceRoot>/MemoryAI/ollama_parsed_usage.txt (первая папка workspace). */
+/**
+ * Ищет путь <workspaceRoot>/MemoryAI/ollama_parsed_usage.txt (первая папка workspace).
+ * Возвращает путь, если папка MemoryAI существует (сам файл может отсутствовать —
+ * он будет создан при записи). Если папки MemoryAI нет — null.
+ */
 export function findParsedUsageFile(): string | null {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) return null;
   for (const f of folders) {
     const candidate = path.join(f.uri.fsPath, 'MemoryAI', 'ollama_parsed_usage.txt');
     try {
-      if (fs.existsSync(candidate)) return candidate;
+      if (fs.existsSync(path.dirname(candidate))) return candidate;
     } catch { /* ignore */ }
   }
   return null;

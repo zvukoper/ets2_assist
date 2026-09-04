@@ -115,6 +115,8 @@ namespace ETS2_Assist_GUI
         private const int HOTKEY_FOV_DOWN = 9006;    // v40.2: CTRL+SHIFT+END — FOV −0.5
         private const int HOTKEY_PLANE_UP = 9008;    // v97: CTRL+SHIFT+PGUP — плоскость земли +0.25 м
         private const int HOTKEY_PLANE_DOWN = 9009;  // v97: CTRL+SHIFT+PGDN — плоскость земли −0.25 м
+        private const int HOTKEY_TELEPORT = 9010;    // v39.30: CTRL+T — телепорт в ИГРЕ (goto X;Y;Z;A;E)
+        private const int HOTKEY_TELEPORT_EDITOR = 9011; // v39.30: CTRL+SHIFT+T — телепорт в РЕДАКТОРЕ (Find→Position)
         private bool hotKeyRegistered = false;
 
         // v100: SetLastError — для чтения кода ошибки (1409 = занято другим процессом).
@@ -226,7 +228,6 @@ namespace ETS2_Assist_GUI
                 RegisterHotKeyChecked(HOTKEY_START_REC, MOD_CONTROL | MOD_SHIFT, Keys.R, "R (start/rec)");
                 RegisterHotKeyChecked(HOTKEY_STOP_REC, MOD_CONTROL | MOD_SHIFT, Keys.X, "X (AR pin)");
                 RegisterHotKeyChecked(HOTKEY_MARKER, MOD_CONTROL | MOD_SHIFT, Keys.N, "N (marker)");
-                RegisterHotKeyChecked(HOTKEY_TEST, MOD_CONTROL | MOD_SHIFT, Keys.T, "T (test)");
                 // v102: калибровочные хоткеи с АВТОПОВТОРОМ при удержании (repeat=true —
                 // без MOD_NOREPEAT) и шагом ÷2 (FOV 0.25°, плоскость 0.125 м).
 RegisterHotKeyChecked(
@@ -243,8 +244,11 @@ RegisterHotKeyChecked(
     repeat: true);
                 RegisterHotKeyChecked(HOTKEY_PLANE_UP, MOD_CONTROL | MOD_SHIFT, Keys.PageUp, "Ctrl+Shift+PGUP (plane +)", repeat: true);
                 RegisterHotKeyChecked(HOTKEY_PLANE_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.PageDown, "Ctrl+Shift+PGDN (plane −)", repeat: true);
+                // v39.30: CTRL+T — телепорт в игре; CTRL+SHIFT+T — телепорт в редакторе (Find).
+                RegisterHotKeyChecked(HOTKEY_TELEPORT, MOD_CONTROL, Keys.T, "Ctrl+T (teleport game)");
+                RegisterHotKeyChecked(HOTKEY_TELEPORT_EDITOR, MOD_CONTROL | MOD_SHIFT, Keys.T, "Ctrl+Shift+T (teleport editor)");
                 hotKeyRegistered = true;
-                AppendLog("Hotkeys registered: S, R, X (AR pin), N, T, Ctrl+Shift+HOME/END (FOV), Ctrl+Shift+PGUP/PGDN (plane)");
+                AppendLog("Hotkeys: S, R, X (AR pin), N, Ctrl+T (teleport game), Ctrl+Shift+T (teleport editor), Ctrl+Shift+HOME/END (FOV), Ctrl+Shift+PGUP/PGDN (plane)");
             }
             catch (Exception ex)
             {
@@ -514,8 +518,8 @@ RegisterHotKeyChecked(
                 Location = new Point(consoleLeft, topY),
                 Size = new Size(consoleWidth, this.ClientSize.Height - topY - 40),
                 ReadOnly = true,
-                BackColor = Color.Black,
-                ForeColor = Color.LightGray,
+                BackColor = System.Drawing.Color.FromArgb(45, 45, 48), // тёмно-серый фон консоли
+                ForeColor = System.Drawing.Color.LightGray,
                 Font = new Font("Consolas", 9),
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left
             };
@@ -2385,9 +2389,10 @@ RegisterHotKeyChecked(
                             AppendLog("Hotkey marker ignored: game is not paused.");
                         }
                         break;
-                    case HOTKEY_TEST:
-                        AppendLog("Hotkey test (Shift+Ctrl+T) - showing test window");
-                        ShowTestWindow();
+                    case HOTKEY_TELEPORT_EDITOR:
+                        // v39.30: Ctrl+Shift+T — телепорт в РЕДАКТОРЕ (Find→Position, без heading/elev).
+                        LogConsoleOk("[TELEPORT-ED] Ctrl+Shift+T — телепорт в редакторе (Find)...");
+                        _ = TeleportToEditorFindAsync();
                         break;
                     case HOTKEY_FOV_UP:
                         // v102: Ctrl+Shift+HOME — FOV +0.25 (шаг ÷2), автоповтор при удержании.
@@ -2408,6 +2413,11 @@ RegisterHotKeyChecked(
                         // v102: Ctrl+Shift+PGDN — плоскость −0.125 м (шаг ÷2), автоповтор при удержании.
                         AR.ArBridge.PlaneOffsetM = Math.Clamp(AR.ArBridge.PlaneOffsetM - 0.125, -10.0, 10.0);
                         AppendLog($"[ARv2] Плоскость земли = {AR.ArBridge.PlaneOffsetM:F3} м (Ctrl+Shift+PGDN)");
+                        break;
+                    case HOTKEY_TELEPORT:
+                        // v39.30: Ctrl+T — телепорт в ИГРЕ (goto X;Y;Z;A;E).
+                        LogConsoleOk("[TELEPORT] Ctrl+T — телепортация в игру...");
+                        _ = TeleportToSelectionOrCursorAsync();
                         break;
                 }
                 return;
@@ -2440,6 +2450,276 @@ RegisterHotKeyChecked(
             }
             return _pausedIntent;
         }
+
+        // ================================================================
+        // ТЕЛЕПОРТ КАМЕРЫ (v39.28): хоткей Ctrl+T.
+        // Копирует координаты в формате "goto X;Y;Z;A;E", переключается в игру, снимает
+        // паузу, открывает консоль (клавиша ё/`/OEM_3), вводит команду, жмёт ENTER.
+        // X/Z — координаты, Y — высота, A — азимут, E — угол возвышения. Камера ставится
+        // в 6 м от цели выше на 2 м (10 м / 4 м при телепорте к курсору) и смотрит на цель.
+        // Для выбранной точки — к точке; без выбора — к курсору (высота из ближайшей
+        // точки с ненулевой высотой). Задержка 250 мс между действиями.
+        // v39.31: вся работа в фоновом потоке (Task.Run) — синхронные вызовы SCS pipe /
+        // REST (.Result) и SendInput НЕ блокируют UI (раньше зависало приложение).
+        private Task TeleportToSelectionOrCursorAsync()
+        {
+            // Координаты и направление берём на UI-потоке (обращение к полям редактора).
+            var editor = Application.OpenForms.OfType<MapEditorForm>().FirstOrDefault();
+            if (editor == null)
+            {
+                LogConsoleError("Телепортация не прошла — редактор карты не открыт (откройте его).");
+                return Task.CompletedTask;
+            }
+            var target = editor.ResolveTeleportTarget();
+            double headingDeg = (-(editor.CurrentHeading + editor.CurrentHeadYaw)) * 360.0 % 360.0;
+            if (headingDeg < 0) headingDeg += 360.0;
+            double pitchDeg = editor.CurrentHeadPitch * 360.0;
+            double camA = (headingDeg + 180.0) % 360.0;
+            double camE = pitchDeg;
+
+            return Task.Run(() => RunTeleportGameSync(target, headingDeg, pitchDeg, camA, camE));
+        }
+
+        private void RunTeleportGameSync((double X, double Y, double Z, bool FromCursor) target,
+                                         double headingDeg, double pitchDeg, double camA, double camE)
+        {
+            try
+            {
+                double dist = target.FromCursor ? 10.0 : 6.0;
+                double heightOffset = target.FromCursor ? 4.0 : 2.0;
+                double rad = camA * Math.PI / 180.0;
+                double camX = target.X - Math.Sin(rad) * dist;
+                double camZ = target.Z + Math.Cos(rad) * dist;
+                double camY = target.Y + heightOffset;
+                string cmd = string.Format(CultureInfo.InvariantCulture,
+                    "goto {0:F2};{1:F2};{2:F2};{3:F2};{4:F2}", camX, camY, camZ, camA, camE);
+                LogConsoleData($"[TELEPORT] команда: {cmd}");
+
+                // 1) Фокус в окно игры (на UI-потоке — AttachThreadInput корректно переводит фокус).
+                var gameHandle = FindGameWindowHandle();
+                if (gameHandle == IntPtr.Zero)
+                {
+                    LogConsoleError("Телепортация не прошла — окно игры не найдено.");
+                    return;
+                }
+                if (!FocusWindowOnUi(gameHandle, "teleport"))
+                    LogConsoleWarn("[TELEPORT] Не удалось надёжно переключиться в игру, продолжаю...");
+                Thread.Sleep(250);
+
+                // 2) Снять паузу, если игра на паузе.
+                if (IsGamePaused() || _pausedIntent)
+                {
+                    bool resumed = false;
+                    for (int attempt = 0; attempt < 2 && !resumed; attempt++)
+                    {
+                        if (attempt > 0) Thread.Sleep(250);
+                        resumed = SetGamePause(false);
+                        Thread.Sleep(250);
+                        if (IsGamePausedAsync().GetAwaiter().GetResult()) resumed = true;
+                    }
+                    if (!resumed)
+                    {
+                        LogConsoleError("Телепортация не прошла — не удалось снять игру с паузы.");
+                        return;
+                    }
+                }
+                Thread.Sleep(250);
+
+                // 3) Открыть консоль (клавиша ё/` = VK_OEM_3).
+                PressKey((byte)VK_OEM_3);
+                Thread.Sleep(250);
+
+                // 4) Ввести команду goto.
+                TypeText(cmd);
+                Thread.Sleep(250);
+
+                // 5) ENTER.
+                PressKey((byte)Keys.Enter);
+                LogConsoleOk("[TELEPORT] Команда goto отправлена в игру.");
+            }
+            catch (Exception ex)
+            {
+                LogConsoleError("[TELEPORT] Ошибка: " + ex.Message);
+            }
+        }
+
+        private const int VK_OEM_3 = 0xC0; // клавиша ё/` (консоль ETS2)
+
+        // ================================================================
+        // ТЕЛЕПОРТ В РЕДАКТОРЕ (v39.30): Ctrl+Shift+T.
+        // Координаты копируются без heading/elev; поднимаемся на 3 м выше над исходной точкой.
+        // Переключаемся в окно редактора карты (заголовок «Map editor»), жмём CTRL+F (окно Find),
+        // заполняем поля Position координатами.
+        // Приоритет цели: курсор поверх точки → выбранная точка → курсор.
+        // ================================================================
+        private Task TeleportToEditorFindAsync()
+        {
+            var editor = Application.OpenForms.OfType<MapEditorForm>().FirstOrDefault();
+            if (editor == null)
+            {
+                LogConsoleError("Телепортация не прошла — редактор карты не открыт (откройте его).");
+                return Task.CompletedTask;
+            }
+            var target = editor.ResolveTeleportTarget();
+            double teleY = target.Y + 3.0;
+            string xStr = target.X.ToString("F2", CultureInfo.InvariantCulture);
+            string yStr = teleY.ToString("F2", CultureInfo.InvariantCulture);
+            string zStr = target.Z.ToString("F2", CultureInfo.InvariantCulture);
+            return Task.Run(() => RunTeleportEditorSync(xStr, yStr, zStr));
+        }
+
+        // v39.31: синхронная реализация телепорта в редакторе (в фоновом потоке, чтобы не
+        // блокировать UI). Задержка 250 мс между КАЖДЫМ действием (в т.ч. между X/Y/Z).
+        private void RunTeleportEditorSync(string xStr, string yStr, string zStr)
+        {
+            try
+            {
+                LogConsoleData($"[TELEPORT-ED] цель в редакторе: X={xStr}, Y={yStr}, Z={zStr}");
+
+                // 1) Фокус в окно редактора карты (заголовок «Map editor») — на UI-потоке.
+                IntPtr edHandle = FindWindowByTitle("Map editor");
+                if (edHandle == IntPtr.Zero)
+                {
+                    LogConsoleError("Телепортация не прошла — окно редактора карты (Map editor) не найдено.");
+                    return;
+                }
+                if (!FocusWindowOnUi(edHandle, "teleport-editor"))
+                    LogConsoleWarn("[TELEPORT-ED] Не удалось надёжно переключиться в окно редактора, продолжаю...");
+                Thread.Sleep(250);
+
+                // 2) CTRL+F — открыть окно Find.
+                PressCtrlF();
+                Thread.Sleep(250);
+
+                // 3) Заполнить поля Position (X, Y, Z) — каждое с паузой 250 мс.
+                TypeText(xStr);
+                Thread.Sleep(250);
+                PressKey((byte)Keys.Tab);
+                Thread.Sleep(250);
+                TypeText(yStr);
+                Thread.Sleep(250);
+                PressKey((byte)Keys.Tab);
+                Thread.Sleep(250);
+                TypeText(zStr);
+                Thread.Sleep(250);
+
+                LogConsoleOk("[TELEPORT-ED] Координаты вписаны в Position (окно Find) — завершите кнопкой в редакторе.");
+            }
+            catch (Exception ex)
+            {
+                LogConsoleError("[TELEPORT-ED] Ошибка: " + ex.Message);
+            }
+        }
+
+        // Возвращает фокус в указанное окно, выполняя ForceForegroundWindow на UI-потоке
+        // (AttachThreadInput корректен только из потока с входной очередью). Маршалим на UI,
+        // если вызван из фонового потока телепорта.
+        private bool FocusWindowOnUi(IntPtr hWnd, string reason)
+        {
+            if (InvokeRequired)
+                return (bool)Invoke((Func<IntPtr, string, bool>)FocusWindowOnUi, hWnd, reason);
+            return ForceForegroundWindow(hWnd, reason);
+        }
+
+        // CTRL+F (открыть Find в активном окне).
+        private void PressCtrlF()
+        {
+            INPUT[] inputs = new INPUT[4];
+            inputs[0].type = INPUT_KEYBOARD; inputs[0].union.keyboard.wVk = 0x11; // Ctrl down
+            inputs[1].type = INPUT_KEYBOARD; inputs[1].union.keyboard.wVk = (byte)Keys.F; // F down
+            inputs[2].type = INPUT_KEYBOARD; inputs[2].union.keyboard.wVk = (byte)Keys.F; inputs[2].union.keyboard.dwFlags = KEYEVENTF_KEYUP;
+            inputs[3].type = INPUT_KEYBOARD; inputs[3].union.keyboard.wVk = 0x11; inputs[3].union.keyboard.dwFlags = KEYEVENTF_KEYUP;
+            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+        }
+
+        // Поиск окна по подстроке заголовка.
+        private static IntPtr FindWindowByTitle(string titlePart)
+        {
+            IntPtr found = IntPtr.Zero;
+            EnumWindows((hWnd, lParam) =>
+            {
+                int len = GetWindowTextLength(hWnd);
+                if (len == 0) return true;
+                var sb = new StringBuilder(len + 1);
+                GetWindowText(hWnd, sb, sb.Capacity);
+                if (sb.ToString().IndexOf(titlePart, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    found = hWnd;
+                    return false; // стоп
+                }
+                return true;
+            }, IntPtr.Zero);
+            return found;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+        [DllImport("user32.dll")]
+        private static extern int GetWindowTextLength(IntPtr hWnd);
+
+        private static IntPtr FindGameWindowHandle()
+        {
+            try
+            {
+                foreach (var p in Process.GetProcessesByName("eurotrucks2"))
+                {
+                    try { if (p.MainWindowHandle != IntPtr.Zero) return p.MainWindowHandle; }
+                    finally { p.Dispose(); }
+                }
+            }
+            catch { }
+            return IntPtr.Zero;
+        }
+
+        // Отправляет одно нажатие/отпускание клавиши через SendInput (глобально в активное окно).
+        private void PressKey(byte vk)
+        {
+            INPUT[] inputs = new INPUT[2];
+            inputs[0].type = INPUT_KEYBOARD;
+            inputs[0].union.keyboard.wVk = vk;
+            inputs[0].union.keyboard.dwFlags = 0;
+            inputs[1].type = INPUT_KEYBOARD;
+            inputs[1].union.keyboard.wVk = vk;
+            inputs[1].union.keyboard.dwFlags = KEYEVENTF_KEYUP;
+            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+        }
+
+        // Печатает строку через SendInput (ASCII-символы). Для переключения раскладки при
+        // необходимости используем ScanCode (wScan) — но для goto-команды хватает латиницы.
+        private void TypeText(string text)
+        {
+            INPUT[] inputs = new INPUT[text.Length * 2];
+            int idx = 0;
+            foreach (char ch in text)
+            {
+                short vk = VkKeyScan(ch); // 0xFFFF если не картрируется
+                if (vk == -1) continue;
+                ushort scan = (ushort)(text.Length == 0 ? 0 : VkKeyScanW(ch));
+                bool isShift = (vk & 0x0100) != 0; // старший байт — модификатор Shift
+                byte keyCode = (byte)(vk & 0xFF);
+                if (isShift) { inputs[idx].type = INPUT_KEYBOARD; inputs[idx].union.keyboard.wVk = 0x10; inputs[idx].union.keyboard.dwFlags = 0; idx++; }
+                inputs[idx].type = INPUT_KEYBOARD;
+                inputs[idx].union.keyboard.wVk = keyCode;
+                inputs[idx].union.keyboard.wScan = 0;
+                inputs[idx].union.keyboard.dwFlags = 0;
+                idx++;
+                inputs[idx].type = INPUT_KEYBOARD;
+                inputs[idx].union.keyboard.wVk = keyCode;
+                inputs[idx].union.keyboard.wScan = 0;
+                inputs[idx].union.keyboard.dwFlags = KEYEVENTF_KEYUP;
+                idx++;
+                if (isShift) { inputs[idx].type = INPUT_KEYBOARD; inputs[idx].union.keyboard.wVk = 0x10; inputs[idx].union.keyboard.dwFlags = KEYEVENTF_KEYUP; idx++; }
+            }
+            if (idx > 0) SendInput((uint)idx, inputs, Marshal.SizeOf<INPUT>());
+        }
+
+        [DllImport("user32.dll")]
+        private static extern short VkKeyScan(char ch);
+        [DllImport("user32.dll")]
+        private static extern short VkKeyScanW(char ch);
 
         // Универсальный разбор ответа эндпоинта паузы. Поддерживает:
         // "true"/true, "false"/false, {"paused":...}, числовое значение.
@@ -2682,6 +2962,9 @@ RegisterHotKeyChecked(
                     UnregisterHotKey(this.Handle, HOTKEY_FOV_DOWN);
                     UnregisterHotKey(this.Handle, HOTKEY_PLANE_UP);
                     UnregisterHotKey(this.Handle, HOTKEY_PLANE_DOWN);
+                    UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
+                    UnregisterHotKey(this.Handle, HOTKEY_TELEPORT_EDITOR);
+                    UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
                 }
                 trayIcon.Visible = false;
                 Application.Exit();
@@ -2752,6 +3035,40 @@ RegisterHotKeyChecked(
             if (logger != null)
                 logger.Data(msg);
         }
+
+        // ===== Цветная консоль (v39.28): тёмно-серый фон, цветовые коды =====
+        // Ошибки — красный; предупреждения — оранжевый; подтверждения запуска/подключения —
+        // lime; значения/данные — cyan. AppendLog и её варианты пишут в RichTextBox цветом.
+        private enum ConsoleColorKind { Normal, Error, Warning, Confirm, Data }
+
+        private void AppendLogColored(string msg, ConsoleColorKind kind, bool persistWorkflow = true)
+        {
+            if (persistWorkflow && logger != null) logger.Workflow(msg);
+            if (logConsole.InvokeRequired)
+            {
+                logConsole.Invoke(new Action(() => AppendLogColored(msg, kind, false)));
+                return;
+            }
+            var color = kind switch
+            {
+                ConsoleColorKind.Error     => System.Drawing.Color.FromArgb(255, 90, 90),   // красный
+                ConsoleColorKind.Warning   => System.Drawing.Color.FromArgb(255, 165, 0),   // оранжевый
+                ConsoleColorKind.Confirm   => System.Drawing.Color.FromArgb(50, 255, 50),   // lime
+                ConsoleColorKind.Data      => System.Drawing.Color.FromArgb(0, 255, 255),   // cyan
+                _                          => System.Drawing.Color.LightGray
+            };
+            logConsole.SelectionStart = logConsole.TextLength;
+            logConsole.SelectionLength = 0;
+            logConsole.SelectionColor = color;
+            logConsole.AppendText(msg + Environment.NewLine);
+            logConsole.SelectionColor = logConsole.ForeColor;
+            logConsole.ScrollToCaret();
+        }
+        // Удобные обёртки по классам (логируем в workflow + цвет).
+        public void LogConsoleOk(string msg)   => AppendLogColored(msg, ConsoleColorKind.Confirm);
+        public void LogConsoleError(string msg) => AppendLogColored(msg, ConsoleColorKind.Error);
+        public void LogConsoleWarn(string msg) => AppendLogColored(msg, ConsoleColorKind.Warning);
+        public void LogConsoleData(string msg) => AppendLogColored(msg, ConsoleColorKind.Data);
 
         // ================================================================
         // ЖУРНАЛ ВЫБОРА НОВЫХ ТОЧЕК (v73, дополнено v78): при создании
@@ -3007,6 +3324,11 @@ RegisterHotKeyChecked(
         // ================================================================
         private void ApplySavedWindowBounds()
         {
+            // v39.29: приложение всегда открывается на полный экран.
+            WindowState = FormWindowState.Maximized;
+            StartPosition = FormStartPosition.CenterScreen;
+            return;
+
             const int defaultWidth = 1180;
             const int defaultHeight = 740;
 
@@ -3066,6 +3388,8 @@ RegisterHotKeyChecked(
                 UnregisterHotKey(this.Handle, HOTKEY_FOV_DOWN);
                 UnregisterHotKey(this.Handle, HOTKEY_PLANE_UP);
                 UnregisterHotKey(this.Handle, HOTKEY_PLANE_DOWN);
+                UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
+                UnregisterHotKey(this.Handle, HOTKEY_TELEPORT_EDITOR);
             }
             StopTriggerServer();
             StopWebSocketSaveServer();

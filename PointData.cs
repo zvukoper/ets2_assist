@@ -42,6 +42,7 @@ namespace ETS2_Assist_GUI
         // --- Внешний вид ---
         public string Color = "default"; // #rrggbb или named
         public string Icon = "default";
+        public float LabelStroke = 1f;    // толщина чёрной обводки названия, px (0 = без обводки)
 
         // --- Триггер / зона ---
         public double TriggerRadius = 200;   // радиус триггера, м
@@ -90,6 +91,7 @@ namespace ETS2_Assist_GUI
             new PointField { Key="Z", Label="Координата Z", Required=true, Group="Координаты", ValueType=typeof(double) },
             new PointField { Key="Color", Label="Цвет (#rrggbb)", Group="Внешний вид", ValueType=typeof(string) },
             new PointField { Key="Icon", Label="Иконка", Group="Внешний вид", ValueType=typeof(string) },
+            new PointField { Key="LabelStroke", Label="Толщина обводки названия (px)", Group="Внешний вид", ValueType=typeof(float) },
             new PointField { Key="TriggerRadius", Label="Радиус триггера (м)", Group="Триггер", ValueType=typeof(double) },
             new PointField { Key="CooldownMinutes", Label="Кулдаун (мин, 0=нет)", Group="Триггер", ValueType=typeof(int) },
             new PointField { Key="Hidden", Label="Скрытая (1/0)", Group="Триггер", ValueType=typeof(int) },

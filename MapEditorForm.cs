@@ -85,7 +85,10 @@ namespace ETS2_Assist_GUI
         // Клик по строке открывает папку логов приложения.
         private readonly EditorStatusBar _statusBar = new() { Dock = DockStyle.Bottom, Height = 24 };
         private readonly Label _statusLabel = new() { Dock = DockStyle.Bottom, Height = 24, ForeColor = Color.FromArgb(143, 160, 185), BackColor = Color.FromArgb(15, 18, 23), Padding = new Padding(4, 3, 0, 0), Visible = false };
-        private readonly TreeView _sidebar = new() { Dock = DockStyle.Left, Width = 220, BackColor = Color.FromArgb(20, 25, 35), ForeColor = Color.LightGray, Font = new Font("Segoe UI", 9), CheckBoxes = true };
+        private readonly TreeView _sidebar = new() { Dock = DockStyle.Fill, BackColor = Color.FromArgb(20, 25, 35), ForeColor = Color.LightGray, Font = new Font("Segoe UI", 9), CheckBoxes = true };
+        // v39.30: левая колонка сайдбара: панель кнопок видимости (сверху) + дерево категорий.
+        private readonly Panel _sidebarContainer = new() { Dock = DockStyle.Left, Width = 220, BackColor = Color.FromArgb(20, 25, 35) };
+        private readonly Panel _sidebarButtons = new() { Dock = DockStyle.Top, Height = 26, BackColor = Color.FromArgb(20, 25, 35) };
         private readonly ToolTip _tooltip = new() { InitialDelay = 0, ReshowDelay = 0, ShowAlways = true };
 
         private readonly string _stateFile = Path.Combine(AppDataPaths.UserDataDirectory, "map_editor_state.json");
@@ -107,10 +110,19 @@ namespace ETS2_Assist_GUI
         private readonly HashSet<string> _staticNames = new(); // gameName, пришедшие из статического custom_targets.json
         private string? _selectedGameName;   // выбранная точка
         private bool _createMode;            // режим создания новой точки
+        // v39.28: последняя позиция мыши на карте в МИРОВЫХ координатах (для телепорта к курсору,
+        // когда ничего не выбрано — высота под курсором не определяется, берём ближайшую точку
+        // с ненулевой высотой). Обновляется в OnMouseMove.
+        private double _lastCursorWx, _lastCursorWz;
+        private bool _lastCursorValid;
         // ПОМЕТКА ИЗ АР (v70): серый крестик в месте будущей точки (координаты мира).
         private bool _createModeFromAr;
         private double _arPinWx, _arPinWy, _arPinWz;
         private readonly HashSet<string> _dirtyFields = new(); // изменённые поля текущей точки
+        // Грязные поля ПО ТОЧКЕ (gameName -> набор изменённых полей). Нужно, чтобы при
+        // повторном выборе точки с несохранёнными правками подсветка полей не терялась
+        // (значения в панели изменены, а оранжевый фон пропадал, т.к. _dirtyFields сбрасывался).
+        private readonly Dictionary<string, HashSet<string>> _dirtyFieldsByPoint = new(StringComparer.Ordinal);
         private PointData? _editingCopy;     // копия для редактирования (отмена)
 
         // Панели редактирования / overrides
@@ -119,6 +131,9 @@ namespace ETS2_Assist_GUI
         private Panel _editPanel = null!;
         private FlowLayoutPanel _editFields = null!;
         private readonly Dictionary<string, Control> _fieldControls = new();
+        // Метки (названия) полей в панели — для cyan-метки файла override (поле: имя в скобках
+        // цветом cyan + клик по названию открывает файл overrides редактором по умолчанию).
+        private readonly Dictionary<string, Label> _fieldLabels = new();
         private Button _btnSavePoint = null!;
         private Button _btnCancelPoint = null!;
         private Button _btnDeletePoint = null!;
@@ -201,12 +216,32 @@ namespace ETS2_Assist_GUI
             Text = "Редактор карты";
             ClientSize = new Size(1000, 720);
             StartPosition = FormStartPosition.CenterScreen;
+            // v39.29: редактор всегда на полный экран.
+            WindowState = FormWindowState.Maximized;
             BackColor = Color.FromArgb(15, 18, 23);
             Controls.Add(_mapPanel);
             Controls.Add(_statusBar);   // статусная строка (левый dock — нижняя, под картой)
             Controls.Add(_statusLabel); // legacy-строка скрыта (Visible=false), сохранена для совместимости
             Controls.Add(_toolbar);
-            Controls.Add(_sidebar);
+            // v39.30: левая колонка = контейнер (панель кнопок НАД списком категорий).
+            _sidebarContainer.Controls.Add(_sidebarButtons);
+            _sidebarContainer.Controls.Add(_sidebar);
+            Controls.Add(_sidebarContainer);
+
+            // v39.29: три маленькие кнопки видимости категорий (скрыть/показать/инверсия).
+            // v39.30: на 35% меньше размером и шрифтом; панель НАД списком категорий (Dock.Top) —
+            // сайдбар целиком (панель + дерево) слева.
+            // v39.31: убран padding текста (Padding=0) — текст не обрезается.
+            var visBtnFont = new Font("Segoe UI", 7.5f);
+            var btnHide = new Button { Text = "скрыть", AutoSize = true, Height = 17, Left = 4, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(0), Margin = new Padding(0) };
+            var btnShow = new Button { Text = "показать", AutoSize = true, Height = 17, Left = 58, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(0), Margin = new Padding(0) };
+            var btnInvert = new Button { Text = "инверсия", AutoSize = true, Height = 17, Left = 112, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(0), Margin = new Padding(0), TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+            btnHide.Click += (s, e) => SetAllCategoriesVisible(false);
+            btnShow.Click += (s, e) => SetAllCategoriesVisible(true);
+            btnInvert.Click += (s, e) => InvertAllCategories();
+            _sidebarButtons.Controls.Add(btnHide);
+            _sidebarButtons.Controls.Add(btnShow);
+            _sidebarButtons.Controls.Add(btnInvert);
 
             var findTruck = new Button { Text = "найти грузовик", Width = 130, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat };
             findTruck.Click += (s, e) => FindTruck();
@@ -554,6 +589,7 @@ namespace ETS2_Assist_GUI
             target.X = x; target.Y = y; target.Z = z;
             if (t.ContainsKey("color")) target.Color = (string?)t["color"] ?? target.Color;
             if (t.ContainsKey("icon")) target.Icon = (string?)t["icon"] ?? target.Icon;
+            if (t.ContainsKey("labelStroke")) target.LabelStroke = (float?)(t["labelStroke"]?.Value<float?>()) ?? target.LabelStroke;
             if (t.ContainsKey("radius")) target.TriggerRadius = (double?)t["radius"] ?? target.TriggerRadius;
             else if (t.ContainsKey("triggerRadius")) target.TriggerRadius = (double?)t["triggerRadius"] ?? target.TriggerRadius;
             if (t.ContainsKey("cooldown")) target.CooldownMinutes = (int?)t["cooldown"] ?? target.CooldownMinutes;
@@ -606,6 +642,7 @@ namespace ETS2_Assist_GUI
                 ["x"] = pd.X, ["y"] = pd.Y, ["z"] = pd.Z,
                 ["color"] = pd.Color,
                 ["icon"] = pd.Icon,
+                ["labelStroke"] = pd.LabelStroke,
                 ["radius"] = pd.TriggerRadius,
                 ["triggerRadius"] = pd.TriggerRadius,
                 ["cooldown"] = pd.CooldownMinutes,
@@ -638,6 +675,7 @@ namespace ETS2_Assist_GUI
             ["Z"] = new[] { "coords" },
             ["Color"] = new[] { "color" },
             ["Icon"] = new[] { "icon" },
+            ["LabelStroke"] = new[] { "labelStroke" },
             ["TriggerRadius"] = new[] { "radius", "triggerRadius" },
             ["CooldownMinutes"] = new[] { "cooldown", "cooldownMinutes" },
             ["Hidden"] = new[] { "hidden" },
@@ -778,6 +816,61 @@ namespace ETS2_Assist_GUI
             return (wx, wz);
         }
 
+        // v39.28: разрешение цели телепорта (для хоткея Ctrl+Shift+C из MainForm).
+        // Возвращает (x, y, z, fromCursor): y — высота цели; если выбрана точка — к ней,
+        // копируем координаты. Если ничего не выбрано — координаты под курсором, высоту
+        // подставляем из БЛИЖАЙШЕЙ точки с ненулевой высотой (_lastCursorWx/_lastCursorWz).
+        // v39.28: текущее направление камеры/головы (доли оборота) для расчёта азимута/угла
+        // телепорта. Доступны из MainForm.
+        internal double CurrentHeading => _truckHeading; // доля оборота (0 = север)
+        internal double CurrentHeadYaw => _headYaw;      // доля оборота
+        internal double CurrentHeadPitch => _headPitch;  // доля оборота
+
+        internal (double X, double Y, double Z, bool FromCursor) ResolveTeleportTarget()
+        {
+            // Приоритет: (1) курсор наведён на точку; (2) выбрана точка; (3) курсор.
+            // 1) Курсор поверх точки — берём её координаты с высотой.
+            if (_lastCursorValid && TryHitPoint(_lastCursorWx, _lastCursorWz, out var hover))
+                return (hover.X, hover.Y, hover.Z, false);
+
+            // 2) Выбранная точка — телепорт к ней (высоту берём из Y точки).
+            if (!string.IsNullOrEmpty(_selectedGameName) && _pointModel.TryGetValue(_selectedGameName, out var pd))
+                return (pd.X, pd.Y, pd.Z, false);
+
+            // 3) Ничего не выбрано — под курсором. Высота не определена: ищем ближайшую
+            //    любую точку с НЕНУЛЕВОЙ высотой (Y).
+            double cx = _lastCursorValid ? _lastCursorWx : _centerX;
+            double cz = _lastCursorValid ? _lastCursorWz : _centerZ;
+            double bestY = 0; bool found = false; double bestD = double.MaxValue;
+            foreach (var p in _pointModel.Values)
+            {
+                if (p.Y == 0) continue; // ненулевая высота
+                double d = (p.X - cx) * (p.X - cx) + (p.Z - cz) * (p.Z - cz);
+                if (d < bestD) { bestD = d; bestY = p.Y; found = true; }
+            }
+            double y = found ? bestY : 0;
+            LogEditor($"Teleport to cursor: ({cx:F1}, {y:F1}, {cz:F1}) высота из {(found ? "ближайшей точки Y=" + bestY : "0 (не найдена ненулевая)")}");
+            return (cx, y, cz, true);
+        }
+
+        // Есть ли точка под (wx, wz) в пределах порога клика (экранного). Возвращает PointData.
+        private bool TryHitPoint(double wx, double wz, out PointData point)
+        {
+            var sp = WorldToScreen(wx, wz);
+            foreach (var t in _targets)
+            {
+                if (!_pointModel.TryGetValue(t.id, out var pm)) continue;
+                var p = WorldToScreen(t.x, t.z);
+                if (Math.Abs(p.X - sp.X) <= ClickThresholdPx && Math.Abs(p.Y - sp.Y) <= ClickThresholdPx)
+                {
+                    point = pm;
+                    return true;
+                }
+            }
+            point = null!;
+            return false;
+        }
+
         private void OnPaint(object? sender, PaintEventArgs e)
         {
             var g = e.Graphics;
@@ -861,8 +954,31 @@ namespace ETS2_Assist_GUI
             // Единый конвейер отрисовки ВСЕХ точек (цели/города/POI) из _targets.
             // Города и POI теперь — полноценные точки в _pointModel/_targets (как и цели),
             // поэтому перетаскиваются и выделяются единообразно. POI скрываем при масштабе > 10 м/px.
+            // Сортировка по слою отрисовки (meta.layer): 0 = наивысший приоритет (всегда поверх),
+            // иначе чем больше layer — тем выше (перекрывает меньшие). Стабильная сортировка.
+            // ВАЖНО (фриз 04.09): слои вычисляем ОДИН раз в словарь, а не в компараторе —
+            // SdoMeta.LayerOf читает meta.json (File.GetLastWriteTimeUtc) на каждый вызов,
+            // а Sort делает ~N·logN сравнений → 5000 точек = десятки тысяч чтений файла = фриз.
             bool onlySel = _onlySelectedChk != null && _onlySelectedChk.Checked && _selectedIds.Count > 0;
-            foreach (var t in _targets)
+            var drawTargets = _targets.ToList();
+            var layerCache = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var t in drawTargets)
+            {
+                int l = 100;
+                if (_pointModel.TryGetValue(t.id, out var pm))
+                {
+                    if (pm.IsCity) l = 0;
+                    else if (pm.IsSdo || pm.IsPoi) l = SdoMeta.LayerOf(pm.Category);
+                }
+                layerCache[t.id] = l;
+            }
+            drawTargets.Sort((a, b) =>
+            {
+                int la = layerCache[a.id] == 0 ? int.MaxValue : layerCache[a.id];
+                int lb = layerCache[b.id] == 0 ? int.MaxValue : layerCache[b.id];
+                return la - lb;
+            });
+            foreach (var t in drawTargets)
             {
                 _pointModel.TryGetValue(t.id, out var pm);
                 bool isCity = pm != null && pm.IsCity;
@@ -953,18 +1069,21 @@ namespace ETS2_Assist_GUI
                 // категории (font_size/font_color/font_weight); остальные — обычные белые.
                 if (isCity)
                 {
-                    DrawLabelAbove(g, label, p.X, p.Y, Color.Yellow, bold: true, fontSize: SdoMeta.FontSizeOf("Города"));
+                    // Города: удвоенная чёрная обводка (strokeWidth 2) — требование 04.09.2026.
+                    DrawLabelAbove(g, label, p.X, p.Y, Color.Yellow, bold: true, fontSize: SdoMeta.FontSizeOf("Города"), strokeWidth: 2f);
                 }
                 else if (isSdo)
                 {
                     DrawLabelAbove(g, label, p.X, p.Y,
                         disabled ? Color.Gray : SdoMeta.FontColorOf(pm!.Category),
                         bold: SdoMeta.FontBoldOf(pm!.Category),
-                        fontSize: SdoMeta.FontSizeOf(pm!.Category));
+                        fontSize: SdoMeta.FontSizeOf(pm!.Category),
+                        strokeWidth: pm!.LabelStroke);
                 }
                 else
                 {
-                    DrawLabelAbove(g, label, p.X, p.Y, disabled ? Color.Gray : Color.White, bold: false);
+                    DrawLabelAbove(g, label, p.X, p.Y, disabled ? Color.Gray : Color.White, bold: false,
+                        strokeWidth: pm != null ? pm.LabelStroke : 1f);
                 }
             }
 
@@ -1031,7 +1150,10 @@ namespace ETS2_Assist_GUI
             catch { }
         }
 
-        private static void DrawLabelAbove(Graphics g, string text, float cx, float cy, Color textColor, bool bold = false, int gap = 6, float fontSize = 9f)
+        // Рисует подпись над точкой с чёрной обводкой. strokeWidth — толщина обводки в px
+        // (смещение чёрных копий текста по диагоналям; по умолчанию 1). Для городов — 2
+        // (удвоенная обводка, требование 04.09.2026).
+        private static void DrawLabelAbove(Graphics g, string text, float cx, float cy, Color textColor, bool bold = false, int gap = 6, float fontSize = 9f, float strokeWidth = 1f)
         {
             if (string.IsNullOrEmpty(text)) return;
             using var font = new Font("Segoe UI", fontSize, bold ? FontStyle.Bold : FontStyle.Regular);
@@ -1039,7 +1161,8 @@ namespace ETS2_Assist_GUI
             float x = cx - size.Width / 2f;
             float y = cy - size.Height - gap;
             using var black = new SolidBrush(Color.Black);
-            foreach (var (dx, dy) in new[] { (-1f, -1f), (1f, -1f), (-1f, 1f), (1f, 1f) })
+            float s = Math.Max(0.5f, strokeWidth);
+            foreach (var (dx, dy) in new[] { (-s, -s), (s, -s), (-s, s), (s, s) })
                 g.DrawString(text, font, black, x + dx, y + dy);
             using var fg = new SolidBrush(textColor);
             g.DrawString(text, font, fg, x, y);
@@ -1145,6 +1268,10 @@ namespace ETS2_Assist_GUI
                 RequestRender();
                 return;
             }
+
+            // v39.28: обновляем позицию курсора в мировых координатах (для телепорта к курсору).
+            (_lastCursorWx, _lastCursorWz) = ScreenToWorld(e.X, e.Y);
+            _lastCursorValid = true;
 
             var tip = HoverInfo(e.X, e.Y);
             if (tip != null)
@@ -1453,11 +1580,14 @@ namespace ETS2_Assist_GUI
             _sidebar.Nodes.Add(tNode);
 
             var cNode = new TreeNode("Города (" + _cities.Count + ")") { Name = "Города", Checked = _catVisible.TryGetValue("Города", out var sc) && sc };
-            foreach (var pd in _pointModel.Values.Where(p => p.IsCity))
+            foreach (var pd in OrderSidebarPoints(_pointModel.Values.Where(p => p.IsCity)))
             {
-                var n = new TreeNode(pd.RealName) { Tag = (pd.X, pd.Z), Name = pd.GameName };
+                bool dirty = IsDirtyPoint(pd.GameName);
+                var n = new TreeNode(SidedName(pd)) { Tag = (pd.X, pd.Z), Name = pd.GameName };
                 n.Checked = _selectedIds.Contains(pd.GameName);
-                if (n.Checked) { n.BackColor = Color.FromArgb(60, 70, 90); if (pd.GameName == _selectedGameName) selNode = n; }
+                bool selected = _selectedIds.Contains(pd.GameName);
+                StylePointNode(n, pd, dirty, selected);
+                if (selected && pd.GameName == _selectedGameName) selNode = n;
                 cNode.Nodes.Add(n);
             }
             cNode.Expand();
@@ -1466,15 +1596,20 @@ namespace ETS2_Assist_GUI
             // SDO-категории (Static Data Objects): группы по категориям, имена —
             // читабельные (meta.json), объекты — uid / easter-имя. Между городами и POI.
             // Новые категории видимы по умолчанию (true), существующие — как сохранено.
+            // Сортировка внутри категории: грязные (несохранённые) — ПЕРВЫМИ (оранжевый фон),
+            // затем объекты с '*' (есть override), затем остальные. Подсветка оранжевым —
+            // и в родной категории (не только в «Не сохранённое»).
             foreach (var grp in _pointModel.Values.Where(p => p.IsSdo).GroupBy(p => p.Category).OrderBy(g => g.Key))
             {
                 if (!_catVisible.ContainsKey(grp.Key)) _catVisible[grp.Key] = true;
                 var catNode = new TreeNode(grp.Key + " (" + grp.Count() + ")") { Name = grp.Key, Checked = _catVisible.TryGetValue(grp.Key, out var sp) && sp };
-                foreach (var pd in grp)
+                foreach (var pd in OrderSidebarPoints(grp))
                 {
-                    var n = new TreeNode(string.IsNullOrEmpty(pd.RealName) ? pd.GameName : pd.RealName) { Tag = (pd.X, pd.Z), Name = pd.GameName };
+                    var n = new TreeNode(SidedName(pd)) { Tag = (pd.X, pd.Z), Name = pd.GameName };
                     n.Checked = _selectedIds.Contains(pd.GameName);
-                    if (n.Checked) n.BackColor = Color.FromArgb(60, 70, 90);
+                    bool dirty = IsDirtyPoint(pd.GameName);
+                    bool selected = _selectedIds.Contains(pd.GameName);
+                    StylePointNode(n, pd, dirty, selected);
                     catNode.Nodes.Add(n);
                 }
                 _sidebar.Nodes.Add(catNode);
@@ -1483,11 +1618,13 @@ namespace ETS2_Assist_GUI
             foreach (var grp in _pointModel.Values.Where(p => p.IsPoi).GroupBy(p => p.Category).OrderBy(g => g.Key))
             {
                 var catNode = new TreeNode(grp.Key + " (" + grp.Count() + ")") { Name = grp.Key, Checked = _catVisible.TryGetValue(grp.Key, out var sp) && sp };
-                foreach (var pd in grp)
+                foreach (var pd in OrderSidebarPoints(grp))
                 {
-                    var n = new TreeNode(string.IsNullOrEmpty(pd.RealName) ? pd.GameName : pd.RealName) { Tag = (pd.X, pd.Z), Name = pd.GameName };
+                    var n = new TreeNode(SidedName(pd)) { Tag = (pd.X, pd.Z), Name = pd.GameName };
                     n.Checked = _selectedIds.Contains(pd.GameName);
-                    if (n.Checked) n.BackColor = Color.FromArgb(60, 70, 90);
+                    bool dirty = IsDirtyPoint(pd.GameName);
+                    bool selected = _selectedIds.Contains(pd.GameName);
+                    StylePointNode(n, pd, dirty, selected);
                     catNode.Nodes.Add(n);
                 }
                 _sidebar.Nodes.Add(catNode);
@@ -1560,6 +1697,104 @@ namespace ETS2_Assist_GUI
             _sidebar.Nodes.Add(savedNode);
 
             if (selNode != null) _sidebar.SelectedNode = selNode;
+        }
+
+        // v39.29: кнопки видимости категорий. Скрыть/показать все категории; инверсия —
+        // показать скрытые, скрыть показанные. Обновляет _catVisible и чекбоксы сайдбара.
+        private void SetAllCategoriesVisible(bool visible)
+        {
+            foreach (var key in _catVisible.Keys.ToList())
+                _catVisible[key] = visible;
+            SyncSidebarChecks();
+            RequestRender();
+        }
+
+        private void InvertAllCategories()
+        {
+            foreach (var key in _catVisible.Keys.ToList())
+                _catVisible[key] = !_catVisible[key];
+            SyncSidebarChecks();
+            RequestRender();
+        }
+
+        // Синхронизирует чекбоксы родительских узлов категорий с _catVisible.
+        private void SyncSidebarChecks()
+        {
+            _suppressCheck = true;
+            try
+            {
+                foreach (var node in EnumNodes(_sidebar.Nodes))
+                {
+                    if (node.Nodes.Count == 0) continue; // только родительские (категории)
+                    string key = !string.IsNullOrEmpty(node.Name) ? node.Name : node.Text;
+                    if (_catVisible.TryGetValue(key, out var v)) node.Checked = v;
+                }
+            }
+            finally { _suppressCheck = false; }
+        }
+
+        // Сортировка точек внутри категории сайдбара:
+        // 1) грязные (несохранённые правки) — ПЕРВЫМИ (оранжевый фон);
+        // 2) объекты с '*' (есть override в файлах) — затем;
+        // 3) остальные — в конце. Внутри каждой группы — по имени.
+        private IEnumerable<PointData> OrderSidebarPoints(IEnumerable<PointData> pts)
+        {
+            return pts
+                .OrderByDescending(p => _unsavedEdits.Contains(p.GameName)) // грязные первыми
+                .ThenByDescending(p => p.IsOverride || (p.SourceFile != "" && !_staticNames.Contains(p.GameName))) // затем с '*'
+                .ThenBy(p => string.IsNullOrEmpty(p.RealName) ? p.GameName : p.RealName, StringComparer.OrdinalIgnoreCase);
+        }
+
+        // Грязная ли точка (несохранённые правки).
+        private bool IsDirtyPoint(string gameName) => _unsavedEdits.Contains(gameName);
+        // Есть ли у точки override в файлах (для префикса '*'). СДО-точки считаем по IsOverride
+        // (переопределение статики); пользовательские/цели — по SourceFile вне статики.
+        private bool HasOverrideMarker(PointData pd) =>
+            pd.IsOverride || (pd.SourceFile != "" && !_staticNames.Contains(pd.GameName));
+
+        // Префикс '*' для объектов с override + (в будущем) иная маркировка.
+        private string SidedName(PointData pd)
+        {
+            var name = string.IsNullOrEmpty(pd.RealName) ? pd.GameName : pd.RealName;
+            if (HasOverrideMarker(pd)) name = "*" + name;
+            return name;
+        }
+
+        // Единая стилизация узла сайдбара по состоянию точки:
+        // грязная → оранжевый фон (+жирный шрифт); выделенная → тёмно-синий фон.
+        private void StylePointNode(TreeNode n, PointData pd, bool dirty, bool selected)
+        {
+            if (dirty)
+            {
+                n.BackColor = Color.FromArgb(120, 60, 12); // оранжевый фон — несохранённые правки
+                n.NodeFont = new Font(_sidebar.Font, FontStyle.Bold); // жирный шрифт для несохранённых
+            }
+            else if (selected)
+            {
+                n.BackColor = Color.FromArgb(60, 70, 90);
+            }
+        }
+
+        // Слой отрисовки точки на редакторе: 0 = наивысший приоритет (всегда поверх),
+        // иначе чем больше — тем выше. Города принудительно слой 0 (как "Города" 0 в meta).
+        private int LayerOfTarget((string id, string name, double x, double z, Color color) t)
+        {
+            if (_pointModel.TryGetValue(t.id, out var pm))
+            {
+                if (pm.IsCity) return 0;
+                if (pm.IsSdo || pm.IsPoi) return SdoMeta.LayerOf(pm.Category);
+            }
+            return 100; // пользовательские/цели
+        }
+
+        // Сравнение по слою (возрастание; 0 превращаем в максимум — всегда поверх).
+        // Использует LayerOfTarget (instance, с доступом к _pointModel).
+        private int LayerCompare((string id, string name, double x, double z, Color color) a,
+                                 (string id, string name, double x, double z, Color color) b)
+        {
+            int la = LayerOfTarget(a) == 0 ? int.MaxValue : LayerOfTarget(a);
+            int lb = LayerOfTarget(b) == 0 ? int.MaxValue : LayerOfTarget(b);
+            return la - lb;
         }
 
         private void CenterOn(double x, double z)
@@ -2027,6 +2262,11 @@ namespace ETS2_Assist_GUI
                 int top = lbl.GetPreferredSize(new Size(312, 0)).Height + 3;
                 ctrl.Top = top;
                 row.Controls.Add(lbl); row.Controls.Add(ctrl);
+                // Запоминаем лейбл поля для cyan-метки файла override и клика по нему.
+                _fieldLabels[f.Key] = lbl;
+                lbl.Tag = f.Key;
+                // Клик по названию поля → открывает override файл (если есть) редактором по умолчанию.
+                lbl.Click += (s, e2) => OpenFieldOverrideFile(f.Key);
                 if (f.Key == "GameName")
                 {
                     _gameNameLabel = lbl;
@@ -2078,6 +2318,95 @@ namespace ETS2_Assist_GUI
             _dirtyFields.Remove(key);
             UpdateActionButtons();
             RequestRender();
+        }
+
+        // Обновляет cyan-метку над полем: показывает имя файла override (без ".json"), который
+        // ПЕРЕОПРЕДЕЛЯЕТ это поле последним (по load_order). Если поле не переопределено ни одним
+        // override — метка убирается, цвет лейбла возвращается обычным.
+        private void ApplyFieldOverrideHints(string gameName)
+        {
+            if (string.IsNullOrEmpty(gameName)) return;
+            // Соберём map: json-поле -> файл (load_order, последний побеждает).
+            // PointData.FieldJson даёт имена JSON-свойств поля (для дельта-записи). Ищем по
+            // реальным ключам в override-файлах какой файл переопределяет поле последним.
+            var fieldToFile = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var f in _overrideFiles) // уже в порядке load_order (снизу вверх)
+            {
+                string path = Path.Combine(_overridesDir, f);
+                if (!File.Exists(path)) continue;
+                try
+                {
+                    var root = JObject.Parse(File.ReadAllText(path));
+                    foreach (var t in (root["customTargets"] as JArray ?? new JArray()).OfType<JObject>())
+                    {
+                        if ((t["gameName"]?.Value<string>() ?? "") != gameName) continue;
+                        foreach (var prop in t.Properties())
+                            fieldToFile[prop.Name] = f; // последний файл побеждает
+                    }
+                }
+                catch { }
+            }
+            foreach (var kv in PointData.Fields)
+            {
+                if (!_fieldLabels.TryGetValue(kv.Key, out var lbl)) continue;
+                string? file = null;
+                // Найдём JSON-поле PointData поля, которое реально переопределено.
+                if (FieldJson.TryGetValue(kv.Key, out var jsonNames))
+                    foreach (var nm in jsonNames)
+                        if (fieldToFile.TryGetValue(nm, out var f)) { file = f; break; }
+                if (file != null)
+                {
+                    string fname = file.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+                        ? file.Substring(0, file.Length - 5) : file;
+                    lbl.Text = kv.Label + (kv.Required ? " *" : "") + " (" + fname + ")";
+                    lbl.ForeColor = Color.Cyan;
+                }
+                else
+                {
+                    lbl.Text = kv.Label + (kv.Required ? " *" : "");
+                    lbl.ForeColor = kv.Mode == PointFieldMode.ReadOnly ? Color.Gray : Color.LightGray;
+                }
+            }
+        }
+
+        // Открывает override-файл, который переопределяет поле последним, редактором по умолчанию.
+        private void OpenFieldOverrideFile(string key)
+        {
+            if (string.IsNullOrEmpty(_selectedGameName)) return;
+            try
+            {
+                var fieldToFile = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var f in _overrideFiles)
+                {
+                    string path = Path.Combine(_overridesDir, f);
+                    if (!File.Exists(path)) continue;
+                    try
+                    {
+                        var root = JObject.Parse(File.ReadAllText(path));
+                        foreach (var t in (root["customTargets"] as JArray ?? new JArray()).OfType<JObject>())
+                        {
+                            if ((t["gameName"]?.Value<string>() ?? "") != _selectedGameName) continue;
+                            foreach (var prop in t.Properties()) fieldToFile[prop.Name] = f;
+                        }
+                    }
+                    catch { }
+                }
+                string? file = null;
+                if (FieldJson.TryGetValue(key, out var jsonNames))
+                    foreach (var nm in jsonNames)
+                        if (fieldToFile.TryGetValue(nm, out var f)) { file = f; break; }
+                if (file == null) { ShowCopied("Поле не переопределено ни одним override-файлом."); return; }
+                string path2 = Path.Combine(_overridesDir, file);
+                if (File.Exists(path2))
+                {
+                    using var pr = new System.Diagnostics.Process
+                    {
+                        StartInfo = new System.Diagnostics.ProcessStartInfo(path2) { UseShellExecute = true }
+                    };
+                    pr.Start();
+                }
+            }
+            catch (Exception ex) { ShowCopied("Не удалось открыть файл: " + ex.Message); }
         }
 
         private IEnumerable<string> DistinctCategories()
@@ -2160,6 +2489,9 @@ namespace ETS2_Assist_GUI
                 _dirtyFields.Clear();
                 _createMode = false;
                 LoadPointIntoPanel(pd);
+                // Восстанавливаем подсветку грязных полей, если у точки есть несохранённые
+                // правки (значения в панели уже изменены — оранжевый фон не должен теряться).
+                RestoreDirtyFieldHighlight(key);
                 return;
             }
             // Города: системное имя = id (gameName), отображаемое = name.
@@ -2214,6 +2546,25 @@ namespace ETS2_Assist_GUI
             _dirtyFields.Clear();
             _createMode = false;
             LoadPointIntoPanel(p);
+            RestoreDirtyFieldHighlight(p.GameName);
+        }
+
+        // Восстанавливает оранжевую подсветку грязных полей точки (если есть несохранённые
+        // правки). Вызывается после загрузки точки в панель, чтобы подсветка не терялась
+        // при повторном выборе точки с изменёнными, но не сохранёнными значениями.
+        private void RestoreDirtyFieldHighlight(string gameName)
+        {
+            if (!_dirtyFieldsByPoint.TryGetValue(gameName, out var fields) || fields.Count == 0) return;
+            foreach (var key in fields)
+            {
+                if (!_fieldControls.TryGetValue(key, out var ctrl)) continue;
+                if (ctrl is TextBox tbx) tbx.BackColor = DirtyBg;
+            }
+            // Восстанавливаем и набор грязных полей текущей точки (для кнопок Сохранить/Отменить).
+            _dirtyFields.Clear();
+            foreach (var k in fields) _dirtyFields.Add(k);
+            if (!string.IsNullOrEmpty(_selectedGameName)) _unsavedEdits.Add(_selectedGameName);
+            UpdateActionButtons();
         }
 
         // Лёгкое обновление выделения/чекбоксов в сайдбаре БЕЗ полной перестройки (нет мерцания).
@@ -2398,6 +2749,8 @@ namespace ETS2_Assist_GUI
             if (_gameNameError != null) _gameNameError.Visible = false;
             RefreshRequiredHighlight();
             UpdateActionButtons();
+            // cyan-метки файла override над полями (поле: имя override-файла в скобках).
+            if (!string.IsNullOrEmpty(_selectedGameName)) ApplyFieldOverrideHints(_selectedGameName);
         }
 
         private void OnFieldChanged(string key)
@@ -2443,6 +2796,10 @@ namespace ETS2_Assist_GUI
             {
                 if (_dirtyFields.Count > 0) _unsavedEdits.Add(_selectedGameName);
                 else _unsavedEdits.Remove(_selectedGameName);
+                // Сохраняем набор грязных полей ПО ТОЧКЕ, чтобы при повторном выборе
+                // подсветка не терялась (значения в панели изменены, а _dirtyFields сбрасывался).
+                if (_dirtyFields.Count > 0) _dirtyFieldsByPoint[_selectedGameName] = new HashSet<string>(_dirtyFields);
+                else _dirtyFieldsByPoint.Remove(_selectedGameName);
             }
 
             // Тёмно-оранжевый фон у изменённого поля (только текстовые/не-readonly).
@@ -2563,6 +2920,7 @@ namespace ETS2_Assist_GUI
             WritePointToOverrideFile(pd);
             _createMode = false;
             _unsavedEdits.Remove(name); // сохранено — уходит из «Не сохранённое»
+            _dirtyFieldsByPoint.Remove(name); // сохранено — грязных полей больше нет
 
             // После сохранения — команда «Обновить»: перезагрузить статику + overrides и применить на карту.
             LoadTargets();
@@ -2606,6 +2964,7 @@ namespace ETS2_Assist_GUI
                 _editingCopy = pd.Clone();
                 _dirtyFields.Clear();
                 _unsavedEdits.Remove(_selectedGameName); // отмена — правок больше нет
+                _dirtyFieldsByPoint.Remove(_selectedGameName); // отмена — грязных полей больше нет
                 LoadPointIntoPanel(pd);
                 UpdateSidebarSelection();
                 UpdateActionButtons();
@@ -2622,17 +2981,45 @@ namespace ETS2_Assist_GUI
                 $"Удалить точку «{label}»? Действие необратимо (запись в overrides будет удалена/сброшена).",
                 "Подтверждение удаления", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (res != DialogResult.Yes) return;
-            if (pd.SourceFile != "")
+
+            // Удаляем точку ИЗ ПОСЛЕДНЕГО (высшего по load_order) override-файла, который
+            // её переопределяет. Если override есть в файлах ниже — они подгружаются как обычно,
+            // и кнопка удалит следующий. Точка полностью удаляется, только когда нет ни одного override.
+            string? removedFrom = null;
+            if (!string.IsNullOrEmpty(pd.SourceFile))
             {
+                removedFrom = pd.SourceFile;
                 RemovePointFromOverrideFile(pd.GameName, pd.SourceFile);
-                _pointModel.Remove(pd.GameName);
             }
             else
                 RemoveAnyOverrideFor(pd.GameName);
-            _selectedGameName = null; _createMode = false; _editingCopy = null; _dirtyFields.Clear();
-            RebuildTargetsFromModel(); PopulateSidebar(); UpdateActionButtons(); RequestRender();
-            LogEditor($"Точка '{pd.GameName}' удалена/сброшена.");
-            _statusBar.SetOperation($"удалено: {pd.GameName}", busy: false);
+
+            // Пересобираем модель с нуля (статика + оставшиеся overrides по load_order).
+            LoadTargets();
+            RebuildSelectLookup();
+            RebuildTargetsFromModel();
+
+            // Если точка осталась в модели (есть override в нижестоящих файлах) — оставляем
+            // её выделенной, чтобы кнопка «Удалить» удалила следующий override. Иначе — снимаем выбор.
+            if (_pointModel.TryGetValue(_selectedGameName, out var surv))
+            {
+                // Остался override ниже — очищаем dirty/unsaved (перезагружено свежее состояние).
+                _editingCopy = surv.Clone();
+                _dirtyFields.Clear();
+                _unsavedEdits.Remove(_selectedGameName);
+                _dirtyFieldsByPoint.Remove(_selectedGameName);
+                LoadPointIntoPanel(surv);
+            }
+            else
+            {
+                _selectedGameName = null; _createMode = false; _editingCopy = null; _dirtyFields.Clear();
+                _dirtyFieldsByPoint.Remove(pd.GameName);
+            }
+            _selectedIds.Clear();
+            if (_selectedGameName != null) _selectedIds.Add(_selectedGameName);
+            PopulateSidebar(); UpdateActionButtons(); RequestRender();
+            LogEditor($"Точка '{pd.GameName}' удалена из {removedFrom ?? "всех overrides"}." + (_pointModel.ContainsKey(pd.GameName) ? " Остался override ниже — точка сохранена." : ""));
+            _statusBar.SetOperation($"удалено из {removedFrom ?? "всех overrides"}: {pd.GameName}", busy: false);
             MainForm.NotifyPointsOverridesChanged();
         }
 

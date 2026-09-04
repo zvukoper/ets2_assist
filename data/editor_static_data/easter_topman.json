@@ -1,0 +1,18 @@
+{
+    "category":  "Easter eggs",
+    "source":  "easter_topman.txt",
+    "easter":  true,
+    "count":  1,
+    "objects":  [
+                    {
+                        "uid":  "0x4e43722cd1c00000",
+                        "sector":  "sec+0038-0021",
+                        "sectorX":  38,
+                        "sectorZ":  -21,
+                        "x":  153453,
+                        "y":  145.645,
+                        "z":  -82550.4,
+                        "name":  "topman"
+                    }
+                ]
+}

@@ -2,7 +2,7 @@
     "category":  "shashlik",
     "source":  "model_shashlik.txt",
     "easter":  false,
-    "count":  23,
+    "count":  24,
     "objects":  [
                     {
                         "uid":  "0x4566ef6403400000",
@@ -210,6 +210,15 @@
                         "x":  194582,
                         "y":  105.25,
                         "z":  -103051
+                    },
+                    {
+                        "uid":  "0x56e055b947000001",
+                        "sector":  "sec+0039-0022",
+                        "sectorX":  39,
+                        "sectorZ":  -22,
+                        "x":  157738,
+                        "y":  101.977,
+                        "z":  -87137.2
                     }
                 ]
 }

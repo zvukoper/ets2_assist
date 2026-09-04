@@ -1,0 +1,68 @@
+{
+    "category":  "Easter eggs",
+    "source":  "easter_donations.txt",
+    "easter":  true,
+    "count":  6,
+    "objects":  [
+                    {
+                        "uid":  "0x3b7a5d8c6e800000",
+                        "sector":  "sec+0040-0017",
+                        "sectorX":  40,
+                        "sectorZ":  -17,
+                        "x":  162558,
+                        "y":  111.598,
+                        "z":  -65543.4,
+                        "name":  "donations"
+                    },
+                    {
+                        "uid":  "0x3b7a5f3475c00000",
+                        "sector":  "sec+0040-0017",
+                        "sectorX":  40,
+                        "sectorZ":  -17,
+                        "x":  161427,
+                        "y":  111.398,
+                        "z":  -65915,
+                        "name":  "donations"
+                    },
+                    {
+                        "uid":  "0x3b7a609406400000",
+                        "sector":  "sec+0038-0015",
+                        "sectorX":  38,
+                        "sectorZ":  -15,
+                        "x":  154539,
+                        "y":  106.273,
+                        "z":  -56074.8,
+                        "name":  "donations"
+                    },
+                    {
+                        "uid":  "0x3b7a62a0e7c00000",
+                        "sector":  "sec+0039-0013",
+                        "sectorX":  39,
+                        "sectorZ":  -13,
+                        "x":  156451,
+                        "y":  103.727,
+                        "z":  -50452.6,
+                        "name":  "donations"
+                    },
+                    {
+                        "uid":  "0x3b7a6384cf000000",
+                        "sector":  "sec+0039-0013",
+                        "sectorX":  39,
+                        "sectorZ":  -13,
+                        "x":  159898,
+                        "y":  116.602,
+                        "z":  -50011.1,
+                        "name":  "donations"
+                    },
+                    {
+                        "uid":  "0x3b7a664c5e000000",
+                        "sector":  "sec+0040-0012",
+                        "sectorX":  40,
+                        "sectorZ":  -12,
+                        "x":  161523,
+                        "y":  160.941,
+                        "z":  -47827.6,
+                        "name":  "donations"
+                    }
+                ]
+}

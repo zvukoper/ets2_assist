@@ -444,10 +444,19 @@ namespace ETS2_Assist_GUI
                 // SDO: иконка категории (meta.json, png 50x50 в editor_static_data\icons).
                 // Миникарта рисует иконку вместо цветного кружка; без иконки — кружок.
                 string? icon = null;
+                float opacity = 1f;
+                int layer = 100;
+                bool displayOnMap = true;
                 if (p.IsSdo)
                 {
                     var meta = SdoMeta.Categories.TryGetValue(p.Category, out var metaItem) ? metaItem : null;
-                    if (meta != null && !string.IsNullOrWhiteSpace(meta.Icon)) icon = meta.Icon;
+                    if (meta != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(meta.Icon)) icon = meta.Icon;
+                        opacity = SdoMeta.OpacityOf(p.Category);
+                        layer = SdoMeta.LayerOf(p.Category);
+                        displayOnMap = SdoMeta.DisplayOnMapOf(p.Category);
+                    }
                 }
                 arr.Add(new JObject
                 {
@@ -457,6 +466,9 @@ namespace ETS2_Assist_GUI
                     ["x"] = p.X, ["z"] = p.Z,
                     ["color"] = p.Color,
                     ["icon"] = icon,
+                    ["opacity"] = opacity,
+                    ["layer"] = layer,
+                    ["display_on_map"] = displayOnMap,
                     ["hidden"] = p.Hidden == 1 || !p.Enabled,
                     ["overridden"] = p.IsOverride
                 });

@@ -1,0 +1,88 @@
+{
+    "category":  "Easter eggs",
+    "source":  "easter_10avoid.txt",
+    "easter":  true,
+    "count":  8,
+    "objects":  [
+                    {
+                        "uid":  "0x4b961d14b4c00002",
+                        "sector":  "sec+0030-0014",
+                        "sectorX":  30,
+                        "sectorZ":  -14,
+                        "x":  120781,
+                        "y":  34.1992,
+                        "z":  -53413.9,
+                        "name":  "10avoid"
+                    },
+                    {
+                        "uid":  "0x4beec038c0400001",
+                        "sector":  "sec+0036-0020",
+                        "sectorX":  36,
+                        "sectorZ":  -20,
+                        "x":  146609,
+                        "y":  73.3438,
+                        "z":  -79566.3,
+                        "name":  "10avoid"
+                    },
+                    {
+                        "uid":  "0x4beec07c69c00000",
+                        "sector":  "sec+0036-0020",
+                        "sectorX":  36,
+                        "sectorZ":  -20,
+                        "x":  146609,
+                        "y":  73.4688,
+                        "z":  -79566.5,
+                        "name":  "10avoid"
+                    },
+                    {
+                        "uid":  "0x4e8e127804c00000",
+                        "sector":  "sec+0037-0022",
+                        "sectorX":  37,
+                        "sectorZ":  -22,
+                        "x":  149261,
+                        "y":  -22.4883,
+                        "z":  -84169.1,
+                        "name":  "10avoid"
+                    },
+                    {
+                        "uid":  "0x5362793d1c800001",
+                        "sector":  "sec+0039-0019",
+                        "sectorX":  39,
+                        "sectorZ":  -19,
+                        "x":  159605,
+                        "y":  119.715,
+                        "z":  -72949.9,
+                        "name":  "10avoid"
+                    },
+                    {
+                        "uid":  "0x53627978c3800000",
+                        "sector":  "sec+0039-0019",
+                        "sectorX":  39,
+                        "sectorZ":  -19,
+                        "x":  159604,
+                        "y":  120.375,
+                        "z":  -72949.9,
+                        "name":  "10avoid"
+                    },
+                    {
+                        "uid":  "0x53627b52d0800000",
+                        "sector":  "sec+0039-0019",
+                        "sectorX":  39,
+                        "sectorZ":  -19,
+                        "x":  159604,
+                        "y":  120.395,
+                        "z":  -72949.9,
+                        "name":  "10avoid"
+                    },
+                    {
+                        "uid":  "0x53627b53c9800001",
+                        "sector":  "sec+0039-0019",
+                        "sectorX":  39,
+                        "sectorZ":  -19,
+                        "x":  159604,
+                        "y":  119.734,
+                        "z":  -72949.9,
+                        "name":  "10avoid"
+                    }
+                ]
+}

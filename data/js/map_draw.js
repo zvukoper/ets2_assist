@@ -246,15 +246,28 @@ function drawMinimap() {
     const cityList = (typeof getEffectiveCityList === 'function') ? getEffectiveCityList() : (state.cities || []);
     const showPoiLabels = scale2 <= 5.0;
     const poiPointSize = Math.max(2, 6 / (scale2 / 10));
-    for (const poi of poiList) {
+    // Сортировка POI по слою отрисовки (meta.layer): 0 = наивысший приоритет (всегда поверх),
+    // иначе чем больше layer — тем выше (перекрывает меньшие). Стабильная сортировка.
+    const poiSorted = poiList.slice().sort((a, b) => {
+        const la = (a.layer === 0) ? Number.MAX_SAFE_INTEGER : (a.layer || 100);
+        const lb = (b.layer === 0) ? Number.MAX_SAFE_INTEGER : (b.layer || 100);
+        return la - lb;
+    });
+    for (const poi of poiSorted) {
+        // display_on_map=false — категория скрыта по умолчанию (не рисуем).
+        if (poi.displayOnMap === false) continue;
         const p = worldToScreen2(poi.x, poi.z);
         if (p.x < -30 || p.x > w+30 || p.y < -30 || p.y > h+30) continue;
         const size = Math.min(6, poiPointSize);
+        // Прозрачность категории (meta.opacity, 0..1) — применяется к точке и названию.
+        const poiOpacity = (poi.opacity === undefined || poi.opacity === null) ? 1 : Math.max(0, Math.min(1, Number(poi.opacity)));
         // SDO-иконка: если у точки задана иконка категории (meta.json) — рисуем
         // изображение 50x50 (масштаб ~24 px на карте) вместо цветного кружка.
         const iconImg = poi.icon ? getSdoIcon(poi.icon) : null;
         if (iconImg && iconImg.complete && iconImg.naturalWidth > 0) {
             const isz = 24;
+            ctx.save();
+            ctx.globalAlpha = poiOpacity;
             ctx.drawImage(iconImg, p.x - isz/2, p.y - isz/2, isz, isz);
             if (showPoiLabels) {
                 ctx.font = '9px "Segoe UI", sans-serif';
@@ -266,8 +279,11 @@ function drawMinimap() {
                 ctx.fillText(poi.name || poi.type || 'poi', p.x, p.y - isz/2 - 2);
                 ctx.shadowBlur = 0;
             }
+            ctx.restore();
             continue;
         }
+        ctx.save();
+        ctx.globalAlpha = poiOpacity;
         ctx.beginPath();
         ctx.arc(p.x, p.y, size, 0, 2*Math.PI);
         // Выбираем цвет по категории; у пользовательских точек — свой цвет из редактора
@@ -293,6 +309,7 @@ function drawMinimap() {
             ctx.fillText(poi.name || poi.type || 'poi', p.x, p.y - size - 2);
             ctx.shadowBlur = 0;
         }
+        ctx.restore();
     }
 
     // Города (поверх POI)

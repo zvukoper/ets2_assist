@@ -1,0 +1,26 @@
+{
+    "category":  "dancer",
+    "source":  "model_dancer.txt",
+    "easter":  false,
+    "count":  2,
+    "objects":  [
+                    {
+                        "uid":  "0x3b8e06144dc00001",
+                        "sector":  "sec+0039-0018",
+                        "sectorX":  39,
+                        "sectorZ":  -18,
+                        "x":  157458,
+                        "y":  125.484,
+                        "z":  -70783.7
+                    },
+                    {
+                        "uid":  "0x46807dec1ac00000",
+                        "sector":  "sec+0039-0017",
+                        "sectorX":  39,
+                        "sectorZ":  -17,
+                        "x":  156187,
+                        "y":  131.418,
+                        "z":  -66708.6
+                    }
+                ]
+}

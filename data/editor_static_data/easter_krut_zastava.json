@@ -1,0 +1,18 @@
+{
+    "category":  "Easter eggs",
+    "source":  "easter_krut_zastava.txt",
+    "easter":  true,
+    "count":  1,
+    "objects":  [
+                    {
+                        "uid":  "0x5981d7db11000001",
+                        "sector":  "sec+0044-0025",
+                        "sectorX":  44,
+                        "sectorZ":  -25,
+                        "x":  179742,
+                        "y":  123.254,
+                        "z":  -96415.2,
+                        "name":  "Погранзастава"
+                    }
+                ]
+}

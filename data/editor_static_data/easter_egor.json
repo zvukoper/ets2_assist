@@ -1,0 +1,28 @@
+{
+    "category":  "Easter eggs",
+    "source":  "easter_egor.txt",
+    "easter":  true,
+    "count":  2,
+    "objects":  [
+                    {
+                        "uid":  "0x4554848837800001",
+                        "sector":  "sec+0039-0012",
+                        "sectorX":  39,
+                        "sectorZ":  -12,
+                        "x":  159837,
+                        "y":  122.738,
+                        "z":  -47612.2,
+                        "name":  "egor"
+                    },
+                    {
+                        "uid":  "0x62c1207fd7000001",
+                        "sector":  "sec+0048-0025",
+                        "sectorX":  48,
+                        "sectorZ":  -25,
+                        "x":  192527,
+                        "y":  101,
+                        "z":  -96602.9,
+                        "name":  "egor"
+                    }
+                ]
+}

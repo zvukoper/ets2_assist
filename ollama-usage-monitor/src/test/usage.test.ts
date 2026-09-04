@@ -12,10 +12,34 @@ test('parser: valid HTML (session + weekly + reset)', () => {
     <div>Resets in 2 days</div>
   `;
   const u = parseUsageHtml(html);
+  assert.strictEqual(u.status, 'ok');
   assert.strictEqual(u.sessionPercent, 35);
   assert.ok(u.sessionResetAt instanceof Date);
   assert.strictEqual(u.weeklyPercent, 18);
   assert.ok(u.weeklyResetAt instanceof Date);
+});
+
+test('parser: login page (Вход) → status login, no data', () => {
+  const html = `<html><head><title>Вход</title></head><body>hosted-authkit sign-in form</body></html>`;
+  const u = parseUsageHtml(html);
+  assert.strictEqual(u.status, 'login');
+  assert.strictEqual(u.sessionPercent, null);
+  assert.strictEqual(u.sessionResetAt, null);
+});
+
+test('parser: login page (Sign in) → status login', () => {
+  const html = `<html><head><title>Sign in</title></head><body>hosted-authkit</body></html>`;
+  const u = parseUsageHtml(html);
+  assert.strictEqual(u.status, 'login');
+});
+
+test('parser: normal page with hosted-authkit in unrelated script → NOT login', () => {
+  // hosted-authkit встречается в скриптах даже на залогиненной странице;
+  // решающий признак — <title>Вход/Sign in</title>.
+  const html = `<html><head><title>Settings</title></head><body><script src="/apps/hosted-authkit/production/x.js"></script><div>Session usage</div><div>35.0%</div></body></html>`;
+  const u = parseUsageHtml(html);
+  assert.strictEqual(u.status, 'ok');
+  assert.strictEqual(u.sessionPercent, 35);
 });
 
 test('parser: session only, no weekly', () => {
@@ -125,7 +149,7 @@ test('percent: запятая, без округления', () => {
 });
 
 test('statusBar: ok format с запятой', () => {
-  const u = { sessionPercent: 35.4, sessionResetAt: new Date(Date.now() + 3 * 3600 * 1000), weeklyPercent: null, weeklyResetAt: null, account: null };
+  const u = { sessionPercent: 35.4, sessionResetAt: new Date(Date.now() + 3 * 3600 * 1000), weeklyPercent: null, weeklyResetAt: null, account: null, status: 'ok' as const };
   assert.match(formatStatusBar(u, true), /^🦙 35,4% 3ч$/);
 });
 
@@ -134,12 +158,12 @@ test('statusBar: no usage → 🦙 —', () => {
 });
 
 test('statusBar: no emoji', () => {
-  const u = { sessionPercent: 35, sessionResetAt: null, weeklyPercent: null, weeklyResetAt: null, account: null };
+  const u = { sessionPercent: 35, sessionResetAt: null, weeklyPercent: null, weeklyResetAt: null, account: null, status: 'ok' as const };
   assert.strictEqual(formatStatusBar(u, false), '35% —');
 });
 
 test('tooltip: contains session and weekly', () => {
-  const u = { sessionPercent: 35, sessionResetAt: new Date(Date.now() + 3600 * 1000), weeklyPercent: 20, weeklyResetAt: new Date(Date.now() + 24 * 3600 * 1000), account: null };
+  const u = { sessionPercent: 35, sessionResetAt: new Date(Date.now() + 3600 * 1000), weeklyPercent: 20, weeklyResetAt: new Date(Date.now() + 24 * 3600 * 1000), account: null, status: 'ok' as const };
   const t = formatTooltip(u);
   assert.match(t, /Session: 35%/);
   assert.match(t, /Weekly: 20%/);

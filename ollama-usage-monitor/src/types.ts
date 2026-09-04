@@ -10,10 +10,20 @@ export interface UsageInfo {
   weeklyResetAt: Date | null;
   /** Имя/логин залогиненного пользователя со страницы settings (null если не найдено). */
   account: string | null;
+  /**
+   * Статус результата:
+   *  - 'ok'    — данные получены (sessionPercent может быть null, если страница не отдала число);
+   *  - 'login' — профиль разлогинен: страница показывает форму входа, данных нет;
+   *  - 'locked'— профиль занят видимым Edge (открыт для смены аккаунта) — headless не может
+   *              получить DOM (exit code 21 / пустой вывод).
+   */
+  status: 'ok' | 'login' | 'locked';
 }
 
 /** Состояние статус-бара. */
 export type StatusState =
   | { kind: 'ok'; usage: UsageInfo }
   | { kind: 'no-key' }
+  | { kind: 'login' }
+  | { kind: 'locked' }
   | { kind: 'error'; message: string };

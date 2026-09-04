@@ -1,0 +1,35 @@
+{
+    "category":  "standing_fisher",
+    "source":  "model_standing_fisher.txt",
+    "easter":  false,
+    "count":  3,
+    "objects":  [
+                    {
+                        "uid":  "0x4567173ce2000000",
+                        "sector":  "sec+0036-0016",
+                        "sectorX":  36,
+                        "sectorZ":  -16,
+                        "x":  146420,
+                        "y":  111.602,
+                        "z":  -60924.7
+                    },
+                    {
+                        "uid":  "0x456768b064000000",
+                        "sector":  "sec+0036-0016",
+                        "sectorX":  36,
+                        "sectorZ":  -16,
+                        "x":  146490,
+                        "y":  111.602,
+                        "z":  -60949
+                    },
+                    {
+                        "uid":  "0x57436dc356800001",
+                        "sector":  "sec+0041-0022",
+                        "sectorX":  41,
+                        "sectorZ":  -22,
+                        "x":  167938,
+                        "y":  103.289,
+                        "z":  -87442.1
+                    }
+                ]
+}

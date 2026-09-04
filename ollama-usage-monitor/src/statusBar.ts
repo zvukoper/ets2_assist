@@ -39,6 +39,16 @@ export class StatusBar {
       this.item.tooltip = 'Ollama Cloud Usage\n\nNo data.';
       this.item.color = new vscode.ThemeColor('statusBarItem.warningForeground');
       this.item.backgroundColor = undefined;
+    } else if (state.kind === 'login') {
+      this.item.text = this.showEmoji() ? '🦙 🔑' : '🔑';
+      this.item.tooltip = 'Ollama Cloud Usage\n\nТребуется вход. Выполните "Ollama Usage: Switch Account" (logout), войдите в аккаунт и нажмите Refresh.';
+      this.item.color = new vscode.ThemeColor('statusBarItem.warningForeground');
+      this.item.backgroundColor = undefined;
+    } else if (state.kind === 'locked') {
+      this.item.text = this.showEmoji() ? '🦙 🔒' : '🔒';
+      this.item.tooltip = 'Ollama Cloud Usage\n\nПрофиль занят видимым Edge (смена аккаунта). Закройте окно Edge и нажмите Refresh.';
+      this.item.color = new vscode.ThemeColor('statusBarItem.warningForeground');
+      this.item.backgroundColor = undefined;
     } else {
       this.item.text = this.showEmoji() ? '🦙 ?' : '?';
       this.item.tooltip = `Ollama Cloud Usage\n\nError: ${state.message}`;

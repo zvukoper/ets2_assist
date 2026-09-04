@@ -1,0 +1,17 @@
+{
+    "category":  "fallen_hero",
+    "source":  "model_fallen_hero.txt",
+    "easter":  false,
+    "count":  1,
+    "objects":  [
+                    {
+                        "uid":  "0x410dcf58c4800001",
+                        "sector":  "sec+0041-0020",
+                        "sectorX":  41,
+                        "sectorZ":  -20,
+                        "x":  165307,
+                        "y":  113.648,
+                        "z":  -76769.7
+                    }
+                ]
+}

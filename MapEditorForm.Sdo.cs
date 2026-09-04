@@ -31,6 +31,9 @@ namespace ETS2_Assist_GUI
             public float FontSize = 9f;      // размер шрифта подписи (по умолчанию 9)
             public string FontColor = "";   // "#rrggbb" (пусто = белый/серый)
             public string FontWeight = "normal"; // "normal" | "bold"
+            public bool DisplayOnMap = true; // показывать категорию на карте по умолчанию (false — скрыта, включается вручную)
+            public float Opacity = 1f;       // прозрачность отрисовки точки и названия (0..1)
+            public int Layer = 100;          // слой сортировки отрисовки (1..9999; 0 = наивысший, всегда поверх)
         }
 
         private static Dictionary<string, CatMeta>? _cats;
@@ -92,7 +95,10 @@ namespace ETS2_Assist_GUI
                                 Icon = (string?)o["icon"] ?? "",
                                 FontSize = o["font_size"]?.Value<float?>() ?? 9f,
                                 FontColor = (string?)o["font_color"] ?? "",
-                                FontWeight = (string?)o["font_weight"] ?? "normal"
+                                FontWeight = (string?)o["font_weight"] ?? "normal",
+                                DisplayOnMap = o["display_on_map"]?.Value<bool?>() ?? true,
+                                Opacity = o["opacity"]?.Value<float?>() ?? 1f,
+                                Layer = o["layer"]?.Value<int?>() ?? 100
                             };
                             dict[prop.Name] = m;
                             if (!string.IsNullOrWhiteSpace(m.Name))
@@ -174,6 +180,34 @@ namespace ETS2_Assist_GUI
         {
             var key = ResolveKey(displayName);
             return Categories.TryGetValue(key, out var m) && m.FontWeight.Equals("bold", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Показывать ли категорию на карте по умолчанию (meta.display_on_map; по умолчанию true).
+        public static bool DisplayOnMapOf(string displayName)
+        {
+            var key = ResolveKey(displayName);
+            return !Categories.TryGetValue(key, out var m) || m.DisplayOnMap;
+        }
+
+        // Прозрачность отрисовки точки и названия (meta.opacity; 0..1, по умолчанию 1).
+        public static float OpacityOf(string displayName)
+        {
+            var key = ResolveKey(displayName);
+            if (Categories.TryGetValue(key, out var m))
+            {
+                float o = m.Opacity;
+                if (o < 0f) o = 0f;
+                if (o > 1f) o = 1f;
+                return o;
+            }
+            return 1f;
+        }
+
+        // Слой сортировки отрисовки (meta.layer; 1..9999, 0 = наивысший приоритет, всегда поверх).
+        public static int LayerOf(string displayName)
+        {
+            var key = ResolveKey(displayName);
+            return Categories.TryGetValue(key, out var m) ? m.Layer : 100;
         }
     }
 

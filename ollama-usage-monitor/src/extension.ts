@@ -58,6 +58,18 @@ export function activate(context: vscode.ExtensionContext): void {
     inFlight = true;
     try {
       const usage: UsageInfo = await client.fetchUsage();
+      if (usage.status === 'login') {
+        // Профиль разлогинен — данных нет, нужен вход через видимый Edge.
+        statusBar.update({ kind: 'login' });
+        logStartupOnce(null);
+        return;
+      }
+      if (usage.status === 'locked') {
+        // Профиль занят видимым Edge (смена аккаунта) — headless не может получить DOM.
+        statusBar.update({ kind: 'locked' });
+        logStartupOnce(null);
+        return;
+      }
       statusBar.update({ kind: 'ok', usage });
       writeParsedUsageFile(usage);
       logStartupOnce(usage);

@@ -1,0 +1,18 @@
+{
+    "category":  "Easter eggs",
+    "source":  "easter_gosha_house.txt",
+    "easter":  true,
+    "count":  1,
+    "objects":  [
+                    {
+                        "uid":  "0x568d076cfe800001",
+                        "sector":  "sec+0039-0019",
+                        "sectorX":  39,
+                        "sectorZ":  -19,
+                        "x":  158726,
+                        "y":  109.992,
+                        "z":  -75746.8,
+                        "name":  "gosha_house"
+                    }
+                ]
+}

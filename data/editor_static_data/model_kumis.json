@@ -1,0 +1,17 @@
+{
+    "category":  "kumis",
+    "source":  "model_kumis.txt",
+    "easter":  false,
+    "count":  1,
+    "objects":  [
+                    {
+                        "uid":  "0x57933995ca800000",
+                        "sector":  "sec+0043-0022",
+                        "sectorX":  43,
+                        "sectorZ":  -22,
+                        "x":  175927,
+                        "y":  118.52,
+                        "z":  -84339.5
+                    }
+                ]
+}

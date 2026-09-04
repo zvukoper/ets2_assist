@@ -58,13 +58,20 @@ export class OllamaUsageClient {
         } catch { out = ''; }
         try { fs.unlinkSync(dst); } catch { /* ignore */ }
         console.log('client:edge-close code=' + code + ' outLen=' + out.length);
+        // Exit code 21 + пустой вывод = профиль занят (обычно видимым Edge,
+        // открытым для смены аккаунта). Это НЕ ошибка данных — это состояние
+        // «профиль заблокирован». Возвращаем status='locked', а не бросаем.
+        if ((!out || out.length === 0) && code === 21) {
+          resolve({ sessionPercent: null, sessionResetAt: null, weeklyPercent: null, weeklyResetAt: null, account: null, status: 'locked' });
+          return;
+        }
         if (!out || out.length === 0) {
           reject(new Error('EMPTY_DOM'));
           return;
         }
         try {
           const usage = parseUsageHtml(out);
-          console.log('client:parse session=' + usage.sessionPercent);
+          console.log('client:parse session=' + usage.sessionPercent + ' status=' + usage.status);
           resolve(usage);
         } catch (e) {
           reject(e instanceof Error ? e : new Error('Parse error'));

@@ -1,0 +1,44 @@
+{
+    "category":  "crashed_car",
+    "source":  "model_crashed_car.txt",
+    "easter":  false,
+    "count":  4,
+    "objects":  [
+                    {
+                        "uid":  "0x405f9a9474c00000",
+                        "sector":  "sec+0039-0013",
+                        "sectorX":  39,
+                        "sectorZ":  -13,
+                        "x":  159613,
+                        "y":  96.8359,
+                        "z":  -51453
+                    },
+                    {
+                        "uid":  "0x51cddb583e000001",
+                        "sector":  "sec+0040-0020",
+                        "sectorX":  40,
+                        "sectorZ":  -20,
+                        "x":  160179,
+                        "y":  110,
+                        "z":  -78117.8
+                    },
+                    {
+                        "uid":  "0x51cddb172a800001",
+                        "sector":  "sec+0040-0020",
+                        "sectorX":  40,
+                        "sectorZ":  -20,
+                        "x":  160176,
+                        "y":  110,
+                        "z":  -78113.7
+                    },
+                    {
+                        "uid":  "0x5c44745490000001",
+                        "sector":  "sec+0047-0024",
+                        "sectorX":  47,
+                        "sectorZ":  -24,
+                        "x":  189205,
+                        "y":  115.453,
+                        "z":  -94897.7
+                    }
+                ]
+}

@@ -1,0 +1,35 @@
+{
+    "category":  "road_grave",
+    "source":  "model_road_grave.txt",
+    "easter":  false,
+    "count":  3,
+    "objects":  [
+                    {
+                        "uid":  "0x4553bd444b000001",
+                        "sector":  "sec+0041-0020",
+                        "sectorX":  41,
+                        "sectorZ":  -20,
+                        "x":  164325,
+                        "y":  114.273,
+                        "z":  -77093.9
+                    },
+                    {
+                        "uid":  "0x47621b7817c00001",
+                        "sector":  "sec+0038-0016",
+                        "sectorX":  38,
+                        "sectorZ":  -16,
+                        "x":  152065,
+                        "y":  90.5664,
+                        "z":  -62826.5
+                    },
+                    {
+                        "uid":  "0x49938004d7400001",
+                        "sector":  "sec+0031-0014",
+                        "sectorX":  31,
+                        "sectorZ":  -14,
+                        "x":  126302,
+                        "y":  17.0703,
+                        "z":  -54229.6
+                    }
+                ]
+}

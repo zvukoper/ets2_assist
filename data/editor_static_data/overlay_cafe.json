@@ -2,7 +2,7 @@
     "category":  "cafe",
     "source":  "overlay_cafe.txt",
     "easter":  false,
-    "count":  145,
+    "count":  147,
     "objects":  [
                     {
                         "uid":  "0x55E91ACDE7800001",
@@ -1308,6 +1308,24 @@
                         "x":  198935,
                         "y":  79.0078,
                         "z":  -110248
+                    },
+                    {
+                        "uid":  "0x5a806c4341000001",
+                        "sector":  "sec+0047-0025",
+                        "sectorX":  47,
+                        "sectorZ":  -25,
+                        "x":  189607,
+                        "y":  118.48,
+                        "z":  -98615.9
+                    },
+                    {
+                        "uid":  "0x5992450e3c800001",
+                        "sector":  "sec+0045-0025",
+                        "sectorX":  45,
+                        "sectorZ":  -25,
+                        "x":  182127,
+                        "y":  123.637,
+                        "z":  -98080.5
                     }
                 ]
 }

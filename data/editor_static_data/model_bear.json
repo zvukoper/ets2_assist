@@ -1,0 +1,35 @@
+{
+    "category":  "bear",
+    "source":  "model_bear.txt",
+    "easter":  false,
+    "count":  3,
+    "objects":  [
+                    {
+                        "uid":  "0x56f3a1b666000000",
+                        "sector":  "sec+0038-0017",
+                        "sectorX":  38,
+                        "sectorZ":  -17,
+                        "x":  153253,
+                        "y":  68.7383,
+                        "z":  -64530.9
+                    },
+                    {
+                        "uid":  "0x636a2f26fc000001",
+                        "sector":  "sec+0048-0025",
+                        "sectorX":  48,
+                        "sectorZ":  -25,
+                        "x":  194660,
+                        "y":  106.453,
+                        "z":  -98607.3
+                    },
+                    {
+                        "uid":  "0x573ea04fbb000001",
+                        "sector":  "sec+0037-0015",
+                        "sectorX":  37,
+                        "sectorZ":  -15,
+                        "x":  148389,
+                        "y":  83.0586,
+                        "z":  -58717.1
+                    }
+                ]
+}

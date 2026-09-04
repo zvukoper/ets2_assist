@@ -2,7 +2,7 @@
   "name": "ollama-usage-monitor",
   "displayName": "Ollama Usage Monitor",
   "description": "Compact Status Bar indicator for Ollama Cloud session/weekly usage.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "ets2assist",
   "engines": {
     "vscode": "^1.85.0"
