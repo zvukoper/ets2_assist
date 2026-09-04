@@ -143,13 +143,25 @@ namespace ETS2_Assist_GUI
         // Видимость категорий на карте (только в редакторе): имя категории -> показывать
         private readonly Dictionary<string, bool> _catVisible = new() { ["Цели"] = true, ["Города"] = true, ["Отключенные"] = true };
 
+        // --- Сайдбар: статусы правок/сохранений (категории «Не сохранённое»/«Сохранённые») ---
+        // Не сохранённое: gameName -> true, если в панели правили и НЕ сохранили (оранжевый шрифт).
+        // Сохранённые: точка имеет override (IsOverride/SourceFile) — помечается '*' перед именем.
+        private readonly HashSet<string> _unsavedEdits = new(StringComparer.Ordinal);
+        private const string CatUnsaved = "Не сохранённое";
+        private const string CatSaved = "Сохранённые";
+
+        // --- SDO (Static Data Objects, выгрузка редактора игры) ---
+        // Кэш иконок категорий: имя категории -> Bitmap 50x50 (диспозится при закрытии).
+        private readonly Dictionary<string, Bitmap> _sdoIconCache = new();
+        private bool _sdoLoaded;
+
         public MapEditorForm()
         {
             InitializeComponent();
             LoadCities();
             StartRoadsLoad();
             LoadOverlays();
-            LoadTargets();
+            LoadTargets();            // SDO загружаются ВНУТРИ (см. LoadSdoPoints), т.к. LoadTargets пересобирает _pointModel с нуля
             PopulateSidebar();
             LoadEditorState();
             if (_viewReady) RequestRender();
@@ -366,6 +378,10 @@ namespace ETS2_Assist_GUI
                     IsPoi = true
                 };
             }
+            // 1.6) SDO (Static Data Objects) — выгрузка редактора игры. Загружаем ЗДЕСЬ
+            // (LoadTargets пересобирает _pointModel с нуля — вызов из конструктора ДО
+            // LoadTargets стирается). До overrides, чтобы overrides могли переопределять.
+            LoadSdoPoints();
             // 2) overrides поверх (load_order: снизу вверх — последний файл побеждает)
             LoadLoadOrder();
             ApplyOverridesToModel();
@@ -873,7 +889,17 @@ namespace ETS2_Assist_GUI
 
                 Color fill;
                 float rx, ry;
-                if (isCity)
+                bool isSdo = pm != null && pm.IsSdo;
+                Bitmap? sdoIcon = null;
+                if (isSdo)
+                {
+                    // SDO: иконка категории (50x50) вместо кружка, если прописана в meta.json;
+                    // иначе — цветная точка (крупнее POI, ~5.5 px радиус).
+                    fill = ParseColor(pm!.Color);
+                    rx = 5.5f; ry = 5.5f;
+                    sdoIcon = GetSdoIcon(pm.Category);
+                }
+                else if (isCity)
                 {
                     fill = Color.FromArgb(204, 255, 230, 0);
                     rx = 5.5f; ry = 5.5f;
@@ -888,26 +914,58 @@ namespace ETS2_Assist_GUI
                     fill = disabled ? Color.FromArgb(120, 120, 120) : t.color;
                     rx = 5; ry = 5;
                 }
-                using var brush = new SolidBrush(fill);
-                g.FillEllipse(brush, p.X - rx, p.Y - ry, rx * 2, ry * 2);
-                Color outline = Color.Black;
-                float ow = 1.5f;
-                if (cooldown) { outline = Color.FromArgb(70, 140, 255); ow = 3f; }
-                else if (disabled) { outline = Color.Gray; ow = 3f; }
-                else if (ovr) { outline = Color.FromArgb(70, 140, 255); ow = 2f; }
-                else if (isCity) { outline = Color.Black; ow = 2f; }
-                g.DrawEllipse(new Pen(outline, ow), p.X - rx, p.Y - ry, rx * 2, ry * 2);
-                if (_selectedIds.Contains(t.id))
+                if (sdoIcon != null)
                 {
-                    Color sel = (_selectedGameName == t.id && _dirtyFields.Count > 0) ? Color.Yellow : Color.White;
-                    g.DrawEllipse(new Pen(sel, 2f), p.X - 8, p.Y - 8, 16, 16);
+                    // Иконка категории РАЗМЕРОМ С ТОЧКУ (11 px = 2×rx) с чёрной обводкой-кругом
+                    // (как у остальных точек); при выделении — круг подсветки (жёлтый/белый).
+                    const float iconSize = 11f;
+                    g.DrawImage(sdoIcon, p.X - iconSize / 2, p.Y - iconSize / 2, iconSize, iconSize);
+                    g.DrawEllipse(new Pen(Color.Black, 1.5f), p.X - rx, p.Y - ry, rx * 2, ry * 2);
+                    if (_selectedIds.Contains(t.id))
+                    {
+                        Color sel = (_selectedGameName == t.id && _dirtyFields.Count > 0) ? Color.Yellow : Color.White;
+                        g.DrawEllipse(new Pen(sel, 2f), p.X - 8, p.Y - 8, 16, 16);
+                    }
+                }
+                else
+                {
+                    using var brush = new SolidBrush(fill);
+                    g.FillEllipse(brush, p.X - rx, p.Y - ry, rx * 2, ry * 2);
+                    Color outline = Color.Black;
+                    float ow = 1.5f;
+                    if (cooldown) { outline = Color.FromArgb(70, 140, 255); ow = 3f; }
+                    else if (disabled) { outline = Color.Gray; ow = 3f; }
+                    else if (ovr) { outline = Color.FromArgb(70, 140, 255); ow = 2f; }
+                    else if (isCity) { outline = Color.Black; ow = 2f; }
+                    g.DrawEllipse(new Pen(outline, ow), p.X - rx, p.Y - ry, rx * 2, ry * 2);
+                    if (_selectedIds.Contains(t.id))
+                    {
+                        Color sel = (_selectedGameName == t.id && _dirtyFields.Count > 0) ? Color.Yellow : Color.White;
+                        g.DrawEllipse(new Pen(sel, 2f), p.X - 8, p.Y - 8, 16, 16);
+                    }
                 }
                 // Метка: для POI — реальное имя (по умолчанию = категория, напр. "Company"),
                 // для города — имя города, иначе — имя цели.
                 string label = (isPoi && pm != null) ? (string.IsNullOrEmpty(pm.RealName) ? pm.Category : pm.RealName)
                              : (isCity && pm != null ? pm.RealName : t.name);
                 if (cooldown) label += " (кулдаун)";
-                DrawLabelAbove(g, label, p.X, p.Y, disabled ? Color.Gray : Color.White, true);
+                // Стиль подписи: города — жирные жёлтые (meta «Города»); SDO — стиль из meta
+                // категории (font_size/font_color/font_weight); остальные — обычные белые.
+                if (isCity)
+                {
+                    DrawLabelAbove(g, label, p.X, p.Y, Color.Yellow, bold: true, fontSize: SdoMeta.FontSizeOf("Города"));
+                }
+                else if (isSdo)
+                {
+                    DrawLabelAbove(g, label, p.X, p.Y,
+                        disabled ? Color.Gray : SdoMeta.FontColorOf(pm!.Category),
+                        bold: SdoMeta.FontBoldOf(pm!.Category),
+                        fontSize: SdoMeta.FontSizeOf(pm!.Category));
+                }
+                else
+                {
+                    DrawLabelAbove(g, label, p.X, p.Y, disabled ? Color.Gray : Color.White, bold: false);
+                }
             }
 
             // Временный маркер создаваемой точки: серая точка с перекрестьем (наглядность создания).
@@ -973,10 +1031,10 @@ namespace ETS2_Assist_GUI
             catch { }
         }
 
-        private static void DrawLabelAbove(Graphics g, string text, float cx, float cy, Color textColor, bool bold = false, int gap = 6)
+        private static void DrawLabelAbove(Graphics g, string text, float cx, float cy, Color textColor, bool bold = false, int gap = 6, float fontSize = 9f)
         {
             if (string.IsNullOrEmpty(text)) return;
-            using var font = new Font("Segoe UI", bold ? 9.5f : 9f, bold ? FontStyle.Bold : FontStyle.Regular);
+            using var font = new Font("Segoe UI", fontSize, bold ? FontStyle.Bold : FontStyle.Regular);
             var size = g.MeasureString(text, font);
             float x = cx - size.Width / 2f;
             float y = cy - size.Height - gap;
@@ -1070,6 +1128,8 @@ namespace ETS2_Assist_GUI
                         if (_fieldControls.TryGetValue("X", out var cx)) cx.Text = wx.ToString("F2", CultureInfo.InvariantCulture);
                         if (_fieldControls.TryGetValue("Z", out var cz)) cz.Text = wz.ToString("F2", CultureInfo.InvariantCulture);
                         _dirtyFields.Add("X"); _dirtyFields.Add("Z");
+                        if (!string.IsNullOrEmpty(_selectedGameName)) _unsavedEdits.Add(_selectedGameName);
+                        UpdateSidebarSelection();
                         UpdateActionButtons();
                     }
                     RequestRender();
@@ -1325,6 +1385,54 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        // =====================================================================
+        // SDO (Static Data Objects) — статические объекты из редактора игры.
+        // data\editor_static_data\*.json: категория = имя файла (easter_* →
+        // "Easter eggs"); координаты в ЕДИНОЙ игровой СК (конвертация не нужна).
+        // meta.json: читабельное имя/цвет/иконка категории. Загружаем ДО overrides.
+        // =====================================================================
+        private void LoadSdoPoints()
+        {
+            var points = SdoLoader.LoadAll();
+            foreach (var p in points)
+            {
+                if (string.IsNullOrEmpty(p.GameName) || _pointModel.ContainsKey(p.GameName)) continue;
+                var pd = new PointData
+                {
+                    GameName = p.GameName,
+                    RealName = p.RealName, // ТОЛЬКО имя объекта (cottage / Пятёрочка / police_man)
+                    Category = p.Category,
+                    Enabled = true,
+                    X = p.X, Y = p.Y, Z = p.Z,
+                    Color = SdoMeta.ColorHexOf(p.Category),
+                    SourceFile = "",
+                    IsSdo = true
+                };
+                _pointModel[pd.GameName] = pd;
+            }
+            _sdoLoaded = points.Count > 0;
+            if (_sdoLoaded)
+                LogEditor($"SDO загружено: {points.Count} точек из {SdoLoader.SdoDirectory}");
+            else
+                LogEditor("SDO: нет данных (data\\editor_static_data пуст или отсутствует).");
+        }
+
+        // Иконка категории SDO (50x50) с кэшем; null = нет иконки (цветная точка).
+        private Bitmap? GetSdoIcon(string category)
+        {
+            if (_sdoIconCache.TryGetValue(category, out var cached)) return cached;
+            var file = SdoMeta.IconFileOf(category);
+            if (file == null) return null;
+            try
+            {
+                using var fs = new FileStream(file, FileMode.Open, FileAccess.Read);
+                var bmp = new Bitmap(fs); // копия в память — файл не держим
+                _sdoIconCache[category] = bmp;
+                return bmp;
+            }
+            catch (Exception ex) { LogEditor($"SDO иконка {category}: {ex.Message}"); return null; }
+        }
+
         private void PopulateSidebar()
         {
             _sidebar.Nodes.Clear();
@@ -1333,8 +1441,8 @@ namespace ETS2_Assist_GUI
             var tNode = new TreeNode("Цели (" + _targets.Count + ")") { Name = "Цели", Checked = _catVisible.TryGetValue("Цели", out var st) && st };
             foreach (var t in _targets)
             {
-                // Города/POI вынесены в свои группы; пользовательские — в «Пользовательское».
-                if (_pointModel.TryGetValue(t.id, out var tp) && (tp.IsCity || tp.IsPoi)) continue;
+                // Города/POI/SDO вынесены в свои группы; пользовательские — в «Пользовательское».
+                if (_pointModel.TryGetValue(t.id, out var tp) && (tp.IsCity || tp.IsPoi || tp.IsSdo)) continue;
                 if (tp != null && tp.SourceFile != "" && !_staticNames.Contains(t.id)) continue;
                 var n = new TreeNode(t.name) { Tag = (t.x, t.z), Name = t.id };
                 n.Checked = _selectedIds.Contains(t.id);
@@ -1354,6 +1462,23 @@ namespace ETS2_Assist_GUI
             }
             cNode.Expand();
             _sidebar.Nodes.Add(cNode);
+
+            // SDO-категории (Static Data Objects): группы по категориям, имена —
+            // читабельные (meta.json), объекты — uid / easter-имя. Между городами и POI.
+            // Новые категории видимы по умолчанию (true), существующие — как сохранено.
+            foreach (var grp in _pointModel.Values.Where(p => p.IsSdo).GroupBy(p => p.Category).OrderBy(g => g.Key))
+            {
+                if (!_catVisible.ContainsKey(grp.Key)) _catVisible[grp.Key] = true;
+                var catNode = new TreeNode(grp.Key + " (" + grp.Count() + ")") { Name = grp.Key, Checked = _catVisible.TryGetValue(grp.Key, out var sp) && sp };
+                foreach (var pd in grp)
+                {
+                    var n = new TreeNode(string.IsNullOrEmpty(pd.RealName) ? pd.GameName : pd.RealName) { Tag = (pd.X, pd.Z), Name = pd.GameName };
+                    n.Checked = _selectedIds.Contains(pd.GameName);
+                    if (n.Checked) n.BackColor = Color.FromArgb(60, 70, 90);
+                    catNode.Nodes.Add(n);
+                }
+                _sidebar.Nodes.Add(catNode);
+            }
 
             foreach (var grp in _pointModel.Values.Where(p => p.IsPoi).GroupBy(p => p.Category).OrderBy(g => g.Key))
             {
@@ -1403,6 +1528,36 @@ namespace ETS2_Assist_GUI
                 }
                 _sidebar.Nodes.Add(dNode);
             }
+
+            // =====================================================================
+            // САЙДБАР-СТАТУСЫ (в конце списка):
+            // «Не сохранённое» — точки с правками, которые ещё не сохранены в overrides
+            //   (оранжевый шрифт имени; дублируются здесь).
+            // «Сохранённые» — точки, у которых есть override (перед именем '*').
+            // =====================================================================
+            _catVisible.TryAdd(CatUnsaved, true);
+            _catVisible.TryAdd(CatSaved, true);
+            var unsavedPts = _pointModel.Values.Where(pd => _unsavedEdits.Contains(pd.GameName)).ToList();
+            var unsavedNode = new TreeNode(CatUnsaved + " (" + unsavedPts.Count + ")") { Name = CatUnsaved, Checked = _catVisible.TryGetValue(CatUnsaved, out var u1) && u1 };
+            foreach (var pd in unsavedPts)
+            {
+                var n = new TreeNode(pd.RealName + " [" + pd.GameName + "]") { Tag = (pd.X, pd.Z), Name = pd.GameName, ForeColor = Color.Orange };
+                n.Checked = _selectedIds.Contains(pd.GameName);
+                if (_selectedIds.Contains(pd.GameName)) { n.BackColor = Color.FromArgb(60, 70, 90); if (pd.GameName == _selectedGameName) selNode = n; }
+                unsavedNode.Nodes.Add(n);
+            }
+            _sidebar.Nodes.Add(unsavedNode);
+
+            var savedPts = _pointModel.Values.Where(pd => pd.IsOverride || (pd.SourceFile != "" && !_staticNames.Contains(pd.GameName))).ToList();
+            var savedNode = new TreeNode(CatSaved + " (" + savedPts.Count + ")") { Name = CatSaved, Checked = _catVisible.TryGetValue(CatSaved, out var s1) && s1 };
+            foreach (var pd in savedPts)
+            {
+                var n = new TreeNode("*" + pd.RealName + " [" + pd.GameName + "]") { Tag = (pd.X, pd.Z), Name = pd.GameName };
+                n.Checked = _selectedIds.Contains(pd.GameName);
+                if (_selectedIds.Contains(pd.GameName)) { n.BackColor = Color.FromArgb(60, 70, 90); if (pd.GameName == _selectedGameName) selNode = n; }
+                savedNode.Nodes.Add(n);
+            }
+            _sidebar.Nodes.Add(savedNode);
 
             if (selNode != null) _sidebar.SelectedNode = selNode;
         }
@@ -2282,12 +2437,40 @@ namespace ETS2_Assist_GUI
             bool changed = cur != orig;
             if (changed) _dirtyFields.Add(key); else _dirtyFields.Remove(key);
 
+            // Трекинг несохранённых правок для сайдбара (категория «Не сохранённое»):
+            // точка правлена, но не сохранена — подсвечиваем оранжевым, дублируем в группу.
+            if (!string.IsNullOrEmpty(_selectedGameName))
+            {
+                if (_dirtyFields.Count > 0) _unsavedEdits.Add(_selectedGameName);
+                else _unsavedEdits.Remove(_selectedGameName);
+            }
+
             // Тёмно-оранжевый фон у изменённого поля (только текстовые/не-readonly).
             if (f.Mode != PointFieldMode.ReadOnly && f.ValueType != typeof(bool) && ctrl is TextBox tbx)
                 tbx.BackColor = changed ? DirtyBg : Color.FromArgb(40, 48, 62);
 
             UpdateActionButtons();
+            RefreshSidebarStatusLight();
             RequestRender();
+        }
+
+        // Лёгкое обновление статусных групп сайдбара («Не сохранённое»/«Сохранённые») без полной
+        // перестройки: меняет только счётчик в заголовке и состав/цвет дочерних узлов.
+        private System.Windows.Forms.Timer? _sidebarRefreshTimer;
+        private void RefreshSidebarStatusLight()
+        {
+            // Дебаунс 400мс: при наборе текста не перестраиваем на каждый символ.
+            if (_sidebarRefreshTimer == null)
+            {
+                _sidebarRefreshTimer = new System.Windows.Forms.Timer { Interval = 400 };
+                _sidebarRefreshTimer.Tick += (s, e) =>
+                {
+                    _sidebarRefreshTimer!.Stop();
+                    try { PopulateSidebar(); } catch { }
+                };
+            }
+            _sidebarRefreshTimer.Stop();
+            _sidebarRefreshTimer.Start();
         }
 
         // Проверка уникальности системного имени (при уходе фокуса из поля).
@@ -2379,6 +2562,7 @@ namespace ETS2_Assist_GUI
             LogEditor($"SaveCurrentPoint: pd.SourceFile:'{pd.SourceFile}' pd.GameName:{pd.GameName} pd.IsNew:{pd.IsNew} pd.RealName:{pd.RealName}");
             WritePointToOverrideFile(pd);
             _createMode = false;
+            _unsavedEdits.Remove(name); // сохранено — уходит из «Не сохранённое»
 
             // После сохранения — команда «Обновить»: перезагрузить статику + overrides и применить на карту.
             LoadTargets();
@@ -2421,7 +2605,9 @@ namespace ETS2_Assist_GUI
             {
                 _editingCopy = pd.Clone();
                 _dirtyFields.Clear();
+                _unsavedEdits.Remove(_selectedGameName); // отмена — правок больше нет
                 LoadPointIntoPanel(pd);
+                UpdateSidebarSelection();
                 UpdateActionButtons();
                 RequestRender();
             }
@@ -2605,9 +2791,13 @@ namespace ETS2_Assist_GUI
             try { _cts?.Dispose(); } catch { }
             try { _editorRestCts?.Cancel(); } catch { }
             try { _wsReconnectTimer.Stop(); } catch { }
+            try { _sidebarRefreshTimer?.Stop(); } catch { }
+            try { _sidebarRefreshTimer?.Dispose(); } catch { }
             try { _ws?.Dispose(); } catch { }
             _ws = null;
             try { _roadsPath?.Dispose(); } catch { _roadsPath = null; }
+            foreach (var bmp in _sdoIconCache.Values) { try { bmp.Dispose(); } catch { } }
+            _sdoIconCache.Clear();
             try { _tooltip.Dispose(); } catch { }
             SaveEditorState();
         }

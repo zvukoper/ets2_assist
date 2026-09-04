@@ -73,7 +73,8 @@ function applyMapOverrides() {
     })).filter(c => !c.hidden && (c.x || c.z));
 
     // POI: полный список + пользовательские точки (category='custom' рисуются
-    // особым цветом из poi.color).
+    // особым цветом из poi.color). SDO-точки несут icon (meta.json, png 50x50 в
+    // editor_static_data\icons) — миникарта рисует иконку вместо кружка.
     state.pois = ov.pois.map(p => ({
         x: Number(p.x) || 0,
         z: Number(p.z) || 0,
@@ -82,6 +83,7 @@ function applyMapOverrides() {
         type: p.category || 'custom',
         name: p.name || p.realName || p.uid || 'poi',
         color: p.color || undefined,
+        icon: p.icon || undefined,
         hidden: !!p.hidden
     })).filter(p => !p.hidden && (p.x || p.z));
 

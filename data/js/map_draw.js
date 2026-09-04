@@ -50,6 +50,22 @@ const POI_COLORS = {
 };
 
 // ================================================================
+// SDO-ИКОНКИ (Static Data Objects): кэш изображений 50x50 из
+// editor_static_data\icons (категория по meta.json → поле icon в poi).
+// ================================================================
+const sdoIconCache = {};
+function getSdoIcon(iconName) {
+    if (!iconName) return null;
+    if (sdoIconCache[iconName] !== undefined) return sdoIconCache[iconName];
+    const img = new Image();
+    img.onload = () => { drawMinimap(); };  // перерисовать после загрузки
+    img.onerror = () => { sdoIconCache[iconName] = null; }; // нет файла → цветная точка
+    img.src = '/editor_static_data/icons/' + iconName;
+    sdoIconCache[iconName] = img; // undefined→img; повторный вызов вернёт img (даже до onload)
+    return img;
+}
+
+// ================================================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (зависят от текущего состояния)
 // ================================================================
 function worldToScreen(wx, wz) {
@@ -232,13 +248,33 @@ function drawMinimap() {
     const poiPointSize = Math.max(2, 6 / (scale2 / 10));
     for (const poi of poiList) {
         const p = worldToScreen2(poi.x, poi.z);
-        if (p.x < -10 || p.x > w+10 || p.y < -10 || p.y > h+10) continue;
+        if (p.x < -30 || p.x > w+30 || p.y < -30 || p.y > h+30) continue;
         const size = Math.min(6, poiPointSize);
+        // SDO-иконка: если у точки задана иконка категории (meta.json) — рисуем
+        // изображение 50x50 (масштаб ~24 px на карте) вместо цветного кружка.
+        const iconImg = poi.icon ? getSdoIcon(poi.icon) : null;
+        if (iconImg && iconImg.complete && iconImg.naturalWidth > 0) {
+            const isz = 24;
+            ctx.drawImage(iconImg, p.x - isz/2, p.y - isz/2, isz, isz);
+            if (showPoiLabels) {
+                ctx.font = '9px "Segoe UI", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillStyle = '#aabbcc';
+                ctx.shadowColor = 'rgba(0,0,0,0.7)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(poi.name || poi.type || 'poi', p.x, p.y - isz/2 - 2);
+                ctx.shadowBlur = 0;
+            }
+            continue;
+        }
         ctx.beginPath();
         ctx.arc(p.x, p.y, size, 0, 2*Math.PI);
         // Выбираем цвет по категории; у пользовательских точек — свой цвет из редактора
         const category = poi.type || 'default';
-        const color = (category === 'custom' && poi.color) ? poi.color : (POI_COLORS[category.toLowerCase()] || POI_COLORS['default']);
+        const color = (category === 'custom' && poi.color) ? poi.color
+                    : (poi.color && poi.color.startsWith('#')) ? poi.color
+                    : (POI_COLORS[category.toLowerCase()] || POI_COLORS['default']);
         ctx.fillStyle = color;
         ctx.shadowColor = color + '44';
         ctx.shadowBlur = 6;

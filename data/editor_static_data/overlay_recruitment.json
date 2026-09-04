@@ -1,0 +1,53 @@
+{
+    "category":  "recruitment",
+    "source":  "overlay_recruitment.txt",
+    "easter":  false,
+    "count":  5,
+    "objects":  [
+                    {
+                        "uid":  "0x63DF0050ED000C7C",
+                        "sector":  "sec+0045-0022",
+                        "sectorX":  45,
+                        "sectorZ":  -22,
+                        "x":  180571,
+                        "y":  135.309,
+                        "z":  -86379.9
+                    },
+                    {
+                        "uid":  "0x63DF0052D1000A1E",
+                        "sector":  "sec+0043-0024",
+                        "sectorX":  43,
+                        "sectorZ":  -24,
+                        "x":  174350,
+                        "y":  106.371,
+                        "z":  -92516.7
+                    },
+                    {
+                        "uid":  "0x63DF005309000263",
+                        "sector":  "sec+0041-0021",
+                        "sectorX":  41,
+                        "sectorZ":  -21,
+                        "x":  166750,
+                        "y":  99.0273,
+                        "z":  -80435.9
+                    },
+                    {
+                        "uid":  "0x63DF00539E0008CF",
+                        "sector":  "sec+0030-0015",
+                        "sectorX":  30,
+                        "sectorZ":  -15,
+                        "x":  120635,
+                        "y":  50.3906,
+                        "z":  -56915.7
+                    },
+                    {
+                        "uid":  "0x63DF0053CC00008D",
+                        "sector":  "sec+0038-0015",
+                        "sectorX":  38,
+                        "sectorZ":  -15,
+                        "x":  154545,
+                        "y":  105.785,
+                        "z":  -56048.1
+                    }
+                ]
+}

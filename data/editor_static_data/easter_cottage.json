@@ -1,0 +1,18 @@
+{
+    "category":  "Easter eggs",
+    "source":  "easter_cottage.txt",
+    "easter":  true,
+    "count":  1,
+    "objects":  [
+                    {
+                        "uid":  "0x4cd8a86070000001",
+                        "sector":  "sec+0031-0014",
+                        "sectorX":  31,
+                        "sectorZ":  -14,
+                        "x":  125226,
+                        "y":  15.4766,
+                        "z":  -53652.5,
+                        "name":  "cottage"
+                    }
+                ]
+}

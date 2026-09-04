@@ -38,8 +38,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>39</VersionSet>
-        <VersionIter>21</VersionIter>
-        <VersionDesc>V39-AR2-DCOMP-FIX</VersionDesc>
+        <VersionIter>26</VersionIter>
+        <VersionDesc>SDO-NAME-ICON-FONT</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>

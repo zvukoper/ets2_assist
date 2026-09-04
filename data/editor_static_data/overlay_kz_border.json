@@ -1,0 +1,53 @@
+{
+    "category":  "kz_border",
+    "source":  "overlay_kz_border.txt",
+    "easter":  false,
+    "count":  5,
+    "objects":  [
+                    {
+                        "uid":  "0x3B87E68090000000",
+                        "sector":  "sec+0040-0012",
+                        "sectorX":  40,
+                        "sectorZ":  -12,
+                        "x":  162866,
+                        "y":  140.891,
+                        "z":  -45974.3
+                    },
+                    {
+                        "uid":  "0x3B87E7747AC00000",
+                        "sector":  "sec+0040-0017",
+                        "sectorX":  40,
+                        "sectorZ":  -17,
+                        "x":  163139,
+                        "y":  111,
+                        "z":  -65689.8
+                    },
+                    {
+                        "uid":  "0x57A24D9CC4000000",
+                        "sector":  "sec+0043-0022",
+                        "sectorX":  43,
+                        "sectorZ":  -22,
+                        "x":  175928,
+                        "y":  118.52,
+                        "z":  -84315.7
+                    },
+                    {
+                        "uid":  "0x5E48E104F3800001",
+                        "sector":  "sec+0045-0023",
+                        "sectorX":  45,
+                        "sectorZ":  -23,
+                        "x":  182344,
+                        "y":  142.008,
+                        "z":  -88843.8
+                    },
+                    {
+                        "uid":  "0x61E908472E800001",
+                        "sector":  "sec+0044-0022",
+                        "sectorX":  44,
+                        "sectorZ":  -22,
+                        "x":  176489,
+                        "y":  105.602,
+                        "z":  -87786.3
+                    }
+                ]
+}
