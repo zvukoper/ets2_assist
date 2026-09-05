@@ -85,7 +85,18 @@ namespace ETS2_Assist_GUI
         // Клик по строке открывает папку логов приложения.
         private readonly EditorStatusBar _statusBar = new() { Dock = DockStyle.Bottom, Height = 24 };
         private readonly Label _statusLabel = new() { Dock = DockStyle.Bottom, Height = 24, ForeColor = Color.FromArgb(143, 160, 185), BackColor = Color.FromArgb(15, 18, 23), Padding = new Padding(4, 3, 0, 0), Visible = false };
-        private readonly TreeView _sidebar = new() { Dock = DockStyle.Fill, BackColor = Color.FromArgb(20, 25, 35), ForeColor = Color.LightGray, Font = new Font("Segoe UI", 9), CheckBoxes = true };
+        private readonly TreeView _sidebar = new() { Dock = DockStyle.Fill, BackColor = Color.FromArgb(20, 25, 35), ForeColor = Color.LightGray, Font = new Font("Segoe UI", 9), CheckBoxes = true, DrawMode = TreeViewDrawMode.OwnerDrawAll };
+        // v39.46: цвет категории для чекбокса узла сайдбара (хранится отдельно от BackColor,
+        // чтобы выделение одной точки не сбрасывало цвета чекбоксов других точек).
+        private readonly Dictionary<TreeNode, Color> _nodeCatColor = new();
+        // v39.48: кэшированный StringFormat для отрисовки текста узлов (создаётся ОДИН раз —
+        // в DrawNode создание на каждый узел/кадр исчерпывало GDI-дескрипторы и тормозило).
+        private readonly StringFormat _nodeTextFmt = new()
+        {
+            LineAlignment = StringAlignment.Center,
+            Trimming = StringTrimming.EllipsisCharacter,
+            FormatFlags = StringFormatFlags.NoWrap
+        };
         // v39.30: левая колонка сайдбара: панель кнопок видимости (сверху) + дерево категорий.
         private readonly Panel _sidebarContainer = new() { Dock = DockStyle.Left, Width = 220, BackColor = Color.FromArgb(20, 25, 35) };
         private readonly Panel _sidebarButtons = new() { Dock = DockStyle.Top, Height = 26, BackColor = Color.FromArgb(20, 25, 35) };
@@ -227,30 +238,43 @@ namespace ETS2_Assist_GUI
             _sidebarContainer.Controls.Add(_sidebarButtons);
             _sidebarContainer.Controls.Add(_sidebar);
             Controls.Add(_sidebarContainer);
+            // v39.45: авторазмер сайдбара — расширяем, если категории не влезают по ширине
+            // (без горизонтальной прокрутки). Пересчитываем при изменении размера формы.
+            _sidebarContainer.Resize += (s, e) => AutoSizeSidebar();
+            AutoSizeSidebar();
 
             // v39.29: три маленькие кнопки видимости категорий (скрыть/показать/инверсия).
             // v39.30: на 35% меньше размером и шрифтом; панель НАД списком категорий (Dock.Top) —
             // сайдбар целиком (панель + дерево) слева.
             // v39.31: убран padding текста (Padding=0) — текст не обрезается.
+            // v39.45: кнопки в FlowLayoutPanel (автоширина по тексту, не накладываются друг на друга).
             var visBtnFont = new Font("Segoe UI", 7.5f);
-            var btnHide = new Button { Text = "скрыть", AutoSize = true, Height = 17, Left = 4, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(0), Margin = new Padding(0) };
-            var btnShow = new Button { Text = "показать", AutoSize = true, Height = 17, Left = 58, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(0), Margin = new Padding(0) };
-            var btnInvert = new Button { Text = "инверсия", AutoSize = true, Height = 17, Left = 112, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(0), Margin = new Padding(0), TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+            var visFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Padding = new Padding(2, 3, 2, 0), BackColor = Color.FromArgb(20, 25, 35) };
+            var btnHide = new Button { Text = "скрыть", AutoSize = true, Height = 17, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(4, 0, 4, 0), Margin = new Padding(0, 0, 3, 0) };
+            var btnShow = new Button { Text = "показать", AutoSize = true, Height = 17, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(4, 0, 4, 0), Margin = new Padding(0, 0, 3, 0) };
+            var btnInvert = new Button { Text = "инверсия", AutoSize = true, Height = 17, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(4, 0, 4, 0), Margin = new Padding(0), TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
             btnHide.Click += (s, e) => SetAllCategoriesVisible(false);
             btnShow.Click += (s, e) => SetAllCategoriesVisible(true);
             btnInvert.Click += (s, e) => InvertAllCategories();
-            _sidebarButtons.Controls.Add(btnHide);
-            _sidebarButtons.Controls.Add(btnShow);
-            _sidebarButtons.Controls.Add(btnInvert);
+            _editTip.SetToolTip(btnHide, "Скрыть ВСЕ категории точек на карте (снять галочки со всех категорий).");
+            _editTip.SetToolTip(btnShow, "Показать ВСЕ категории точек на карте (отметить все категории).");
+            _editTip.SetToolTip(btnInvert, "Инверсия видимости: скрытые категории показать, показанные — скрыть.");
+            visFlow.Controls.Add(btnHide);
+            visFlow.Controls.Add(btnShow);
+            visFlow.Controls.Add(btnInvert);
+            _sidebarButtons.Controls.Add(visFlow);
 
             var findTruck = new Button { Text = "найти грузовик", Width = 130, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat };
             findTruck.Click += (s, e) => FindTruck();
+            _editTip.SetToolTip(findTruck, "Найти грузовик: центрировать карту на текущей позиции грузовика (из телеметрии).");
 
             var showAll = new Button { Text = "показать всё", Width = 110, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat };
             showAll.Click += (s, e) => FitToAll();
+            _editTip.SetToolTip(showAll, "Показать всё: подобрать масштаб и центр так, чтобы все точки и дороги уместились на карте.");
 
             var reloadTargets = new Button { Text = "обновить цели", Width = 120, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat };
             reloadTargets.Click += (s, e) => { LoadTargets(); PopulateSidebar(); RequestRender(); };
+            _editTip.SetToolTip(reloadTargets, "Обновить цели: перечитать все точки (статика + overrides + SDO) и перестроить сайдбар.");
 
             _onlySelectedChk = new CheckBox { Text = "Только выбранные", AutoSize = true, ForeColor = Color.LightGray, Height = 30, Margin = new Padding(8, 6, 0, 0) };
             _editTip.SetToolTip(_onlySelectedChk, "Показывать на карте только выделенные точки (снимает с карты все остальные цели).");
@@ -264,6 +288,7 @@ namespace ETS2_Assist_GUI
             // v39: кнопка вкл/выкл АР2 в редакторе карты.
             _btnAr2.BackColor = Color.FromArgb(40, 48, 62);
             _btnAr2.Click += (s, e) => MainForm.Current?.LaunchArOverlayV2();
+            _editTip.SetToolTip(_btnAr2, "Включить/выключить AR-оверлей v2.0 (D3D): визуализация точек в пространстве перед камерой.");
             _toolbar.Controls.Add(_btnAr2);
 
             // v39: синхронизация состояния АР2 (Lime при запуске) из редактора.
@@ -307,6 +332,59 @@ namespace ETS2_Assist_GUI
                     if (_selectedIds.Count > 0) FitToSelection();
                     RequestRender();
                 }
+            };
+            // v39.46: кастомная отрисовка — чекбокс красим цветом категории (фон текста НЕ красим).
+            // v39.48: ВСЕ GDI-объекты освобождаются (using) + кэшированный StringFormat —
+            // иначе при 5000+ узлах исчерпывались GDI-дескрипторы (текст исчезал, всё тормозило).
+            _sidebar.DrawNode += (s, e) =>
+            {
+                var node = e.Node;
+                if (node == null) return;
+                var g = e.Graphics;
+                var bounds = e.Bounds;
+                // Фон узла (выделение/грязный/обычный) — рисуем сами, т.к. OwnerDrawAll.
+                Color bg = node.BackColor;
+                if ((e.State & TreeNodeStates.Selected) != 0) bg = Color.FromArgb(60, 70, 90);
+                using (var bgBrush = new SolidBrush(bg))
+                    g.FillRectangle(bgBrush, bounds);
+                // Индикатор разворачивания (+/-) для родительских узлов (OwnerDrawAll не рисует его сам).
+                if (node.Nodes.Count > 0)
+                {
+                    int indSize = 9;
+                    var indRect = new Rectangle(bounds.X + 1, bounds.Y + (bounds.Height - indSize) / 2, indSize, indSize);
+                    using (var indBrush = new SolidBrush(Color.FromArgb(40, 48, 62)))
+                        g.FillRectangle(indBrush, indRect);
+                    using (var indPen = new Pen(Color.LightGray, 1f))
+                        g.DrawRectangle(indPen, indRect);
+                    using (var signPen = new Pen(Color.LightGray, 1.5f))
+                    {
+                        g.DrawLine(signPen, indRect.X + 2, indRect.Y + indSize / 2, indRect.X + indSize - 2, indRect.Y + indSize / 2);
+                        if (!node.IsExpanded)
+                            g.DrawLine(signPen, indRect.X + indSize / 2, indRect.Y + 2, indRect.X + indSize / 2, indRect.Y + indSize - 2);
+                    }
+                }
+                // Чекбокс слева от текста: квадрат 16x16, залитый цветом категории (если задан).
+                int cbSize = 16;
+                int cbX = bounds.X + (node.Nodes.Count > 0 ? 14 : 2);
+                var cbRect = new Rectangle(cbX, bounds.Y + (bounds.Height - cbSize) / 2, cbSize, cbSize);
+                Color cbColor = _nodeCatColor.TryGetValue(node, out var c) ? c : Color.FromArgb(40, 48, 62);
+                using (var cbBrush = new SolidBrush(cbColor))
+                    g.FillRectangle(cbBrush, cbRect);
+                using (var cbPen = new Pen(Color.FromArgb(90, 100, 120), 1f))
+                    g.DrawRectangle(cbPen, cbRect);
+                // Галочка, если отмечен.
+                if (node.Checked)
+                {
+                    using var checkPen = new Pen(Color.White, 2f);
+                    g.DrawLine(checkPen, cbRect.X + 3, cbRect.Y + 8, cbRect.X + 7, cbRect.Y + 12);
+                    g.DrawLine(checkPen, cbRect.X + 7, cbRect.Y + 12, cbRect.X + 13, cbRect.Y + 4);
+                }
+                // Текст узла (шрифт/цвет — как раньше, из BackColor/ForeColor/NodeFont).
+                var textRect = new Rectangle(cbRect.Right + 4, bounds.Y, bounds.Right - cbRect.Right - 4, bounds.Height);
+                var font = node.NodeFont ?? _sidebar.Font;
+                using var textBrush = new SolidBrush(node.ForeColor);
+                g.DrawString(node.Text, font, textBrush, textRect, _nodeTextFmt);
+                e.DrawDefault = false;
             };
 
             _mapPanel.Paint += OnPaint;
@@ -1563,6 +1641,7 @@ namespace ETS2_Assist_GUI
         private void PopulateSidebar()
         {
             _sidebar.Nodes.Clear();
+            _nodeCatColor.Clear(); // v39.46: сброс цветов чекбоксов при пересборке сайдбара
             foreach (var p in _pois) if (!_catVisible.ContainsKey(p.category)) _catVisible[p.category] = true;
             TreeNode? selNode = null;
             var tNode = new TreeNode("Цели (" + _targets.Count + ")") { Name = "Цели", Checked = _catVisible.TryGetValue("Цели", out var st) && st };
@@ -1603,6 +1682,9 @@ namespace ETS2_Assist_GUI
             {
                 if (!_catVisible.ContainsKey(grp.Key)) _catVisible[grp.Key] = true;
                 var catNode = new TreeNode(grp.Key + " (" + grp.Count() + ")") { Name = grp.Key, Checked = _catVisible.TryGetValue(grp.Key, out var sp) && sp };
+                // v39.46: цвет категории храним для чекбокса (не красим фон текста).
+                Color catColor = SdoMeta.ColorOf(grp.Key);
+                _nodeCatColor[catNode] = catColor;
                 foreach (var pd in OrderSidebarPoints(grp))
                 {
                     var n = new TreeNode(SidedName(pd)) { Tag = (pd.X, pd.Z), Name = pd.GameName };
@@ -1610,6 +1692,8 @@ namespace ETS2_Assist_GUI
                     bool dirty = IsDirtyPoint(pd.GameName);
                     bool selected = _selectedIds.Contains(pd.GameName);
                     StylePointNode(n, pd, dirty, selected);
+                    // v39.46: цвет чекбокса точки = цвет категории (не красим фон текста).
+                    _nodeCatColor[n] = catColor;
                     catNode.Nodes.Add(n);
                 }
                 _sidebar.Nodes.Add(catNode);
@@ -1618,6 +1702,11 @@ namespace ETS2_Assist_GUI
             foreach (var grp in _pointModel.Values.Where(p => p.IsPoi).GroupBy(p => p.Category).OrderBy(g => g.Key))
             {
                 var catNode = new TreeNode(grp.Key + " (" + grp.Count() + ")") { Name = grp.Key, Checked = _catVisible.TryGetValue(grp.Key, out var sp) && sp };
+                // v39.46: цвет категории POI = цвет категории (если есть в meta), иначе палитра POI.
+                Color catColor = SdoMeta.Categories.ContainsKey(grp.Key)
+                    ? SdoMeta.ColorOf(grp.Key)
+                    : CategoryColor(grp.Key);
+                _nodeCatColor[catNode] = catColor;
                 foreach (var pd in OrderSidebarPoints(grp))
                 {
                     var n = new TreeNode(SidedName(pd)) { Tag = (pd.X, pd.Z), Name = pd.GameName };
@@ -1625,6 +1714,7 @@ namespace ETS2_Assist_GUI
                     bool dirty = IsDirtyPoint(pd.GameName);
                     bool selected = _selectedIds.Contains(pd.GameName);
                     StylePointNode(n, pd, dirty, selected);
+                    _nodeCatColor[n] = catColor;
                     catNode.Nodes.Add(n);
                 }
                 _sidebar.Nodes.Add(catNode);
@@ -2165,6 +2255,7 @@ namespace ETS2_Assist_GUI
             btnFolder.Click += (s, e) => { try { Process.Start(new ProcessStartInfo(_overridesDir) { UseShellExecute = true }); } catch { } };
             _editTip.SetToolTip(btnFolder, "Открыть папку map_overrides в проводнике.");
             var lblOv = new Label { Text = "overrides:", AutoSize = true, ForeColor = Color.LightGray, Left = 72, Top = 7 };
+            _editTip.SetToolTip(lblOv, "Файлы overrides (map_overrides\\*.json): пользовательские правки поверх статических точек.");
             _overrideCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200, Left = 138, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray };
             _overrideCombo.SelectedIndexChanged += (s, e) =>
             {
@@ -2172,6 +2263,7 @@ namespace ETS2_Assist_GUI
             };
             _editTip.SetToolTip(_overrideCombo, "Файл overrides, в который будут записаны изменения (по load_order: сверху — приоритет). * — файл не в load_order.");
             var txtOrder = new TextBox { Width = 30, Left = 344, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, Text = "0" };
+            _editTip.SetToolTip(txtOrder, "Позиция файла в load_order (1 = высший приоритет). 0 — удалить файл из load_order.");
             var btnUp = new Button { Text = "↑", Width = 28, Height = 22, Left = 380, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray };
             btnUp.Click += (s, e) =>
             {
@@ -2206,9 +2298,81 @@ namespace ETS2_Assist_GUI
 
             RefreshOverrideCombo();
             BuildFieldControls();
+            // v39.45: авторазмер панели редактирования — расширяем, если контент не влезает
+            // (без горизонтальной прокрутки). Пересчитываем при изменении размера формы.
+            _editPanel.Resize += (s, e) => AutoSizeEditPanel();
+            AutoSizeEditPanel();
+        }
+
+        // v39.45: авторазмер панели редактирования. Ширина = max(340, ширина самого широкого
+        // контрола + отступы). Горизонтальной прокрутки не бывает — панель расширяется.
+        private void AutoSizeEditPanel()
+        {
+            if (_editPanel == null || _editFields == null) return;
+            int maxW = 340;
+            foreach (Control c in _editFields.Controls)
+            {
+                if (c is Panel row)
+                {
+                    int w = row.PreferredSize.Width;
+                    if (w > maxW) maxW = w;
+                }
+            }
+            // Не даём панели съесть всю карту (максимум ~60% ширины формы).
+            int cap = (int)(ClientSize.Width * 0.6);
+            if (maxW > cap) maxW = cap;
+            _editPanel.Width = maxW;
+        }
+
+        // v39.45: авторазмер сайдбара (левая колонка). Ширина = max(220, ширина самого широкого
+        // узла дерева + отступы). Горизонтальной прокрутки не бывает — колонка расширяется.
+        private void AutoSizeSidebar()
+        {
+            if (_sidebar == null || _sidebarContainer == null) return;
+            int maxW = 220;
+            using var g = _sidebar.CreateGraphics();
+            foreach (TreeNode node in EnumNodes(_sidebar.Nodes))
+            {
+                var text = node.Text;
+                var size = g.MeasureString(text, _sidebar.Font);
+                int w = (int)Math.Ceiling(size.Width) + 40; // + чекбокс/иконка/отступы
+                if (w > maxW) maxW = w;
+            }
+            // Не даём колонке съесть всю карту (максимум ~40% ширины формы).
+            int cap = (int)(ClientSize.Width * 0.4);
+            if (maxW > cap) maxW = cap;
+            _sidebarContainer.Width = maxW;
         }
 
         private static Color LightGray() => Color.LightGray;
+
+        // v39.45: краткое описание поля для тултипа (что делает / на что влияет).
+        private static string FieldTooltip(string key) => key switch
+        {
+            "GameName" => "Системный идентификатор точки (уникальный). Менять осторожно — по нему ищутся overrides.",
+            "RealName" => "Отображаемое имя точки на карте и в сайдбаре.",
+            "Description" => "Описание точки (показывается в подсказках/диалогах).",
+            "Category" => "Категория точки (группа в сайдбаре и цвет на карте).",
+            "Enabled" => "Включена ли точка: снятие галочки скрывает её с карты и отключает триггер.",
+            "X" => "Координата X (восток) в игровой мировой СК.",
+            "Y" => "Координата Y (высота над уровнем моря) в игровой мировой СК.",
+            "Z" => "Координата Z (юг) в игровой мировой СК.",
+            "Color" => "Цвет точки в формате #rrggbb (если не задан — цвет категории).",
+            "Icon" => "Имя файла иконки (png 50x50) из папки icons\\ категории.",
+            "LabelStroke" => "Толщина чёрной обводки подписи точки (px).",
+            "TriggerRadius" => "Радиус зоны срабатывания триггера/квеста вокруг точки (м).",
+            "CooldownMinutes" => "Кулдаун повторного срабатывания (мин; 0 = без кулдауна).",
+            "Hidden" => "Скрытая ли точка (1 = скрыта с карты, но триггер работает).",
+            "DeleteOnComplete" => "Удалить точку после выполнения (0 = нет, 1 = да, 2 = по типу квеста).",
+            "DialogId" => "Идентификатор диалога, показываемого при входе в зону.",
+            "Action" => "Действие, выполняемое при срабатывании точки.",
+            "Caption" => "Подпись/заголовок, показываемый в диалоге точки.",
+            "EnterReward" => "Награда деньгами (рубли) при входе в зону.",
+            "AfterReward" => "Награда деньгами (рубли) после выполнения действия.",
+            "EnterXp" => "Опыт, начисляемый при входе в зону.",
+            "AfterXp" => "Опыт, начисляемый после выполнения действия.",
+            _ => ""
+        };
 
         // Генерирует контролы полей по метаданным PointData.Fields (порядок/группы сохранены).
         private void BuildFieldControls()
@@ -2227,8 +2391,10 @@ namespace ETS2_Assist_GUI
                     _editFields.Controls.Add(gl);
                 }
                 bool isDesc = f.Key == "Description";
-                // Строка подгоняет высоту под содержимое (AutoSize) — поля НЕ обрезаются.
-                var row = new Panel { Width = 320, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 3) };
+                // v39.45: строка подгоняет ширину под панель (нет горизонтальной прокрутки),
+                // высоту — под содержимое (AutoSize). Поля НЕ обрезаются.
+                int rowW = Math.Max(300, _editFields.ClientSize.Width - 4);
+                var row = new Panel { Width = rowW, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 3) };
                 var lbl = new Label
                 {
                     Text = f.Label + (f.Required ? " *" : ""),
@@ -2263,6 +2429,8 @@ namespace ETS2_Assist_GUI
                 int top = lbl.GetPreferredSize(new Size(312, 0)).Height + 3;
                 ctrl.Top = top;
                 row.Controls.Add(lbl); row.Controls.Add(ctrl);
+                // v39.45: тултип к названию поля — краткое описание, на что влияет изменение.
+                _editTip.SetToolTip(lbl, FieldTooltip(f.Key));
                 // Запоминаем лейбл поля для cyan-метки файла override и клика по нему.
                 _fieldLabels[f.Key] = lbl;
                 lbl.Tag = f.Key;
@@ -2577,6 +2745,8 @@ namespace ETS2_Assist_GUI
                 if (node.Nodes.Count > 0) continue; // родительские узлы категорий — не трогаем (это видимость)
                 bool sel = !string.IsNullOrEmpty(node.Name) && _selectedIds.Contains(node.Name);
                 if (node.Checked != sel) node.Checked = sel;
+                // v39.46: НЕ сбрасываем BackColor на тёмный — это затирало цветовые кодировки.
+                // Выделение теперь подсвечивается только чекбоксом (Checked) и цветом текста.
                 node.BackColor = sel ? Color.FromArgb(60, 70, 90) : Color.FromArgb(22, 27, 38);
             }
             _suppressCheck = false;
@@ -3187,6 +3357,7 @@ namespace ETS2_Assist_GUI
             foreach (var bmp in _sdoIconCache.Values) { try { bmp.Dispose(); } catch { } }
             _sdoIconCache.Clear();
             try { _tooltip.Dispose(); } catch { }
+            try { _nodeTextFmt.Dispose(); } catch { }
             SaveEditorState();
         }
     }

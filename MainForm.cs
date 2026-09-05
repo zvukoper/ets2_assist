@@ -3600,24 +3600,42 @@ RegisterHotKeyChecked(
                 lang.Get("exit_title") ?? "Exit",
                 MessageBoxButtons.YesNo) == DialogResult.Yes)
             {
-                StopSystem();
-                if (hotKeyRegistered)
+                // v39.47: StopSystem() обёрнут в try/catch — если остановка бросает
+                // исключение, Application.Exit() всё равно должен выполниться (иначе
+                // приложение «зависает» при выходе).
+                // v39.48: StopSystem() вынесен в фоновый поток с таймаутом — если он
+                // блокирует UI-поток (Join/WaitForExit), процесс всё равно завершится.
+                try { trayIcon.Visible = false; } catch { }
+                try
                 {
-                    UnregisterHotKey(this.Handle, HOTKEY_SAVE);
-                    UnregisterHotKey(this.Handle, HOTKEY_START_REC);
-                    UnregisterHotKey(this.Handle, HOTKEY_STOP_REC);
-                    UnregisterHotKey(this.Handle, HOTKEY_MARKER);
-                    UnregisterHotKey(this.Handle, HOTKEY_TEST);
-                    UnregisterHotKey(this.Handle, HOTKEY_FOV_UP);
-                    UnregisterHotKey(this.Handle, HOTKEY_FOV_DOWN);
-                    UnregisterHotKey(this.Handle, HOTKEY_PLANE_UP);
-                    UnregisterHotKey(this.Handle, HOTKEY_PLANE_DOWN);
-                    UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
-                    UnregisterHotKey(this.Handle, HOTKEY_TELEPORT_EDITOR);
-                    UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
+                    if (hotKeyRegistered)
+                    {
+                        UnregisterHotKey(this.Handle, HOTKEY_SAVE);
+                        UnregisterHotKey(this.Handle, HOTKEY_START_REC);
+                        UnregisterHotKey(this.Handle, HOTKEY_STOP_REC);
+                        UnregisterHotKey(this.Handle, HOTKEY_MARKER);
+                        UnregisterHotKey(this.Handle, HOTKEY_TEST);
+                        UnregisterHotKey(this.Handle, HOTKEY_FOV_UP);
+                        UnregisterHotKey(this.Handle, HOTKEY_FOV_DOWN);
+                        UnregisterHotKey(this.Handle, HOTKEY_PLANE_UP);
+                        UnregisterHotKey(this.Handle, HOTKEY_PLANE_DOWN);
+                        UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
+                        UnregisterHotKey(this.Handle, HOTKEY_TELEPORT_EDITOR);
+                        UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
+                    }
                 }
-                trayIcon.Visible = false;
+                catch { }
+                // Останавливаем систему в фоне (не блокируя UI-поток), затем выходим.
+                var stopTask = Task.Run(() => { try { StopSystem(); } catch { } });
+                // Даём фоновой остановке короткое время, затем принудительно завершаем процесс.
+                if (!stopTask.Wait(2000))
+                {
+                    // Не успели остановить — всё равно выходим (не зависаем).
+                }
                 Application.Exit();
+                // Fallback: если процесс всё ещё жив (незакрытые формы/фоновые потоки) —
+                // принудительно завершаем, чтобы не «зависать» при выходе.
+                Environment.Exit(0);
             }
         }
 
