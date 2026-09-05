@@ -142,6 +142,8 @@ namespace ETS2_Assist_GUI
         private const int HOTKEY_TELEPORT = 9010;    // v39.30: CTRL+T — телепорт в ИГРЕ (goto X;Y;Z;A;E)
         private const int HOTKEY_TELEPORT_EDITOR = 9011; // v39.30: CTRL+SHIFT+T — телепорт в РЕДАКТОРЕ (Find→Position)
         private bool hotKeyRegistered = false;
+        // v39.49: защита от повторного Exit (рекурсия ConfirmExit → Application.Exit → FormClosing).
+        private bool _isExiting = false;
 
         // v100: SetLastError — для чтения кода ошибки (1409 = занято другим процессом).
         [DllImport("user32.dll", SetLastError = true)]
@@ -2251,7 +2253,16 @@ RegisterHotKeyChecked(
             SCSController.Dispose();
 
             AppendLog("System stopped.");
-            RefreshUI();
+            // v39.49: StopSystem() может вызываться из фонового потока (Task.Run в ConfirmExit) —
+            // RefreshUI() обращается к UI-контролам, поэтому маршалим на UI-поток.
+            if (IsHandleCreated && InvokeRequired)
+            {
+                try { BeginInvoke((Action)RefreshUI); } catch { }
+            }
+            else
+            {
+                RefreshUI();
+            }
         }
 
         private void KillChildProcesses()
@@ -3593,49 +3604,68 @@ RegisterHotKeyChecked(
             }
         }
 
-        private void ConfirmExit()
+        // v39.49: безопасное снятие всех глобальных хоткеев (вынесено из ConfirmExit).
+        private void UnregisterHotkeysSafely()
         {
-            if (MessageBox.Show(
+            try
+            {
+                if (!hotKeyRegistered)
+                    return;
+                UnregisterHotKey(this.Handle, HOTKEY_SAVE);
+                UnregisterHotKey(this.Handle, HOTKEY_START_REC);
+                UnregisterHotKey(this.Handle, HOTKEY_STOP_REC);
+                UnregisterHotKey(this.Handle, HOTKEY_MARKER);
+                UnregisterHotKey(this.Handle, HOTKEY_TEST);
+                UnregisterHotKey(this.Handle, HOTKEY_FOV_UP);
+                UnregisterHotKey(this.Handle, HOTKEY_FOV_DOWN);
+                UnregisterHotKey(this.Handle, HOTKEY_PLANE_UP);
+                UnregisterHotKey(this.Handle, HOTKEY_PLANE_DOWN);
+                UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
+                UnregisterHotKey(this.Handle, HOTKEY_TELEPORT_EDITOR);
+                UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Hotkey cleanup error: {ex.Message}");
+            }
+            finally
+            {
+                hotKeyRegistered = false;
+            }
+        }
+
+        // v39.49: переработанный выход. UI-поток НЕ блокируется на Wait/Join/WaitOne.
+        // StopSystem() выполняется в фоне; Application.Exit() — штатное завершение WinForms.
+        private async void ConfirmExit()
+        {
+            if (_isExiting)
+                return;
+
+            var result = MessageBox.Show(
                 lang.Get("exit_confirm") ?? "Are you sure you want to exit?",
                 lang.Get("exit_title") ?? "Exit",
-                MessageBoxButtons.YesNo) == DialogResult.Yes)
+                MessageBoxButtons.YesNo);
+
+            if (result != DialogResult.Yes)
+                return;
+
+            _isExiting = true;
+
+            try { trayIcon.Visible = false; } catch { }
+
+            UnregisterHotkeysSafely();
+
+            try
             {
-                // v39.47: StopSystem() обёрнут в try/catch — если остановка бросает
-                // исключение, Application.Exit() всё равно должен выполниться (иначе
-                // приложение «зависает» при выходе).
-                // v39.48: StopSystem() вынесен в фоновый поток с таймаутом — если он
-                // блокирует UI-поток (Join/WaitForExit), процесс всё равно завершится.
-                try { trayIcon.Visible = false; } catch { }
-                try
-                {
-                    if (hotKeyRegistered)
-                    {
-                        UnregisterHotKey(this.Handle, HOTKEY_SAVE);
-                        UnregisterHotKey(this.Handle, HOTKEY_START_REC);
-                        UnregisterHotKey(this.Handle, HOTKEY_STOP_REC);
-                        UnregisterHotKey(this.Handle, HOTKEY_MARKER);
-                        UnregisterHotKey(this.Handle, HOTKEY_TEST);
-                        UnregisterHotKey(this.Handle, HOTKEY_FOV_UP);
-                        UnregisterHotKey(this.Handle, HOTKEY_FOV_DOWN);
-                        UnregisterHotKey(this.Handle, HOTKEY_PLANE_UP);
-                        UnregisterHotKey(this.Handle, HOTKEY_PLANE_DOWN);
-                        UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
-                        UnregisterHotKey(this.Handle, HOTKEY_TELEPORT_EDITOR);
-                        UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
-                    }
-                }
-                catch { }
-                // Останавливаем систему в фоне (не блокируя UI-поток), затем выходим.
-                var stopTask = Task.Run(() => { try { StopSystem(); } catch { } });
-                // Даём фоновой остановке короткое время, затем принудительно завершаем процесс.
-                if (!stopTask.Wait(2000))
-                {
-                    // Не успели остановить — всё равно выходим (не зависаем).
-                }
+                await Task.Run(() => StopSystem());
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Exit cleanup error: {ex.Message}");
+            }
+            finally
+            {
                 Application.Exit();
-                // Fallback: если процесс всё ещё жив (незакрытые формы/фоновые потоки) —
-                // принудительно завершаем, чтобы не «зависать» при выходе.
-                Environment.Exit(0);
             }
         }
 

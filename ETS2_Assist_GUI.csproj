@@ -38,8 +38,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>39</VersionSet>
-        <VersionIter>48</VersionIter>
-        <VersionDesc>SIDEBAR-GDI-FIX-EXIT</VersionDesc>
+        <VersionIter>49</VersionIter>
+        <VersionDesc>SIDEBAR-EXIT-FIX</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>

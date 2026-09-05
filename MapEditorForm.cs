@@ -238,10 +238,8 @@ namespace ETS2_Assist_GUI
             _sidebarContainer.Controls.Add(_sidebarButtons);
             _sidebarContainer.Controls.Add(_sidebar);
             Controls.Add(_sidebarContainer);
-            // v39.45: авторазмер сайдбара — расширяем, если категории не влезают по ширине
-            // (без горизонтальной прокрутки). Пересчитываем при изменении размера формы.
-            _sidebarContainer.Resize += (s, e) => AutoSizeSidebar();
-            AutoSizeSidebar();
+            // v39.49: фиксированная ширина сайдбара (220) — без динамического пересчёта
+            // через MeasureString (дорого при большом числе точек).
 
             // v39.29: три маленькие кнопки видимости категорий (скрыть/показать/инверсия).
             // v39.30: на 35% меньше размером и шрифтом; панель НАД списком категорий (Dock.Top) —
@@ -336,18 +334,20 @@ namespace ETS2_Assist_GUI
             // v39.46: кастомная отрисовка — чекбокс красим цветом категории (фон текста НЕ красим).
             // v39.48: ВСЕ GDI-объекты освобождаются (using) + кэшированный StringFormat —
             // иначе при 5000+ узлах исчерпывались GDI-дескрипторы (текст исчезал, всё тормозило).
+            // v39.49: корректный цвет текста (node.ForeColor может быть Color.Empty) + проверка
+            // ширины текста (не рисовать, если места нет).
             _sidebar.DrawNode += (s, e) =>
             {
                 var node = e.Node;
                 if (node == null) return;
                 var g = e.Graphics;
                 var bounds = e.Bounds;
-                // Фон узла (выделение/грязный/обычный) — рисуем сами, т.к. OwnerDrawAll.
+                // 1. Фон строки (выделение/грязный/обычный) — рисуем сами, т.к. OwnerDrawAll.
                 Color bg = node.BackColor;
                 if ((e.State & TreeNodeStates.Selected) != 0) bg = Color.FromArgb(60, 70, 90);
                 using (var bgBrush = new SolidBrush(bg))
                     g.FillRectangle(bgBrush, bounds);
-                // Индикатор разворачивания (+/-) для родительских узлов (OwnerDrawAll не рисует его сам).
+                // 2. Индикатор разворачивания (+/-) для родительских узлов.
                 if (node.Nodes.Count > 0)
                 {
                     int indSize = 9;
@@ -363,7 +363,7 @@ namespace ETS2_Assist_GUI
                             g.DrawLine(signPen, indRect.X + indSize / 2, indRect.Y + 2, indRect.X + indSize / 2, indRect.Y + indSize - 2);
                     }
                 }
-                // Чекбокс слева от текста: квадрат 16x16, залитый цветом категории (если задан).
+                // 3. Чекбокс слева от текста: квадрат 16x16, залитый цветом категории (если задан).
                 int cbSize = 16;
                 int cbX = bounds.X + (node.Nodes.Count > 0 ? 14 : 2);
                 var cbRect = new Rectangle(cbX, bounds.Y + (bounds.Height - cbSize) / 2, cbSize, cbSize);
@@ -372,18 +372,26 @@ namespace ETS2_Assist_GUI
                     g.FillRectangle(cbBrush, cbRect);
                 using (var cbPen = new Pen(Color.FromArgb(90, 100, 120), 1f))
                     g.DrawRectangle(cbPen, cbRect);
-                // Галочка, если отмечен.
+                // 4. Галочка, если отмечен.
                 if (node.Checked)
                 {
                     using var checkPen = new Pen(Color.White, 2f);
                     g.DrawLine(checkPen, cbRect.X + 3, cbRect.Y + 8, cbRect.X + 7, cbRect.Y + 12);
                     g.DrawLine(checkPen, cbRect.X + 7, cbRect.Y + 12, cbRect.X + 13, cbRect.Y + 4);
                 }
-                // Текст узла (шрифт/цвет — как раньше, из BackColor/ForeColor/NodeFont).
-                var textRect = new Rectangle(cbRect.Right + 4, bounds.Y, bounds.Right - cbRect.Right - 4, bounds.Height);
-                var font = node.NodeFont ?? _sidebar.Font;
-                using var textBrush = new SolidBrush(node.ForeColor);
-                g.DrawString(node.Text, font, textBrush, textRect, _nodeTextFmt);
+                // 5. Текст узла — обычный светлый текст (не цвет категории).
+                // Корректный цвет: node.ForeColor может быть Color.Empty → берём цвет дерева.
+                Color textColor = node.ForeColor;
+                if (textColor.IsEmpty)
+                    textColor = _sidebar.ForeColor;
+                int textWidth = bounds.Right - cbRect.Right - 4;
+                if (textWidth > 0)
+                {
+                    var textRect = new Rectangle(cbRect.Right + 4, bounds.Y, textWidth, bounds.Height);
+                    var font = node.NodeFont ?? _sidebar.Font;
+                    using var textBrush = new SolidBrush(textColor);
+                    g.DrawString(node.Text, font, textBrush, textRect, _nodeTextFmt);
+                }
                 e.DrawDefault = false;
             };
 
@@ -1640,14 +1648,19 @@ namespace ETS2_Assist_GUI
 
         private void PopulateSidebar()
         {
-            _sidebar.Nodes.Clear();
-            _nodeCatColor.Clear(); // v39.46: сброс цветов чекбоксов при пересборке сайдбара
-            foreach (var p in _pois) if (!_catVisible.ContainsKey(p.category)) _catVisible[p.category] = true;
-            TreeNode? selNode = null;
-            var tNode = new TreeNode("Цели (" + _targets.Count + ")") { Name = "Цели", Checked = _catVisible.TryGetValue("Цели", out var st) && st };
-            foreach (var t in _targets)
+            // v39.49: BeginUpdate/EndUpdate — не перерисовывать дерево при каждом добавлении узла
+            // (при 5000+ точках это сильно тормозило построение сайдбара).
+            _sidebar.BeginUpdate();
+            try
             {
-                // Города/POI/SDO вынесены в свои группы; пользовательские — в «Пользовательское».
+                _sidebar.Nodes.Clear();
+                _nodeCatColor.Clear(); // v39.46: сброс цветов чекбоксов при пересборке сайдбара
+                foreach (var p in _pois) if (!_catVisible.ContainsKey(p.category)) _catVisible[p.category] = true;
+                TreeNode? selNode = null;
+                var tNode = new TreeNode("Цели (" + _targets.Count + ")") { Name = "Цели", Checked = _catVisible.TryGetValue("Цели", out var st) && st };
+                foreach (var t in _targets)
+                {
+                    // Города/POI/SDO вынесены в свои группы; пользовательские — в «Пользовательское».
                 if (_pointModel.TryGetValue(t.id, out var tp) && (tp.IsCity || tp.IsPoi || tp.IsSdo)) continue;
                 if (tp != null && tp.SourceFile != "" && !_staticNames.Contains(t.id)) continue;
                 var n = new TreeNode(t.name) { Tag = (t.x, t.z), Name = t.id };
@@ -1787,6 +1800,12 @@ namespace ETS2_Assist_GUI
             _sidebar.Nodes.Add(savedNode);
 
             if (selNode != null) _sidebar.SelectedNode = selNode;
+            }
+            finally
+            {
+                _sidebar.EndUpdate();
+                _sidebar.Invalidate();
+            }
         }
 
         // v39.29: кнопки видимости категорий. Скрыть/показать все категории; инверсия —
@@ -2322,26 +2341,6 @@ namespace ETS2_Assist_GUI
             int cap = (int)(ClientSize.Width * 0.6);
             if (maxW > cap) maxW = cap;
             _editPanel.Width = maxW;
-        }
-
-        // v39.45: авторазмер сайдбара (левая колонка). Ширина = max(220, ширина самого широкого
-        // узла дерева + отступы). Горизонтальной прокрутки не бывает — колонка расширяется.
-        private void AutoSizeSidebar()
-        {
-            if (_sidebar == null || _sidebarContainer == null) return;
-            int maxW = 220;
-            using var g = _sidebar.CreateGraphics();
-            foreach (TreeNode node in EnumNodes(_sidebar.Nodes))
-            {
-                var text = node.Text;
-                var size = g.MeasureString(text, _sidebar.Font);
-                int w = (int)Math.Ceiling(size.Width) + 40; // + чекбокс/иконка/отступы
-                if (w > maxW) maxW = w;
-            }
-            // Не даём колонке съесть всю карту (максимум ~40% ширины формы).
-            int cap = (int)(ClientSize.Width * 0.4);
-            if (maxW > cap) maxW = cap;
-            _sidebarContainer.Width = maxW;
         }
 
         private static Color LightGray() => Color.LightGray;
