@@ -85,21 +85,15 @@ namespace ETS2_Assist_GUI
         // Клик по строке открывает папку логов приложения.
         private readonly EditorStatusBar _statusBar = new() { Dock = DockStyle.Bottom, Height = 24 };
         private readonly Label _statusLabel = new() { Dock = DockStyle.Bottom, Height = 24, ForeColor = Color.FromArgb(143, 160, 185), BackColor = Color.FromArgb(15, 18, 23), Padding = new Padding(4, 3, 0, 0), Visible = false };
-        private readonly TreeView _sidebar = new() { Dock = DockStyle.Fill, BackColor = Color.FromArgb(20, 25, 35), ForeColor = Color.LightGray, Font = new Font("Segoe UI", 9), CheckBoxes = true, DrawMode = TreeViewDrawMode.OwnerDrawAll };
-        // v39.46: цвет категории для чекбокса узла сайдбара (хранится отдельно от BackColor,
-        // чтобы выделение одной точки не сбрасывало цвета чекбоксов других точек).
-        private readonly Dictionary<TreeNode, Color> _nodeCatColor = new();
-        // v39.48: кэшированный StringFormat для отрисовки текста узлов (создаётся ОДИН раз —
-        // в DrawNode создание на каждый узел/кадр исчерпывало GDI-дескрипторы и тормозило).
-        private readonly StringFormat _nodeTextFmt = new()
-        {
-            LineAlignment = StringAlignment.Center,
-            Trimming = StringTrimming.EllipsisCharacter,
-            FormatFlags = StringFormatFlags.NoWrap
-        };
-        // v39.30: левая колонка сайдбара: панель кнопок видимости (сверху) + дерево категорий.
-        private readonly Panel _sidebarContainer = new() { Dock = DockStyle.Left, Width = 220, BackColor = Color.FromArgb(20, 25, 35) };
-        private readonly Panel _sidebarButtons = new() { Dock = DockStyle.Top, Height = 26, BackColor = Color.FromArgb(20, 25, 35) };
+        // v39.52: сайдбар — самостоятельный custom control (SidebarControl), без TreeView.
+        private readonly SidebarControl _sidebar = new() { Dock = DockStyle.Fill };
+        // v39.30: левая колонка сайдбара: панель кнопок видимости (сверху) + SidebarControl.
+        private readonly Panel _sidebarContainer = new() { Dock = DockStyle.Left, Width = 240, BackColor = Color.FromArgb(20, 25, 35) };
+        private readonly Panel _sidebarButtons = new() { Dock = DockStyle.Top, Height = 30, BackColor = Color.FromArgb(20, 25, 35) };
+        // Контекстное меню сайдбара (пока пустое — placeholder).
+        private readonly ContextMenuStrip _sidebarContextMenu = new();
+        // Состояние раскрытия категорий сайдбара (по id категории, не по TreeNode).
+        private readonly HashSet<string> _expandedSidebarCategories = new();
         private readonly ToolTip _tooltip = new() { InitialDelay = 0, ReshowDelay = 0, ShowAlways = true };
 
         private readonly string _stateFile = Path.Combine(AppDataPaths.UserDataDirectory, "map_editor_state.json");
@@ -159,7 +153,6 @@ namespace ETS2_Assist_GUI
         private readonly HashSet<string> _selectedIds = new();
         // Координаты всех точек (цели/города/POI) для подсветки/вписывания в карту.
         private readonly Dictionary<string, (double x, double z, string label)> _selectLookup = new();
-        private bool _suppressCheck;           // защита от рекурсии при программной установке чекбоксов
         private readonly ToolTip _editTip = new() { InitialDelay = 300, ShowAlways = true };
         private bool _sanitizing;                 // защита от рекурсии при санитизации GameName
         private bool _loadingPanel;               // подавляет OnFieldChanged при программной загрузке точки в панель
@@ -238,8 +231,8 @@ namespace ETS2_Assist_GUI
             _sidebarContainer.Controls.Add(_sidebarButtons);
             _sidebarContainer.Controls.Add(_sidebar);
             Controls.Add(_sidebarContainer);
-            // v39.49: фиксированная ширина сайдбара (220) — без динамического пересчёта
-            // через MeasureString (дорого при большом числе точек).
+            // v39.52: фиксированная ширина сайдбара (240) — без динамического пересчёта.
+            _sidebarContainer.Width = 240;
 
             // v39.29: три маленькие кнопки видимости категорий (скрыть/показать/инверсия).
             // v39.30: на 35% меньше размером и шрифтом; панель НАД списком категорий (Dock.Top) —
@@ -298,102 +291,12 @@ namespace ETS2_Assist_GUI
             _ar2SyncTimer.Start();
 
 
-            _sidebar.AfterSelect += (s, e) =>
-            {
-                if (e.Node?.Tag is (double x, double z))
-                {
-                    string id = e.Node.Name; // для целей/отключенных — gameName; для городов/POI — составной ключ
-                    if (!string.IsNullOrEmpty(id))
-                    {
-                        if (ModifierKeys == Keys.Control) ToggleSelect(id);
-                        else SelectPoint(id);
-                    }
-                    CenterOn(x, z);
-                }
-            };
-            _sidebar.AfterCheck += (s, e) =>
-            {
-                if (_suppressCheck) return;
-                // Родительская категория — переключить видимость на карте.
-                if (e.Node != null && e.Node.Nodes.Count > 0)
-                {
-                    string key = !string.IsNullOrEmpty(e.Node.Name) ? e.Node.Name : e.Node.Text;
-                    _catVisible[key] = e.Node.Checked;
-                    RequestRender();
-                }
-                else if (e.Node != null && !string.IsNullOrEmpty(e.Node.Name))
-                {
-                    // Лист точки — чекбокс выделяет/снимает выделение и вписывает в карту.
-                    if (e.Node.Checked) _selectedIds.Add(e.Node.Name);
-                    else _selectedIds.Remove(e.Node.Name);
-                    UpdateSidebarSelection();
-                    if (_selectedIds.Count > 0) FitToSelection();
-                    RequestRender();
-                }
-            };
-            // v39.46: кастомная отрисовка — чекбокс красим цветом категории (фон текста НЕ красим).
-            // v39.48: ВСЕ GDI-объекты освобождаются (using) + кэшированный StringFormat —
-            // иначе при 5000+ узлах исчерпывались GDI-дескрипторы (текст исчезал, всё тормозило).
-            // v39.49: корректный цвет текста (node.ForeColor может быть Color.Empty) + проверка
-            // ширины текста (не рисовать, если места нет).
-            _sidebar.DrawNode += (s, e) =>
-            {
-                var node = e.Node;
-                if (node == null) return;
-                var g = e.Graphics;
-                var bounds = e.Bounds;
-                // 1. Фон строки (выделение/грязный/обычный) — рисуем сами, т.к. OwnerDrawAll.
-                Color bg = node.BackColor;
-                if ((e.State & TreeNodeStates.Selected) != 0) bg = Color.FromArgb(60, 70, 90);
-                using (var bgBrush = new SolidBrush(bg))
-                    g.FillRectangle(bgBrush, bounds);
-                // 2. Индикатор разворачивания (+/-) для родительских узлов.
-                if (node.Nodes.Count > 0)
-                {
-                    int indSize = 9;
-                    var indRect = new Rectangle(bounds.X + 1, bounds.Y + (bounds.Height - indSize) / 2, indSize, indSize);
-                    using (var indBrush = new SolidBrush(Color.FromArgb(40, 48, 62)))
-                        g.FillRectangle(indBrush, indRect);
-                    using (var indPen = new Pen(Color.LightGray, 1f))
-                        g.DrawRectangle(indPen, indRect);
-                    using (var signPen = new Pen(Color.LightGray, 1.5f))
-                    {
-                        g.DrawLine(signPen, indRect.X + 2, indRect.Y + indSize / 2, indRect.X + indSize - 2, indRect.Y + indSize / 2);
-                        if (!node.IsExpanded)
-                            g.DrawLine(signPen, indRect.X + indSize / 2, indRect.Y + 2, indRect.X + indSize / 2, indRect.Y + indSize - 2);
-                    }
-                }
-                // 3. Чекбокс слева от текста: квадрат 16x16, залитый цветом категории (если задан).
-                int cbSize = 16;
-                int cbX = bounds.X + (node.Nodes.Count > 0 ? 14 : 2);
-                var cbRect = new Rectangle(cbX, bounds.Y + (bounds.Height - cbSize) / 2, cbSize, cbSize);
-                Color cbColor = _nodeCatColor.TryGetValue(node, out var c) ? c : Color.FromArgb(40, 48, 62);
-                using (var cbBrush = new SolidBrush(cbColor))
-                    g.FillRectangle(cbBrush, cbRect);
-                using (var cbPen = new Pen(Color.FromArgb(90, 100, 120), 1f))
-                    g.DrawRectangle(cbPen, cbRect);
-                // 4. Галочка, если отмечен.
-                if (node.Checked)
-                {
-                    using var checkPen = new Pen(Color.White, 2f);
-                    g.DrawLine(checkPen, cbRect.X + 3, cbRect.Y + 8, cbRect.X + 7, cbRect.Y + 12);
-                    g.DrawLine(checkPen, cbRect.X + 7, cbRect.Y + 12, cbRect.X + 13, cbRect.Y + 4);
-                }
-                // 5. Текст узла — обычный светлый текст (не цвет категории).
-                // Корректный цвет: node.ForeColor может быть Color.Empty → берём цвет дерева.
-                Color textColor = node.ForeColor;
-                if (textColor.IsEmpty)
-                    textColor = _sidebar.ForeColor;
-                int textWidth = bounds.Right - cbRect.Right - 4;
-                if (textWidth > 0)
-                {
-                    var textRect = new Rectangle(cbRect.Right + 4, bounds.Y, textWidth, bounds.Height);
-                    var font = node.NodeFont ?? _sidebar.Font;
-                    using var textBrush = new SolidBrush(textColor);
-                    g.DrawString(node.Text, font, textBrush, textRect, _nodeTextFmt);
-                }
-                e.DrawDefault = false;
-            };
+            // v39.52: события SidebarControl (без TreeView).
+            _sidebar.ItemActivated += Sidebar_ItemActivated;
+            _sidebar.SelectionChanged += Sidebar_SelectionChanged;
+            _sidebar.CategoryVisibilityChanged += Sidebar_CategoryVisibilityChanged;
+            _sidebar.ContextMenuRequested += Sidebar_ContextMenuRequested;
+            _sidebar.CategoryExpandedChanged += Sidebar_CategoryExpandedChanged;
 
             _mapPanel.Paint += OnPaint;
             _mapPanel.Resize += (s, e) => RequestRender();
@@ -1338,7 +1241,7 @@ namespace ETS2_Assist_GUI
                         if (_fieldControls.TryGetValue("Z", out var cz)) cz.Text = wz.ToString("F2", CultureInfo.InvariantCulture);
                         _dirtyFields.Add("X"); _dirtyFields.Add("Z");
                         if (!string.IsNullOrEmpty(_selectedGameName)) _unsavedEdits.Add(_selectedGameName);
-                        UpdateSidebarSelection();
+                        SyncSidebarSelection();
                         UpdateActionButtons();
                     }
                     RequestRender();
@@ -1648,164 +1551,199 @@ namespace ETS2_Assist_GUI
 
         private void PopulateSidebar()
         {
-            // v39.49: BeginUpdate/EndUpdate — не перерисовывать дерево при каждом добавлении узла
-            // (при 5000+ точках это сильно тормозило построение сайдбара).
-            _sidebar.BeginUpdate();
-            try
+            // v39.52: строим SidebarItem-модель и передаём в SidebarControl одним вызовом.
+            // Не создаём TreeNode / WinForms-контролы на каждую точку.
+            foreach (var p in _pois) if (!_catVisible.ContainsKey(p.category)) _catVisible[p.category] = true;
+            var items = new List<SidebarItem>();
+
+            // --- Цели ---
+            var tCat = NewCategory("Цели", "Цели (" + _targets.Count + ")");
+            foreach (var t in _targets)
             {
-                _sidebar.Nodes.Clear();
-                _nodeCatColor.Clear(); // v39.46: сброс цветов чекбоксов при пересборке сайдбара
-                foreach (var p in _pois) if (!_catVisible.ContainsKey(p.category)) _catVisible[p.category] = true;
-                TreeNode? selNode = null;
-                var tNode = new TreeNode("Цели (" + _targets.Count + ")") { Name = "Цели", Checked = _catVisible.TryGetValue("Цели", out var st) && st };
-                foreach (var t in _targets)
-                {
-                    // Города/POI/SDO вынесены в свои группы; пользовательские — в «Пользовательское».
                 if (_pointModel.TryGetValue(t.id, out var tp) && (tp.IsCity || tp.IsPoi || tp.IsSdo)) continue;
                 if (tp != null && tp.SourceFile != "" && !_staticNames.Contains(t.id)) continue;
-                var n = new TreeNode(t.name) { Tag = (t.x, t.z), Name = t.id };
-                n.Checked = _selectedIds.Contains(t.id);
-                if (_selectedIds.Contains(t.id)) { n.BackColor = Color.FromArgb(60, 70, 90); if (t.id == _selectedGameName) selNode = n; }
-                tNode.Nodes.Add(n);
+                tCat.Children.Add(NewPoint(t.id, t.name, "Цели", Color.FromArgb(120, 200, 240)));
             }
-            tNode.Expand();
-            _sidebar.Nodes.Add(tNode);
+            items.Add(tCat);
 
-            var cNode = new TreeNode("Города (" + _cities.Count + ")") { Name = "Города", Checked = _catVisible.TryGetValue("Города", out var sc) && sc };
+            // --- Города ---
+            var cCat = NewCategory("Города", "Города (" + _cities.Count + ")");
             foreach (var pd in OrderSidebarPoints(_pointModel.Values.Where(p => p.IsCity)))
-            {
-                bool dirty = IsDirtyPoint(pd.GameName);
-                var n = new TreeNode(SidedName(pd)) { Tag = (pd.X, pd.Z), Name = pd.GameName };
-                n.Checked = _selectedIds.Contains(pd.GameName);
-                bool selected = _selectedIds.Contains(pd.GameName);
-                StylePointNode(n, pd, dirty, selected);
-                if (selected && pd.GameName == _selectedGameName) selNode = n;
-                cNode.Nodes.Add(n);
-            }
-            cNode.Expand();
-            _sidebar.Nodes.Add(cNode);
+                cCat.Children.Add(NewPoint(pd.GameName, SidedName(pd), "Города", Color.FromArgb(120, 200, 240)));
+            items.Add(cCat);
 
-            // SDO-категории (Static Data Objects): группы по категориям, имена —
-            // читабельные (meta.json), объекты — uid / easter-имя. Между городами и POI.
-            // Новые категории видимы по умолчанию (true), существующие — как сохранено.
-            // Сортировка внутри категории: грязные (несохранённые) — ПЕРВЫМИ (оранжевый фон),
-            // затем объекты с '*' (есть override), затем остальные. Подсветка оранжевым —
-            // и в родной категории (не только в «Не сохранённое»).
+            // --- SDO-категории ---
             foreach (var grp in _pointModel.Values.Where(p => p.IsSdo).GroupBy(p => p.Category).OrderBy(g => g.Key))
             {
                 if (!_catVisible.ContainsKey(grp.Key)) _catVisible[grp.Key] = true;
-                var catNode = new TreeNode(grp.Key + " (" + grp.Count() + ")") { Name = grp.Key, Checked = _catVisible.TryGetValue(grp.Key, out var sp) && sp };
-                // v39.46: цвет категории храним для чекбокса (не красим фон текста).
                 Color catColor = SdoMeta.ColorOf(grp.Key);
-                _nodeCatColor[catNode] = catColor;
+                var cat = NewCategory(grp.Key, grp.Key + " (" + grp.Count() + ")", catColor);
                 foreach (var pd in OrderSidebarPoints(grp))
-                {
-                    var n = new TreeNode(SidedName(pd)) { Tag = (pd.X, pd.Z), Name = pd.GameName };
-                    n.Checked = _selectedIds.Contains(pd.GameName);
-                    bool dirty = IsDirtyPoint(pd.GameName);
-                    bool selected = _selectedIds.Contains(pd.GameName);
-                    StylePointNode(n, pd, dirty, selected);
-                    // v39.46: цвет чекбокса точки = цвет категории (не красим фон текста).
-                    _nodeCatColor[n] = catColor;
-                    catNode.Nodes.Add(n);
-                }
-                _sidebar.Nodes.Add(catNode);
+                    cat.Children.Add(NewPoint(pd.GameName, SidedName(pd), grp.Key, catColor));
+                items.Add(cat);
             }
 
+            // --- POI-категории ---
             foreach (var grp in _pointModel.Values.Where(p => p.IsPoi).GroupBy(p => p.Category).OrderBy(g => g.Key))
             {
-                var catNode = new TreeNode(grp.Key + " (" + grp.Count() + ")") { Name = grp.Key, Checked = _catVisible.TryGetValue(grp.Key, out var sp) && sp };
-                // v39.46: цвет категории POI = цвет категории (если есть в meta), иначе палитра POI.
                 Color catColor = SdoMeta.Categories.ContainsKey(grp.Key)
                     ? SdoMeta.ColorOf(grp.Key)
                     : CategoryColor(grp.Key);
-                _nodeCatColor[catNode] = catColor;
+                var cat = NewCategory(grp.Key, grp.Key + " (" + grp.Count() + ")", catColor);
                 foreach (var pd in OrderSidebarPoints(grp))
-                {
-                    var n = new TreeNode(SidedName(pd)) { Tag = (pd.X, pd.Z), Name = pd.GameName };
-                    n.Checked = _selectedIds.Contains(pd.GameName);
-                    bool dirty = IsDirtyPoint(pd.GameName);
-                    bool selected = _selectedIds.Contains(pd.GameName);
-                    StylePointNode(n, pd, dirty, selected);
-                    _nodeCatColor[n] = catColor;
-                    catNode.Nodes.Add(n);
-                }
-                _sidebar.Nodes.Add(catNode);
+                    cat.Children.Add(NewPoint(pd.GameName, SidedName(pd), grp.Key, catColor));
+                items.Add(cat);
             }
 
-            // Группа «Пользовательское» — точки, созданные пользователем (только в overrides, не в статике).
+            // --- Пользовательское ---
             var userPts = _pointModel.Values.Where(pd => pd.SourceFile != "" && !_staticNames.Contains(pd.GameName) && !pd.IsCity && !pd.IsPoi).ToList();
             if (userPts.Count > 0)
             {
-
-                
-
-                var uNode = new TreeNode("Пользовательское (" + userPts.Count + ")") { Name = "Пользовательское", Checked = _catVisible.TryGetValue("Пользовательское", out var su) && su };
+                var uCat = NewCategory("Пользовательское", "Пользовательское (" + userPts.Count + ")");
                 foreach (var pd in userPts)
-                {
-
-                    LogEditor($"USER POINTS: pd.SourceFile " + pd.SourceFile + " pd.GameName " + pd.GameName + " pd.IsPoi"+ pd.IsPoi);
-
-                    var n = new TreeNode(pd.RealName + " [" + pd.GameName + "]") { Tag = (pd.X, pd.Z), Name = pd.GameName };
-                    n.Checked = _selectedIds.Contains(pd.GameName);
-                    if (_selectedIds.Contains(pd.GameName)) { n.BackColor = Color.FromArgb(60, 70, 90); if (pd.GameName == _selectedGameName) selNode = n; }
-                    uNode.Nodes.Add(n);
-                }
-                _sidebar.Nodes.Add(uNode);
+                    uCat.Children.Add(NewPoint(pd.GameName, pd.RealName + " [" + pd.GameName + "]", "Пользовательское", Color.FromArgb(120, 200, 240)));
+                items.Add(uCat);
             }
 
-            // Группа «Отключенные» — точки со статусом Отключена.
+            // --- Отключенные ---
             var disabled = _pointModel.Values.Where(pd => !pd.Enabled).ToList();
             if (disabled.Count > 0)
             {
-                var dNode = new TreeNode("Отключенные (" + disabled.Count + ")") { Name = "Отключенные", Checked = _catVisible.TryGetValue("Отключенные", out var sd) && sd };
+                var dCat = NewCategory("Отключенные", "Отключенные (" + disabled.Count + ")");
                 foreach (var pd in disabled)
-                {
-                    var n = new TreeNode(pd.RealName + " [" + pd.GameName + "]") { Tag = (pd.X, pd.Z), Name = pd.GameName };
-                    n.Checked = _selectedIds.Contains(pd.GameName);
-                    if (_selectedIds.Contains(pd.GameName)) { n.BackColor = Color.FromArgb(60, 70, 90); if (pd.GameName == _selectedGameName) selNode = n; }
-                    dNode.Nodes.Add(n);
-                }
-                _sidebar.Nodes.Add(dNode);
+                    dCat.Children.Add(NewPoint(pd.GameName, pd.RealName + " [" + pd.GameName + "]", "Отключенные", Color.FromArgb(120, 200, 240)));
+                items.Add(dCat);
             }
 
-            // =====================================================================
-            // САЙДБАР-СТАТУСЫ (в конце списка):
-            // «Не сохранённое» — точки с правками, которые ещё не сохранены в overrides
-            //   (оранжевый шрифт имени; дублируются здесь).
-            // «Сохранённые» — точки, у которых есть override (перед именем '*').
-            // =====================================================================
+            // --- Сайдбар-статусы ---
             _catVisible.TryAdd(CatUnsaved, true);
             _catVisible.TryAdd(CatSaved, true);
             var unsavedPts = _pointModel.Values.Where(pd => _unsavedEdits.Contains(pd.GameName)).ToList();
-            var unsavedNode = new TreeNode(CatUnsaved + " (" + unsavedPts.Count + ")") { Name = CatUnsaved, Checked = _catVisible.TryGetValue(CatUnsaved, out var u1) && u1 };
+            var unsavedCat = NewCategory(CatUnsaved, CatUnsaved + " (" + unsavedPts.Count + ")");
             foreach (var pd in unsavedPts)
-            {
-                var n = new TreeNode(pd.RealName + " [" + pd.GameName + "]") { Tag = (pd.X, pd.Z), Name = pd.GameName, ForeColor = Color.Orange };
-                n.Checked = _selectedIds.Contains(pd.GameName);
-                if (_selectedIds.Contains(pd.GameName)) { n.BackColor = Color.FromArgb(60, 70, 90); if (pd.GameName == _selectedGameName) selNode = n; }
-                unsavedNode.Nodes.Add(n);
-            }
-            _sidebar.Nodes.Add(unsavedNode);
+                unsavedCat.Children.Add(NewPoint(pd.GameName, pd.RealName + " [" + pd.GameName + "]", CatUnsaved, Color.FromArgb(120, 200, 240), dirty: true));
+            items.Add(unsavedCat);
 
             var savedPts = _pointModel.Values.Where(pd => pd.IsOverride || (pd.SourceFile != "" && !_staticNames.Contains(pd.GameName))).ToList();
-            var savedNode = new TreeNode(CatSaved + " (" + savedPts.Count + ")") { Name = CatSaved, Checked = _catVisible.TryGetValue(CatSaved, out var s1) && s1 };
+            var savedCat = NewCategory(CatSaved, CatSaved + " (" + savedPts.Count + ")");
             foreach (var pd in savedPts)
-            {
-                var n = new TreeNode("*" + pd.RealName + " [" + pd.GameName + "]") { Tag = (pd.X, pd.Z), Name = pd.GameName };
-                n.Checked = _selectedIds.Contains(pd.GameName);
-                if (_selectedIds.Contains(pd.GameName)) { n.BackColor = Color.FromArgb(60, 70, 90); if (pd.GameName == _selectedGameName) selNode = n; }
-                savedNode.Nodes.Add(n);
-            }
-            _sidebar.Nodes.Add(savedNode);
+                savedCat.Children.Add(NewPoint(pd.GameName, "*" + pd.RealName + " [" + pd.GameName + "]", CatSaved, Color.FromArgb(120, 200, 240)));
+            items.Add(savedCat);
 
-            if (selNode != null) _sidebar.SelectedNode = selNode;
-            }
-            finally
+            // Передаём модель + текущее состояние selection/active/expanded.
+            _sidebar.SetItems(items);
+            _sidebar.SetSelectedIds(_selectedIds);
+            _sidebar.SetActiveId(_selectedGameName);
+        }
+
+        // Создаёт категорию SidebarItem с сохранённым состоянием раскрытия/видимости.
+        private SidebarItem NewCategory(string id, string text, Color? color = null)
+        {
+            return new SidebarItem
             {
-                _sidebar.EndUpdate();
-                _sidebar.Invalidate();
+                Type = SidebarItemType.Category,
+                Id = id,
+                Text = text,
+                CategoryColor = color ?? Color.FromArgb(120, 200, 240),
+                Expanded = _expandedSidebarCategories.Contains(id),
+                CategoryVisible = _catVisible.TryGetValue(id, out var v) && v
+            };
+        }
+
+        // Создаёт точку SidebarItem.
+        private SidebarItem NewPoint(string id, string text, string categoryId, Color color, bool dirty = false)
+        {
+            return new SidebarItem
+            {
+                Type = SidebarItemType.Point,
+                Id = id,
+                Text = text,
+                CategoryId = categoryId,
+                CategoryColor = color,
+                Checked = _selectedIds.Contains(id),
+                Active = id == _selectedGameName,
+                Dirty = dirty
+            };
+        }
+
+        // v39.52: лёгкая синхронизация selection/active в сайдбаре без полной перестройки.
+        private void SyncSidebarSelection()
+        {
+            _sidebar.SetSelectedIds(_selectedIds);
+            _sidebar.SetActiveId(_selectedGameName);
+        }
+
+        // v39.52: обычный клик по строке (точка/категория).
+        private void Sidebar_ItemActivated(object? sender, SidebarItemEventArgs e)
+        {
+            if (e.Item.Type == SidebarItemType.Point)
+            {
+                // Точка: одиночный выбор + загрузка в панель.
+                _selectedIds.Clear();
+                _selectedIds.Add(e.Item.Id);
+                _selectedGameName = e.Item.Id;
+                ApplySelectionToPanel(e.Item.Id);
+                SyncSidebarSelection();
+                if (_selectLookup.TryGetValue(e.Item.Id, out var pt)) CenterOn(pt.x, pt.z);
+                RequestRender();
             }
+            else
+            {
+                // Категория: клик по названию — пока без действия (только визуальный active).
+                SyncSidebarSelection();
+            }
+        }
+
+        // v39.52: изменение множественного выбора (чекбокс точки).
+        private void Sidebar_SelectionChanged(object? sender, SidebarSelectionChangedEventArgs e)
+        {
+            _selectedIds.Clear();
+            foreach (var id in e.SelectedIds) _selectedIds.Add(id);
+            if (_selectedIds.Count > 1)
+            {
+                _selectedGameName = null;
+                _editingCopy = null;
+                _dirtyFields.Clear();
+                FitToSelectedPoints();
+            }
+            else if (_selectedIds.Count == 1)
+            {
+                // Центрируем на единственной выбранной точке, но НЕ открываем панель.
+                var only = _selectedIds.First();
+                if (_selectLookup.TryGetValue(only, out var pt))
+                {
+                    _centerX = pt.x;
+                    _centerZ = pt.z;
+                    _scale = 2.0;
+                }
+                RequestRender();
+            }
+            else
+            {
+                RequestRender();
+            }
+        }
+
+        // v39.52: изменение видимости категории (чекбокс категории).
+        private void Sidebar_CategoryVisibilityChanged(object? sender, SidebarCategoryVisibilityChangedEventArgs e)
+        {
+            _catVisible[e.CategoryId] = e.Visible;
+            RequestRender();
+        }
+
+        // v39.52: правый клик — контекстное меню (пока пустое).
+        private void Sidebar_ContextMenuRequested(object? sender, SidebarContextMenuEventArgs e)
+        {
+            _sidebarContextMenu.Items.Clear();
+            _sidebarContextMenu.Items.Add("No actions yet");
+            _sidebarContextMenu.Show(_sidebar, e.ClientPoint);
+        }
+
+        // v39.52: изменение раскрытия категории — сохраняем состояние по id категории.
+        private void Sidebar_CategoryExpandedChanged(object? sender, SidebarCategoryExpandedChangedEventArgs e)
+        {
+            if (e.Expanded) _expandedSidebarCategories.Add(e.CategoryId);
+            else _expandedSidebarCategories.Remove(e.CategoryId);
         }
 
         // v39.29: кнопки видимости категорий. Скрыть/показать все категории; инверсия —
@@ -1814,7 +1752,7 @@ namespace ETS2_Assist_GUI
         {
             foreach (var key in _catVisible.Keys.ToList())
                 _catVisible[key] = visible;
-            SyncSidebarChecks();
+            PopulateSidebar();
             RequestRender();
         }
 
@@ -1822,24 +1760,8 @@ namespace ETS2_Assist_GUI
         {
             foreach (var key in _catVisible.Keys.ToList())
                 _catVisible[key] = !_catVisible[key];
-            SyncSidebarChecks();
+            PopulateSidebar();
             RequestRender();
-        }
-
-        // Синхронизирует чекбоксы родительских узлов категорий с _catVisible.
-        private void SyncSidebarChecks()
-        {
-            _suppressCheck = true;
-            try
-            {
-                foreach (var node in EnumNodes(_sidebar.Nodes))
-                {
-                    if (node.Nodes.Count == 0) continue; // только родительские (категории)
-                    string key = !string.IsNullOrEmpty(node.Name) ? node.Name : node.Text;
-                    if (_catVisible.TryGetValue(key, out var v)) node.Checked = v;
-                }
-            }
-            finally { _suppressCheck = false; }
         }
 
         // Сортировка точек внутри категории сайдбара:
@@ -1867,21 +1789,6 @@ namespace ETS2_Assist_GUI
             var name = string.IsNullOrEmpty(pd.RealName) ? pd.GameName : pd.RealName;
             if (HasOverrideMarker(pd)) name = "*" + name;
             return name;
-        }
-
-        // Единая стилизация узла сайдбара по состоянию точки:
-        // грязная → оранжевый фон (+жирный шрифт); выделенная → тёмно-синий фон.
-        private void StylePointNode(TreeNode n, PointData pd, bool dirty, bool selected)
-        {
-            if (dirty)
-            {
-                n.BackColor = Color.FromArgb(120, 60, 12); // оранжевый фон — несохранённые правки
-                n.NodeFont = new Font(_sidebar.Font, FontStyle.Bold); // жирный шрифт для несохранённых
-            }
-            else if (selected)
-            {
-                n.BackColor = Color.FromArgb(60, 70, 90);
-            }
         }
 
         // Слой отрисовки точки на редакторе: 0 = наивысший приоритет (всегда поверх),
@@ -2621,7 +2528,7 @@ namespace ETS2_Assist_GUI
             // (перетаскивание обрабатывается отдельно, см. OnMouseDown/OnMouseMove).
             if (_selectedIds.Count == 1 && _selectedIds.Contains(key) && _pointModel.ContainsKey(key))
             {
-                UpdateSidebarSelection();
+                SyncSidebarSelection();
                 if (fit) FitToSelection();
                 RequestRender();
                 return;
@@ -2629,7 +2536,7 @@ namespace ETS2_Assist_GUI
             _selectedIds.Clear();
             _selectedIds.Add(key);
             ApplySelectionToPanel(key);
-            UpdateSidebarSelection();
+            SyncSidebarSelection();
             if (fit && _selectedIds.Count > 0) FitToSelection();
             RequestRender();
         }
@@ -2639,10 +2546,21 @@ namespace ETS2_Assist_GUI
         {
             if (_selectedIds.Contains(key)) _selectedIds.Remove(key);
             else _selectedIds.Add(key);
+            // v39.51: при множественном выборе НЕ загружаем панель и сбрасываем active point.
+            if (_selectedIds.Count > 1)
+            {
+                _selectedGameName = null;
+                _editingCopy = null;
+                _dirtyFields.Clear();
+                SyncSidebarSelection();
+                if (fit || _selectedIds.Count > 1) FitToSelectedPoints();
+                RequestRender();
+                return;
+            }
             string? editable = _selectedIds.FirstOrDefault(k => _pointModel.ContainsKey(k));
             if (editable != null) ApplySelectionToPanel(editable);
             else { _selectedGameName = null; _editingCopy = null; _dirtyFields.Clear(); LoadPointIntoPanel(new PointData()); }
-            UpdateSidebarSelection();
+            SyncSidebarSelection();
             if (_selectedIds.Count > 0 && (fit || _selectedIds.Count > 1)) FitToSelection();
             RequestRender();
         }
@@ -2735,25 +2653,33 @@ namespace ETS2_Assist_GUI
             UpdateActionButtons();
         }
 
-        // Лёгкое обновление выделения/чекбоксов в сайдбаре БЕЗ полной перестройки (нет мерцания).
-        private void UpdateSidebarSelection()
+        // v39.52: подгонка карты под ВСЕ выбранные точки (по _selectLookup, без FitToAll).
+        private void FitToSelectedPoints()
         {
-            _suppressCheck = true;
-            foreach (var node in EnumNodes(_sidebar.Nodes))
-            {
-                if (node.Nodes.Count > 0) continue; // родительские узлы категорий — не трогаем (это видимость)
-                bool sel = !string.IsNullOrEmpty(node.Name) && _selectedIds.Contains(node.Name);
-                if (node.Checked != sel) node.Checked = sel;
-                // v39.46: НЕ сбрасываем BackColor на тёмный — это затирало цветовые кодировки.
-                // Выделение теперь подсвечивается только чекбоксом (Checked) и цветом текста.
-                node.BackColor = sel ? Color.FromArgb(60, 70, 90) : Color.FromArgb(22, 27, 38);
-            }
-            _suppressCheck = false;
-        }
-
-        private static IEnumerable<TreeNode> EnumNodes(TreeNodeCollection col)
-        {
-            foreach (TreeNode n in col) { yield return n; foreach (var c in EnumNodes(n.Nodes)) yield return c; }
+            if (_selectedIds.Count == 0) return;
+            double minX = double.MaxValue, maxX = double.MinValue, minZ = double.MaxValue, maxZ = double.MinValue;
+            bool any = false;
+            foreach (var id in _selectedIds)
+                if (_selectLookup.TryGetValue(id, out var pt))
+                {
+                    any = true;
+                    if (pt.x < minX) minX = pt.x;
+                    if (pt.x > maxX) maxX = pt.x;
+                    if (pt.z < minZ) minZ = pt.z;
+                    if (pt.z > maxZ) maxZ = pt.z;
+                }
+            if (!any) return;
+            double width = Math.Max(maxX - minX, 1.0);
+            double height = Math.Max(maxZ - minZ, 1.0);
+            double paddedWidth = width * 1.20;
+            double paddedHeight = height * 1.20;
+            _centerX = (minX + maxX) / 2.0;
+            _centerZ = (minZ + maxZ) / 2.0;
+            double scaleX = paddedWidth / Math.Max(_mapPanel.ClientSize.Width, 1);
+            double scaleZ = paddedHeight / Math.Max(_mapPanel.ClientSize.Height, 1);
+            _scale = Math.Clamp(Math.Max(scaleX, scaleZ), 0.05, MaxScale);
+            UpdateStatus();
+            RequestRender();
         }
 
         // Подогнать карту, чтобы вместились ВСЕ выделенные точки (по _selectLookup).
@@ -3136,7 +3062,7 @@ namespace ETS2_Assist_GUI
                 _unsavedEdits.Remove(_selectedGameName); // отмена — правок больше нет
                 _dirtyFieldsByPoint.Remove(_selectedGameName); // отмена — грязных полей больше нет
                 LoadPointIntoPanel(pd);
-                UpdateSidebarSelection();
+                SyncSidebarSelection();
                 UpdateActionButtons();
                 RequestRender();
             }
@@ -3356,7 +3282,7 @@ namespace ETS2_Assist_GUI
             foreach (var bmp in _sdoIconCache.Values) { try { bmp.Dispose(); } catch { } }
             _sdoIconCache.Clear();
             try { _tooltip.Dispose(); } catch { }
-            try { _nodeTextFmt.Dispose(); } catch { }
+            try { _sidebarContextMenu.Dispose(); } catch { }
             SaveEditorState();
         }
     }
