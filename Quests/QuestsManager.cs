@@ -68,6 +68,7 @@ namespace ETS2_Assist_GUI
         private const uint INPUT_KEYBOARD = 1;
 
         private const ushort SCANCODE_CONSOLE = 0x0029;
+        private const ushort SCANCODE_ENTER = 0x001C;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct INPUT

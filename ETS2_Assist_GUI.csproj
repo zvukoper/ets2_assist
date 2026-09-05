@@ -38,8 +38,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>39</VersionSet>
-        <VersionIter>35</VersionIter>
-        <VersionDesc>CONSOLE-SCANCODE-UNICODE</VersionDesc>
+        <VersionIter>44</VersionIter>
+        <VersionDesc>DEV-MODE-FONT-DISABLED</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>

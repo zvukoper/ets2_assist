@@ -38,6 +38,31 @@ namespace ETS2_Assist_GUI
         private ToolStripMenuItem helpMenu = null!;
         private ToolStripMenuItem checkUpdatesMenu = null!;
         private ToolStripMenuItem exitMenu = null!;
+        // Галочка developer mode (g_developer "2" g_console "1" в config.cfg ETS2) — справа в меню.
+        private ToolStripControlHost devModeHost = null!;
+        private DevModeCheckBox devModeChk = null!;
+
+        // CheckBox, который ВСЕГДА рисует свой текст белым. Обычный CheckBox внутри
+        // ToolStripControlHost красится чёрным: ToolStrip (профессиональный рендерер)
+        // при отрисовке хост-контрола перебивает ForeColor значением из своей цветовой
+        // таблицы (ControlText), поэтому установка ForeColor=White при создании не спасает.
+        // Дополнительно: когда игра запущена, галочка disabled (UpdateDevModeEnabled) —
+        // WinForms в disabled-состоянии рисует текст системным тёмным цветом, игнорируя
+        // ForeColor. Поэтому в OnPaint временно включаем контрол, чтобы base.OnPaint
+        // использовал белый ForeColor, затем восстанавливаем состояние.
+        private sealed class DevModeCheckBox : CheckBox
+        {
+            protected override void OnPaint(PaintEventArgs pevent)
+            {
+                Color original = ForeColor;
+                bool wasEnabled = Enabled;
+                ForeColor = Color.White;
+                if (!wasEnabled) Enabled = true;   // чтобы base.OnPaint рисовал белым, а не disabled-цветом
+                base.OnPaint(pevent);
+                Enabled = wasEnabled;
+                ForeColor = original;
+            }
+        }
 
         private List<CityData> _cities = new();
         private List<RoadSegment> _roads = new();
@@ -47,7 +72,6 @@ namespace ETS2_Assist_GUI
         private Button btnRestartOverlay = null!;
         private Button btnMinimize = null!;
         private Button btnExit = null!;
-        private Button btnTheme = null!;
         private Button btnRefreshTracks = null!;
         private Button btnRandomTarget = null!;
         private Button btnRandomTarget2 = null!;
@@ -144,7 +168,6 @@ namespace ETS2_Assist_GUI
         // «Показать карту» — ТОГГЛ: ВКЛ = карта НИКОГДА не исчезает (всегда на экране);
         // ВЫКЛ (по умолчанию) — обычная логика: пауза -> лого+версия, не пауза -> гибрид+миникарта.
         private bool _minimapAutoLogic = false;
-        private bool _darkTheme = false;           // тёмная тема интерфейса (кнопка «Тема»)
         private bool? _lastMinimapVisible;
         private bool? _lastMinimapAuto;
         private bool _committedActive = false;     // подтверждённое (с гистерезисом) состояние активности
@@ -198,7 +221,9 @@ namespace ETS2_Assist_GUI
             // (список + действия + индикаторы) помещается и не обрезает текст.
             // v39.24b: минимальная ВЫСОТА 740 — чтобы нижний ряд кнопок (АР2 на
             // topY+640, высота 30) гарантированно влезал при любом сохранённом баунде.
-            this.MinimumSize = new Size(1180, 740);
+            // v39.38: высота увеличена до 800 — все кнопки (в т.ч. АР2 на topY+640+30)
+            // полностью видны; запрещено уменьшать окно ниже этого минимума.
+            this.MinimumSize = new Size(1180, 800);
             ApplySavedWindowBounds();
             this.FormClosing += (s, e) =>
             {
@@ -218,6 +243,8 @@ namespace ETS2_Assist_GUI
             InitializeStatusTimer();
             ApplyLanguage();
             RefreshUI();
+            // Старт: выставить галочку developer mode по config.cfg (без записи в файл).
+            InitDevModeFromConfig();
 
             try
             {
@@ -373,6 +400,25 @@ RegisterHotKeyChecked(
             fileMenu.DropDownItems.Add(new ToolStripSeparator());
             fileMenu.DropDownItems.Add(exitMenu);
             mainMenu.Items.Add(fileMenu);
+
+            // Галочка developer mode — справа у правого края меню (File слева).
+            // Настоящий CheckBox (чекбокс + лейбл рядом), а не пункт-«кнопка».
+            // DevModeCheckBox всегда рисует текст белым (исправление чёрного текста на тёмной теме).
+            devModeChk = new DevModeCheckBox
+            {
+                Text = "developer mode",
+                AutoSize = true,
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                Margin = new Padding(6, 0, 6, 0),
+                CheckAlign = ContentAlignment.MiddleLeft
+            };
+            var devTip = new ToolTip();
+            devTip.SetToolTip(devModeChk, "g_developer \"2\" g_console \"1\"");
+            devModeChk.CheckedChanged += (s, e) => ApplyDevModeToConfig(devModeChk.Checked);
+            devModeHost = new ToolStripControlHost(devModeChk) { Alignment = ToolStripItemAlignment.Right };
+            mainMenu.Items.Add(devModeHost);
+
             this.Controls.Add(mainMenu);
 
             int leftX = 20;
@@ -392,9 +438,6 @@ RegisterHotKeyChecked(
 
             btnExit = new Button { Text = "Exit", Location = new Point(leftX, topY + 160), Size = new Size(120, 30) };
             btnExit.Click += (s, e) => ConfirmExit();
-
-            btnTheme = new Button { Text = "Тема: светлая", Location = new Point(this.ClientSize.Width - 150, 4), Size = new Size(140, 26) };
-            btnTheme.Click += (s, e) => { _darkTheme = !_darkTheme; ApplyTheme(); };
 
             btnRefreshTracks = new Button { Text = "Обновить список", Location = new Point(leftX, topY + 210), Size = new Size(120, 30) };
             btnRefreshTracks.Click += (s, e) => RefreshTrackList();
@@ -636,24 +679,31 @@ RegisterHotKeyChecked(
                        this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
                 btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnMapEditor, btnLaunchAR, btnAr2, chkAr2Grid,
-                logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu, btnTheme
+                logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu
             });
             PositionBuildLabel();
-            ApplyTheme();
+            ApplyDarkTheme();
         }
 
         // ============================================================
-        // ТЁМНАЯ / СВЕТЛАЯ ТЕМА
+        // ТЁМНАЯ ТЕМА (по умолчанию, без переключения)
         // ============================================================
-        private void ApplyTheme()
+        private void ApplyDarkTheme()
         {
-            Color back = _darkTheme ? Color.FromArgb(43, 43, 43) : SystemColors.Control;
-            Color fore = _darkTheme ? Color.FromArgb(232, 232, 232) : SystemColors.ControlText;
+            Color back = Color.FromArgb(43, 43, 43);
+            Color fore = Color.FromArgb(232, 232, 232);
             this.BackColor = back;
             this.ForeColor = fore;
-            btnTheme.Text = _darkTheme ? "Тема: тёмная" : "Тема: светлая";
             foreach (Control c in this.Controls) SetControlTheme(c, back, fore);
-            // v39: после смены темы восстановить свечение тоггл-кнопок.
+            // devModeChk живёт внутри ToolStripControlHost (mainMenu.Items), который не
+            // затрагивает SetControlTheme. При отрисовке ToolStrip перебивает ForeColor на
+            // свой (тёмный) — поэтому после темы явно возвращаем светлый текст.
+            if (devModeChk != null)
+            {
+                devModeChk.ForeColor = Color.White;
+                if (devModeHost != null) devModeHost.ForeColor = Color.White;
+            }
+            // v39: после применения темы восстановить свечение тоггл-кнопок.
             UpdateStartButton();
         }
 
@@ -669,14 +719,14 @@ RegisterHotKeyChecked(
                 case Button _:
                 case GroupBox _:
                 case Panel _:
-                    c.BackColor = back == SystemColors.Control ? SystemColors.Control : Color.FromArgb(60, 60, 60);
+                    c.BackColor = Color.FromArgb(60, 60, 60);
                     c.ForeColor = fore;
                     break;
                 case TextBox _:
                 case RichTextBox _:
                 case ListBox _:
                 case ComboBox _:
-                    c.BackColor = back == SystemColors.Control ? Color.White : Color.FromArgb(30, 30, 30);
+                    c.BackColor = Color.FromArgb(30, 30, 30);
                     c.ForeColor = fore;
                     break;
                 default:
@@ -2239,6 +2289,98 @@ RegisterHotKeyChecked(
         }
 
         // ================================================================
+        // DEVELOPER MODE (g_developer "2" g_console "1" в config.cfg ETS2)
+        // ================================================================
+        private static string Ets2ConfigPath()
+        {
+            string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            return Path.Combine(docs, "Euro Truck Simulator 2", "config.cfg");
+        }
+
+        // Читает config.cfg и возвращает true, если g_developer "2" И g_console "1".
+        // Строки в config.cfg имеют префикс "uset " (напр. uset g_developer "2").
+        private static bool ReadDevModeFromConfig()
+        {
+            try
+            {
+                string path = Ets2ConfigPath();
+                if (!File.Exists(path)) return false;
+                string[] lines = File.ReadAllLines(path);
+                bool dev = false, con = false;
+                foreach (var raw in lines)
+                {
+                    string line = raw.Trim();
+                    if (line.StartsWith("uset g_developer", StringComparison.OrdinalIgnoreCase))
+                        dev = line.Contains("\"2\"");
+                    else if (line.StartsWith("uset g_console", StringComparison.OrdinalIgnoreCase))
+                        con = line.Contains("\"1\"");
+                }
+                return dev && con;
+            }
+            catch { return false; }
+        }
+
+        // Старт: выставить галочку по config.cfg (без записи в файл).
+        private void InitDevModeFromConfig()
+        {
+            try
+            {
+                devModeChk.Checked = ReadDevModeFromConfig();
+            }
+            catch { }
+            UpdateDevModeEnabled();
+        }
+
+        // Галочка неактивна, если запущен eurotrucks2.exe.
+        private void UpdateDevModeEnabled()
+        {
+            try
+            {
+                devModeChk.Enabled = !IsEts2ProcessRunning();
+            }
+            catch { devModeChk.Enabled = true; }
+        }
+
+        // Запись g_developer/g_console в config.cfg при переключении галочки.
+        private void ApplyDevModeToConfig(bool enabled)
+        {
+            try
+            {
+                string path = Ets2ConfigPath();
+                string dir = Path.GetDirectoryName(path);
+                if (string.IsNullOrEmpty(dir)) return;
+                Directory.CreateDirectory(dir);
+                string devVal = enabled ? "2" : "0";
+                string conVal = enabled ? "1" : "0";
+                if (File.Exists(path))
+                {
+                    var lines = new List<string>(File.ReadAllLines(path));
+                    bool foundDev = false, foundCon = false;
+                    for (int i = 0; i < lines.Count; i++)
+                    {
+                        string t = lines[i].Trim();
+                        if (t.StartsWith("uset g_developer", StringComparison.OrdinalIgnoreCase))
+                        { lines[i] = $"uset g_developer \"{devVal}\""; foundDev = true; }
+                        else if (t.StartsWith("uset g_console", StringComparison.OrdinalIgnoreCase))
+                        { lines[i] = $"uset g_console \"{conVal}\""; foundCon = true; }
+                    }
+                    if (!foundDev) lines.Add($"uset g_developer \"{devVal}\"");
+                    if (!foundCon) lines.Add($"uset g_console \"{conVal}\"");
+                    File.WriteAllLines(path, lines);
+                }
+                else
+                {
+                    File.WriteAllLines(path, new[] { $"uset g_developer \"{devVal}\"", $"uset g_console \"{conVal}\"" });
+                }
+                AppendLog($"[DEV-MODE] config.cfg: uset g_developer \"{devVal}\", uset g_console \"{conVal}\".");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[DEV-MODE] Ошибка записи config.cfg: {ex.Message}");
+            }
+        }
+
+        // ================================================================
         // ОПРЕДЕЛЕНИЕ ПОРТА TRUCK TEL ИЗ АКТИВНЫХ TCP-СОЕДИНЕНИЙ
         // ================================================================
         private void UpdateTruckTelPort()
@@ -2555,13 +2697,23 @@ RegisterHotKeyChecked(
 
                 Thread.Sleep(100);
 
-                // 5) ENTER.
-                if (!PressKey((byte)Keys.Enter))
+                // 5) ENTER физическим scan code (консоль ETS2 работает на scan codes,
+                //    виртуальная клавиша VK_RETURN в ней не срабатывает).
+                if (!PressScanCode(SCANCODE_ENTER, "ETS2 Console Enter"))
                 {
-                    LogConsoleError("[TELEPORT] Не удалось отправить Enter.");
+                    LogConsoleError("[TELEPORT] Не удалось отправить Enter (scan code).");
                     return;
                 }
-                LogConsoleOk("[TELEPORT] Команда goto отправлена в игру.");
+
+                // 6) Закрыть консоль той же клавишей, что и вызывалась (scan code 0x29),
+                //    через ~1.5с после Enter (телепортация с прогрузкой длится ~1с).
+                Thread.Sleep(2500);
+                if (!PressScanCode(SCANCODE_CONSOLE, "ETS2 Console Close"))
+                {
+                    LogConsoleError("[TELEPORT] Не удалось закрыть консоль ETS2.");
+                    return;
+                }
+                LogConsoleOk("[TELEPORT] Команда goto отправлена в игру, консоль закрыта.");
             }
             catch (Exception ex)
             {
@@ -2698,16 +2850,12 @@ RegisterHotKeyChecked(
 
                 LogConsoleData("[TELEPORT-ED] Find clicked.");
 
-                Thread.Sleep(150);
-
                 // Явно закрываем Find после выполнения поиска.
                 if (TryFindButtonByText(findWindow, "Close", out IntPtr closeButton))
                 {
                     LogConsoleData($"[TELEPORT-ED] Close button: HWND=0x{closeButton.ToInt64():X}");
 
                     SendMessage(closeButton, BM_CLICK, IntPtr.Zero, IntPtr.Zero);
-
-                    Thread.Sleep(100);
 
                     if (!IsWindowVisible(findWindow))
                     {
@@ -2724,8 +2872,6 @@ RegisterHotKeyChecked(
                     LogConsoleWarn("[TELEPORT-ED] Не удалось отправить ESC.");
                     return;
                 }
-
-                Thread.Sleep(100);
 
                 if (!IsWindowVisible(findWindow))
                 {
@@ -3634,7 +3780,7 @@ RegisterHotKeyChecked(
 
         private void UpdateStartButton()
         {
-            // v39.3: поле procManager может быть ещё null (ApplyTheme в InitializeComponents
+            // v39.3: поле procManager может быть ещё null (ApplyDarkTheme в InitializeComponents
             // вызывается раньше InitializeProcessManager). Guard-проверка на старт.
             if (procManager == null) return;
             if (procManager.IsRunning)
@@ -3652,8 +3798,8 @@ RegisterHotKeyChecked(
             UpdateFeatureButtonsEnabled();
         }
 
-        // v39: цвет кнопки по умолчанию (зависит от темы).
-        private Color DefaultButtonColor() => _darkTheme ? Color.FromArgb(60, 60, 60) : SystemColors.Control;
+        // v39: цвет кнопки по умолчанию (тёмная тема).
+        private Color DefaultButtonColor() => Color.FromArgb(60, 60, 60);
 
         // v39: тоггл AR v2.0 (D3D) — Lime при запущенном оверлее.
         internal bool IsAr2Running => _arV2Window != null && _arV2Window.IsRunning;

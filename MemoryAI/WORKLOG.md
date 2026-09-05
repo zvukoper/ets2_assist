@@ -2,6 +2,171 @@
 
 > Папка для памяти между сессиями. Обновляется вручную в конце каждой сессии.
 
+## Сессия 05.09.2026 (14) — урок: текст коммита при завершении сессии
+- **ЗАМЕЧАНИЕ ПОЛЬЗОВАТЕЛЯ:** сессия 13 завершена НЕ по правилам INSTRUCTIONS.md
+  (раздел «Важнаые понятия и терминлогия» → «Завершение сессии»): агент не написал
+  текст коммита (п.2), просто попрощался.
+- **ИСПРАВЛЕНО В ПАМЯТИ:** в INSTRUCTIONS.md добавлен ОБЯЗАТЕЛЬНЫЙ чек-лист завершения
+  сессии (6 пунктов, включая «написать текст коммита») + напоминание в разделе
+  «Обязательные команды (всегда!)». Теперь правило применяется при КАЖДОМ завершении.
+- **ПРАВИЛО:** при завершении сессии агент ОБЯЗАН написать готовый текст коммита
+  (краткое сообщение для `git commit`, по-русски, с перечнем изменений и версией сборки).
+  Пользователь сам выполняет коммит. Без текста коммита сессия не считается завершённой.
+
+## Сессия 05.09.2026 (13) — завершение сессии, новый большой запрос не начат
+- **СТАТУС:** viewports всех 77 категорий (40°/10м) сгенерированы и подтверждены. Сессия закрыта.
+- **НОВЫЙ БОЛЬШОЙ ЗАПРОС (следующая сессия):** (1) выравнивание кнопок скрыть/показать/инверсия
+  (grid/cell, автоширина, не перекрывать список), (2) авторазмер сайдбара без гориз. скролла,
+  (3) уникальные цвета категорий в meta.json (не жёлтый/не тёмный/не белый; фон под текстом
+  категории = цвет), (4) тултипы ко всем контролам, (5) контекстные меню ПКМ (генерировать
+  viewport, обзор, показать в AR, показать на миникарте, создать тайник, добавить в маршрут) +
+  dumb-receivers для AR/миникарты, (6) редактор маршрутов (Routes/*.json, переупорядочивание,
+  сохранить/очистить, клик двигает карту). Полный список — в CURRENT_TASK.md (сессия 13).
+
+## Сессия 05.09.2026 (10) — dev-mode белый даже в disabled (v39.44)
+- **v39.44-DEV-MODE-FONT-DISABLED-09.05** (exe=txt=manifest MATCH, data 12 папок).
+  Лимиты 3,1% → ~4%, RESET 3ч8м. Модель deepseek-v4-flash:cloud.
+- **ФИДБЕК: текст «developer mode» всё ещё чёрный, «как у кнопки Stop».** КОРЕНЬ: кнопка Stop
+  чёрная, потому что DISABLED (неактивна). То же с devModeChk: когда игра запущена (тест Ctrl+T),
+  `UpdateDevModeEnabled()` ставит галочку в `Enabled=false` → WinForms в disabled-состоянии рисует
+  текст системным тёмным цветом, ИГНОРИРУЯ ForeColor. Простая установка ForeColor=White (и даже
+  в OnPaint) не помогала.
+- **ФИКС (v39.44):** в `DevModeCheckBox.OnPaint` временно включаем контрол (`Enabled=true`),
+  чтобы `base.OnPaint` использовал белый ForeColor, затем восстанавливаем `Enabled` и `ForeColor`.
+  Так текст белый даже в disabled-состоянии (при запущенной игре).
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать, что «developer mode» белый и при запущенной игре (disabled).
+
+## Сессия 05.09.2026 (9) — dev-mode устойчиво белый (v39.43)
+- **v39.43-DEV-MODE-FONT-FIX-09.05** (exe=txt=manifest MATCH, data 12 папок).
+  Лимиты 0,7% → ~1,5%, RESET 3ч53м. Модель deepseek-v4-flash:cloud.
+- **ФИДБЕК: консоль закрывается (задержка 1.5с v39.42 сработала), НО developer mode всё ещё ЧЁРНЫЙ.**
+- **КОРЕНЬ (уточнено):** простая установка `ForeColor=White` (при создании и в ApplyDarkTheme) НЕ
+  помогает. WinForms `ToolStrip` (профессиональный рендерер) при отрисовке `ToolStripControlHost`
+  перебивает `ForeColor` хост-контрола значением из своей цветовой таблицы (`ControlText` = тёмный)
+  КАЖДЫЙ раз при перерисовке — поэтому белый текст сбрасывается.
+- **ФИКС (v39.43):** добавлен приватный класс `DevModeCheckBox : CheckBox` — его `OnPaint` ставит
+  `ForeColor = Color.White` ПЕРЕД отрисовкой, затем восстанавливает. Так ToolStrip-рендерер не
+  успевает перекрасить текст в тёмный. Поле `devModeChk` → тип `DevModeCheckBox`; создание →
+  `new DevModeCheckBox()`. Правки ApplyDarkTheme (devModeChk/devModeHost.ForeColor=White) остаются
+  как защита от первого кадра.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать, что текст «developer mode» теперь стабильно белый.
+
+## Сессия 05.09.2026 (8) — белый текст чекбокса + закрытие консоли 1.5с (v39.42)
+- **v39.42-DEV-MODE-FONT-CONSOLE-CLOSE-09.05-1117** (exe=txt=manifest MATCH, data 12 папок).
+  Лимиты 0% → ~1%, RESET 4ч54м. Модель deepseek-v4-flash:cloud.
+- **(1) БЕЛЫЙ ТЕКСТ ЧЕКБОКСА «developer mode»:** был чёрный/тёмный на тёмном фоне. ПРИЧИНА:
+  `devModeChk` живёт в `ToolStripControlHost` (mainMenu.Items), который НЕ затрагивает
+  `SetControlTheme` (обход only this.Controls) — ToolStrip при отрисовке перебивал ForeColor
+  на свой тёмный. ФИКС: (а) `ForeColor = Color.White` при создании; (б) принудительно в
+  `ApplyDarkTheme` после обхода — `devModeChk.ForeColor = White` + `devModeHost.ForeColor = White`.
+- **(2) ЗАКРЫТИЕ КОНСОЛИ через 1.5с:** телепортация с прогрузкой длится ~1с, консоль закрывалась
+  рано (Sleep(150) после Enter не хватало). ФИКС: в `RunTeleportGameSync` шаг 6 — `Sleep(1500)`
+  после Enter, затем `PressScanCode(SCANCODE_CONSOLE)` (0x29, та же клавиша, что открывала).
+  Промежуточный Sleep(150) убран — осталась одна задержка 1500мс к закрытию.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать у пользователя (а) текст «developer mode» теперь белый и
+  читаемый; (б) Ctrl+T — консоль закрывается примерно через 1.5с после ввода команды, телепорт
+  успевает прогрузиться, консоль не остаётся открытой.
+
+## Сессия 05.09.2026 (7) — откат: задержки возвращены для игры (v39.41)
+- **v39.41-TELEPORT-DELAYS-GAME-09.05-1058** (exe=txt=manifest MATCH, data 12 папок).
+  Лимиты 5,9% → 6,3%, RESET 2м. Модель deepseek-v4-flash:cloud.
+- **ЗАДАЧА (требование пользователя):** после переключения на окно процесса (игры/редактора) и
+  открытия консоли/Find должна быть МОМЕНТАЛЬНАЯ работа — убрать ВСЕ задержки, кроме ожидания
+  окна Find. Тест — сможет ли сработать мгновенно.
+- **РЕЗУЛЬТАТ ТЕСТА (фидбек пользователя v39.40):** для РЕДАКТОРА задержки не критичны — всё
+  работает БЕЗ них. Для ИГРЫ (Ctrl+T) задержки КРИТИЧНЫ — БЕЗ них НИЧЕГО не работает.
+- **ВОЗВРАЩЕНО (откат для игры, v39.41-TELEPORT-DELAYS-GAME):** в `RunTeleportGameSync`
+  (MainForm.cs) возвращены задержки: `Sleep(250)` ПОСЛЕ снятия паузы (перед открытием консоли);
+  `Sleep(250)` внутри `OpenEts2Console` (после PressScanCode(0x29)); `Sleep(100)` после ввода
+  команды (перед Enter); `Sleep(150)` после Enter (перед закрытием консоли). Редактор
+  (`RunTeleportEditorSync`) ОСТАВЛЕН без задержек (работает).
+- **УРОК:** игра и редактор — РАЗНЫЕ по чувствительности к задержкам. После открытия консоли игры
+  (scan code 0x29) SendInput-событиям нужна пауза (250мс), иначе консоль/ввод/Enter не успевают
+  отреагировать. Для редактора Win32-сообщения (WM_SETTEXT/BM_CLICK) синхронны и задержек не требуют.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать у пользователя телепорт в игру Ctrl+T с возвращёнными
+  задержками (должен снова работать). Редактор Ctrl+Shift+T — без изменений (без задержек).
+
+## Сессия 05.09.2026 (6) — телепорт CTRL+T: Enter scan code + закрытие консоли (v39.39)
+- **v39.39-TELEPORT-ENTER-CLOSE-09.05-1034** (exe=txt=manifest MATCH, data 12 папок).
+  Лимиты 4,9% → 5,1%, RESET 24м. Модель deepseek-v4-flash:cloud.
+- **КОРЕНЬ БАГА:** консоль ETS2 работает на SCAN CODES (открывается только scan code 0x29,
+  виртуальная VK_OEM_3 не работала — сессия 10). Старый код жал Enter через
+  `PressKey((byte)Keys.Enter)` (VK_RETURN) — в консоли ETS2 не срабатывал → команда оставалась
+  введённой, консоль не закрывалась.
+- **ФИКС (MainForm.cs `RunTeleportGameSync`):** (5) Enter через `PressScanCode(SCANCODE_ENTER)`
+  (scan code 0x1C) вместо `PressKey(Keys.Enter)`; (6) после Enter + Sleep(150) — закрытие консоли
+  `PressScanCode(SCANCODE_CONSOLE)` (0x29, та же клавиша, что открывала). Константа
+  `SCANCODE_ENTER = 0x001C` добавлена в QuestsManager.cs.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать у пользователя: Ctrl+T — консоль открывается, goto вводится,
+  Enter срабатывает (команда выполняется), консоль закрывается. Если Enter всё ещё не срабатывает —
+  проверить, что консоль ETS2 принимает scan code Enter (возможно нужен KEYEVENTF_EXTENDEDKEY или
+  задержка между вводом и Enter).
+
+## Сессия 05.09.2026 (5) — ЗАВЕРШЕНИЕ СЕССИИ (v39.36–v39.38)
+- **Итог сессии 05.09.2026:** 3 публикации — v39.36 (dev-mode checkbox в редакторе), v39.37
+  (перенос в меню + фикс uset), v39.38 (чекбокс + тёмная тема + высота окна). Все exe=txt=manifest MATCH.
+- **Лимиты сессии:** старт 0,3% → конец 3,5%, RESET 37м. Модель deepseek-v4-flash:cloud.
+- **Ключевые решения:** (1) dev-mode — настоящий CheckBox в меню (ToolStripControlHost), не «кнопка»;
+  (2) строки config.cfg имеют префикс `uset ` — искать/писать по `StartsWith("uset g_developer")`;
+  (3) смена темы убрана — тёмная тема по умолчанию (ApplyDarkTheme); (4) MinimumSize окна (1180, 800).
+- **⚠️ НАПОМНИТЬ В СЛЕДУЮЩЕЙ СЕССИИ (исправить):** телепорт в игру (Ctrl+T) — после ввода goto
+  нажать ENTER и ЗАКРЫТЬ консоль той же клавишей (scan code 0x29). В `RunTeleportGameSync` после
+  TypeUnicodeText(cmd) → PressKey(Enter) → PressScanCode(SCANCODE_CONSOLE). Проверить, что Enter
+  реально нажимается и команда выполняется.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать у пользователя v39.38 (чекбокс dev-mode, тёмная тема, высота окна).
+
+## Сессия 05.09.2026 (4) — чекбокс dev-mode + тёмная тема + высота окна (v39.38)
+- **v39.38-DEV-MODE-CHECKBOX-DARK-THEME-09.05-1018** (exe=txt=manifest MATCH, data 551).
+  Лимиты 1,7% → 3%, RESET 41м. Модель deepseek-v4-flash:cloud.
+- **ЧЕКБОКС dev-mode (не «кнопка»):** в MainForm.cs `devModeMenu` (ToolStripMenuItem) заменён на
+  `devModeHost` (ToolStripControlHost, Alignment=Right) + `devModeChk` (настоящий CheckBox с текстом
+  «developer mode» рядом). Тултип через `ToolTip.SetToolTip` (у CheckBox нет ToolTipText).
+- **ТЁМНАЯ ТЕМА ПО УМОЛЧАНИЮ (убрана смена темы):** удалены `btnTheme`, `_darkTheme`,
+  `ApplyTheme` (заменён на `ApplyDarkTheme` — всегда тёмная), `SetControlTheme` упрощён
+  (без ветки светлой темы), `DefaultButtonColor()` → всегда `Color.FromArgb(60,60,60)`.
+  Кнопка «Тема» больше не создаётся и не добавляется в Controls.
+- **ВЫСОТА ОКНА:** `MinimumSize` увеличен с (1180, 740) до (1180, 800) — все кнопки (в т.ч. АР2
+  на topY+640+30) полностью видны; запрещено уменьшать окно ниже минимума.
+- Файлы: MainForm.cs, csproj (VersionIter 37→38, VersionDesc DEV-MODE-CHECKBOX-DARK-THEME).
+
+## Сессия 05.09.2026 (3) — developer mode перенесён в меню + фикс uset (v39.37)
+- **v39.37-DEV-MODE-MENU-FIX-09.05-1000** (exe=txt=manifest MATCH, data 551). Лимиты 1% → 1,4%,
+  RESET 58м. Модель deepseek-v4-flash:cloud.
+- **ФИКС ЗАПИСИ config.cfg (КОРЕНЬ):** строки в config.cfg ETS2 имеют префикс `uset `
+  (напр. `uset g_developer "2"`). Старый код искал по `StartsWith("g_developer")` — не находил,
+  дописывал в конец, значения не менялись. Теперь и чтение, и запись используют
+  `StartsWith("uset g_developer")` / `StartsWith("uset g_console")` (case-insensitive).
+- **ГАЛОЧКА ПЕРЕНЕСЕНА ИЗ РЕДАКТОРА В ГЛАВНОЕ МЕНЮ:** удалена из MapEditorForm.cs (поле
+  `_devModeChk`, разделитель, методы Ets2ConfigPath/ReadDevModeFromConfig/InitDevModeFromConfig/
+  UpdateDevModeEnabled/ApplyDevModeToConfig). В MainForm.cs добавлен `devModeMenu`
+  (ToolStripMenuItem, CheckOnClick=true, Alignment=Right) — справа у правого края меню
+  (File слева). Тултип `g_developer "2" g_console "1"`.
+- **СТАРТ:** `InitDevModeFromConfig()` вызывается в конструкторе MainForm после RefreshUI() —
+  читает config.cfg, выставляет галочку (без записи). `UpdateDevModeEnabled()` — неактивна,
+  если запущен eurotrucks2.exe (IsEts2ProcessRunning).
+- **ПЕРЕКЛЮЧЕНИЕ:** `ApplyDevModeToConfig(bool)` — пишет `uset g_developer "2"/"0"` и
+  `uset g_console "1"/"0"` (замена по префиксу, добавление в конец, создание файла).
+- Файлы: MapEditorForm.cs (удаление), MainForm.cs (добавление), csproj (VersionIter 36→37,
+  VersionDesc DEV-MODE-MENU-FIX).
+
+## Сессия 05.09.2026 (2) — developer mode checkbox (v39.36)
+- **v39.36-DEV-MODE-CHECKBOX-09.05-953** (exe=txt=manifest MATCH, data 551). Лимиты 0,3% → 0,8%,
+  RESET 1ч 5м. Модель deepseek-v4-flash:cloud.
+- **ГАЛОЧКА «developer mode» в редакторе карты** (MapEditorForm.cs): после панели overrides
+  (`_topPanel`) добавлен разделитель (1px, #3C465A) + CheckBox `_devModeChk` (Dock.Top, 24px).
+  Тултип: `g_developer "2" g_console "1"`.
+- **СТАРТ:** `InitDevModeFromConfig()` (вызывается в конце BuildEditPanel) читает
+  `Documents\Euro Truck Simulator 2\config.cfg` через `ReadDevModeFromConfig()` — галочка активна,
+  если там `g_developer "2"` И `g_console "1"`, иначе снята. Запись в файл НЕ выполняется
+  (только чтение; `_suppressCheck` защищает от срабатывания CheckedChanged).
+- **ПЕРЕКЛЮЧЕНИЕ:** `ApplyDevModeToConfig(bool)` — при включении пишет `g_developer "2"` и
+  `g_console "1"`, при выключении — `g_developer "0"` и `g_console "0"`. Строки заменяются
+  по префиксу (case-insensitive), при отсутствии — добавляются в конец. Файл создаётся, если нет.
+- **БЛОКИРОВКА:** `UpdateDevModeEnabled()` — галочка неактивна (disabled), если в процессах есть
+  `eurotrucks2.exe` (Process.GetProcessesByName). Вызывается в InitDevModeFromConfig.
+- Путь config.cfg: `Environment.SpecialFolder.MyDocuments` + `Euro Truck Simulator 2\config.cfg`.
+- Файлы: MapEditorForm.cs, csproj (VersionIter 35→36, VersionDesc DEV-MODE-CHECKBOX).
+
 ## Сессия 05.09.2026 (1) — ЗАВЕРШЕНИЕ (v39.35 подтверждена пользователем: «Всё заработало»)
 - **v39.35-CONSOLE-SCANCODE-UNICODE-09.04-2353** — подтверждена пользователем (консоль открывается,
   Unicode-ввод работает, Find открывается/закрывается). Сессия успешно завершена.

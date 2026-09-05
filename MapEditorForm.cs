@@ -2203,6 +2203,7 @@ namespace ETS2_Assist_GUI
 
             Controls.Add(_topPanel);
             Controls.Add(_editPanel);
+
             RefreshOverrideCombo();
             BuildFieldControls();
         }
