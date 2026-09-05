@@ -174,7 +174,7 @@ namespace ETS2_Assist_GUI
                 try { return ColorTranslator.FromHtml(m.FontColor); }
                 catch { }
             }
-            return Color.White;
+            return Color.FromArgb(166, 166, 166); // v39.55: приглушённый белый по умолчанию
         }
         public static bool FontBoldOf(string displayName)
         {

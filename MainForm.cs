@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -56,7 +56,7 @@ namespace ETS2_Assist_GUI
             {
                 Color original = ForeColor;
                 bool wasEnabled = Enabled;
-                ForeColor = Color.White;
+                ForeColor = Color.FromArgb(166, 166, 166);
                 if (!wasEnabled) Enabled = true;   // чтобы base.OnPaint рисовал белым, а не disabled-цветом
                 base.OnPaint(pevent);
                 Enabled = wasEnabled;
@@ -410,7 +410,7 @@ RegisterHotKeyChecked(
             {
                 Text = "developer mode",
                 AutoSize = true,
-                ForeColor = Color.White,
+                ForeColor = Color.FromArgb(166, 166, 166),
                 BackColor = Color.Transparent,
                 Margin = new Padding(6, 0, 6, 0),
                 CheckAlign = ContentAlignment.MiddleLeft
@@ -547,7 +547,7 @@ RegisterHotKeyChecked(
                 Location = new Point(leftX + 154, topY + 646),
                 Size = new Size(76, 24),
                 Checked = true,   // v99: сетка по умолчанию включена
-                ForeColor = Color.LightGray,
+                ForeColor = Color.FromArgb(166, 166, 166),
                 BackColor = Color.FromArgb(30, 30, 30)
             };
             chkAr2Grid.CheckedChanged += (s, e) =>
@@ -579,7 +579,7 @@ RegisterHotKeyChecked(
                 Location = new Point(listLeft, topY),
                 Size = new Size(listWidth, this.ClientSize.Height - topY - 40),
                 BackColor = Color.FromArgb(20, 25, 35),
-                ForeColor = Color.LightGray,
+                ForeColor = Color.FromArgb(166, 166, 166),
                 Font = new Font("Segoe UI", 9),
                 SelectionMode = SelectionMode.MultiExtended,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
@@ -702,8 +702,8 @@ RegisterHotKeyChecked(
             // свой (тёмный) — поэтому после темы явно возвращаем светлый текст.
             if (devModeChk != null)
             {
-                devModeChk.ForeColor = Color.White;
-                if (devModeHost != null) devModeHost.ForeColor = Color.White;
+                devModeChk.ForeColor = Color.FromArgb(166, 166, 166);
+                if (devModeHost != null) devModeHost.ForeColor = Color.FromArgb(166, 166, 166);
             }
             // v39: после применения темы восстановить свечение тоггл-кнопок.
             UpdateStartButton();
@@ -3493,7 +3493,7 @@ RegisterHotKeyChecked(
                 StartPosition = FormStartPosition.CenterScreen,
                 TopMost = true,
                 BackColor = Color.FromArgb(30, 30, 40),
-                ForeColor = Color.White,
+                ForeColor = Color.FromArgb(166, 166, 166),
                 FormBorderStyle = FormBorderStyle.Sizable,
                 Icon = this.Icon
             };
@@ -3511,7 +3511,7 @@ RegisterHotKeyChecked(
                 Text = "Тестовое окно\nЗдесь будут тестовые кнопки и функционал.",
                 Location = new Point(10, 50),
                 AutoSize = true,
-                ForeColor = Color.White
+                ForeColor = Color.FromArgb(166, 166, 166)
             };
 
             testForm.Controls.Add(btnClose);

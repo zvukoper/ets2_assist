@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -76,9 +76,12 @@ namespace ETS2_Assist_GUI
         private bool _disposed;
 
         private readonly MapPanel _mapPanel = new() { Dock = DockStyle.Fill, BackColor = Color.FromArgb(15, 18, 23) };
-        private readonly FlowLayoutPanel _toolbar = new() { Dock = DockStyle.Bottom, Height = 46, Padding = new Padding(6), WrapContents = false };
+        private readonly FlowLayoutPanel _toolbar = new() { Dock = DockStyle.Bottom, Height = 58, Padding = new Padding(6), WrapContents = false };
+        // v39.56: распорка справа — расталкивает кнопки (найти/показать всю карту/обновить/AR2)
+        // к правому краю тулбара.
+        private readonly Panel _toolbarSpacer = new() { Width = 10, Height = 0, Margin = new Padding(0), BackColor = Color.Transparent };
         // v39: кнопка тоггла AR v2.0 (D3D) в редакторе карты.
-        private readonly Button _btnAr2 = new() { Text = "AR v2.0 (D3D)", Width = 120, Height = 30, FlatStyle = FlatStyle.Flat, ForeColor = Color.LightGray, Tag = "Toggle" };
+        private readonly Button _btnAr2 = new() { Text = "AR v2.0 (D3D)", Width = 120, Height = 30, FlatStyle = FlatStyle.Flat, ForeColor = Color.FromArgb(166, 166, 166), Tag = "Toggle" };
         private readonly System.Windows.Forms.Timer _ar2SyncTimer = new() { Interval = 500 };
         // Статусная строка (8px): левая половина — индикация состояний (окружность-индикатор + текст),
         // правая — выполняемые операции (вращающийся индикатор / зелёная галочка + текст).
@@ -87,9 +90,9 @@ namespace ETS2_Assist_GUI
         private readonly Label _statusLabel = new() { Dock = DockStyle.Bottom, Height = 24, ForeColor = Color.FromArgb(143, 160, 185), BackColor = Color.FromArgb(15, 18, 23), Padding = new Padding(4, 3, 0, 0), Visible = false };
         // v39.52: сайдбар — самостоятельный custom control (SidebarControl), без TreeView.
         private readonly SidebarControl _sidebar = new() { Dock = DockStyle.Fill };
-        // v39.30: левая колонка сайдбара: панель кнопок видимости (сверху) + SidebarControl.
+        // v39.30: левая колонка сайдбара: SidebarControl (всю высоту).
+        // v39.56: панель кнопок _sidebarButtons удалена — кнопки переехали в GroupBox тулбара.
         private readonly Panel _sidebarContainer = new() { Dock = DockStyle.Left, Width = 240, BackColor = Color.FromArgb(20, 25, 35) };
-        private readonly Panel _sidebarButtons = new() { Dock = DockStyle.Top, Height = 30, BackColor = Color.FromArgb(20, 25, 35) };
         // Контекстное меню сайдбара (пока пустое — placeholder).
         private readonly ContextMenuStrip _sidebarContextMenu = new();
         // Состояние раскрытия категорий сайдбара (по id категории, не по TreeNode).
@@ -159,6 +162,10 @@ namespace ETS2_Assist_GUI
         private Label? _gameNameError;           // красная подпись под полем GameName
         private Label? _gameNameLabel;           // подпись «Системное имя» (для подсветки обязательного)
         private static readonly Color DirtyBg = Color.FromArgb(120, 60, 12); // тёмно-оранжевый — изменённое поле
+        // v39.54: глобальная палитра — приглушённый белый (#A6A6A6) обычного текста;
+        // супер-белый (#FFFFFF) — только для выделения.
+        private static readonly Color MutedColor = Color.FromArgb(166, 166, 166);
+        private static readonly Color SuperWhite = Color.White;
         // Видимость категорий на карте (только в редакторе): имя категории -> показывать
         private readonly Dictionary<string, bool> _catVisible = new() { ["Цели"] = true, ["Города"] = true, ["Отключенные"] = true };
 
@@ -227,60 +234,90 @@ namespace ETS2_Assist_GUI
             Controls.Add(_statusBar);   // статусная строка (левый dock — нижняя, под картой)
             Controls.Add(_statusLabel); // legacy-строка скрыта (Visible=false), сохранена для совместимости
             Controls.Add(_toolbar);
-            // v39.30: левая колонка = контейнер (панель кнопок НАД списком категорий).
-            _sidebarContainer.Controls.Add(_sidebarButtons);
+            // v39.30: левая колонка = контейнер с SidebarControl.
+            // v39.56: кнопки видимости категорий перенесены в GroupBox «Категории» на тулбаре —
+            // верхняя панель сайдбара удалена (SidebarControl занимает всю высоту).
             _sidebarContainer.Controls.Add(_sidebar);
             Controls.Add(_sidebarContainer);
             // v39.52: фиксированная ширина сайдбара (240) — без динамического пересчёта.
             _sidebarContainer.Width = 240;
 
-            // v39.29: три маленькие кнопки видимости категорий (скрыть/показать/инверсия).
-            // v39.30: на 35% меньше размером и шрифтом; панель НАД списком категорий (Dock.Top) —
-            // сайдбар целиком (панель + дерево) слева.
-            // v39.31: убран padding текста (Padding=0) — текст не обрезается.
-            // v39.45: кнопки в FlowLayoutPanel (автоширина по тексту, не накладываются друг на друга).
+            // v39.56: ТУЛБАР — левая часть: GroupBox «Категории» (показать/скрыть/инверсия);
+            // правая часть: найти грузовик / показать всю карту / обновить цели / AR v2.
+            var catGroup = new GroupBox
+            {
+                Text = "Категории",
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                BackColor = Color.FromArgb(20, 25, 35),
+                ForeColor = Color.FromArgb(166, 166, 166),
+                Margin = new Padding(4, 2, 8, 2)
+            };
             var visBtnFont = new Font("Segoe UI", 7.5f);
-            var visFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Padding = new Padding(2, 3, 2, 0), BackColor = Color.FromArgb(20, 25, 35) };
-            var btnHide = new Button { Text = "скрыть", AutoSize = true, Height = 17, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(4, 0, 4, 0), Margin = new Padding(0, 0, 3, 0) };
-            var btnShow = new Button { Text = "показать", AutoSize = true, Height = 17, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(4, 0, 4, 0), Margin = new Padding(0, 0, 3, 0) };
-            var btnInvert = new Button { Text = "инверсия", AutoSize = true, Height = 17, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(4, 0, 4, 0), Margin = new Padding(0), TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+            var btnHide = new Button { Text = "скрыть", AutoSize = true, Height = 20, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166), FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(4, 0, 4, 0), Margin = new Padding(0, 0, 3, 0) };
+            var btnShow = new Button { Text = "показать", AutoSize = true, Height = 20, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166), FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(4, 0, 4, 0), Margin = new Padding(0, 0, 3, 0) };
+            var btnInvert = new Button { Text = "инверсия", AutoSize = true, Height = 20, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166), FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(4, 0, 4, 0), Margin = new Padding(0), TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+            var btnClearSel = new Button { Text = "сбросить выделение", AutoSize = true, Height = 20, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166), FlatStyle = FlatStyle.Flat, Font = visBtnFont, Padding = new Padding(4, 0, 4, 0), Margin = new Padding(0, 0, 3, 0), TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
             btnHide.Click += (s, e) => SetAllCategoriesVisible(false);
             btnShow.Click += (s, e) => SetAllCategoriesVisible(true);
             btnInvert.Click += (s, e) => InvertAllCategories();
+            btnClearSel.Click += (s, e) => ClearAllSelection();
             _editTip.SetToolTip(btnHide, "Скрыть ВСЕ категории точек на карте (снять галочки со всех категорий).");
             _editTip.SetToolTip(btnShow, "Показать ВСЕ категории точек на карте (отметить все категории).");
             _editTip.SetToolTip(btnInvert, "Инверсия видимости: скрытые категории показать, показанные — скрыть.");
-            visFlow.Controls.Add(btnHide);
-            visFlow.Controls.Add(btnShow);
-            visFlow.Controls.Add(btnInvert);
-            _sidebarButtons.Controls.Add(visFlow);
+            _editTip.SetToolTip(btnClearSel, "Отменить ЛЮБОЕ выделение (single и чекбоксы-мультивыбор).");
+            var catFlow = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0), BackColor = Color.Transparent };
+            catFlow.Controls.Add(btnHide);
+            catFlow.Controls.Add(btnShow);
+            catFlow.Controls.Add(btnInvert);
+            catFlow.Controls.Add(btnClearSel);
+            catGroup.Controls.Add(catFlow);
+            catFlow.Left = 8;
+            catFlow.Top = 18;
 
-            var findTruck = new Button { Text = "найти грузовик", Width = 130, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat };
+            var findTruck = new Button { Text = "найти грузовик", Width = 130, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166), FlatStyle = FlatStyle.Flat };
             findTruck.Click += (s, e) => FindTruck();
             _editTip.SetToolTip(findTruck, "Найти грузовик: центрировать карту на текущей позиции грузовика (из телеметрии).");
 
-            var showAll = new Button { Text = "показать всё", Width = 110, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat };
+            var showAll = new Button { Text = "показать всю карту", Width = 140, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166), FlatStyle = FlatStyle.Flat };
             showAll.Click += (s, e) => FitToAll();
-            _editTip.SetToolTip(showAll, "Показать всё: подобрать масштаб и центр так, чтобы все точки и дороги уместились на карте.");
+            _editTip.SetToolTip(showAll, "Показать всю карту: подобрать масштаб и центр так, чтобы все точки и дороги уместились на карте.");
 
-            var reloadTargets = new Button { Text = "обновить цели", Width = 120, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, FlatStyle = FlatStyle.Flat };
+            var reloadTargets = new Button { Text = "обновить цели", Width = 120, Height = 30, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166), FlatStyle = FlatStyle.Flat };
             reloadTargets.Click += (s, e) => { LoadTargets(); PopulateSidebar(); RequestRender(); };
             _editTip.SetToolTip(reloadTargets, "Обновить цели: перечитать все точки (статика + overrides + SDO) и перестроить сайдбар.");
 
-            _onlySelectedChk = new CheckBox { Text = "Только выбранные", AutoSize = true, ForeColor = Color.LightGray, Height = 30, Margin = new Padding(8, 6, 0, 0) };
-            _editTip.SetToolTip(_onlySelectedChk, "Показывать на карте только выделенные точки (снимает с карты все остальные цели).");
+            // v39.57: чекбокс «Только выбранные» перенесён ВНУТРЬ GroupBox «Категории».
+            _onlySelectedChk = new CheckBox { Text = "Только выбранные", AutoSize = true, ForeColor = Color.FromArgb(166, 166, 166), Margin = new Padding(10, 2, 0, 0) };
+            _editTip.SetToolTip(_onlySelectedChk, "Показывать на карте ТОЛЬКО выделенные точки (single или чекбоксы). Все остальные исчезают.");
             _onlySelectedChk.CheckedChanged += (s, e) => RequestRender();
+            catFlow.Controls.Add(_onlySelectedChk);
 
+            // v39.56: порядок слева направо: GroupBox «Категории» → распорка → (справа) кнопки.
+            _toolbar.Controls.Add(catGroup);
+            _toolbar.Controls.Add(_toolbarSpacer);
+            _toolbarSpacer.Width = 0; // ширина рассчитывается в LayoutRightButtons
             _toolbar.Controls.Add(findTruck);
             _toolbar.Controls.Add(showAll);
             _toolbar.Controls.Add(reloadTargets);
-            _toolbar.Controls.Add(_onlySelectedChk);
+
+            // v39.56: правое прижатие кнопок — распорка между чекбоксом и кнопками.
+            void LayoutRightButtons()
+            {
+                // Суммарная ширина правых кнопок: findTruck + showAll + reloadTargets + _btnAr2 + margin'ы.
+                int rightW = findTruck.Width + showAll.Width + reloadTargets.Width + _btnAr2.Width + 6 * 3;
+                int spacerW = Math.Max(0, _toolbar.ClientSize.Width - _toolbar.Padding.Horizontal - rightW - catGroup.Width - 30);
+                _toolbarSpacer.Width = spacerW;
+            }
+            _toolbar.Resize += (s, e) => LayoutRightButtons();
+            _toolbar.PaddingChanged += (s, e) => LayoutRightButtons();
 
             // v39: кнопка вкл/выкл АР2 в редакторе карты.
             _btnAr2.BackColor = Color.FromArgb(40, 48, 62);
             _btnAr2.Click += (s, e) => MainForm.Current?.LaunchArOverlayV2();
             _editTip.SetToolTip(_btnAr2, "Включить/выключить AR-оверлей v2.0 (D3D): визуализация точек в пространстве перед камерой.");
             _toolbar.Controls.Add(_btnAr2);
+            LayoutRightButtons();
 
             // v39: синхронизация состояния АР2 (Lime при запуске) из редактора.
             _ar2SyncTimer.Tick += (s, e) => {
@@ -948,7 +985,11 @@ namespace ETS2_Assist_GUI
             // ВАЖНО (фриз 04.09): слои вычисляем ОДИН раз в словарь, а не в компараторе —
             // SdoMeta.LayerOf читает meta.json (File.GetLastWriteTimeUtc) на каждый вызов,
             // а Sort делает ~N·logN сравнений → 5000 точек = десятки тысяч чтений файла = фриз.
-            bool onlySel = _onlySelectedChk != null && _onlySelectedChk.Checked && _selectedIds.Count > 0;
+            // v39.55: двухпроходная отрисовка. Выделенные точки (single ИЛИ чекбокс) рисуются
+            // ПОВЕРХ всех невыделенных; при любом выделении невыделенные точки прозрачнее
+            // на 35% (alpha *= 0.65). При «Только выбранные» невыделенные вообще не рисуются.
+            bool anySel = _selectedIds.Count > 0 || !string.IsNullOrEmpty(_selectedGameName);
+            bool onlySel = _onlySelectedChk != null && _onlySelectedChk.Checked && anySel;
             var drawTargets = _targets.ToList();
             var layerCache = new Dictionary<string, int>(StringComparer.Ordinal);
             foreach (var t in drawTargets)
@@ -967,114 +1008,17 @@ namespace ETS2_Assist_GUI
                 int lb = layerCache[b.id] == 0 ? int.MaxValue : layerCache[b.id];
                 return la - lb;
             });
+            var selPass = new List<(string id, string name, double x, double z, Color color)>();
             foreach (var t in drawTargets)
             {
-                _pointModel.TryGetValue(t.id, out var pm);
-                bool isCity = pm != null && pm.IsCity;
-                bool isPoi = pm != null && pm.IsPoi;
-                if (isPoi && _scale > 30) continue; // слишком мелко — только шум
-                if (onlySel && !_selectedIds.Contains(t.id)) continue;
-                bool disabled = pm != null && !pm.Enabled;
-                // видимость по категории: отключённые — группой "Отключенные", иначе по Category
-                if (disabled)
-                {
-                    if (!_catVisible.TryGetValue("Отключенные", out var so) || !so) continue;
-                }
-                else
-                {
-                    string cat = pm != null ? pm.Category : "Цели";
-                    // неизвестная категория (ещё не зарегистрирована в _catVisible) — показываем по умолчанию
-                    if (_catVisible.TryGetValue(cat, out var st) && !st) continue;
-                }
-                var p = WorldToScreen(t.x, t.z);
-                if (p.X < -50 || p.Y < -50 || p.X > _mapPanel.Width + 50 || p.Y > _mapPanel.Height + 50) continue;
-
-                bool cooldown = pm != null && pm.CooldownUntil > DateTime.UtcNow;
-                bool ovr = pm != null && (pm.IsOverride || pm.IsNew);
-
-                Color fill;
-                float rx, ry;
-                bool isSdo = pm != null && pm.IsSdo;
-                Bitmap? sdoIcon = null;
-                if (isSdo)
-                {
-                    // SDO: иконка категории (50x50) вместо кружка, если прописана в meta.json;
-                    // иначе — цветная точка (крупнее POI, ~5.5 px радиус).
-                    fill = ParseColor(pm!.Color);
-                    rx = 5.5f; ry = 5.5f;
-                    sdoIcon = GetSdoIcon(pm.Category);
-                }
-                else if (isCity)
-                {
-                    fill = Color.FromArgb(204, 255, 230, 0);
-                    rx = 5.5f; ry = 5.5f;
-                }
-                else if (isPoi)
-                {
-                    fill = CategoryColor(pm!.Category);
-                    rx = 3.5f; ry = 3.5f;
-                }
-                else
-                {
-                    fill = disabled ? Color.FromArgb(120, 120, 120) : t.color;
-                    rx = 5; ry = 5;
-                }
-                if (sdoIcon != null)
-                {
-                    // Иконка категории РАЗМЕРОМ С ТОЧКУ (11 px = 2×rx) с чёрной обводкой-кругом
-                    // (как у остальных точек); при выделении — круг подсветки (жёлтый/белый).
-                    const float iconSize = 11f;
-                    g.DrawImage(sdoIcon, p.X - iconSize / 2, p.Y - iconSize / 2, iconSize, iconSize);
-                    g.DrawEllipse(new Pen(Color.Black, 1.5f), p.X - rx, p.Y - ry, rx * 2, ry * 2);
-                    if (_selectedIds.Contains(t.id))
-                    {
-                        Color sel = (_selectedGameName == t.id && _dirtyFields.Count > 0) ? Color.Yellow : Color.White;
-                        g.DrawEllipse(new Pen(sel, 2f), p.X - 8, p.Y - 8, 16, 16);
-                    }
-                }
-                else
-                {
-                    using var brush = new SolidBrush(fill);
-                    g.FillEllipse(brush, p.X - rx, p.Y - ry, rx * 2, ry * 2);
-                    Color outline = Color.Black;
-                    float ow = 1.5f;
-                    if (cooldown) { outline = Color.FromArgb(70, 140, 255); ow = 3f; }
-                    else if (disabled) { outline = Color.Gray; ow = 3f; }
-                    else if (ovr) { outline = Color.FromArgb(70, 140, 255); ow = 2f; }
-                    else if (isCity) { outline = Color.Black; ow = 2f; }
-                    g.DrawEllipse(new Pen(outline, ow), p.X - rx, p.Y - ry, rx * 2, ry * 2);
-                    if (_selectedIds.Contains(t.id))
-                    {
-                        Color sel = (_selectedGameName == t.id && _dirtyFields.Count > 0) ? Color.Yellow : Color.White;
-                        g.DrawEllipse(new Pen(sel, 2f), p.X - 8, p.Y - 8, 16, 16);
-                    }
-                }
-                // Метка: для POI — реальное имя (по умолчанию = категория, напр. "Company"),
-                // для города — имя города, иначе — имя цели.
-                string label = (isPoi && pm != null) ? (string.IsNullOrEmpty(pm.RealName) ? pm.Category : pm.RealName)
-                             : (isCity && pm != null ? pm.RealName : t.name);
-                if (cooldown) label += " (кулдаун)";
-                // Стиль подписи: города — жирные жёлтые (meta «Города»); SDO — стиль из meta
-                // категории (font_size/font_color/font_weight); остальные — обычные белые.
-                if (isCity)
-                {
-                    // Города: удвоенная чёрная обводка (strokeWidth 2) — требование 04.09.2026.
-                    DrawLabelAbove(g, label, p.X, p.Y, Color.Yellow, bold: true, fontSize: SdoMeta.FontSizeOf("Города"), strokeWidth: 2f);
-                }
-                else if (isSdo)
-                {
-                    DrawLabelAbove(g, label, p.X, p.Y,
-                        disabled ? Color.Gray : SdoMeta.FontColorOf(pm!.Category),
-                        bold: SdoMeta.FontBoldOf(pm!.Category),
-                        fontSize: SdoMeta.FontSizeOf(pm!.Category),
-                        strokeWidth: pm!.LabelStroke);
-                }
-                else
-                {
-                    DrawLabelAbove(g, label, p.X, p.Y, disabled ? Color.Gray : Color.White, bold: false,
-                        strokeWidth: pm != null ? pm.LabelStroke : 1f);
-                }
+                bool sel = _selectedIds.Contains(t.id) || _selectedGameName == t.id;
+                _pointModel.TryGetValue(t.id, out var pmx);
+                if (anySel && sel) selPass.Add(t);
+                else DrawMapTarget(g, t, pm: pmx, onlySel, dimmed: anySel);
             }
+            // Проход 2: выделенные поверх всех.
+            foreach (var t in selPass)
+                DrawMapTarget(g, t, pm: _pointModel.TryGetValue(t.id, out var pm2) ? pm2 : null, onlySel, dimmed: false);
 
             // Временный маркер создаваемой точки: серая точка с перекрестьем (наглядность создания).
             // v70: если точка пришла ИЗ АР («Пометить в АР»), подпись и позиция от пометки;
@@ -1091,7 +1035,7 @@ namespace ETS2_Assist_GUI
                 var hint = _createModeFromAr
                     ? $"Новая точка (АР)  Y={_editingCopy.Y:F1}м"
                     : "Новая точка";
-                DrawLabelAbove(g, hint, p.X, p.Y, Color.LightGray, true);
+                DrawLabelAbove(g, hint, p.X, p.Y, Color.FromArgb(166, 166, 166), true);
             }
 
             if (_truckX.HasValue && _truckZ.HasValue)
@@ -1125,6 +1069,149 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        // v39.55: отрисовка ОДНОЙ точки на карте (вынесено из OnPaint для двухпроходной схемы).
+        // dimmed = при любом выделении невыделенные точки отрисовываются с прозрачностью 65%.
+        private void DrawMapTarget(Graphics g, (string id, string name, double x, double z, Color color) t, PointData? pm, bool onlySel, bool dimmed)
+        {
+            bool isCity = pm != null && pm.IsCity;
+            bool isPoi = pm != null && pm.IsPoi;
+            if (isPoi && _scale > 30) return; // слишком мелко — только шум
+            // v39.55: «Только выбранные» — на карте остаются ТОЛЬКО выделенные точки.
+            if (onlySel && !(_selectedIds.Contains(t.id) || _selectedGameName == t.id)) return;
+            bool disabled = pm != null && !pm.Enabled;
+            // видимость по категории: отключённые — группой "Отключенные", иначе по Category
+            if (disabled)
+            {
+                if (!_catVisible.TryGetValue("Отключенные", out var so) || !so) return;
+            }
+            else
+            {
+                string cat = pm != null ? pm.Category : "Цели";
+                // неизвестная категория (ещё не зарегистрирована в _catVisible) — показываем по умолчанию
+                if (_catVisible.TryGetValue(cat, out var st) && !st) return;
+            }
+            var p = WorldToScreen(t.x, t.z);
+            if (p.X < -50 || p.Y < -50 || p.X > _mapPanel.Width + 50 || p.Y > _mapPanel.Height + 50) return;
+
+            bool cooldown = pm != null && pm.CooldownUntil > DateTime.UtcNow;
+            bool ovr = pm != null && (pm.IsOverride || pm.IsNew);
+            bool selected = _selectedIds.Contains(t.id) || _selectedGameName == t.id;
+
+            // v39.56: выделенная точка — ПОЛУПРОЗРАЧНАЯ ТЕНЬ (гало) вокруг кружка.
+            if (selected)
+            {
+                using var halo = new SolidBrush(Color.FromArgb(70, Color.Lime));
+                g.FillEllipse(halo, p.X - 14, p.Y - 14, 28, 28);
+            }
+            Color fill;
+            float rx, ry;
+            bool isSdo = pm != null && pm.IsSdo;
+            Bitmap? sdoIcon = null;
+            if (isSdo)
+            {
+                // SDO: иконка категории (50x50) вместо кружка, если прописана в meta.json;
+                // иначе — цветная точка (крупнее POI, ~5.5 px радиус).
+                fill = ParseColor(pm!.Color);
+                rx = 5.5f; ry = 5.5f;
+                sdoIcon = GetSdoIcon(pm.Category);
+            }
+            else if (isCity)
+            {
+                fill = Color.FromArgb(204, 255, 230, 0);
+                rx = 5.5f; ry = 5.5f;
+            }
+            else if (isPoi)
+            {
+                fill = CategoryColor(pm!.Category);
+                rx = 3.5f; ry = 3.5f;
+            }
+            else
+            {
+                fill = disabled ? Color.FromArgb(120, 120, 120) : t.color;
+                rx = 5; ry = 5;
+            }
+            // v39.55: при выделении невыделенные точки прозрачнее на 35% (alpha *= 0.65).
+            if (dimmed && !selected)
+            {
+                int a = fill.A * 65 / 100;
+                fill = Color.FromArgb(a, fill);
+            }
+            if (sdoIcon != null)
+            {
+                // Иконка категории РАЗМЕРОМ С ТОЧКУ (11 px = 2×rx) с чёрной обводкой-кругом;
+                // при выделении — белый кружок выделения x2 (v39.54: радиус 16, диаметр 32).
+                const float iconSize = 11f;
+                if (dimmed && !selected)
+                {
+                    // Прозрачность иконки через ColorMatrix при мультивыборе.
+                    var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.65f };
+                    using var ia = new System.Drawing.Imaging.ImageAttributes();
+                    ia.SetColorMatrix(cm);
+                    var dst = new Rectangle((int)(p.X - iconSize / 2), (int)(p.Y - iconSize / 2), (int)iconSize, (int)iconSize);
+                    g.DrawImage(sdoIcon, dst, 0, 0, sdoIcon.Width, sdoIcon.Height, GraphicsUnit.Pixel, ia);
+                }
+                else
+                {
+                    g.DrawImage(sdoIcon, p.X - iconSize / 2, p.Y - iconSize / 2, iconSize, iconSize);
+                }
+                using var iconOutline = new Pen(Color.Black, 1.5f);
+                g.DrawEllipse(iconOutline, p.X - rx, p.Y - ry, rx * 2, ry * 2);
+                // v39.55: кружок выделения — прежний диаметр (16), толщина x2 (4px), цвет lime.
+                if (selected)
+                    g.DrawEllipse(new Pen(Color.Lime, 4f), p.X - 8, p.Y - 8, 16, 16);
+            }
+            else
+            {
+                using var brush = new SolidBrush(fill);
+                g.FillEllipse(brush, p.X - rx, p.Y - ry, rx * 2, ry * 2);
+                Color outline = Color.Black;
+                float ow = 1.5f;
+                if (cooldown) { outline = Color.FromArgb(70, 140, 255); ow = 3f; }
+                else if (disabled) { outline = Color.Gray; ow = 3f; }
+                else if (ovr) { outline = Color.FromArgb(70, 140, 255); ow = 2f; }
+                else if (isCity) { outline = Color.Black; ow = 2f; }
+                using var outlinePen = new Pen(outline, ow);
+                g.DrawEllipse(outlinePen, p.X - rx, p.Y - ry, rx * 2, ry * 2);
+                // v39.55: кружок выделения — прежний диаметр (16), толщина x2 (4px), цвет lime.
+                if (selected)
+                    g.DrawEllipse(new Pen(Color.Lime, 4f), p.X - 8, p.Y - 8, 16, 16);
+            }
+            // Метка: для POI — реальное имя (по умолчанию = категория, напр. "Company"),
+            // для города — имя города, иначе — имя цели.
+            string label = (isPoi && pm != null) ? (string.IsNullOrEmpty(pm.RealName) ? pm.Category : pm.RealName)
+                         : (isCity && pm != null ? pm.RealName : t.name);
+            if (cooldown) label += " (кулдаун)";
+            // v39.54: выделенные точки — супербелая жирная метка ПОВЕРХ всех; города — жёлтые жирные;
+            // SDO — стиль из meta; остальные — приглушённый белый (#A6A6A6).
+            // v39.56: у выделенной — обводка +1 и полупрозрачная тень.
+            // v39.58: при мультивыборе невыделенные метки тоже полупрозрачные (alpha 0.65).
+            double lblAlpha = (dimmed && !selected) ? 0.65 : 1.0;
+            if (selected)
+            {
+                DrawLabelAbove(g, label, p.X, p.Y, SuperWhite, bold: true, fontSize: 9f,
+                    strokeWidth: pm != null ? pm.LabelStroke : 1f, shadow: true, strokeBoost: 1f);
+            }
+            else if (isCity)
+            {
+                // Города: удвоенная чёрная обводка (strokeWidth 2) — требование 04.09.2026.
+                DrawLabelAbove(g, label, p.X, p.Y, Color.Yellow, bold: true, fontSize: SdoMeta.FontSizeOf("Города"), strokeWidth: 2f, alphaScale: lblAlpha);
+            }
+            else if (isSdo)
+            {
+                DrawLabelAbove(g, label, p.X, p.Y,
+                    disabled ? Color.Gray : SdoMeta.FontColorOf(pm!.Category),
+                    bold: SdoMeta.FontBoldOf(pm!.Category),
+                    fontSize: SdoMeta.FontSizeOf(pm!.Category),
+                    strokeWidth: pm!.LabelStroke,
+                    alphaScale: lblAlpha);
+            }
+            else
+            {
+                DrawLabelAbove(g, label, p.X, p.Y, disabled ? Color.Gray : MutedColor, bold: false,
+                    strokeWidth: pm != null ? pm.LabelStroke : 1f, alphaScale: lblAlpha);
+            }
+        }
+
         private static void LogEditor(string msg)
         {
             try { Logger.Current?.Info("[EDITOR] " + msg); }
@@ -1142,18 +1229,29 @@ namespace ETS2_Assist_GUI
         // Рисует подпись над точкой с чёрной обводкой. strokeWidth — толщина обводки в px
         // (смещение чёрных копий текста по диагоналям; по умолчанию 1). Для городов — 2
         // (удвоенная обводка, требование 04.09.2026).
-        private static void DrawLabelAbove(Graphics g, string text, float cx, float cy, Color textColor, bool bold = false, int gap = 6, float fontSize = 9f, float strokeWidth = 1f)
+        // v39.56: shadow — полупрозрачное тёмное гало (больше радиус, мягкая тень);
+        // strokeBoost — добавка к толщине обводки (выделенные: +1).
+        // v39.58: alphaScale — масштаб прозрачности текста+обводки (мультивыбор: 0.65).
+        private static void DrawLabelAbove(Graphics g, string text, float cx, float cy, Color textColor, bool bold = false, int gap = 6, float fontSize = 9f, float strokeWidth = 1f, bool shadow = false, float strokeBoost = 0f, double alphaScale = 1.0)
         {
             if (string.IsNullOrEmpty(text)) return;
             using var font = new Font("Segoe UI", fontSize, bold ? FontStyle.Bold : FontStyle.Regular);
             var size = g.MeasureString(text, font);
             float x = cx - size.Width / 2f;
             float y = cy - size.Height - gap;
-            using var black = new SolidBrush(Color.Black);
-            float s = Math.Max(0.5f, strokeWidth);
+            // v39.58: полупрозрачная тень/текст — масштабируем alpha всех кистей.
+            int tint(int a) => Math.Max(0, Math.Min(255, (int)(a * alphaScale)));
+            if (shadow)
+            {
+                using var halo = new SolidBrush(Color.FromArgb(tint(60), 0, 0, 0));
+                foreach (var (dx, dy) in new[] { (-2.5f, -2.5f), (2.5f, -2.5f), (-2.5f, 2.5f), (2.5f, 2.5f), (0f, -2.5f), (0f, 2.5f), (-2.5f, 0f), (2.5f, 0f) })
+                    g.DrawString(text, font, halo, x + dx, y + dy);
+            }
+            using var black = new SolidBrush(Color.FromArgb(tint(255), 0, 0, 0));
+            float s = Math.Max(0.5f, strokeWidth + strokeBoost);
             foreach (var (dx, dy) in new[] { (-s, -s), (s, -s), (-s, s), (s, s) })
                 g.DrawString(text, font, black, x + dx, y + dy);
-            using var fg = new SolidBrush(textColor);
+            using var fg = new SolidBrush(Color.FromArgb(tint(textColor.A), textColor.R, textColor.G, textColor.B));
             g.DrawString(text, font, fg, x, y);
         }
 
@@ -1241,7 +1339,7 @@ namespace ETS2_Assist_GUI
                         if (_fieldControls.TryGetValue("Z", out var cz)) cz.Text = wz.ToString("F2", CultureInfo.InvariantCulture);
                         _dirtyFields.Add("X"); _dirtyFields.Add("Z");
                         if (!string.IsNullOrEmpty(_selectedGameName)) _unsavedEdits.Add(_selectedGameName);
-                        SyncSidebarSelection();
+                        ApplySidebarSelection();
                         UpdateActionButtons();
                     }
                     RequestRender();
@@ -1401,6 +1499,7 @@ namespace ETS2_Assist_GUI
             bool any = false;
             void Ext(double x, double z)
             {
+                if (!double.IsFinite(x) || !double.IsFinite(z)) return; // мусорные координаты — пропускаем
                 any = true;
                 if (x < minX) minX = x;
                 if (x > maxX) maxX = x;
@@ -1415,14 +1514,16 @@ namespace ETS2_Assist_GUI
             if (!any) return;
             _centerX = (minX + maxX) / 2;
             _centerZ = (minZ + maxZ) / 2;
-            double pad = 2000;
-            double worldW = (maxX - minX) + pad * 2;
-            double worldH = (maxZ - minZ) + pad * 2;
-            double sx = _mapPanel.Width / worldW;
-            double sz = _mapPanel.Height / worldH;
-            _scale = Math.Max(0.05, Math.Min(sx, sz));
+            // v39.56: подгонка к полному охвату (без искусственного pad-2000 — он удваивал
+            // охват и «отдалял» карту). Небольшой отступ 5% на каждую сторону.
+            double worldW = Math.Max(1.0, maxX - minX) * 1.10;
+            double worldH = Math.Max(1.0, maxZ - minZ) * 1.10;
+            double sx = Math.Max(1, _mapPanel.ClientSize.Width) / worldW;
+            double sz = Math.Max(1, _mapPanel.ClientSize.Height) / worldH;
+            _scale = Math.Clamp(Math.Min(sx, sz), 0.05, MaxScale);
             UpdateStatus();
             RequestRender();
+            LogEditor($"FitToAll: охват X[{minX:F0}..{maxX:F0}] Z[{minZ:F0}..{maxZ:F0}], масштаб {_scale:F2} м/px.");
         }
 
         private void FitToAllCities()
@@ -1631,9 +1732,9 @@ namespace ETS2_Assist_GUI
             items.Add(savedCat);
 
             // Передаём модель + текущее состояние selection/active/expanded.
+            // v39.57: атомарная передача состояния (чекбоксы + single) одним вызовом.
             _sidebar.SetItems(items);
-            _sidebar.SetSelectedIds(_selectedIds);
-            _sidebar.SetActiveId(_selectedGameName);
+            _sidebar.SetSelectionState(_selectedIds, _selectedGameName);
         }
 
         // Создаёт категорию SidebarItem с сохранённым состоянием раскрытия/видимости.
@@ -1666,62 +1767,74 @@ namespace ETS2_Assist_GUI
             };
         }
 
-        // v39.52: лёгкая синхронизация selection/active в сайдбаре без полной перестройки.
-        private void SyncSidebarSelection()
+        // v39.57: ЕДИНАЯ точка синхронизации выделения с сайдбаром. Вызывается после
+        // ЛЮБОГО изменения выделения (single с карты/сайдбара, чекбокс, сброс).
+        private void ApplySidebarSelection()
         {
-            _sidebar.SetSelectedIds(_selectedIds);
-            _sidebar.SetActiveId(_selectedGameName);
+            _sidebar.SetSelectionState(_selectedIds, _selectedGameName);
         }
 
-        // v39.52: обычный клик по строке (точка/категория).
+        // v39.56: определяет id категории сайдбара для точки (по тем же правилам, что
+        // PopulateSidebar). Нужно для reveal-прокрутки при single-выделении с карты.
+        private string? SidebarCategoryOf(string pointId)
+        {
+            if (!_pointModel.TryGetValue(pointId, out var pd)) return null;
+            if (pd.IsCity) return "Города";
+            if (pd.IsSdo || pd.IsPoi) return pd.Category;
+            if (!pd.Enabled) return "Отключенные";
+            if (HasOverrideMarker(pd)) return CatSaved;
+            if (_unsavedEdits.Contains(pointId)) return CatUnsaved;
+            if (pd.SourceFile != "" && !_staticNames.Contains(pointId)) return "Пользовательское";
+            return "Цели";
+        }
+
+        // v39.56: разворачивает категорию точки в сайдбаре и прокручивает список до неё.
+        private void RevealPointInSidebar(string pointId)
+        {
+            // 1. Раскрываем категорию (состояние раскрытия хранится в MapEditorForm).
+            string? catId = SidebarCategoryOf(pointId);
+            if (catId != null && !_expandedSidebarCategories.Contains(catId))
+            {
+                _expandedSidebarCategories.Add(catId);
+                PopulateSidebar(); // перестроить с раскрытой категорией
+            }
+            // 2. Прокрутка до строки точки.
+            _sidebar.RevealItem(pointId);
+        }
+
+        // v39.58: обычный клик по строке сайдбара (точка). SidebarControl НЕ меняет состояние
+        // сам — здесь единый путь выделения как с карты: SelectKey (сброс мультивыбора,
+        // панель, reveal, синхронизация одним вызовом SetSelectionState).
         private void Sidebar_ItemActivated(object? sender, SidebarItemEventArgs e)
         {
-            if (e.Item.Type == SidebarItemType.Point)
-            {
-                // Точка: одиночный выбор + загрузка в панель.
-                _selectedIds.Clear();
-                _selectedIds.Add(e.Item.Id);
-                _selectedGameName = e.Item.Id;
-                ApplySelectionToPanel(e.Item.Id);
-                SyncSidebarSelection();
-                if (_selectLookup.TryGetValue(e.Item.Id, out var pt)) CenterOn(pt.x, pt.z);
-                RequestRender();
-            }
+            if (e.Item.Type != SidebarItemType.Point)
+                return;
+
+            SelectKey(e.Item.Id, fit: false);
+            if (_selectLookup.TryGetValue(e.Item.Id, out var pt))
+                CenterOn(pt.x, pt.z);
             else
-            {
-                // Категория: клик по названию — пока без действия (только визуальный active).
-                SyncSidebarSelection();
-            }
+                RequestRender();
         }
 
-        // v39.52: изменение множественного выбора (чекбокс точки).
+        // v39.58: изменение множественного выбора (чекбокс точки). SidebarControl НЕ меняет
+        // состояние сам — MapEditorForm единственный владелец: toggle точки, сброс single,
+        // синхронизация одним вызовом. 2+ точки — fit по всем выбранным.
         private void Sidebar_SelectionChanged(object? sender, SidebarSelectionChangedEventArgs e)
         {
-            _selectedIds.Clear();
-            foreach (var id in e.SelectedIds) _selectedIds.Add(id);
-            if (_selectedIds.Count > 1)
+            // Checkbox-мультивыбор СБРАСЫВАЕТ single-выделение.
+            _selectedGameName = null;
+            _editingCopy = null;
+            _dirtyFields.Clear();
+            _createMode = false;
+            if (e.ClickedId != null)
             {
-                _selectedGameName = null;
-                _editingCopy = null;
-                _dirtyFields.Clear();
-                FitToSelectedPoints();
+                if (_selectedIds.Contains(e.ClickedId)) _selectedIds.Remove(e.ClickedId);
+                else _selectedIds.Add(e.ClickedId);
             }
-            else if (_selectedIds.Count == 1)
-            {
-                // Центрируем на единственной выбранной точке, но НЕ открываем панель.
-                var only = _selectedIds.First();
-                if (_selectLookup.TryGetValue(only, out var pt))
-                {
-                    _centerX = pt.x;
-                    _centerZ = pt.z;
-                    _scale = 2.0;
-                }
-                RequestRender();
-            }
-            else
-            {
-                RequestRender();
-            }
+            ApplySidebarSelection();
+            if (_selectedIds.Count >= 2) FitToSelectedPoints();
+            else RequestRender();
         }
 
         // v39.52: изменение видимости категории (чекбокс категории).
@@ -1744,6 +1857,21 @@ namespace ETS2_Assist_GUI
         {
             if (e.Expanded) _expandedSidebarCategories.Add(e.CategoryId);
             else _expandedSidebarCategories.Remove(e.CategoryId);
+        }
+
+        // v39.58: СБРОС ЛЮБОГО выделения (single и мультивыбор) — кнопка «сбросить выделение».
+        // ApplySidebarSelection → SetSelectionState гарантированно снимает и чекбоксы,
+        // и Active во всём SidebarControl (единый источник правды — MapEditorForm).
+        private void ClearAllSelection()
+        {
+            _selectedIds.Clear();
+            _selectedGameName = null;
+            _editingCopy = null;
+            _dirtyFields.Clear();
+            _createMode = false;
+            ApplySidebarSelection();
+            RequestRender();
+            LogEditor("Выделение сброшено (single + мультивыбор).");
         }
 
         // v39.29: кнопки видимости категорий. Скрыть/показать все категории; инверсия —
@@ -2177,20 +2305,20 @@ namespace ETS2_Assist_GUI
         {
             // Верхняя панель overrides (30px): Папка + выбор файла по load_order + реордер.
             _topPanel = new Panel { Dock = DockStyle.Top, Height = 30, BackColor = Color.FromArgb(20, 25, 35) };
-            var btnFolder = new Button { Text = "Папка", Width = 60, Height = 22, Left = 6, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray };
+            var btnFolder = new Button { Text = "Папка", Width = 60, Height = 22, Left = 6, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166) };
             btnFolder.Click += (s, e) => { try { Process.Start(new ProcessStartInfo(_overridesDir) { UseShellExecute = true }); } catch { } };
             _editTip.SetToolTip(btnFolder, "Открыть папку map_overrides в проводнике.");
-            var lblOv = new Label { Text = "overrides:", AutoSize = true, ForeColor = Color.LightGray, Left = 72, Top = 7 };
+            var lblOv = new Label { Text = "overrides:", AutoSize = true, ForeColor = Color.FromArgb(166, 166, 166), Left = 72, Top = 7 };
             _editTip.SetToolTip(lblOv, "Файлы overrides (map_overrides\\*.json): пользовательские правки поверх статических точек.");
-            _overrideCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200, Left = 138, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray };
+            _overrideCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200, Left = 138, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166) };
             _overrideCombo.SelectedIndexChanged += (s, e) =>
             {
                 if (_overrideCombo.SelectedItem is string f) { _selectedOverrideFile = f.StartsWith("*") ? f.Substring(1) : f; LogEditor($"Выбран файл overrides: {_selectedOverrideFile}"); }
             };
             _editTip.SetToolTip(_overrideCombo, "Файл overrides, в который будут записаны изменения (по load_order: сверху — приоритет). * — файл не в load_order.");
-            var txtOrder = new TextBox { Width = 30, Left = 344, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, Text = "0" };
+            var txtOrder = new TextBox { Width = 30, Left = 344, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166), Text = "0" };
             _editTip.SetToolTip(txtOrder, "Позиция файла в load_order (1 = высший приоритет). 0 — удалить файл из load_order.");
-            var btnUp = new Button { Text = "↑", Width = 28, Height = 22, Left = 380, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray };
+            var btnUp = new Button { Text = "↑", Width = 28, Height = 22, Left = 380, Top = 4, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166) };
             btnUp.Click += (s, e) =>
             {
                 if (int.TryParse(txtOrder.Text, out var idx)) { ReorderOverride(_selectedOverrideFile, idx); RefreshOverrideCombo(); }
@@ -2200,14 +2328,14 @@ namespace ETS2_Assist_GUI
 
             // Правая панель редактирования.
             _editPanel = new Panel { Dock = DockStyle.Right, Width = 340, BackColor = Color.FromArgb(22, 27, 38), Padding = new Padding(6) };
-            var hdr = new Label { Text = "Панель редактирования точки", Dock = DockStyle.Top, Height = 22, ForeColor = Color.White, Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            var hdr = new Label { Text = "Панель редактирования точки", Dock = DockStyle.Top, Height = 22, ForeColor = Color.FromArgb(166, 166, 166), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
             _editFields = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(2) };
             _editFields.HorizontalScroll.Enabled = false; // горизонтальной прокрутки не бывает
             var btnRow = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 30, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
-            _btnSavePoint = new Button { Text = "сохранить", Width = 90, Height = 26, BackColor = Color.FromArgb(40, 90, 60), ForeColor = Color.White, Visible = false };
-            _btnCancelPoint = new Button { Text = "отменить", Width = 90, Height = 26, BackColor = Color.FromArgb(90, 60, 40), ForeColor = Color.White, Visible = false };
-            _btnDeletePoint = new Button { Text = "Удалить", Width = 90, Height = 26, BackColor = Color.FromArgb(90, 40, 40), ForeColor = Color.White, Visible = false };
-            _btnAddPoint = new Button { Text = "Добавить точку", Width = 110, Height = 26, BackColor = Color.FromArgb(40, 60, 90), ForeColor = Color.White, Visible = false };
+            _btnSavePoint = new Button { Text = "сохранить", Width = 90, Height = 26, BackColor = Color.FromArgb(40, 90, 60), ForeColor = Color.FromArgb(166, 166, 166), Visible = false };
+            _btnCancelPoint = new Button { Text = "отменить", Width = 90, Height = 26, BackColor = Color.FromArgb(90, 60, 40), ForeColor = Color.FromArgb(166, 166, 166), Visible = false };
+            _btnDeletePoint = new Button { Text = "Удалить", Width = 90, Height = 26, BackColor = Color.FromArgb(90, 40, 40), ForeColor = Color.FromArgb(166, 166, 166), Visible = false };
+            _btnAddPoint = new Button { Text = "Добавить точку", Width = 110, Height = 26, BackColor = Color.FromArgb(40, 60, 90), ForeColor = Color.FromArgb(166, 166, 166), Visible = false };
             _btnSavePoint.Click += (s, e) => SaveCurrentPoint();
             _btnCancelPoint.Click += (s, e) => CancelChanges();
             _btnDeletePoint.Click += (s, e) => DeleteCurrentPoint();
@@ -2310,12 +2438,12 @@ namespace ETS2_Assist_GUI
                 };
                 Control ctrl;
                 if (f.ValueType == typeof(bool))
-                    ctrl = new CheckBox { Left = 0, Top = 0, Width = 266, AutoSize = true, ForeColor = Color.LightGray, Enabled = f.Mode == PointFieldMode.Editable };
+                    ctrl = new CheckBox { Left = 0, Top = 0, Width = 266, AutoSize = true, ForeColor = Color.FromArgb(166, 166, 166), Enabled = f.Mode == PointFieldMode.Editable };
                 else if (isDesc)
-                    ctrl = new TextBox { Left = 0, Top = 0, Width = 312, Height = 95, Multiline = true, ScrollBars = ScrollBars.Vertical, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, ReadOnly = f.Mode == PointFieldMode.ReadOnly };
+                    ctrl = new TextBox { Left = 0, Top = 0, Width = 312, Height = 95, Multiline = true, ScrollBars = ScrollBars.Vertical, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166), ReadOnly = f.Mode == PointFieldMode.ReadOnly };
                 else if (f.Key == "Category")
                 {
-                    var cb = new ComboBox { Left = 0, Top = 0, Width = 266, DropDownStyle = ComboBoxStyle.DropDown, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray };
+                    var cb = new ComboBox { Left = 0, Top = 0, Width = 266, DropDownStyle = ComboBoxStyle.DropDown, BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166) };
                     foreach (var cat in DistinctCategories()) cb.Items.Add(cat);
                     if (!cb.Items.Contains("Пользовательское")) cb.Items.Add("Пользовательское");
                     ctrl = cb;
@@ -2323,7 +2451,7 @@ namespace ETS2_Assist_GUI
                 else
                 {
                     int tbH = TextRenderer.MeasureText("Пример", new Font("Segoe UI", 8.5f)).Height + 8;
-                    ctrl = new TextBox { Left = 0, Top = 0, Width = 266, Height = Math.Max(24, tbH), BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.LightGray, ReadOnly = f.Mode == PointFieldMode.ReadOnly };
+                    ctrl = new TextBox { Left = 0, Top = 0, Width = 266, Height = Math.Max(24, tbH), BackColor = Color.FromArgb(40, 48, 62), ForeColor = Color.FromArgb(166, 166, 166), ReadOnly = f.Mode == PointFieldMode.ReadOnly };
                 }
                 ctrl.Tag = f.Key;
                 if (f.ValueType != typeof(bool))
@@ -2351,7 +2479,7 @@ namespace ETS2_Assist_GUI
                 }
                 if (f.Mode != PointFieldMode.ReadOnly)
                 {
-                    var ub = new Button { Text = "отмена", Width = 44, Height = 24, Left = 272, Top = top - 1, Font = new Font("Segoe UI", 7.5f), BackColor = Color.FromArgb(60, 50, 40), ForeColor = Color.LightGray };
+                    var ub = new Button { Text = "отмена", Width = 44, Height = 24, Left = 272, Top = top - 1, Font = new Font("Segoe UI", 7.5f), BackColor = Color.FromArgb(60, 50, 40), ForeColor = Color.FromArgb(166, 166, 166) };
                     ub.Click += (s, e2) => ResetField(f.Key);
                     _editTip.SetToolTip(ub, "Отменить изменение ТОЛЬКО этого поля (вернуть исходное значение).");
                     row.Controls.Add(ub);
@@ -2521,48 +2649,45 @@ namespace ETS2_Assist_GUI
         private void SelectPoint(string id) => SelectKey(id, fit: false);
         private void ToggleSelect(string id) => ToggleKey(id, fit: true);
 
-        // Одиночный выбор (первый клик по карте/сайдбару): без вписывания в карту.
+        // v39.56: ОДНОЕ выделение (клик по карте/сайдбару): сбрасывает ВСЕ чекбоксы
+        // мультивыбора, точка становится единственной выделенной (single).
         private void SelectKey(string key, bool fit)
         {
-            // Повторный клик по уже выбранной (единственной) точке — не сбрасываем правки
+            // Повторный клик по уже выбранной точке — не сбрасываем правки
             // (перетаскивание обрабатывается отдельно, см. OnMouseDown/OnMouseMove).
-            if (_selectedIds.Count == 1 && _selectedIds.Contains(key) && _pointModel.ContainsKey(key))
+            if (_selectedGameName == key && !string.IsNullOrEmpty(key) && _pointModel.ContainsKey(key) && _selectedIds.Count == 0)
             {
-                SyncSidebarSelection();
+                ApplySidebarSelection();
                 if (fit) FitToSelection();
                 RequestRender();
                 return;
             }
+            // v39.55: single-выделение СБРАСЫВАЕТ все чекбоксы мультивыбора.
             _selectedIds.Clear();
-            _selectedIds.Add(key);
+            _selectedGameName = key;
+            _editingCopy = null;
+            _dirtyFields.Clear();
+            _createMode = false;
             ApplySelectionToPanel(key);
-            SyncSidebarSelection();
-            if (fit && _selectedIds.Count > 0) FitToSelection();
+            ApplySidebarSelection();
+            RevealPointInSidebar(key);
+            if (fit && !string.IsNullOrEmpty(_selectedGameName)) FitToSelection();
             RequestRender();
         }
 
-        // Переключение (Ctrl+Клик / чекбокс в сайдбаре): выделение может быть множественным.
+        // v39.54: переключение чекбоксом (Ctrl+Клик / чекбокс в сайдбаре).
+        // Checkbox-мультивыбор СБРАСЫВАЕТ single-выделение.
         private void ToggleKey(string key, bool fit)
         {
+            _selectedGameName = null;
+            _editingCopy = null;
+            _dirtyFields.Clear();
+            _sidebar.ClearActive();
             if (_selectedIds.Contains(key)) _selectedIds.Remove(key);
             else _selectedIds.Add(key);
-            // v39.51: при множественном выборе НЕ загружаем панель и сбрасываем active point.
-            if (_selectedIds.Count > 1)
-            {
-                _selectedGameName = null;
-                _editingCopy = null;
-                _dirtyFields.Clear();
-                SyncSidebarSelection();
-                if (fit || _selectedIds.Count > 1) FitToSelectedPoints();
-                RequestRender();
-                return;
-            }
-            string? editable = _selectedIds.FirstOrDefault(k => _pointModel.ContainsKey(k));
-            if (editable != null) ApplySelectionToPanel(editable);
-            else { _selectedGameName = null; _editingCopy = null; _dirtyFields.Clear(); LoadPointIntoPanel(new PointData()); }
-            SyncSidebarSelection();
-            if (_selectedIds.Count > 0 && (fit || _selectedIds.Count > 1)) FitToSelection();
-            RequestRender();
+            ApplySidebarSelection();
+            if (_selectedIds.Count >= 2) FitToSelectedPoints();
+            else RequestRender();
         }
 
         // Загружает точку в панель, только если она редактируемая (есть в _pointModel).
@@ -2654,6 +2779,8 @@ namespace ETS2_Assist_GUI
         }
 
         // v39.52: подгонка карты под ВСЕ выбранные точки (по _selectLookup, без FitToAll).
+        // v39.53: подгонка карты под ВСЕ выбранные точки (по _selectLookup, без FitToAll).
+        // Использует только реально найденные координаты и фактический ClientSize карты.
         private void FitToSelectedPoints()
         {
             if (_selectedIds.Count == 0) return;
@@ -2669,15 +2796,25 @@ namespace ETS2_Assist_GUI
                     if (pt.z > maxZ) maxZ = pt.z;
                 }
             if (!any) return;
-            double width = Math.Max(maxX - minX, 1.0);
-            double height = Math.Max(maxZ - minZ, 1.0);
-            double paddedWidth = width * 1.20;
-            double paddedHeight = height * 1.20;
-            _centerX = (minX + maxX) / 2.0;
-            _centerZ = (minZ + maxZ) / 2.0;
-            double scaleX = paddedWidth / Math.Max(_mapPanel.ClientSize.Width, 1);
-            double scaleZ = paddedHeight / Math.Max(_mapPanel.ClientSize.Height, 1);
-            _scale = Math.Clamp(Math.Max(scaleX, scaleZ), 0.05, MaxScale);
+
+            double worldWidth = Math.Max(maxX - minX, 1.0);
+            double worldHeight = Math.Max(maxZ - minZ, 1.0);
+
+            const double paddingFactor = 1.20;
+            worldWidth *= paddingFactor;
+            worldHeight *= paddingFactor;
+
+            double viewportWidth = Math.Max(1, _mapPanel.ClientSize.Width);
+            double viewportHeight = Math.Max(1, _mapPanel.ClientSize.Height);
+
+            double requiredScaleX = worldWidth / viewportWidth;
+            double requiredScaleZ = worldHeight / viewportHeight;
+
+            double newScale = Math.Max(requiredScaleX, requiredScaleZ);
+
+            _centerX = (minX + maxX) * 0.5;
+            _centerZ = (minZ + maxZ) * 0.5;
+            _scale = Math.Clamp(newScale, 0.05, MaxScale);
             UpdateStatus();
             RequestRender();
         }
@@ -2799,6 +2936,13 @@ namespace ETS2_Assist_GUI
 
         private void LoadPointIntoPanel(PointData pd)
         {
+            // v39.57: загрузка точки в панель = single-выделение. Сбрасывает все чекбоксы
+            // мультивыбора. _selectedGameName ВСЕГДА = GameName загруженной точки (или null
+            // для новой точки с пустым GameName) — устраняет «иногда выделяется в сайдбаре,
+            // иногда нет».
+            _selectedIds.Clear();
+            _selectedGameName = string.IsNullOrEmpty(pd.GameName) ? null : pd.GameName;
+            ApplySidebarSelection();
             _loadingPanel = true;
             try
             {
@@ -3062,7 +3206,7 @@ namespace ETS2_Assist_GUI
                 _unsavedEdits.Remove(_selectedGameName); // отмена — правок больше нет
                 _dirtyFieldsByPoint.Remove(_selectedGameName); // отмена — грязных полей больше нет
                 LoadPointIntoPanel(pd);
-                SyncSidebarSelection();
+                ApplySidebarSelection();
                 UpdateActionButtons();
                 RequestRender();
             }

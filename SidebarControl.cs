@@ -20,8 +20,9 @@ namespace ETS2_Assist_GUI
     // Изменение множественного выбора точек (чекбокс точки).
     internal sealed class SidebarSelectionChangedEventArgs : EventArgs
     {
-        public IReadOnlyCollection<string> SelectedIds { get; }
-        public SidebarSelectionChangedEventArgs(IReadOnlyCollection<string> ids) { SelectedIds = ids; }
+        // id точки, по чекбоксу которой кликнули (null = программное изменение).
+        public string? ClickedId { get; }
+        public SidebarSelectionChangedEventArgs(string? clickedId) { ClickedId = clickedId; }
     }
 
     // Изменение видимости категории (чекбокс категории).
@@ -71,6 +72,11 @@ namespace ETS2_Assist_GUI
     // ============================================================
     internal sealed class SidebarControl : ScrollableControl
     {
+        // v39.54: глобальная палитра — приглушённый белый (#A6A6A6) обычного текста;
+        // супер-белый (#FFFFFF) — только для выделения.
+        public static readonly Color MutedWhite = Color.FromArgb(166, 166, 166);
+        public static readonly Color SuperWhite = Color.White;
+
         // --- Фиксированная геометрия ---
         private const int RowHeight = 23;
         private const int LeftPadding = 5;
@@ -88,6 +94,7 @@ namespace ETS2_Assist_GUI
 
         // --- Кэшированные GDI-объекты (не создаём на каждую строку) ---
         private readonly Font _font;
+        private readonly Font _activeFont;
         private readonly StringFormat _textFormat;
 
         // --- Защита от случайного выбора точки, появившейся под курсором после expand ---
@@ -116,8 +123,9 @@ namespace ETS2_Assist_GUI
                 ControlStyles.ResizeRedraw,
                 true);
             BackColor = Color.FromArgb(20, 25, 35);
-            ForeColor = Color.LightGray;
+            ForeColor = MutedWhite;
             _font = new Font("Segoe UI", 9);
+            _activeFont = new Font("Segoe UI", 9, FontStyle.Bold);
             _textFormat = new StringFormat
             {
                 LineAlignment = StringAlignment.Center,
@@ -163,6 +171,79 @@ namespace ETS2_Assist_GUI
                 if (it.Type == SidebarItemType.Point)
                     it.Active = it.Id == id;
             Invalidate();
+        }
+
+        // v39.57: АТОМАРНАЯ синхронизация состояния выделения из MapEditorForm.
+        // Единая точка правды: чекбоксы = ids, single = activeId. Вызывается ПОСЛЕ
+        // любого изменения выделения (карта/сайдбар/сброс) — устраняет рассинхрон.
+        public void SetSelectionState(IReadOnlyCollection<string> ids, string? activeId)
+        {
+            _selectedIds.Clear();
+            foreach (var id in ids) _selectedIds.Add(id);
+            _activeItemId = activeId;
+            foreach (var it in _items)
+            {
+                if (it.Type != SidebarItemType.Point) continue;
+                it.Checked = _selectedIds.Contains(it.Id);
+                it.Active = it.Id == activeId;
+            }
+            Invalidate();
+        }
+
+        // --- Сброс активной точки (при multi-selection >= 2) ---
+        public void ClearActive()
+        {
+            _activeItemId = null;
+            foreach (var it in _items)
+                if (it.Type == SidebarItemType.Point)
+                    it.Active = false;
+            Invalidate();
+        }
+
+        // v39.56: раскрыть категорию точки и прокрутить список до неё.
+        // Возвращает true, если точка найдена и стала видимой.
+        public bool RevealItem(string pointId)
+        {
+            foreach (var cat in _items)
+            {
+                if (cat.Type != SidebarItemType.Category) continue;
+                var pt = cat.Children.FirstOrDefault(p => p.Id == pointId);
+                if (pt == null) continue;
+
+                bool scrolled = false;
+                if (!cat.Expanded)
+                {
+                    cat.Expanded = true;
+                    CategoryExpandedChanged?.Invoke(this,
+                        new SidebarCategoryExpandedChangedEventArgs(cat.Id, true));
+                    RebuildVisibleRows();
+                }
+                // Индекс строки точки = категория + количество предыдущих детей (все раскрыты).
+                int rowIndex = 0;
+                foreach (var c in _items)
+                {
+                    if (c.Type != SidebarItemType.Category) continue;
+                    if (c == cat) { rowIndex++; break; }
+                    if (c.Expanded) rowIndex += c.Children.Count + 1;
+                    else rowIndex += 1;
+                }
+                // Точка: (rowIndex - 1) — индекс строки категории; сама точка — категория + позиция.
+                int catRowIndex = rowIndex - 1;
+                int ptIndexInCat = cat.Children.IndexOf(pt);
+                int ptRow = catRowIndex + 1 + ptIndexInCat;
+                // Прокрутка: AutoScrollPosition задаётся отрицательными значениями.
+                int rowY = ptRow * RowHeight;
+                int visibleHeight = ClientSize.Height - RowHeight;
+                int current = -AutoScrollPosition.Y;
+                if (rowY < current || rowY > current + visibleHeight)
+                {
+                    scrolled = true;
+                    AutoScrollPosition = new Point(0, Math.Max(0, rowY - visibleHeight / 2));
+                }
+                Invalidate();
+                return true;
+            }
+            return false;
         }
 
         // --- Пересборка видимых строк (категории + раскрытые точки) ---
@@ -238,13 +319,12 @@ namespace ETS2_Assist_GUI
             bool isCat = item.Type == SidebarItemType.Category;
 
             // 1. Фон строки.
+            // v39.54: обычный фон; выделенная точка — фон чуть светлее фона сайдбара
+            // (одинаково для single-выделения и checkbox-мультивыбора).
+            bool selected = !isCat && (item.Active || item.Checked);
             Color bg = Color.FromArgb(22, 27, 38);
-            if (!isCat)
-            {
-                if (item.Active) bg = Color.FromArgb(70, 82, 105);      // активная точка — сильнее
-                else if (item.Checked) bg = Color.FromArgb(48, 58, 78);  // в мультивыборе — легче
-                else if (item.Dirty) bg = Color.FromArgb(120, 60, 12);   // несохранённые правки
-            }
+            if (selected) bg = Color.FromArgb(34, 41, 55);
+            else if (!isCat && item.Dirty) bg = Color.FromArgb(120, 60, 12);
             using (var bgBrush = new SolidBrush(bg))
                 g.FillRectangle(bgBrush, bounds);
 
@@ -253,12 +333,12 @@ namespace ETS2_Assist_GUI
             {
                 var eb = row.ExpandBounds;
                 eb.Y = bounds.Y + (RowHeight - ExpandSize) / 2;
-                using var arrowBrush = new SolidBrush(Color.LightGray);
+                using var arrowBrush = new SolidBrush(MutedWhite);
                 string glyph = item.Expanded ? "▼" : "▶";
                 g.DrawString(glyph, _font, arrowBrush, eb, _textFormat);
             }
 
-            // 3. Чекбокс (цвет категории).
+            // 3. Чекбокс (цвет категории). v39.54: галочка — ЧЁРНАЯ.
             var cb = row.CheckboxBounds;
             cb.Y = bounds.Y + (RowHeight - CheckBoxSize) / 2;
             using (var cbBrush = new SolidBrush(item.CategoryColor))
@@ -268,7 +348,7 @@ namespace ETS2_Assist_GUI
             bool checkedState = isCat ? item.CategoryVisible : item.Checked;
             if (checkedState)
             {
-                using var checkPen = new Pen(Color.White, 2f);
+                using var checkPen = new Pen(Color.Black, 2f);
                 g.DrawLine(checkPen, cb.X + 3, cb.Y + 8, cb.X + 7, cb.Y + 12);
                 g.DrawLine(checkPen, cb.X + 7, cb.Y + 12, cb.X + 13, cb.Y + 4);
             }
@@ -279,9 +359,20 @@ namespace ETS2_Assist_GUI
             if (textWidth > 0)
             {
                 var textRect = new Rectangle(textX, bounds.Y, textWidth, bounds.Height);
-                Color textColor = isCat ? Color.LightGray : (item.Dirty ? Color.Orange : ForeColor);
+                // v39.54: фон светлее — только под ТЕКСТОМ выделенных точек (супербелый жирный).
+                if (selected)
+                {
+                    using var activeBg = new SolidBrush(Color.FromArgb(48, 58, 78));
+                    g.FillRectangle(activeBg, textRect);
+                }
+                // Цвет текста: выделенные — супербелый жирный; грязные — оранжевый;
+                // обычные — приглушённый белый.
+                Color textColor = selected ? SuperWhite
+                    : isCat ? MutedWhite
+                    : (item.Dirty ? Color.Orange : MutedWhite);
+                var font = selected ? _activeFont : _font;
                 using var textBrush = new SolidBrush(textColor);
-                g.DrawString(item.Text, _font, textBrush, textRect, _textFormat);
+                g.DrawString(item.Text, font, textBrush, textRect, _textFormat);
             }
         }
 
@@ -301,7 +392,7 @@ namespace ETS2_Assist_GUI
             if (e.Button != MouseButtons.Left) return;
 
             // 2. Категория + стрелка — expand/collapse.
-            if (row.Item.Type == SidebarItemType.Category && row.ExpandBounds.Contains(e.Location))
+            if (row.Item.Type == SidebarItemType.Category && ToClientRect(row.ExpandBounds).Contains(e.Location))
             {
                 row.Item.Expanded = !row.Item.Expanded;
                 _consumeMouseUp = true;
@@ -313,7 +404,7 @@ namespace ETS2_Assist_GUI
             }
 
             // 3. Чекбокс.
-            if (row.CheckboxBounds.Contains(e.Location))
+            if (ToClientRect(row.CheckboxBounds).Contains(e.Location))
             {
                 ToggleCheckbox(row.Item);
                 return;
@@ -331,6 +422,14 @@ namespace ETS2_Assist_GUI
             {
                 ItemActivated?.Invoke(this, new SidebarItemEventArgs(row.Item));
             }
+        }
+
+        // Преобразует прямоугольник из координат virtual content в клиентские координаты
+        // (с учётом вертикальной прокрутки). Не изменяет cached bounds.
+        private Rectangle ToClientRect(Rectangle contentRect)
+        {
+            contentRect.Y += AutoScrollPosition.Y;
+            return contentRect;
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
@@ -352,7 +451,9 @@ namespace ETS2_Assist_GUI
             return _visibleRows[rowIndex];
         }
 
-        // Переключение чекбокса: категория -> видимость; точка -> мультивыбор.
+        // Переключение чекбокса: категория -> видимость (локально, уведомление);
+        // точка -> мультивыбор (v39.58: состояние меняет ТОЛЬКО MapEditorForm через
+        // SelectionChanged → SetSelectionState; локально ничего не правим).
         private void ToggleCheckbox(SidebarItem item)
         {
             if (item.Type == SidebarItemType.Category)
@@ -363,30 +464,20 @@ namespace ETS2_Assist_GUI
                 Invalidate();
                 return;
             }
-            // Точка.
-            if (_selectedIds.Contains(item.Id)) _selectedIds.Remove(item.Id);
-            else _selectedIds.Add(item.Id);
-            item.Checked = _selectedIds.Contains(item.Id);
-            SelectionChanged?.Invoke(this, new SidebarSelectionChangedEventArgs(_selectedIds.ToList()));
-            Invalidate();
+            SelectionChanged?.Invoke(this, new SidebarSelectionChangedEventArgs(item.Id));
         }
 
-        // Активация точки: ActiveId = точка, SelectedIds = {точка}.
+        // Активация точки (клик по названию): v39.58 — SidebarControl НЕ меняет своё
+        // состояние сам. Только шлёт ItemActivated; MapEditorForm устанавливает выделение
+        // (сброс мультивыбора) и синхронизирует обратно через SetSelectionState.
+        // Это устраняет рассинхрон: источник правды — ТОЛЬКО MapEditorForm.
         private void ActivatePoint(SidebarItem item)
         {
-            _activeItemId = item.Id;
-            _selectedIds.Clear();
-            _selectedIds.Add(item.Id);
-            foreach (var it in _items)
-            {
-                if (it.Type == SidebarItemType.Point)
-                {
-                    it.Checked = it.Id == item.Id;
-                    it.Active = it.Id == item.Id;
-                }
-            }
             ItemActivated?.Invoke(this, new SidebarItemEventArgs(item));
-            Invalidate();
+            // Защита: если обработчик не установил состояние (точка не в модели) —
+            // снимаем подсветку (выделение не должно «прилипать» к неизвестной точке).
+            if (_activeItemId == null)
+                Invalidate();
         }
 
         protected override void Dispose(bool disposing)
@@ -394,6 +485,7 @@ namespace ETS2_Assist_GUI
             if (disposing)
             {
                 _font.Dispose();
+                _activeFont.Dispose();
                 _textFormat.Dispose();
             }
             base.Dispose(disposing);
