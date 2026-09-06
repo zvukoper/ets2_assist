@@ -1,0 +1,7 @@
+УСТАНОВКА VECTOR RENDERER v4
+
+1. Распакуйте файлы в корень ETS2_Assist_GUI, рядом с ETS2_Assist_GUI.csproj.
+2. Не заменяйте MapEditorForm.cs.
+3. Должны быть: MapEditorVectorRenderer.cs, MapEditorForm.VectorRender.cs, Directory.Build.props.
+4. Выполните: dotnet clean && dotnet build
+5. Предупреждения старых файлов проекта не являются ошибками этого renderer.
