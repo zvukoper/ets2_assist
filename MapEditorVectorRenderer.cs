@@ -1,10 +1,16 @@
+﻿// VECTOR_RENDERER_FIX5
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Interop;
+using System.Runtime.InteropServices;
+using System.Drawing;
+using Point = System.Windows.Point;
 
 namespace ETS2_Assist_GUI
 {
@@ -128,6 +134,47 @@ namespace ETS2_Assist_GUI
             UpdateTransforms();
         }
 
+        public void SetSelectionState(
+            IEnumerable<string>? selectedIds,
+            string? selectedGameName,
+            bool onlySelected)
+        {
+            if (_disposed) return;
+
+            var ids = selectedIds != null
+                ? new HashSet<string>(selectedIds.Where(id => !string.IsNullOrWhiteSpace(id)), StringComparer.Ordinal)
+                : new HashSet<string>(StringComparer.Ordinal);
+
+            bool IsSelected(MapEditorVectorPoint p)
+                => ids.Contains(p.Id) ||
+                   (!string.IsNullOrWhiteSpace(selectedGameName) &&
+                    string.Equals(p.Name, selectedGameName, StringComparison.OrdinalIgnoreCase));
+
+            bool changed = false;
+            for (int i = 0; i < _points.Count; i++)
+            {
+                var p = _points[i];
+                var selected = IsSelected(p);
+                if (p.Selected != selected)
+                {
+                    _points[i] = p with { Selected = selected };
+                    changed = true;
+                }
+            }
+
+            if (_onlySelected != onlySelected)
+            {
+                _onlySelected = onlySelected;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                RebuildPointVisuals();
+                RedrawDynamic();
+            }
+        }
+
         public void SetDynamicState(
             MapEditorVectorTruck? truck,
             MapEditorVectorCreateMarker? createMarker,
@@ -150,7 +197,7 @@ namespace ETS2_Assist_GUI
         {
             if (_disposed) return;
 
-            var matrix = new System.Windows.Media.Matrix(
+            var matrix = new Matrix(
                 1.0 / _scale,
                 0,
                 0,
@@ -158,7 +205,7 @@ namespace ETS2_Assist_GUI
                 (_width / 2.0) - (_centerX / _scale),
                 (_height / 2.0) - (_centerZ / _scale));
 
-            var transform = new System.Windows.Media.MatrixTransform(matrix);
+            var transform = new MatrixTransform(matrix);
 
             _roadsVisual.Transform = transform;
             _citiesVisual.Transform = transform;
@@ -175,14 +222,14 @@ namespace ETS2_Assist_GUI
             using var dc = _roadsVisual.RenderOpen();
 
             dc.DrawRectangle(
-                GetBrush(System.Drawing.Color.FromArgb(255, 15, 18, 23)),
+                GetBrush(System.Drawing.Color.FromArgb(15, 18, 23)),
                 null,
-                new System.Windows.Rect(_centerX - 1000000, _centerZ - 1000000, 2000000, 2000000));
+                new Rect(_centerX - 1000000, _centerZ - 1000000, 2000000, 2000000));
 
             if (roads == null || roads.Count == 0)
                 return;
 
-            var geometry = new System.Windows.Media.StreamGeometry();
+            var geometry = new StreamGeometry();
 
             using (var ctx = geometry.Open())
             {
@@ -193,12 +240,12 @@ namespace ETS2_Assist_GUI
                         continue;
 
                     ctx.BeginFigure(
-                        new System.Windows.Point(r.x1, r.z1),
+                        new Point(r.x1, r.z1),
                         isFilled: false,
                         isClosed: false);
 
                     ctx.LineTo(
-                        new System.Windows.Point(r.x2, r.z2),
+                        new Point(r.x2, r.z2),
                         isStroked: true,
                         isSmoothJoin: false);
                 }
@@ -207,7 +254,7 @@ namespace ETS2_Assist_GUI
             geometry.Freeze();
 
             var roadPen = new System.Windows.Media.Pen(
-                GetBrush(System.Drawing.Color.FromArgb(255, 110, 145, 165)),
+                GetBrush(System.Drawing.Color.FromArgb(110, 145, 165)),
                 2.2);
 
             roadPen.Freeze();
@@ -238,7 +285,7 @@ namespace ETS2_Assist_GUI
 
                 if (p.IsCity)
                 {
-                    cityDc.DrawEllipse(color, null, new System.Windows.Point(p.X, p.Z), 5.5, 5.5);
+                    cityDc.DrawEllipse(color, null, new Point(p.X, p.Z), 5.5, 5.5);
                     DrawWorldLabel(
                         cityDc,
                         p.Name,
@@ -251,28 +298,28 @@ namespace ETS2_Assist_GUI
                 }
                 else if (p.IsPoi)
                 {
-                    poiDc.DrawEllipse(color, null, new System.Windows.Point(p.X, p.Z), 3.5, 3.5);
+                    poiDc.DrawEllipse(color, null, new Point(p.X, p.Z), 3.5, 3.5);
 
                     DrawWorldLabel(
                         poiDc,
                         p.Name,
                         p.X,
                         p.Z,
-                        p.Disabled ? System.Drawing.Color.Gray : System.Drawing.Color.FromArgb(255, 166, 166, 166),
+                        p.Disabled ? System.Drawing.Color.Gray : System.Drawing.Color.FromArgb(166, 166, 166),
                         bold: false,
                         fontSize: 9,
                         gap: 6);
                 }
                 else
                 {
-                    pointDc.DrawEllipse(color, null, new System.Windows.Point(p.X, p.Z), 5, 5);
+                    pointDc.DrawEllipse(color, null, new Point(p.X, p.Z), 5, 5);
 
                     DrawWorldLabel(
                         pointDc,
                         p.Name,
                         p.X,
                         p.Z,
-                        p.Disabled ? System.Drawing.Color.Gray : System.Drawing.Color.FromArgb(255, 166, 166, 166),
+                        p.Disabled ? System.Drawing.Color.Gray : System.Drawing.Color.FromArgb(166, 166, 166),
                         bold: false,
                         fontSize: 9,
                         gap: 6);
@@ -313,7 +360,7 @@ namespace ETS2_Assist_GUI
                     p.Name,
                     s.X,
                     s.Y,
-                    System.Windows.Media.Colors.White,
+                    Colors.White,
                     bold: true,
                     fontSize: 9,
                     gap: 6);
@@ -333,13 +380,13 @@ namespace ETS2_Assist_GUI
 
                 dc.DrawLine(
                     new System.Windows.Media.Pen(new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(225, 225, 225)), 1.5),
-                    new System.Windows.Point(p.X - 13, p.Y),
-                    new System.Windows.Point(p.X + 13, p.Y));
+                    new Point(p.X - 13, p.Y),
+                    new Point(p.X + 13, p.Y));
 
                 dc.DrawLine(
                     new System.Windows.Media.Pen(new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(225, 225, 225)), 1.5),
-                    new System.Windows.Point(p.X, p.Y - 13),
-                    new System.Windows.Point(p.X, p.Y + 13));
+                    new Point(p.X, p.Y - 13),
+                    new Point(p.X, p.Y + 13));
 
                 var hint = _createMarker.FromAr
                     ? $"Новая точка (АР)  Y={_createMarker.Y:F1}м"
@@ -370,17 +417,17 @@ namespace ETS2_Assist_GUI
                         p.X,
                         p.Y));
 
-                var truckGeometry = new System.Windows.Media.StreamGeometry();
+                var truckGeometry = new StreamGeometry();
                 using (var ctx = truckGeometry.Open())
                 {
                     ctx.BeginFigure(
-                        new System.Windows.Point(p.X, p.Y - 9),
+                        new Point(p.X, p.Y - 9),
                         isFilled: true,
                         isClosed: true);
 
-                    ctx.LineTo(new System.Windows.Point(p.X - 5, p.Y + 7), true, false);
-                    ctx.LineTo(new System.Windows.Point(p.X, p.Y + 4.5), true, false);
-                    ctx.LineTo(new System.Windows.Point(p.X + 5, p.Y + 7), true, false);
+                    ctx.LineTo(new Point(p.X - 5, p.Y + 7), true, false);
+                    ctx.LineTo(new Point(p.X, p.Y + 4.5), true, false);
+                    ctx.LineTo(new Point(p.X + 5, p.Y + 7), true, false);
                 }
 
                 truckGeometry.Freeze();
@@ -405,7 +452,7 @@ namespace ETS2_Assist_GUI
                     truck.Online ? "Грузовик" : "Грузовик (нет данных)",
                     p.X,
                     p.Y,
-                    truck.Online ? System.Windows.Media.Colors.Red : System.Windows.Media.Color.FromRgb(170, 170, 170),
+                    truck.Online ? Colors.Red : System.Windows.Media.Color.FromRgb(170, 170, 170),
                     bold: true,
                     fontSize: 9,
                     gap: 6);
@@ -414,7 +461,7 @@ namespace ETS2_Assist_GUI
 
         private void DrawCone(
             DrawingContext dc,
-            System.Windows.Point origin,
+            Point origin,
             MapEditorVectorTruck truck)
         {
             var width = Math.Max(1, _width);
@@ -436,7 +483,7 @@ namespace ETS2_Assist_GUI
             var a0 = (headingDeg - halfAngleDeg) * Math.PI / 180.0;
             var a1 = (headingDeg + halfAngleDeg) * Math.PI / 180.0;
 
-            var geometry = new System.Windows.Media.StreamGeometry();
+            var geometry = new StreamGeometry();
 
             using (var ctx = geometry.Open())
             {
@@ -452,7 +499,7 @@ namespace ETS2_Assist_GUI
                     var x = origin.X + Math.Sin(a) * lenPx;
                     var y = origin.Y - Math.Cos(a) * lenPx;
 
-                    ctx.LineTo(new System.Windows.Point(x, y), true, false);
+                    ctx.LineTo(new Point(x, y), true, false);
                 }
             }
 
@@ -469,9 +516,9 @@ namespace ETS2_Assist_GUI
             dc.DrawGeometry(fill, pen, geometry);
         }
 
-        private System.Windows.Point WorldToScreen(double x, double z)
+        private Point WorldToScreen(double x, double z)
         {
-            return new System.Windows.Point(
+            return new Point(
                 _width / 2.0 + (x - _centerX) / _scale,
                 _height / 2.0 + (z - _centerZ) / _scale);
         }
@@ -490,19 +537,19 @@ namespace ETS2_Assist_GUI
                 return;
 
             var typeface = GetTypeface(fontSize, bold);
-            var formatted = new System.Windows.Media.FormattedText(
+            var formatted = new FormattedText(
                 text,
                 CultureInfo.CurrentCulture,
-                System.Windows.FlowDirection.LeftToRight,
+                FlowDirection.LeftToRight,
                 typeface,
                 fontSize,
                 ToBrush(color),
                 1.0);
 
-            formatted.TextAlignment = System.Windows.TextAlignment.Center;
+            formatted.TextAlignment = TextAlignment.Center;
 
             // В исходном редакторе подпись находится сверху точки.
-            var p = new System.Windows.Point(x, y - gap - formatted.Height);
+            var p = new Point(x, y - gap - formatted.Height);
 
             dc.DrawText(formatted, p);
         }
@@ -522,20 +569,20 @@ namespace ETS2_Assist_GUI
 
             var typeface = GetTypeface(fontSize, bold);
 
-            var formatted = new System.Windows.Media.FormattedText(
+            var formatted = new FormattedText(
                 text,
                 CultureInfo.CurrentCulture,
-                System.Windows.FlowDirection.LeftToRight,
+                FlowDirection.LeftToRight,
                 typeface,
                 fontSize,
                 new System.Windows.Media.SolidColorBrush(color),
                 1.0);
 
-            formatted.TextAlignment = System.Windows.TextAlignment.Center;
+            formatted.TextAlignment = TextAlignment.Center;
 
             dc.DrawText(
                 formatted,
-                new System.Windows.Point(
+                new Point(
                     x - formatted.Width / 2.0,
                     y - gap - formatted.Height));
         }
@@ -547,11 +594,11 @@ namespace ETS2_Assist_GUI
             if (_typefaceCache.TryGetValue(key, out var cached))
                 return cached;
 
-            var typeface = new System.Windows.Media.Typeface(
+            var typeface = new Typeface(
                 new System.Windows.Media.FontFamily("Segoe UI"),
-                System.Windows.FontStyles.Normal,
-                bold ? System.Windows.FontWeights.Bold : System.Windows.FontWeights.Normal,
-                System.Windows.FontStretches.Normal);
+                FontStyles.Normal,
+                bold ? FontWeights.Bold : FontWeights.Normal,
+                FontStretches.Normal);
 
             _typefaceCache[key] = typeface;
             return typeface;
@@ -602,6 +649,11 @@ namespace ETS2_Assist_GUI
             _brushCache.Clear();
             _typefaceCache.Clear();
 
+            using (_roadsVisual.RenderOpen()) { }
+            using (_citiesVisual.RenderOpen()) { }
+            using (_pointsVisual.RenderOpen()) { }
+            using (_poiVisual.RenderOpen()) { }
+            using (_dynamicVisual.RenderOpen()) { }
         }
     }
 }
