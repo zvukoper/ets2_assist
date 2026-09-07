@@ -43,7 +43,6 @@ namespace ETS2_Assist_GUI
                 "ets2assist-map.local",
                 AppDataPaths.StaticDataDirectory,
                 CoreWebView2HostResourceAccessKind.Allow);
-
             _webView.CoreWebView2.AddWebResourceRequestedFilter(
                 "https://ets2assist-map.local/map_editor2/index.html",
                 CoreWebView2WebResourceContext.Document);
@@ -56,7 +55,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                using var stream = new MemoryStream();
+                var stream = new MemoryStream();
                 string htmlPath = Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "index.html");
                 string html = PrepareMapEditor2Html(File.ReadAllText(htmlPath));
                 byte[] bytes = Encoding.UTF8.GetBytes(html);
@@ -65,10 +64,7 @@ namespace ETS2_Assist_GUI
                 e.Response = _webView.CoreWebView2.Environment.CreateWebResourceResponse(
                     stream, 200, "OK", "Content-Type: text/html; charset=utf-8");
             }
-            catch
-            {
-                // Let WebView2 handle the request normally if preparation fails.
-            }
+            catch { }
         }
 
         private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -82,13 +78,11 @@ namespace ETS2_Assist_GUI
                 await SendTargetsAsync();
                 return;
             }
-
             if (string.Equals(message, "map2-generate-terrain", StringComparison.Ordinal))
             {
                 await GenerateTerrainAsync();
                 return;
             }
-
             if (!string.IsNullOrWhiteSpace(message))
             {
                 try
