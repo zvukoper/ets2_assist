@@ -1,6 +1,15 @@
+const terrainCanvas0=document.getElementById('terrain');
+if(!terrainCanvas0){
+  const mapElement=document.getElementById('map');
+  if(mapElement){const c=document.createElement('canvas');c.id='terrain';mapElement.insertBefore(c,mapElement.firstChild)}
+}
 const terrainCanvas=document.getElementById('terrain'),terrainCtx=terrainCanvas?.getContext('2d');
 let terrainImage=null,terrainMeta=null,terrainVisible=true,terrainStatusElement=null;
 const terrainAssetLabel='data\\map_editor2\\terrain_height.png';
+if(terrainCanvas){terrainCanvas.style.zIndex='0';terrainCanvas.style.pointerEvents='none';}
+if(gridCanvas)gridCanvas.style.zIndex='1';
+if(glCanvas)glCanvas.style.zIndex='2';
+if(labelCanvas)labelCanvas.style.zIndex='3';
 function ensureTerrainStatus(){
   if(terrainStatusElement||!status)return;
   terrainStatusElement=document.createElement('span');
@@ -28,11 +37,11 @@ function terrainProgress(text){
 }
 async function loadTerrain(){
   try{
-    const metaResponse=await fetch('../map_editor2/terrain_height_meta.json?ts='+Date.now(),{cache:'no-store'});
+    const metaResponse=await fetch('./terrain_height_meta.json?ts='+Date.now(),{cache:'no-store'});
     if(!metaResponse.ok)throw Error('META HTTP '+metaResponse.status);
     terrainMeta=await metaResponse.json();
     const image=new Image();
-    image.src='../map_editor2/terrain_height.png?ts='+Date.now();
+    image.src='./terrain_height.png?ts='+Date.now();
     await image.decode();
     terrainImage=image;
     terrainProgress('Карта высот загружена');
@@ -61,8 +70,8 @@ function drawTerrain(){
   const ex=s.w*.5+(mx1-camera.x)/camera.mpp;
   const ey=s.h*.5+(mz1-camera.z)/camera.mpp;
   terrainCtx.save();
-  terrainCtx.globalAlpha=.78;
-  terrainCtx.filter='brightness(1.28) saturate(.9)';
+  terrainCtx.globalAlpha=.72;
+  terrainCtx.filter='brightness(2.0) contrast(1.08) saturate(1.25)';
   terrainCtx.imageSmoothingEnabled=true;
   terrainCtx.drawImage(terrainImage,sx,sy,ex-sx,ey-sy);
   terrainCtx.restore();
@@ -129,7 +138,7 @@ function drawPointLabel(p,q,radius,{city=false,selected=false}={}){
   labelCtx.lineWidth=1;
   labelCtx.strokeStyle='rgba(0,0,0,.82)';
   labelCtx.shadowColor='rgba(0,0,0,.95)';
-  labelCtx.shadowBlur=2.0;
+  labelCtx.shadowBlur=4;
   labelCtx.shadowOffsetX=0;
   labelCtx.shadowOffsetY=0;
   const labelY=q.y-radius-5;
@@ -159,16 +168,16 @@ drawPointsAndLabels=function(){
   const normalSelected=normal.filter(selectedPointFor);
   const normalPlain=normal.filter(p=>!selectedPointFor(p));
 
-  // 1. Every visible ordinary point body; there is no artificial count limit.
+  // 1. Every visible ordinary point body.
   for(const p of normalPlain)drawNormalPoint(p);
-  // 2. Selected ordinary points are above ordinary point bodies.
+  // 2. Selected ordinary points stay above ordinary point bodies.
   for(const p of normalSelected)drawNormalPoint(p);
-  // 3. City point bodies are above every ordinary object.
-  for(const p of cities)drawCityPoint(p);
-  // 4. Ordinary labels.
+  // 3. Ordinary labels sit above ordinary points.
   for(const p of normalPlain){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-60||q.y>s.h+40)continue;drawPointLabel(p,q,4.8,{city:false,selected:false})}
   for(const p of normalSelected){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-60||q.y>s.h+40)continue;drawPointLabel(p,q,6.4,{city:false,selected:true})}
-  // 5. City names are the final layer.
+  // 4. City point bodies are above ALL other point bodies and ordinary labels.
+  for(const p of cities)drawCityPoint(p);
+  // 5. City names are the final layer and therefore always cover city points.
   for(const p of cities){const q=worldToScreen(p);if(q.x<-130||q.x>s.w+130||q.y<-80||q.y>s.h+50)continue;drawPointLabel(p,q,selectedPointFor(p)?7.2:5.6,{city:true,selected:selectedPointFor(p)})}
 }
 
@@ -189,6 +198,40 @@ syncSidebarSelection=function(){originalSyncSidebarSelection();updateSelectionUi
 const originalSetMultiMode=setMultiMode;
 setMultiMode=function(on){originalSetMultiMode(on);updateSelectionUi()};
 updateSelectionUi();
+
+const originalRenderCategories=renderCategories;
+renderCategories=function(){
+  originalRenderCategories();
+  categories.forEach((cat,i)=>{
+    const el=categoryList.children[i];
+    if(!el||!cat.loaded||!el.classList.contains('open'))return;
+    const head=el.querySelector('.categoryHead'),body=el.querySelector('.categoryBody');
+    if(head&&body)renderCategoryBody(cat,head,body);
+  });
+  updateSelectionUi();
+};
+setTimeout(()=>{
+  const cat=categories.find(c=>c.key==='wild_animals');
+  if(cat?.loaded){
+    const i=categories.indexOf(cat),el=categoryList.children[i],head=el?.querySelector('.categoryHead'),body=el?.querySelector('.categoryBody');
+    if(el&&head&&body){el.classList.add('open');head.querySelector('.caret').textContent='▾';renderCategoryBody(cat,head,body);}
+  }
+},500);
+
+const originalUpdateGrid=updateGrid;
+function drawGridAccent(){
+  const s=mapSize(),target=camera.mpp*80,step=niceWorldStep(target),px=step/camera.mpp;
+  if(!Number.isFinite(px)||px<22||px>260)return;
+  const left=camera.x-s.w*.5*camera.mpp,top=camera.z-s.h*.5*camera.mpp;
+  const sx=(-((left%step)+step)%step)/camera.mpp,sy=(-((top%step)+step)%step)/camera.mpp;
+  gridCtx.save();gridCtx.setTransform(dpr,0,0,dpr,0,0);gridCtx.lineWidth=1;gridCtx.strokeStyle='rgba(140,155,175,.32)';gridCtx.beginPath();
+  for(let x=sx;x<s.w;x+=px){gridCtx.moveTo(Math.round(x)+.5,0);gridCtx.lineTo(Math.round(x)+.5,s.h)}
+  for(let y=sy;y<s.h;y+=px){gridCtx.moveTo(0,Math.round(y)+.5);gridCtx.lineTo(s.w,Math.round(y)+.5)}gridCtx.stroke();
+  const major=px*5;gridCtx.lineWidth=1.2;gridCtx.strokeStyle='rgba(180,195,215,.50)';gridCtx.beginPath();
+  for(let x=sx;x<s.w;x+=major){gridCtx.moveTo(Math.round(x)+.5,0);gridCtx.lineTo(Math.round(x)+.5,s.h)}
+  for(let y=sy;y<s.h;y+=major){gridCtx.moveTo(0,Math.round(y)+.5);gridCtx.lineTo(s.w,Math.round(y)+.5)}gridCtx.stroke();gridCtx.restore();
+}
+updateGrid=function(){originalUpdateGrid();drawGridAccent()};
 
 const originalRender=render;
 render=function(){
@@ -213,8 +256,7 @@ function ensureToolsMenu(){
   if(!menu)return;
   let popup=document.getElementById('toolsPopup');
   if(!popup){
-    popup=document.createElement('div');
-    popup.id='toolsPopup';popup.className='menuPopup';popup.style.left='310px';
+    popup=document.createElement('div');popup.id='toolsPopup';popup.className='menuPopup';popup.style.left='310px';
     popup.innerHTML='<button class="menuBtn" id="generateTerrain">Генерировать карту высот</button><button class="menuBtn" id="map2-terrain-toggle">Скрыть карту высот</button>';
     document.getElementById('topMenu')?.appendChild(popup);
   }else if(!document.getElementById('map2-terrain-toggle')){
@@ -222,8 +264,10 @@ function ensureToolsMenu(){
   }
   const freshPopup=popup;
   menu.onclick=e=>{e.stopPropagation();freshPopup.classList.toggle('open');viewPopup?.classList.remove('open');updateTerrainButton()};
-  document.getElementById('generateTerrain')?.addEventListener('click',e=>{e.stopPropagation();window.chrome?.webview?.postMessage('map2-generate-terrain')});
-  document.getElementById('map2-terrain-toggle')?.addEventListener('click',e=>{e.stopPropagation();window.MapEditor2ToggleTerrain()});
+  const gen=document.getElementById('generateTerrain');
+  if(gen&&!gen.dataset.map2TerrainBound){gen.dataset.map2TerrainBound='1';gen.addEventListener('click',e=>{e.stopPropagation();freshPopup.classList.remove('open');window.chrome?.webview?.postMessage('map2-generate-terrain')});}
+  const toggle=document.getElementById('map2-terrain-toggle');
+  if(toggle&&!toggle.dataset.map2TerrainToggleBound){toggle.dataset.map2TerrainToggleBound='1';toggle.addEventListener('click',e=>{e.stopPropagation();window.MapEditor2ToggleTerrain()});}
   updateTerrainButton();
 }
 ensureToolsMenu();
