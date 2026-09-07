@@ -39,6 +39,7 @@ namespace ETS2_Assist_GUI
             AppDataPaths.EnsureUserData();
             _targetSnapshotJson = BuildTargetSnapshotJson();
             await _webView.EnsureCoreWebView2Async();
+            AttachEditingBridge();
             _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "ets2assist-map.local",
                 AppDataPaths.StaticDataDirectory,
@@ -72,6 +73,8 @@ namespace ETS2_Assist_GUI
             {
                 try
                 {
+                    var trimmed = message.TrimStart();
+                    if (!trimmed.StartsWith("{", StringComparison.Ordinal)) return;
                     var cmd = JObject.Parse(message);
                     if (string.Equals((string?)cmd["type"], "map2-create-point", StringComparison.Ordinal))
                     {
@@ -93,17 +96,11 @@ namespace ETS2_Assist_GUI
         private async Task ApplyMapEditor2UiOverridesAsync()
         {
             if (_webView.CoreWebView2 == null) return;
-
-            // The point-name renderer is canvas-based, so its font is not affected by
-            // the HTML category CSS. Normalize point labels to the same base size as
-            // category names (11px * font scale); city labels keep their existing +20%.
-            // Also make the right editor pane scroll vertically when its contents exceed it.
             const string script = @"
 (() => {
     try {
         const root = document.documentElement;
         root.dataset.ets2AssistMap2UiOverrides = '1';
-
         const styleId = 'ets2-assist-map2-ui-overrides';
         if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
@@ -111,7 +108,6 @@ namespace ETS2_Assist_GUI
             style.textContent = '#rightBody{overflow-y:auto;overflow-x:hidden;min-height:0;scrollbar-width:auto;}';
             document.head.appendChild(style);
         }
-
         if (!window.__ets2AssistPointFontPatchInstalled) {
             const originalFillText = CanvasRenderingContext2D.prototype.fillText;
             const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText;
@@ -119,34 +115,26 @@ namespace ETS2_Assist_GUI
                 const match = String(font || '').match(/^(.*?)(\\d+(?:\\.\\d+)?)px(.*)$/i);
                 if (!match) return font;
                 const px = Number(match[2]);
-                // Map Editor 2 point labels use 13px * scale, city labels use 13px * scale * 1.2.
-                // Scale both down by 11/13 so the base becomes exactly the category 11px * scale,
-                // while preserving the city's 20% enlargement.
                 if (!Number.isFinite(px) || px < 10 || px > 40) return font;
                 const normalized = px * 11 / 13;
                 return match[1] + normalized.toFixed(3) + 'px' + match[3];
             };
             CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth) {
-                const old = this.font;
-                const next = normalizeFont(old);
+                const old = this.font, next = normalizeFont(old);
                 if (next !== old) this.font = next;
-                try { return maxWidth === undefined ? originalFillText.call(this, text, x, y) : originalFillText.call(this, text, x, y, maxWidth); }
+                try { return maxWidth === undefined ? originalFillText.call(this,text,x,y) : originalFillText.call(this,text,x,y,maxWidth); }
                 finally { if (next !== old) this.font = old; }
             };
             CanvasRenderingContext2D.prototype.strokeText = function(text, x, y, maxWidth) {
-                const old = this.font;
-                const next = normalizeFont(old);
+                const old = this.font, next = normalizeFont(old);
                 if (next !== old) this.font = next;
-                try { return maxWidth === undefined ? originalStrokeText.call(this, text, x, y) : originalStrokeText.call(this, text, x, y, maxWidth); }
+                try { return maxWidth === undefined ? originalStrokeText.call(this,text,x,y) : originalStrokeText.call(this,text,x,y,maxWidth); }
                 finally { if (next !== old) this.font = old; }
             };
             window.__ets2AssistPointFontPatchInstalled = true;
         }
-    } catch (err) {
-        console.warn('Map Editor 2 UI override failed', err);
-    }
+    } catch (err) { console.warn('Map Editor 2 UI override failed', err); }
 })();";
-
             try { await _webView.CoreWebView2.ExecuteScriptAsync(script); } catch { }
         }
 
@@ -158,22 +146,12 @@ namespace ETS2_Assist_GUI
                 string directory = Path.GetDirectoryName(path) ?? AppDataPaths.StaticDataDirectory;
                 if (File.Exists(path))
                 {
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "explorer.exe",
-                        Arguments = "/select,\"" + path + "\"",
-                        UseShellExecute = true
-                    });
+                    Process.Start(new ProcessStartInfo { FileName = "explorer.exe", Arguments = "/select,\"" + path + "\"", UseShellExecute = true });
                 }
                 else
                 {
                     Directory.CreateDirectory(directory);
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "explorer.exe",
-                        Arguments = "\"" + directory + "\"",
-                        UseShellExecute = true
-                    });
+                    Process.Start(new ProcessStartInfo { FileName = "explorer.exe", Arguments = "\"" + directory + "\"", UseShellExecute = true });
                 }
             }
             catch (Exception ex)
