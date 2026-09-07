@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -15,7 +16,7 @@ namespace ETS2_Assist_GUI
     /// Completely isolated map renderer prototype.
     /// No editor state, selection, sidebar, telemetry, drag/drop or WPF renderer.
     /// The browser canvas owns all pan/zoom/render input; WinForms only hosts WebView2
-    /// and supplies the current target snapshot.
+    /// and supplies the current target snapshot and static point file manifest.
     /// </summary>
     internal sealed partial class MapEditor2Form : Form
     {
@@ -64,7 +65,39 @@ namespace ETS2_Assist_GUI
 
             _pageReady = true;
             await InstallDebugGridAsync();
+            await SendStaticPointFilesAsync();
             await SendTargetsAsync();
+        }
+
+        private async Task SendStaticPointFilesAsync()
+        {
+            if (!_pageReady || _webView.CoreWebView2 == null)
+                return;
+
+            var files = BuildStaticPointFileList();
+            var json = JsonConvert.SerializeObject(files, Formatting.None);
+            await _webView.CoreWebView2.ExecuteScriptAsync(
+                $"window.MapEditor2SetStaticPointFiles({json});");
+        }
+
+        private IReadOnlyList<string> BuildStaticPointFileList()
+        {
+            try
+            {
+                string root = Path.Combine(AppDataPaths.StaticDataDirectory, "editor_static_data");
+                if (!Directory.Exists(root))
+                    return Array.Empty<string>();
+
+                return Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories)
+                    .Where(path => !string.Equals(Path.GetFileName(path), "meta.json", StringComparison.OrdinalIgnoreCase))
+                    .Select(path => Path.GetRelativePath(AppDataPaths.StaticDataDirectory, path).Replace(Path.DirectorySeparatorChar, '/'))
+                    .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+            catch
+            {
+                return Array.Empty<string>();
+            }
         }
 
         private async Task SendTargetsAsync()
