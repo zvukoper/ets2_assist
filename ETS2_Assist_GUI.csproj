@@ -13,8 +13,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>39</VersionSet>
-    <VersionIter>70</VersionIter>
-    <VersionDesc>MAP2-INTERACTION-TOOLTIP</VersionDesc>
+    <VersionIter>71</VersionIter>
+    <VersionDesc>MAP2-LAYERS-STABLE</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>
@@ -63,6 +63,7 @@
     <PackageReference Include="System.Management" Version="10.0.10" />
     <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
     <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <PackageReference Include="WebSocketSharp-netstandard" Version="3.8.3" />
     <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
   </ItemGroup>
 </Project>
