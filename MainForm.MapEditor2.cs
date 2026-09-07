@@ -36,7 +36,6 @@ namespace ETS2_Assist_GUI
                         continue;
                     }
 
-                    // Component.Disposed is an event and cannot be read as a boolean.
                     if (form.IsDisposed || form.Disposing)
                         return;
 
@@ -64,6 +63,16 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        private static void StyleMainButton(Button button)
+        {
+            button.FlatStyle = FlatStyle.Flat;
+            button.UseVisualStyleBackColor = false;
+            button.BackColor = Color.FromArgb(60, 60, 60);
+            button.ForeColor = Color.FromArgb(166, 166, 166);
+            button.FlatAppearance.BorderColor = Color.FromArgb(90, 90, 90);
+            button.FlatAppearance.BorderSize = 2;
+        }
+
         private void AddMapEditor2Button()
         {
             if (_mainButtonGrid != null || btnMapEditor == null || IsDisposed || Disposing)
@@ -73,7 +82,12 @@ namespace ETS2_Assist_GUI
             try
             {
                 var parent = btnMapEditor.Parent ?? this;
-                var location = btnMapEditor.Location;
+
+                // The old Map Editor button is at the bottom of the original absolute
+                // layout (topY + 560). Reusing its Location made the new unified grid
+                // start there, leaving the whole top half of the form empty. Use the
+                // original first-button position instead.
+                var location = btnStart.Location;
 
                 _mainButtonGrid = new TableLayoutPanel
                 {
@@ -106,8 +120,15 @@ namespace ETS2_Assist_GUI
                 int row = 0;
                 foreach (var control in controls)
                 {
-                    if (control == null || control.IsDisposed) continue;
-                    if (control.Parent != null) control.Parent.Controls.Remove(control);
+                    if (control == null || control.IsDisposed)
+                        continue;
+
+                    if (control.Parent != null)
+                        control.Parent.Controls.Remove(control);
+
+                    if (control is Button button)
+                        StyleMainButton(button);
+
                     control.Dock = DockStyle.Fill;
                     control.Margin = new Padding(0, 0, 0, 6);
                     _mainButtonGrid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -119,7 +140,10 @@ namespace ETS2_Assist_GUI
                 // AR v2 row: button and its checkbox share one grid row.
                 if (btnAr2 != null && !btnAr2.IsDisposed)
                 {
-                    if (btnAr2.Parent != null) btnAr2.Parent.Controls.Remove(btnAr2);
+                    if (btnAr2.Parent != null)
+                        btnAr2.Parent.Controls.Remove(btnAr2);
+
+                    StyleMainButton(btnAr2);
                     btnAr2.Dock = DockStyle.Fill;
                     btnAr2.Margin = new Padding(0, 0, 0, 6);
                     _mainButtonGrid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -127,7 +151,8 @@ namespace ETS2_Assist_GUI
 
                     if (chkAr2Grid != null && !chkAr2Grid.IsDisposed)
                     {
-                        if (chkAr2Grid.Parent != null) chkAr2Grid.Parent.Controls.Remove(chkAr2Grid);
+                        if (chkAr2Grid.Parent != null)
+                            chkAr2Grid.Parent.Controls.Remove(chkAr2Grid);
                         chkAr2Grid.AutoSize = true;
                         chkAr2Grid.Anchor = AnchorStyles.Left;
                         chkAr2Grid.Margin = new Padding(0, 0, 0, 6);
@@ -141,14 +166,10 @@ namespace ETS2_Assist_GUI
                     Name = "btnMapEditor2",
                     Text = "Редактор карты 2",
                     Dock = DockStyle.Fill,
-                    FlatStyle = FlatStyle.Flat,
-                    ForeColor = Color.FromArgb(166, 166, 166),
-                    BackColor = Color.FromArgb(60, 60, 60),
-                    UseVisualStyleBackColor = false,
                     Margin = new Padding(0, 0, 0, 6),
                     TabStop = true
                 };
-                _btnMapEditor2.FlatAppearance.BorderColor = Color.FromArgb(90, 90, 90);
+                StyleMainButton(_btnMapEditor2);
                 _btnMapEditor2.Click += (_, _) => OpenMapEditor2();
                 _mainButtonGrid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 _mainButtonGrid.Controls.Add(_btnMapEditor2, 0, row);
@@ -156,11 +177,11 @@ namespace ETS2_Assist_GUI
 
                 parent.Controls.SetChildIndex(_mainButtonGrid, 0);
 
-                int requiredHeight = _mainButtonGrid.GetPreferredSize(new Size(230, 0)).Height + location.Y + 16;
+                // The grid has its own AutoSize/scrolling. Do not grow the form based on
+                // its old absolute-layout location: that was the source of the huge gap.
                 this.AutoScroll = true;
-                this.MinimumSize = new Size(MinimumSize.Width, Math.Max(MinimumSize.Height, Math.Min(requiredHeight, Screen.FromControl(this).WorkingArea.Height)));
-                if (ClientSize.Height < requiredHeight && requiredHeight <= Screen.FromControl(this).WorkingArea.Height)
-                    ClientSize = new Size(ClientSize.Width, requiredHeight);
+                this.AutoScrollMinSize = Size.Empty;
+                PerformLayout();
             }
             finally
             {
