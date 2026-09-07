@@ -39,7 +39,6 @@ namespace ETS2_Assist_GUI
             int controlWidth = 200;
             int left = 30;
 
-            // Language
             Label lblLang = new Label
             {
                 Text = "Language:",
@@ -54,7 +53,6 @@ namespace ETS2_Assist_GUI
             };
             y += 40;
 
-            // Debug Mode
             debugCheck = new CheckBox
             {
                 Text = "Debug Mode (show script window)",
@@ -63,7 +61,6 @@ namespace ETS2_Assist_GUI
             };
             y += 35;
 
-            // Auto Start
             autoStartCheck = new CheckBox
             {
                 Text = "Auto start system on launch",
@@ -72,7 +69,6 @@ namespace ETS2_Assist_GUI
             };
             y += 35;
 
-            // Start Minimized
             startMinimizedCheck = new CheckBox
             {
                 Text = "Start minimized to tray",
@@ -81,7 +77,6 @@ namespace ETS2_Assist_GUI
             };
             y += 35;
 
-            // Check Updates on Start
             checkUpdatesCheck = new CheckBox
             {
                 Text = "Check updates on start",
@@ -90,7 +85,6 @@ namespace ETS2_Assist_GUI
             };
             y += 45;
 
-            // Buttons
             btnSave = new Button
             {
                 Text = "Save",
@@ -117,7 +111,6 @@ namespace ETS2_Assist_GUI
 
         private void LoadSettings()
         {
-            // Load available languages
             string langDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "language");
             if (Directory.Exists(langDir))
             {
@@ -141,10 +134,11 @@ namespace ETS2_Assist_GUI
 
         private void SaveSettings()
         {
-            if (languageCombo.SelectedItem != null && languageCombo.SelectedItem.ToString() != AppSettings.Language)
+            string? selectedLanguage = languageCombo.SelectedItem?.ToString();
+            if (!string.IsNullOrEmpty(selectedLanguage) && selectedLanguage != AppSettings.Language)
             {
-                AppSettings.Language = languageCombo.SelectedItem.ToString();
-                lang.LoadLanguage(AppSettings.Language);
+                AppSettings.Language = selectedLanguage;
+                lang.LoadLanguage(selectedLanguage);
             }
             AppSettings.DebugMode = debugCheck.Checked;
             AppSettings.AutoStartSystem = autoStartCheck.Checked;
