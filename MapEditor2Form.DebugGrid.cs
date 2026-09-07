@@ -18,22 +18,24 @@ namespace ETS2_Assist_GUI
     const host = document.getElementById('map');
     if (!source || !host) return;
 
-    const grid = document.createElement('canvas');
-    grid.id = 'diagnostic-grid';
-    grid.style.position = 'absolute';
-    grid.style.inset = '0';
-    grid.style.width = '100%';
-    grid.style.height = '100%';
-    grid.style.pointerEvents = 'none';
-    grid.style.zIndex = '1';
-    host.insertBefore(grid, source.nextSibling);
+    const grid = document.getElementById('diagnostic-grid') || document.createElement('canvas');
+    if (!grid.parentElement) {
+        grid.id = 'diagnostic-grid';
+        grid.style.position = 'absolute';
+        grid.style.inset = '0';
+        grid.style.width = '100%';
+        grid.style.height = '100%';
+        grid.style.pointerEvents = 'none';
+        grid.style.zIndex = '1';
+        host.insertBefore(grid, source.nextSibling);
+    }
 
     const ctx = grid.getContext('2d');
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     let offsetX = 0;
     let offsetY = 0;
     let scale = 1;
-    let baseSpacing = 80;
+    const baseSpacing = 80;
 
     function resize() {
         const w = Math.max(1, Math.floor(innerWidth * dpr));
@@ -47,9 +49,8 @@ namespace ETS2_Assist_GUI
 
     function niceStep(px) {
         const target = Math.max(48, Math.min(140, px));
-        const raw = target;
-        const p = Math.pow(10, Math.floor(Math.log10(raw)));
-        const n = raw / p;
+        const p = Math.pow(10, Math.floor(Math.log10(target)));
+        const n = target / p;
         const m = n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10;
         return m * p;
     }
@@ -60,13 +61,12 @@ namespace ETS2_Assist_GUI
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, w, h);
 
-        const spacingPx = baseSpacing * scale;
-        const step = niceStep(spacingPx);
+        const step = niceStep(baseSpacing * scale);
         const startX = ((offsetX % step) + step) % step;
         const startY = ((offsetY % step) + step) % step;
 
         ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(120, 135, 155, 0.22)';
+        ctx.strokeStyle = 'rgba(120, 135, 155, 0.26)';
         ctx.beginPath();
         for (let x = startX; x < w; x += step) {
             ctx.moveTo(Math.round(x) + 0.5, 0);
@@ -81,7 +81,7 @@ namespace ETS2_Assist_GUI
         const major = step * 5;
         const majorStartX = ((offsetX % major) + major) % major;
         const majorStartY = ((offsetY % major) + major) % major;
-        ctx.strokeStyle = 'rgba(150, 165, 185, 0.34)';
+        ctx.strokeStyle = 'rgba(170, 185, 205, 0.42)';
         ctx.beginPath();
         for (let x = majorStartX; x < w; x += major) {
             ctx.moveTo(Math.round(x) + 0.5, 0);
@@ -93,7 +93,7 @@ namespace ETS2_Assist_GUI
         }
         ctx.stroke();
 
-        ctx.fillStyle = 'rgba(190, 200, 212, 0.72)';
+        ctx.fillStyle = 'rgba(210, 220, 232, 0.80)';
         ctx.font = '11px Segoe UI, Arial, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
@@ -104,11 +104,6 @@ namespace ETS2_Assist_GUI
         if (!source.hasPointerCapture(e.pointerId)) return;
         offsetX += e.movementX;
         offsetY += e.movementY;
-        draw();
-    });
-
-    source.addEventListener('pointerdown', e => {
-        if (e.button !== 0) return;
         draw();
     });
 
