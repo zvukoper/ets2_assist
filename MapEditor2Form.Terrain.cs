@@ -132,37 +132,10 @@ namespace ETS2_Assist_GUI
             html = html.Replace("<div class=\"menuItem\" data-menu=\"service\">Сервис</div>", "<div class=\"menuItem\" data-menu=\"service\">Сервис</div><div class=\"menuItem\" data-menu=\"tools\">Инструменты</div>");
             html = html.Replace("<div id=\"viewPopup\" class=\"menuPopup\"><button class=\"menuBtn\" id=\"fontPlus\">Шрифт+</button><button class=\"menuBtn\" id=\"fontMinus\">Шрифт-</button></div>", "<div id=\"viewPopup\" class=\"menuPopup\"><button class=\"menuBtn\" id=\"fontPlus\">Шрифт+</button><button class=\"menuBtn\" id=\"fontMinus\">Шрифт-</button></div><div id=\"toolsPopup\" class=\"menuPopup\" style=\"left:310px\"><button class=\"menuBtn\" id=\"generateTerrain\">Генерировать карту высот</button></div>");
             html = html.Replace("labelCtx.lineWidth=selected?5:3;labelCtx.strokeStyle=selected?'lime':'black';", "labelCtx.lineWidth=selected?3.5:2;labelCtx.strokeStyle=selected?'lime':'#0a0c0f';");
+
             const marker = "window.chrome?.webview?.postMessage('map2-ready');";
-            var patch = """
-const terrainCanvas=document.getElementById('terrain'),terrainCtx=terrainCanvas?.getContext('2d');
-let terrainImage=null,terrainMeta=null;
-async function loadTerrain(){try{const m=await fetch('../map_editor2/terrain_height_meta.json?ts='+Date.now(),{cache:'no-store'});if(!m.ok)throw Error('HTTP '+m.status);terrainMeta=await m.json();const img=new Image();img.src='../map_editor2/terrain_height.png?ts='+Date.now();await img.decode();terrainImage=img;}catch(e){terrainMeta=null;terrainImage=null;console.warn('Terrain load failed',e)}dirty=true;requestFrame()}
-function drawTerrain(){if(!terrainCanvas||!terrainCtx||!terrainImage||!terrainMeta)return;const s=mapSize();terrainCanvas.width=Math.floor(s.w*dpr);terrainCanvas.height=Math.floor(s.h*dpr);terrainCanvas.style.width=s.w+'px';terrainCanvas.style.height=s.h+'px';terrainCtx.setTransform(dpr,0,0,dpr,0,0);terrainCtx.clearRect(0,0,s.w,s.h);const mx0=Number(terrainMeta.minX),mx1=Number(terrainMeta.maxX),mz0=Number(terrainMeta.minZ),mz1=Number(terrainMeta.maxZ);const sx=s.w*.5+(mx0-camera.x)/camera.mpp,sy=s.h*.5+(mz0-camera.z)/camera.mpp,ex=s.w*.5+(mx1-camera.x)/camera.mpp,ey=s.h*.5+(mz1-camera.z)/camera.mpp;terrainCtx.drawImage(terrainImage,sx,sy,ex-sx,ey-sy)}
-function terrainProgress(text){status.textContent='Map Editor 2 · '+text}
-window.MapEditor2TerrainProgress=terrainProgress;window.MapEditor2ReloadTerrain=loadTerrain;
-window.addEventListener('resize',()=>{if(!terrainCanvas)return;const s=mapSize();terrainCanvas.width=Math.floor(s.w*dpr);terrainCanvas.height=Math.floor(s.h*dpr);terrainCanvas.style.width=s.w+'px';terrainCanvas.style.height=s.h+'px';dirty=true;requestFrame()});
-const originalDrawPoint=drawPoint;
-const originalDrawPointsAndLabels=drawPointsAndLabels;
-function selectedPointFor(p){return selectedIds.has(p.id)||selectedPoint?.id===p.id}
-function drawPointStyle(p){const q=worldToScreen(p),selected=selectedPointFor(p),isCity=p.isCity===true,radius=isCity?(selected?9:7):(selected?8:6),c=parseColor(p.color);labelCtx.beginPath();labelCtx.arc(q.x,q.y,radius,0,Math.PI*2);labelCtx.fillStyle=`rgb(${Math.round(c[0]*255)},${Math.round(c[1]*255)},${Math.round(c[2]*255)})`;labelCtx.fill();if(selected){labelCtx.lineWidth=5;labelCtx.strokeStyle='#0a0c0f';labelCtx.stroke();labelCtx.lineWidth=3.5;labelCtx.strokeStyle='lime';labelCtx.stroke();}else{labelCtx.lineWidth=2;labelCtx.strokeStyle='#0a0c0f';labelCtx.stroke();}return{q,radius,selected,isCity}}
-function drawPointLabel(p,info){const {q,radius,selected,isCity}=info;const cityFactor=isCity?1.10:1;const selectedFactor=selected?1.10:1;const size=10*fontScale*cityFactor*selectedFactor;labelCtx.font=`${size.toFixed(2)}px Segoe UI,Arial,sans-serif`;labelCtx.fontWeight=selected?'700':'600';labelCtx.textAlign='center';labelCtx.textBaseline='alphabetic';labelCtx.fillStyle=isCity?'#ffe600':(selected?'#ffffff':'#e7ebf0');labelCtx.lineWidth=4;labelCtx.strokeStyle='rgba(0,0,0,.95)';const labelY=q.y-radius-4;labelCtx.strokeText(p.name,q.x,labelY);labelCtx.fillText(p.name,q.x,labelY)}
-drawPoint=function(p){drawPointStyle(p)};
-drawPointsAndLabels=function(){const s=mapSize();labelCtx.setTransform(dpr,0,0,dpr,0,0);labelCtx.clearRect(0,0,s.w,s.h);if(camera.mpp>800)return;const visible=getVisiblePoints();const citiesById=new Map((categories.find(c=>c.key==='__cities')?.points||[]).map(p=>[p.id,p]));const normal=visible.filter(p=>!p.isCity&&!citiesById.has(p.id));const cities=Array.from(new Map([...visible.filter(p=>p.isCity),...(citiesById.values())].map(p=>[p.id,p])).values());const normalSelected=normal.filter(selectedPointFor),normalPlain=normal.filter(p=>!selectedPointFor(p));
-for(const p of normalPlain){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-55||q.y>s.h+30)continue;drawPointStyle(p)}
-for(const p of normalSelected){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-55||q.y>s.h+30)continue;drawPointStyle(p)}
-for(const p of normalPlain){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-55||q.y>s.h+30)continue;drawPointLabel(p,drawPointStyleForLabelOnly(p))}
-for(const p of normalSelected){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-55||q.y>s.h+30)continue;drawPointLabel(p,drawPointStyleForLabelOnly(p))}
-for(const p of cities){const q=worldToScreen(p);if(q.x<-120||q.x>s.w+120||q.y<-70||q.y>s.h+50)continue;drawPointStyle(p)}
-for(const p of cities){const q=worldToScreen(p);if(q.x<-120||q.x>s.w+120||q.y<-70||q.y>s.h+50)continue;drawPointLabel(p,drawPointStyleForLabelOnly(p))}}
-function drawPointStyleForLabelOnly(p){const q=worldToScreen(p),selected=selectedPointFor(p),isCity=p.isCity===true,radius=isCity?(selected?9:7):(selected?8:6);return{q,radius,selected,isCity}}
-function updateSelectionUi(){const total=selectedIds.size;let counter=document.getElementById('map2-selected-count');if(!counter){counter=document.createElement('span');counter.id='map2-selected-count';counter.style.marginLeft='2px';document.querySelector('.onlySelected')?.appendChild(counter)}counter.textContent=`(${total.toLocaleString()})`;document.querySelectorAll('.category').forEach((el,i)=>{const cat=categories[i];if(!cat)return;const count=cat.points.reduce((n,p)=>n+(selectedIds.has(p.id)?1:0),0);const node=el.querySelector('.catCount');if(node)node.textContent=(multiMode?count:cat.points.length).toLocaleString()});}
-const originalSyncSidebarSelection=syncSidebarSelection;syncSidebarSelection=function(){originalSyncSidebarSelection();updateSelectionUi()};
-const originalSetMultiMode=setMultiMode;setMultiMode=function(on){originalSetMultiMode(on);updateSelectionUi()};
-updateSelectionUi();
-const originalRender=render;render=function(){if(!dirty)return;dirty=false;gl.viewport(0,0,glCanvas.width,glCanvas.height);gl.clearColor(15/255,18/255,23/255,1);gl.clear(gl.COLOR_BUFFER_BIT);drawTerrain();updateGrid();drawRoads();drawPointsAndLabels();mapInfo.textContent=`Zoom ${camera.mpp.toFixed(3)} m/px · клетка ${gridWorldStep.toFixed(3)} м · roads ${roadsCount.toLocaleString()} · points ${allPoints.length.toLocaleString()} · cities ${categories.find(c=>c.key==='__cities')?.points.length?.toLocaleString()||'0'}`};
-loadTerrain();
-const toolsPopup=document.getElementById('toolsPopup');document.querySelector('[data-menu="tools"]').addEventListener('click',e=>{e.stopPropagation();toolsPopup.classList.toggle('open');viewPopup.classList.remove('open')});document.getElementById('generateTerrain')?.addEventListener('click',()=>window.chrome?.webview?.postMessage('map2-generate-terrain'));
-""";
+            var patchPath = Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "terrain_runtime_patch.js");
+            var patch = File.Exists(patchPath) ? File.ReadAllText(patchPath, Encoding.UTF8) : string.Empty;
             return html.Replace(marker, patch + "\n" + marker);
         }
     }
