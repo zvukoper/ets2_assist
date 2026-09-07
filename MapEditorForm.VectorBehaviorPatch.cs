@@ -23,7 +23,6 @@ namespace ETS2_Assist_GUI
 
         protected override void OnLoad(EventArgs e)
         {
-            // Подключаем быстрый renderer до первой нормальной отрисовки формы.
             EnsureVectorRenderer();
             InstallBehaviorOverlay();
             base.OnLoad(e);
@@ -35,18 +34,13 @@ namespace ETS2_Assist_GUI
                 return;
 
             _behaviorOverlayInstalled = true;
-
             var surface = _vectorMapSurface;
             var host = _vectorMapHost;
 
-            // Оставляем существующий быстрый vector renderer только для дорог/динамики.
-            // Его старые world-space точки и подписи полностью выключаем.
             surface.SetStaticData(_roads, BuildHiddenLegacyPoints());
             surface.SetSelectionState(Array.Empty<string>(), null, false);
             surface.IsHitTestVisible = false;
 
-            // После установки WPF overlay сам принимает весь mouse input.
-            // Старые ElementHost handlers отключаем, чтобы один клик не обрабатывался дважды.
             host.MouseDown -= ForwardMouseDown;
             host.MouseMove -= ForwardMouseMove;
             host.MouseUp -= ForwardMouseUp;
@@ -55,17 +49,14 @@ namespace ETS2_Assist_GUI
             host.MouseWheel -= ForwardMouseWheel;
 
             host.Child = null;
-
             _behaviorMapGrid = new Grid();
             _behaviorMapGrid.Children.Add(surface);
-
             _behaviorPointOverlay = new MapEditorScreenPointOverlay(this);
             _behaviorMapGrid.Children.Add(_behaviorPointOverlay);
-
             host.Child = _behaviorMapGrid;
+
             _mapPanel.Invalidated += BehaviorOverlayInvalidated;
             FormClosed += BehaviorOverlayFormClosed;
-
             _behaviorPointOverlay.InvalidateVisual();
         }
 
@@ -81,10 +72,8 @@ namespace ETS2_Assist_GUI
 
         private void BehaviorOverlayInvalidated(object? sender, FormsInvalidateEventArgs e)
         {
-            // Existing vector surface must not draw a second selected point layer.
             if (_vectorMapSurface != null)
                 _vectorMapSurface.SetSelectionState(Array.Empty<string>(), null, false);
-
             _behaviorPointOverlay?.InvalidateVisual();
         }
 
@@ -227,7 +216,7 @@ namespace ETS2_Assist_GUI
                 {
                     if (!_owner.TryGetBehaviorPoint(
                             target, out var name, out var color,
-                            out var isCity, out var isPoi, out _, out var disabled))
+                            out var isCity, out var isPoi, out var disabled))
                         continue;
 
                     if (_owner.BehaviorOnlySelected && !_owner.BehaviorIsSelected(target.id))
@@ -295,18 +284,11 @@ namespace ETS2_Assist_GUI
                         TextAlignment = TextAlignment.Center
                     };
 
-                    var tx = s.X;
-                    var ty = s.Y - 6 - formatted.Height;
-                    DrawOutlinedText(dc, formatted, tx, ty, selected ? 2 : 1);
+                    DrawOutlinedText(dc, formatted, s.X, s.Y - 6 - formatted.Height, selected ? 2 : 1);
                 }
             }
 
-            private static void DrawOutlinedText(
-                DrawingContext dc,
-                FormattedText text,
-                double x,
-                double y,
-                int radius)
+            private static void DrawOutlinedText(DrawingContext dc, FormattedText text, double x, double y, int radius)
             {
                 for (int dx = -radius; dx <= radius; dx++)
                 {
@@ -334,8 +316,13 @@ namespace ETS2_Assist_GUI
                     ? System.Windows.Input.Cursors.Hand
                     : System.Windows.Input.Cursors.Arrow;
 
+                var buttons = FormsMouseButtons.None;
+                if (e.LeftButton == MouseButtonState.Pressed) buttons |= FormsMouseButtons.Left;
+                if (e.RightButton == MouseButtonState.Pressed) buttons |= FormsMouseButtons.Right;
+                if (e.MiddleButton == MouseButtonState.Pressed) buttons |= FormsMouseButtons.Middle;
+
                 _owner.OnMouseMove(_owner._mapPanel,
-                    new FormsMouseEventArgs(FormsMouseButtons.None, 0, (int)p.X, (int)p.Y, 0));
+                    new FormsMouseEventArgs(buttons, 0, (int)p.X, (int)p.Y, 0));
                 InvalidateVisual();
             }
 
