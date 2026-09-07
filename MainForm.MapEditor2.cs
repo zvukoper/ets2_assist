@@ -36,6 +36,7 @@ namespace ETS2_Assist_GUI
                         continue;
                     }
 
+                    // Component.Disposed is an event and cannot be read as a boolean.
                     if (form.IsDisposed || form.Disposing)
                         return;
 
