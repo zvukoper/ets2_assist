@@ -1,23 +1,30 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace ETS2_Assist_GUI
 {
     public partial class MainForm
     {
-        // Field initializer registers the hook before InitializeComponents(); the Load
-        // event itself fires only after all controls have been created.
-        private readonly bool _mapEditor2LoadHook = RegisterMapEditor2LoadHook();
-        private Button? _btnMapEditor2;
-
-        private bool RegisterMapEditor2LoadHook()
+        static MainForm()
         {
-            Load += MainForm_MapEditor2Load;
-            return true;
+            Application.Idle += MainForm_ApplicationIdle;
         }
 
-        private void MainForm_MapEditor2Load(object? sender, EventArgs e)
+        private static void MainForm_ApplicationIdle(object? sender, EventArgs e)
+        {
+            var form = Application.OpenForms.OfType<MainForm>().FirstOrDefault();
+            if (form == null || form.IsDisposed || form.Disposing || form.btnMapEditor == null)
+                return;
+
+            Application.Idle -= MainForm_ApplicationIdle;
+            form.AddMapEditor2Button();
+        }
+
+        private Button? _btnMapEditor2;
+
+        private void AddMapEditor2Button()
         {
             if (_btnMapEditor2 != null || btnMapEditor == null)
                 return;
