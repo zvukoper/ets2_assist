@@ -9,18 +9,18 @@ namespace ETS2_Assist_GUI
     internal sealed partial class MapEditor2Form
     {
         private static readonly MapEditor2HotkeyFilter _hotkeyFilter = new();
+        private static bool _hotkeyFilterInitialized;
         private static bool _hotkeyFilterInstalled;
 
-        static MapEditor2Form()
+        private static void InitializeMapEditor2Hotkeys()
         {
-            if (_hotkeyFilterInstalled) return;
-            _hotkeyFilterInstalled = true;
+            if (_hotkeyFilterInitialized) return;
+            _hotkeyFilterInitialized = true;
             Application.Idle += InstallMapEditor2HotkeyFilter;
         }
 
         private static void InstallMapEditor2HotkeyFilter(object? sender, EventArgs e)
         {
-            if (Application.OpenForms.Count == 0) return;
             bool hasEditor2 = false;
             foreach (Form form in Application.OpenForms)
             {
@@ -31,18 +31,15 @@ namespace ETS2_Assist_GUI
                 }
             }
 
-            if (hasEditor2)
+            if (hasEditor2 && !_hotkeyFilterInstalled)
             {
-                if (!MapEditor2HotkeyFilter.IsInstalled)
-                {
-                    Application.AddMessageFilter(_hotkeyFilter);
-                    MapEditor2HotkeyFilter.IsInstalled = true;
-                }
+                Application.AddMessageFilter(_hotkeyFilter);
+                _hotkeyFilterInstalled = true;
             }
-            else if (MapEditor2HotkeyFilter.IsInstalled)
+            else if (!hasEditor2 && _hotkeyFilterInstalled)
             {
                 Application.RemoveMessageFilter(_hotkeyFilter);
-                MapEditor2HotkeyFilter.IsInstalled = false;
+                _hotkeyFilterInstalled = false;
             }
         }
 
@@ -66,42 +63,32 @@ namespace ETS2_Assist_GUI
             }
             catch (Exception ex)
             {
-                try { MainForm.LogNewPointSelection(0, 0, 0); } catch { }
                 System.Diagnostics.Debug.WriteLine("MapEditor2 teleport: " + ex.Message);
             }
         }
 
         private sealed class MapEditor2HotkeyFilter : IMessageFilter
         {
-            public static bool IsInstalled { get; set; }
             private const int WM_HOTKEY = 0x0312;
-            private const int MOD_CONTROL = 0x0002;
-            private const int MOD_SHIFT = 0x0004;
             private const int HOTKEY_TELEPORT = 9010;
             private const int HOTKEY_TELEPORT_EDITOR = 9011;
 
             public bool PreFilterMessage(ref Message m)
             {
                 if (m.Msg != WM_HOTKEY) return false;
-
                 var id = m.WParam.ToInt32();
                 if (id != HOTKEY_TELEPORT && id != HOTKEY_TELEPORT_EDITOR)
                     return false;
 
-                MapEditor2Form? editor = null;
                 foreach (Form form in Application.OpenForms)
                 {
-                    if (form is MapEditor2Form candidate && !candidate.IsDisposed)
+                    if (form is MapEditor2Form editor && !editor.IsDisposed)
                     {
-                        editor = candidate;
-                        break;
+                        _ = editor.HandleMapEditor2HotkeyAsync(id == HOTKEY_TELEPORT_EDITOR);
+                        return true;
                     }
                 }
-
-                if (editor == null) return false;
-
-                _ = editor.HandleMapEditor2HotkeyAsync(id == HOTKEY_TELEPORT_EDITOR);
-                return true;
+                return false;
             }
         }
     }
