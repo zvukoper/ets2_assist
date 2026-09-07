@@ -14,8 +14,7 @@ namespace ETS2_Assist_GUI
 {
     /// <summary>
     /// Completely isolated map renderer prototype.
-    /// No editor state, selection, sidebar, telemetry, drag/drop or WPF renderer.
-    /// The browser canvas owns all pan/zoom/render input; WinForms only hosts WebView2
+    /// The browser canvas owns pan/zoom/render input; WinForms hosts WebView2
     /// and supplies the current target snapshot and static point file manifest.
     /// </summary>
     internal sealed partial class MapEditor2Form : Form
@@ -60,13 +59,39 @@ namespace ETS2_Assist_GUI
 
         private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
-            if (!string.Equals(e.TryGetWebMessageAsString(), "map2-ready", StringComparison.Ordinal))
+            var message = e.TryGetWebMessageAsString();
+            if (string.Equals(message, "map2-ready", StringComparison.Ordinal))
+            {
+                _pageReady = true;
+                await InstallDebugGridAsync();
+                await SendStaticPointFilesAsync();
+                await SendTargetsAsync();
                 return;
+            }
 
-            _pageReady = true;
-            await InstallDebugGridAsync();
-            await SendStaticPointFilesAsync();
-            await SendTargetsAsync();
+            if (!string.IsNullOrWhiteSpace(message))
+            {
+                try
+                {
+                    var cmd = JObject.Parse(message);
+                    if (string.Equals((string?)cmd["type"], "map2-create-point", StringComparison.Ordinal))
+                    {
+                        var x = cmd["x"]?.Value<double>() ?? 0d;
+                        var y = cmd["y"]?.Value<double>() ?? 0d;
+                        var z = cmd["z"]?.Value<double>() ?? 0d;
+                        var coords = $"{x.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, {y.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, {z.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}";
+                        try { MainForm.LogNewPointSelection(x, y, z); } catch { }
+                        try { Clipboard.SetText(coords); } catch { }
+                        if (_webView.CoreWebView2 != null)
+                            await _webView.CoreWebView2.ExecuteScriptAsync(
+                                $"window.MapEditor2ShowNewPoint({x.ToString(System.Globalization.CultureInfo.InvariantCulture)},{y.ToString(System.Globalization.CultureInfo.InvariantCulture)},{z.ToString(System.Globalization.CultureInfo.InvariantCulture)});");
+                    }
+                }
+                catch
+                {
+                    // Ignore malformed browser commands; the map remains interactive.
+                }
+            }
         }
 
         private async Task SendStaticPointFilesAsync()
