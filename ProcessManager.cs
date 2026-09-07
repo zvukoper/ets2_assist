@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ETS2_Assist_GUI
@@ -88,15 +89,45 @@ namespace ETS2_Assist_GUI
 
         public void Stop()
         {
-            if (scriptProcess != null && !scriptProcess.HasExited)
+            // Захватываем ссылку и сразу освобождаем поле. Это важно при завершении
+            // приложения: shutdown не должен ждать завершения PowerShell-процесса.
+            var process = scriptProcess;
+            scriptProcess = null;
+
+            if (process != null)
             {
-                scriptProcess.Kill();
-                scriptProcess.WaitForExit(3000);
-                scriptProcess.Dispose();
-                scriptProcess = null;
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        // Скрипт запускает дополнительные процессы; уничтожаем именно
+                        // дерево PowerShell, а не ETS2. Сам eurotrucks2 этот код никогда
+                        // не трогает.
+                        process.Kill(entireProcessTree: true);
+                    }
+                }
+                catch (InvalidOperationException) { }
+                catch (System.ComponentModel.Win32Exception ex)
+                {
+                    logger.Warning($"Failed to stop PowerShell process: {ex.Message}");
+                }
+                catch (Exception ex)
+                {
+                    logger.Warning($"Failed to stop PowerShell process: {ex.Message}");
+                }
+                finally
+                {
+                    try { process.Dispose(); } catch { }
+                }
             }
+
             logger.Info("System stopped");
-            StatusChanged?.Invoke(this, EventArgs.Empty);
+
+            // StopSystem() при выходе вызывается через Task.Run(), поэтому нельзя
+            // поднимать UI-событие непосредственно из фонового потока. На обычной
+            // кнопке Stop (UI-поток) событие сохраняется.
+            if (SynchronizationContext.Current != null)
+                StatusChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void OnProcessExited()
