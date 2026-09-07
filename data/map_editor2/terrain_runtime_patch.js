@@ -1,271 +1,35 @@
 const terrainCanvas0=document.getElementById('terrain');
-if(!terrainCanvas0){
-  const mapElement=document.getElementById('map');
-  if(mapElement){const c=document.createElement('canvas');c.id='terrain';mapElement.insertBefore(c,mapElement.firstChild)}
-}
+if(!terrainCanvas0){const mapElement=document.getElementById('map');if(mapElement){const c=document.createElement('canvas');c.id='terrain';mapElement.insertBefore(c,mapElement.firstChild)}}
 const terrainCanvas=document.getElementById('terrain'),terrainCtx=terrainCanvas?.getContext('2d');
-let terrainImage=null,terrainMeta=null,terrainVisible=true,terrainStatusElement=null;
+let terrainImage=null,terrainMeta=null,terrainVisible=true,terrainStatusElement=null,showNames=true,nameToggleElement=null;
 const terrainAssetLabel='data\\map_editor2\\terrain_height.png';
 if(terrainCanvas){terrainCanvas.style.zIndex='2';terrainCanvas.style.pointerEvents='none';}
 if(gridCanvas)gridCanvas.style.zIndex='3';
 if(glCanvas)glCanvas.style.zIndex='1';
 if(labelCanvas)labelCanvas.style.zIndex='4';
-function ensureTerrainStatus(){
-  if(terrainStatusElement||!status)return;
-  terrainStatusElement=document.createElement('span');
-  terrainStatusElement.id='map2-terrain-status';
-  terrainStatusElement.style.marginLeft='14px';
-  terrainStatusElement.style.color='#9fa9b7';
-  terrainStatusElement.style.fontSize='calc(10px * var(--font-scale))';
-  status.appendChild(terrainStatusElement);
-}
-function terrainProgress(text){
-  ensureTerrainStatus();
-  if(!terrainStatusElement)return;
-  terrainStatusElement.innerHTML='';
-  const label=document.createElement('span');
-  label.textContent=text+' · ';
-  const link=document.createElement('a');
-  link.href='#';
-  link.textContent=terrainAssetLabel;
-  link.title='Открыть terrain_height.png в Проводнике';
-  link.style.color='#aeb8c5';
-  link.style.textDecoration='underline';
-  link.style.cursor='pointer';
-  link.addEventListener('click',e=>{e.preventDefault();window.chrome?.webview?.postMessage('map2-open-terrain-file')});
-  terrainStatusElement.append(label,link);
-}
-async function loadTerrain(){
-  try{
-    const metaResponse=await fetch('./terrain_height_meta.json?ts='+Date.now(),{cache:'no-store'});
-    if(!metaResponse.ok)throw Error('META HTTP '+metaResponse.status);
-    terrainMeta=await metaResponse.json();
-    const image=new Image();
-    image.src='./terrain_height.png?ts='+Date.now();
-    await image.decode();
-    terrainImage=image;
-    terrainProgress('Карта высот загружена');
-  }catch(e){
-    terrainMeta=null;
-    terrainImage=null;
-    terrainProgress('Карта высот не найдена · сначала сгенерируйте её');
-    console.warn('Terrain load failed',e);
-  }
-  dirty=true;requestFrame();
-}
-function drawTerrain(){
-  if(!terrainCanvas||!terrainCtx)return;
-  const s=mapSize();
-  terrainCanvas.width=Math.floor(s.w*dpr);
-  terrainCanvas.height=Math.floor(s.h*dpr);
-  terrainCanvas.style.width=s.w+'px';
-  terrainCanvas.style.height=s.h+'px';
-  terrainCtx.setTransform(dpr,0,0,dpr,0,0);
-  terrainCtx.clearRect(0,0,s.w,s.h);
-  if(!terrainVisible||!terrainImage||!terrainMeta)return;
-  const mx0=Number(terrainMeta.minX),mx1=Number(terrainMeta.maxX),mz0=Number(terrainMeta.minZ),mz1=Number(terrainMeta.maxZ);
-  if(![mx0,mx1,mz0,mz1].every(Number.isFinite)||mx1<=mx0||mz1<=mz0)return;
-  const sx=s.w*.5+(mx0-camera.x)/camera.mpp;
-  const sy=s.h*.5+(mz0-camera.z)/camera.mpp;
-  const ex=s.w*.5+(mx1-camera.x)/camera.mpp;
-  const ey=s.h*.5+(mz1-camera.z)/camera.mpp;
-  terrainCtx.save();
-  terrainCtx.globalAlpha=.48;
-  terrainCtx.filter='brightness(2.0) contrast(1.08) saturate(1.25)';
-  terrainCtx.imageSmoothingEnabled=true;
-  terrainCtx.drawImage(terrainImage,sx,sy,ex-sx,ey-sy);
-  terrainCtx.restore();
-}
-window.MapEditor2TerrainProgress=terrainProgress;
-window.MapEditor2ReloadTerrain=loadTerrain;
-window.MapEditor2ToggleTerrain=()=>{terrainVisible=!terrainVisible;updateTerrainButton();terrainProgress(terrainVisible?'Карта высот включена':'Карта высот скрыта');dirty=true;requestFrame()};
-window.addEventListener('resize',()=>{if(!terrainCanvas)return;dirty=true;requestFrame()});
-
-(function applyEditorTypography(){
-  if(document.getElementById('map2-muted-typography'))return;
-  const style=document.createElement('style');
-  style.id='map2-muted-typography';
-  style.textContent=`
-#topMenu .brand,#topMenu .menuItem,#pointTools .tool,#pointTools .tool.active,#categoryList .categoryHead,#categoryList .catCount,#categoryList .caret,#categoryList .eye,#categoryList .pointButton,#categoryList .pointName,#status,#mapInfo,#rightTitle,#rightBody .hint,#rightBody .label,#rightBody .value,#footer,#footer span{color:#b8c0cb!important}
-#categoryList .pointButton.selected .pointName{color:#ffffff!important}
-#topMenu .menuItem:hover,#categoryList .categoryHead:hover{color:#c4ccd6!important}
-.menuPopup .menuBtn{color:#b8c0cb!important}
-#map2-terrain-status a:hover{color:#ffffff!important}
-#map2-terrain-toggle{color:#b8c0cb!important}
-`;
-  document.head.appendChild(style);
-})();
-
+function ensureTerrainStatus(){if(terrainStatusElement||!status)return;terrainStatusElement=document.createElement('span');terrainStatusElement.id='map2-terrain-status';terrainStatusElement.style.marginLeft='14px';terrainStatusElement.style.color='#9fa9b7';terrainStatusElement.style.fontSize='calc(10px * var(--font-scale))';status.appendChild(terrainStatusElement)}
+function terrainProgress(text){ensureTerrainStatus();if(!terrainStatusElement)return;terrainStatusElement.innerHTML='';const label=document.createElement('span');label.textContent=text+' · ';const link=document.createElement('a');link.href='#';link.textContent=terrainAssetLabel;link.title='Открыть terrain_height.png в Проводнике';link.style.color='#aeb8c5';link.style.textDecoration='underline';link.style.cursor='pointer';link.addEventListener('click',e=>{e.preventDefault();window.chrome?.webview?.postMessage('map2-open-terrain-file')});terrainStatusElement.append(label,link)}
+async function loadTerrain(){try{const mr=await fetch('./terrain_height_meta.json?ts='+Date.now(),{cache:'no-store'});if(!mr.ok)throw Error('META HTTP '+mr.status);terrainMeta=await mr.json();const image=new Image();image.src='./terrain_height.png?ts='+Date.now();await image.decode();terrainImage=image;terrainProgress('Карта высот загружена')}catch(e){terrainMeta=null;terrainImage=null;terrainProgress('Карта высот не найдена · сначала сгенерируйте её');console.warn('Terrain load failed',e)}dirty=true;requestFrame()}
+function drawTerrain(){if(!terrainCanvas||!terrainCtx)return;const s=mapSize();terrainCanvas.width=Math.floor(s.w*dpr);terrainCanvas.height=Math.floor(s.h*dpr);terrainCanvas.style.width=s.w+'px';terrainCanvas.style.height=s.h+'px';terrainCtx.setTransform(dpr,0,0,dpr,0,0);terrainCtx.clearRect(0,0,s.w,s.h);if(!terrainVisible||!terrainImage||!terrainMeta)return;const x0=Number(terrainMeta.minX),x1=Number(terrainMeta.maxX),z0=Number(terrainMeta.minZ),z1=Number(terrainMeta.maxZ);if(![x0,x1,z0,z1].every(Number.isFinite)||x1<=x0||z1<=z0)return;const sx=s.w*.5+(x0-camera.x)/camera.mpp,sy=s.h*.5+(z0-camera.z)/camera.mpp,ex=s.w*.5+(x1-camera.x)/camera.mpp,ey=s.h*.5+(z1-camera.z)/camera.mpp;terrainCtx.save();terrainCtx.globalAlpha=.48;terrainCtx.filter='brightness(2.0) contrast(1.08) saturate(1.25)';terrainCtx.imageSmoothingEnabled=true;terrainCtx.drawImage(terrainImage,sx,sy,ex-sx,ey-sy);terrainCtx.restore()}
+window.MapEditor2TerrainProgress=terrainProgress;window.MapEditor2ReloadTerrain=loadTerrain;window.MapEditor2ToggleTerrain=()=>{terrainVisible=!terrainVisible;updateTerrainButton();terrainProgress(terrainVisible?'Карта высот включена':'Карта высот скрыта');dirty=true;requestFrame()};window.addEventListener('resize',()=>{dirty=true;requestFrame()});
+(function applyTypography(){if(document.getElementById('map2-typography'))return;const style=document.createElement('style');style.id='map2-typography';style.textContent=`#topMenu .brand,#topMenu .menuItem,#pointTools .tool,#categoryList .categoryHead,#categoryList .catCount,#categoryList .caret,#categoryList .eye,#categoryList .pointButton,#categoryList .pointName,#status,#mapInfo,#rightTitle,#rightBody .hint,#rightBody .label,#rightBody .value,#footer,#footer span{color:#b8c0cb!important}#categoryList .pointButton.selected .pointName{color:#fff!important}.menuPopup .menuBtn{color:#b8c0cb!important}#map2-terrain-status a:hover{color:#fff!important}`;document.head.appendChild(style)})();
 function selectedPointFor(p){return selectedIds.has(p.id)||!!(selectedPoint&&selectedPoint.id===p.id)}
 function visibleCityPoints(){return categories.find(c=>c.key==='__cities')?.points||[]}
-function drawSelectionRing(q,radius){
-  labelCtx.save();
-  labelCtx.beginPath();
-  labelCtx.arc(q.x,q.y,radius+3.25,0,Math.PI*2);
-  labelCtx.lineWidth=3;
-  labelCtx.strokeStyle='lime';
-  labelCtx.stroke();
-  labelCtx.restore();
-}
-function drawPointFill(p,q,radius){
-  const selected=selectedPointFor(p);
-  const c=parseColor(p.color);
-  if(selected)drawSelectionRing(q,radius);
-  labelCtx.save();
-  labelCtx.shadowColor='rgba(0,0,0,.82)';
-  labelCtx.shadowBlur=4;
-  labelCtx.shadowOffsetX=0;
-  labelCtx.shadowOffsetY=0;
-  labelCtx.beginPath();
-  labelCtx.arc(q.x,q.y,radius,0,Math.PI*2);
-  labelCtx.fillStyle=`rgb(${Math.round(c[0]*255)},${Math.round(c[1]*255)},${Math.round(c[2]*255)})`;
-  labelCtx.fill();
-  labelCtx.shadowColor='rgba(0,0,0,0)';
-  labelCtx.shadowBlur=0;
-  labelCtx.lineWidth=2;
-  labelCtx.strokeStyle='#0a0c0f';
-  labelCtx.stroke();
-  labelCtx.restore();
-}
-function drawPointLabel(p,q,radius,{city=false,selected=false}={}){
-  const cityFactor=city?1.20:1;
-  const size=10*fontScale*cityFactor;
-  labelCtx.save();
-  labelCtx.font=`${city||selected?'700':'600'} ${size.toFixed(2)}px Segoe UI,Arial,sans-serif`;
-  labelCtx.textAlign='center';
-  labelCtx.textBaseline='alphabetic';
-  labelCtx.fillStyle=city?'#ffe600':(selected?'#ffffff':'#b8c0cb');
-  labelCtx.lineWidth=1;
-  labelCtx.strokeStyle='rgba(0,0,0,.82)';
-  labelCtx.shadowColor='rgba(0,0,0,.95)';
-  labelCtx.shadowBlur=4;
-  labelCtx.shadowOffsetX=0;
-  labelCtx.shadowOffsetY=0;
-  const labelY=q.y-radius-5;
-  labelCtx.strokeText(p.name,q.x,labelY);
-  labelCtx.fillText(p.name,q.x,labelY);
-  labelCtx.restore();
-}
-function drawNormalPoint(p){
-  const s=mapSize(),q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-60||q.y>s.h+40)return;
-  drawPointFill(p,q,selectedPointFor(p)?6.4:4.8);
-}
-function drawCityPoint(p){
-  const s=mapSize(),q=worldToScreen(p);if(q.x<-130||q.x>s.w+130||q.y<-80||q.y>s.h+50)return;
-  drawPointFill(p,q,selectedPointFor(p)?7.2:5.6);
-}
+function drawPointFill(p,q,radius){const selected=selectedPointFor(p),c=parseColor(p.color);if(selected){labelCtx.save();labelCtx.beginPath();labelCtx.arc(q.x,q.y,radius+3.25,0,Math.PI*2);labelCtx.lineWidth=3;labelCtx.strokeStyle='lime';labelCtx.stroke();labelCtx.restore()}labelCtx.save();labelCtx.shadowColor='rgba(0,0,0,.82)';labelCtx.shadowBlur=4;labelCtx.shadowOffsetX=0;labelCtx.shadowOffsetY=0;labelCtx.beginPath();labelCtx.arc(q.x,q.y,radius,0,Math.PI*2);labelCtx.fillStyle=`rgb(${Math.round(c[0]*255)},${Math.round(c[1]*255)},${Math.round(c[2]*255)})`;labelCtx.fill();labelCtx.shadowColor='rgba(0,0,0,0)';labelCtx.shadowBlur=0;labelCtx.lineWidth=2;labelCtx.strokeStyle='#0a0c0f';labelCtx.stroke();labelCtx.restore()}
+function drawPointLabel(p,q,radius,{city=false,selected=false}={}){const size=10*fontScale*(city?1.20:1);labelCtx.save();labelCtx.font=`${city||selected?'700':'600'} ${size.toFixed(2)}px Segoe UI,Arial,sans-serif`;labelCtx.textAlign='center';labelCtx.textBaseline='alphabetic';labelCtx.fillStyle=city?'#ffe600':(selected?'#fff':'#b8c0cb');labelCtx.lineWidth=1;labelCtx.strokeStyle='rgba(0,0,0,.82)';labelCtx.shadowColor='rgba(0,0,0,.95)';labelCtx.shadowBlur=4;labelCtx.shadowOffsetX=0;labelCtx.shadowOffsetY=0;const y=q.y-radius-5;labelCtx.strokeText(p.name,q.x,y);labelCtx.fillText(p.name,q.x,y);labelCtx.restore()}
+function drawNormalPoint(p){const s=mapSize(),q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-60||q.y>s.h+40)return;drawPointFill(p,q,selectedPointFor(p)?6.4:4.8)}
+function drawCityPoint(p){const s=mapSize(),q=worldToScreen(p);if(q.x<-130||q.x>s.w+130||q.y<-80||q.y>s.h+50)return;drawPointFill(p,q,selectedPointFor(p)?7.2:5.6)}
 drawPoint=(p)=>drawNormalPoint(p);
-
-drawPointsAndLabels=function(){
-  const s=mapSize();
-  labelCtx.setTransform(dpr,0,0,dpr,0,0);
-  labelCtx.clearRect(0,0,s.w,s.h);
-  if(camera.mpp>800)return;
-
-  const visible=getVisiblePoints();
-  const normal=visible.filter(p=>!p.isCity);
-  const cities=visibleCityPoints().filter(p=>categoryVisible(p.category));
-  const normalSelected=normal.filter(selectedPointFor);
-  const normalPlain=normal.filter(p=>!selectedPointFor(p));
-
-  for(const p of normalPlain)drawNormalPoint(p);
-  for(const p of normalSelected)drawNormalPoint(p);
-  for(const p of normalPlain){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-60||q.y>s.h+40)continue;drawPointLabel(p,q,4.8,{city:false,selected:false})}
-  for(const p of normalSelected){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-60||q.y>s.h+40)continue;drawPointLabel(p,q,6.4,{city:false,selected:true})}
-  // City point bodies are above all ordinary points and ordinary labels.
-  for(const p of cities)drawCityPoint(p);
-  // City names are the final layer and are above all city points.
-  for(const p of cities){const q=worldToScreen(p);if(q.x<-130||q.x>s.w+130||q.y<-80||q.y>s.h+50)continue;drawPointLabel(p,q,selectedPointFor(p)?7.2:5.6,{city:true,selected:selectedPointFor(p)})}
-}
-
-function updateSelectionUi(){
-  const total=selectedIds.size+(selectedPoint&&!multiMode&&!selectedIds.has(selectedPoint.id)?1:0);
-  let counter=document.getElementById('map2-selected-count');
-  if(!counter){counter=document.createElement('span');counter.id='map2-selected-count';counter.style.marginLeft='2px';document.querySelector('.onlySelected')?.appendChild(counter)}
-  counter.textContent=total?`(${total.toLocaleString()})`:'';
-  document.querySelectorAll('.category').forEach((el,i)=>{
-    const cat=categories[i];if(!cat)return;
-    const count=cat.points.reduce((n,p)=>n+(selectedIds.has(p.id)||(selectedPoint&&!multiMode&&selectedPoint.id===p.id)?1:0),0);
-    const node=el.querySelector('.catCount');
-    if(node)node.textContent=multiMode?(count?count.toLocaleString():''):cat.points.length.toLocaleString();
-  });
-}
-const originalSyncSidebarSelection=syncSidebarSelection;
-syncSidebarSelection=function(){originalSyncSidebarSelection();updateSelectionUi()};
-const originalSetMultiMode=setMultiMode;
-setMultiMode=function(on){originalSetMultiMode(on);updateSelectionUi()};
-updateSelectionUi();
-
-const originalRenderCategories=renderCategories;
-renderCategories=function(){
-  originalRenderCategories();
-  categories.forEach((cat,i)=>{
-    const el=categoryList.children[i];
-    if(!el||!cat.loaded||!el.classList.contains('open'))return;
-    const head=el.querySelector('.categoryHead'),body=el.querySelector('.categoryBody');
-    if(head&&body)renderCategoryBody(cat,head,body);
-  });
-  updateSelectionUi();
-};
-setTimeout(()=>{
-  const cat=categories.find(c=>c.key==='wild_animals');
-  if(cat?.loaded){
-    const i=categories.indexOf(cat),el=categoryList.children[i],head=el?.querySelector('.categoryHead'),body=el?.querySelector('.categoryBody');
-    if(el&&head&&body){el.classList.add('open');head.querySelector('.caret').textContent='▾';renderCategoryBody(cat,head,body);}
-  }
-},500);
-
-const originalUpdateGrid=updateGrid;
-function drawGridAccent(){
-  const s=mapSize(),target=camera.mpp*80,step=niceWorldStep(target),px=step/camera.mpp;
-  if(!Number.isFinite(px)||px<22||px>260)return;
-  const left=camera.x-s.w*.5*camera.mpp,top=camera.z-s.h*.5*camera.mpp;
-  const sx=(-((left%step)+step)%step)/camera.mpp,sy=(-((top%step)+step)%step)/camera.mpp;
-  gridCtx.save();gridCtx.setTransform(dpr,0,0,dpr,0,0);gridCtx.lineWidth=1;gridCtx.strokeStyle='rgba(140,155,175,.32)';gridCtx.beginPath();
-  for(let x=sx;x<s.w;x+=px){gridCtx.moveTo(Math.round(x)+.5,0);gridCtx.lineTo(Math.round(x)+.5,s.h)}
-  for(let y=sy;y<s.h;y+=px){gridCtx.moveTo(0,Math.round(y)+.5);gridCtx.lineTo(s.w,Math.round(y)+.5)}gridCtx.stroke();
-  const major=px*5;gridCtx.lineWidth=1.2;gridCtx.strokeStyle='rgba(180,195,215,.50)';gridCtx.beginPath();
-  for(let x=sx;x<s.w;x+=major){gridCtx.moveTo(Math.round(x)+.5,0);gridCtx.lineTo(Math.round(x)+.5,s.h)}
-  for(let y=sy;y<s.h;y+=major){gridCtx.moveTo(0,Math.round(y)+.5);gridCtx.lineTo(s.w,Math.round(y)+.5)}gridCtx.stroke();gridCtx.restore();
-}
-updateGrid=function(){originalUpdateGrid();drawGridAccent()};
-
-const originalRender=render;
-render=function(){
-  if(!dirty)return;
-  dirty=false;
-  gl.viewport(0,0,glCanvas.width,glCanvas.height);
-  gl.clearColor(15/255,18/255,23/255,1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  drawTerrain();
-  updateGrid();
-  drawRoads();
-  drawPointsAndLabels();
-  mapInfo.textContent=`Zoom ${camera.mpp.toFixed(3)} m/px · клетка ${gridWorldStep.toFixed(3)} м · roads ${roadsCount.toLocaleString()} · points ${allPoints.length.toLocaleString()} · cities ${visibleCityPoints().length.toLocaleString()}`;
-};
-
-function updateTerrainButton(){
-  const btn=document.getElementById('map2-terrain-toggle');
-  if(btn)btn.textContent=terrainVisible?'Скрыть карту высот':'Показать карту высот';
-}
-function ensureToolsMenu(){
-  const menu=document.querySelector('[data-menu="tools"]');
-  if(!menu)return;
-  let popup=document.getElementById('toolsPopup');
-  if(!popup){
-    popup=document.createElement('div');popup.id='toolsPopup';popup.className='menuPopup';popup.style.left='310px';
-    popup.innerHTML='<button class="menuBtn" id="generateTerrain">Генерировать карту высот</button><button class="menuBtn" id="map2-terrain-toggle">Скрыть карту высот</button>';
-    document.getElementById('topMenu')?.appendChild(popup);
-  }else if(!document.getElementById('map2-terrain-toggle')){
-    const b=document.createElement('button');b.className='menuBtn';b.id='map2-terrain-toggle';popup.appendChild(b);
-  }
-  const freshPopup=popup;
-  menu.onclick=e=>{e.stopPropagation();freshPopup.classList.toggle('open');viewPopup?.classList.remove('open');updateTerrainButton()};
-  const gen=document.getElementById('generateTerrain');
-  if(gen&&!gen.dataset.map2TerrainBound){gen.dataset.map2TerrainBound='1';gen.addEventListener('click',e=>{e.stopPropagation();freshPopup.classList.remove('open');window.chrome?.webview?.postMessage('map2-generate-terrain')});}
-  const toggle=document.getElementById('map2-terrain-toggle');
-  if(toggle&&!toggle.dataset.map2TerrainToggleBound){toggle.dataset.map2TerrainToggleBound='1';toggle.addEventListener('click',e=>{e.stopPropagation();window.MapEditor2ToggleTerrain()});}
-  updateTerrainButton();
-}
-ensureToolsMenu();
-loadTerrain();
+drawPointsAndLabels=function(){const s=mapSize();labelCtx.setTransform(dpr,0,0,dpr,0,0);labelCtx.clearRect(0,0,s.w,s.h);if(camera.mpp>800)return;const visible=getVisiblePoints(),cities=visibleCityPoints().filter(p=>categoryVisible(p.category)),normal=visible.filter(p=>!p.isCity),normalSelected=normal.filter(selectedPointFor),normalPlain=normal.filter(p=>!selectedPointFor(p));for(const p of normalPlain)drawNormalPoint(p);for(const p of normalSelected)drawNormalPoint(p);for(const p of cities)drawCityPoint(p);if(showNames)for(const p of normalPlain){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-60||q.y>s.h+40)continue;drawPointLabel(p,q,4.8)}for(const p of normalSelected){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-60||q.y>s.h+40)continue;drawPointLabel(p,q,6.4,{selected:true})}for(const p of cities){const q=worldToScreen(p);if(q.x<-130||q.x>s.w+130||q.y<-80||q.y>s.h+50)continue;drawPointLabel(p,q,selectedPointFor(p)?7.2:5.6,{city:true,selected:selectedPointFor(p)})}}
+function updateSelectionUi(){const total=selectedIds.size+(selectedPoint&&!multiMode&&!selectedIds.has(selectedPoint.id)?1:0);let counter=document.getElementById('map2-selected-count');if(!counter){counter=document.createElement('span');counter.id='map2-selected-count';counter.style.marginLeft='2px';document.querySelector('.onlySelected')?.appendChild(counter)}counter.textContent=total?`(${total.toLocaleString()})`:'';document.querySelectorAll('.category').forEach((el,i)=>{const cat=categories[i];if(!cat)return;const count=cat.points.reduce((n,p)=>n+(selectedIds.has(p.id)||(selectedPoint&&!multiMode&&selectedPoint.id===p.id)?1:0),0);const node=el.querySelector('.catCount');if(node)node.textContent=multiMode?(count?count.toLocaleString():''):cat.points.length.toLocaleString()})}
+function ensureNameToggle(){if(nameToggleElement||!status)return;const label=document.createElement('label');label.className='onlySelected';label.style.marginLeft='14px';label.innerHTML='<input id="map2-show-names" type="checkbox" checked>названия';status.appendChild(label);nameToggleElement=label.querySelector('input');nameToggleElement.addEventListener('change',()=>{showNames=nameToggleElement.checked;dirty=true;requestFrame()})}
+function updateNameToggle(){ensureNameToggle();if(nameToggleElement)nameToggleElement.checked=showNames}
+const originalSyncSidebarSelection=syncSidebarSelection;syncSidebarSelection=function(){originalSyncSidebarSelection();updateSelectionUi()};
+const originalSetMultiMode=setMultiMode;setMultiMode=function(on){originalSetMultiMode(on);updateSelectionUi()};
+const originalClearSelections=clearSelections;clearSelections=function(){showNames=true;onlySelected=false;onlySelectedChk.checked=false;updateNameToggle();originalClearSelections();dirty=true;requestFrame()};
+(function patchCategories(){const originalRenderCategories=renderCategories;renderCategories=function(){originalRenderCategories();updateSelectionUi();setTimeout(()=>{categories.forEach((cat,i)=>{const el=categoryList.children[i];if(!el||!cat.loaded||!el.classList.contains('open'))return;const head=el.querySelector('.categoryHead'),body=el.querySelector('.categoryBody');if(head&&body)renderCategoryBody(cat,head,body)})},0)};setTimeout(()=>{const cat=categories.find(c=>c.key==='wild_animals');if(cat?.loaded){const i=categories.indexOf(cat),el=categoryList.children[i],head=el?.querySelector('.categoryHead'),body=el?.querySelector('.categoryBody');if(el&&head&&body){el.classList.add('open');head.querySelector('.caret').textContent='▾';renderCategoryBody(cat,head,body)}}},700)})();
+const originalUpdateGrid=updateGrid;function drawGridAccent(){const s=mapSize(),target=camera.mpp*80,step=niceWorldStep(target),px=step/camera.mpp;if(!Number.isFinite(px)||px<22||px>260)return;const left=camera.x-s.w*.5*camera.mpp,top=camera.z-s.h*.5*camera.mpp,sx=(-((left%step)+step)%step)/camera.mpp,sy=(-((top%step)+step)%step)/camera.mpp;gridCtx.save();gridCtx.setTransform(dpr,0,0,dpr,0,0);gridCtx.lineWidth=1;gridCtx.strokeStyle='rgba(140,155,175,.32)';gridCtx.beginPath();for(let x=sx;x<s.w;x+=px){gridCtx.moveTo(Math.round(x)+.5,0);gridCtx.lineTo(Math.round(x)+.5,s.h)}for(let y=sy;y<s.h;y+=px){gridCtx.moveTo(0,Math.round(y)+.5);gridCtx.lineTo(s.w,Math.round(y)+.5)}gridCtx.stroke();const major=px*5;gridCtx.lineWidth=1.2;gridCtx.strokeStyle='rgba(180,195,215,.50)';gridCtx.beginPath();for(let x=sx;x<s.w;x+=major){gridCtx.moveTo(Math.round(x)+.5,0);gridCtx.lineTo(Math.round(x)+.5,s.h)}for(let y=sy;y<s.h;y+=major){gridCtx.moveTo(0,Math.round(y)+.5);gridCtx.lineTo(s.w,Math.round(y)+.5)}gridCtx.stroke();gridCtx.restore()}updateGrid=function(){originalUpdateGrid();drawGridAccent()};
+const originalRender=render;render=function(){if(!dirty)return;dirty=false;gl.viewport(0,0,glCanvas.width,glCanvas.height);gl.clearColor(15/255,18/255,23/255,1);gl.clear(gl.COLOR_BUFFER_BIT);drawTerrain();updateGrid();drawRoads();drawPointsAndLabels();mapInfo.textContent=`Zoom ${camera.mpp.toFixed(3)} m/px · клетка ${gridWorldStep.toFixed(3)} м · roads ${roadsCount.toLocaleString()} · points ${allPoints.length.toLocaleString()} · cities ${visibleCityPoints().length.toLocaleString()}`};
+function updateTerrainButton(){const btn=document.getElementById('map2-terrain-toggle');if(btn)btn.textContent=terrainVisible?'Скрыть карту высот':'Показать карту высот'}
+function ensureToolsMenu(){const menu=document.querySelector('[data-menu="tools"]');if(!menu)return;let popup=document.getElementById('toolsPopup');if(!popup){popup=document.createElement('div');popup.id='toolsPopup';popup.className='menuPopup';popup.innerHTML='<button class="menuBtn" id="generateTerrain">Генерировать карту высот</button><button class="menuBtn" id="map2-terrain-toggle">Скрыть карту высот</button>';document.getElementById('topMenu')?.appendChild(popup)}const gen=document.getElementById('generateTerrain');if(gen&&!gen.dataset.bound){gen.dataset.bound='1';gen.addEventListener('click',e=>{e.stopPropagation();popup.classList.remove('open');window.chrome?.webview?.postMessage('map2-generate-terrain')})}const tog=document.getElementById('map2-terrain-toggle');if(tog&&!tog.dataset.bound){tog.dataset.bound='1';tog.addEventListener('click',e=>{e.stopPropagation();window.MapEditor2ToggleTerrain()})}menu.onclick=e=>{e.stopPropagation();popup.classList.toggle('open');viewPopup?.classList.remove('open');updateTerrainButton()};updateTerrainButton()}
+ensureTerrainStatus();updateNameToggle();updateSelectionUi();ensureToolsMenu();loadTerrain();
