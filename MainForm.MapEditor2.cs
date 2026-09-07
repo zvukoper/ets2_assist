@@ -65,6 +65,12 @@ namespace ETS2_Assist_GUI
 
         private static void StyleMainButton(Button button)
         {
+            button.AutoSize = true;
+            button.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            button.MinimumSize = new Size(230, 30);
+            button.Padding = Padding.Empty;
+            button.Margin = new Padding(0, 0, 0, 6);
+            button.TextAlign = ContentAlignment.MiddleCenter;
             button.FlatStyle = FlatStyle.Flat;
             button.UseVisualStyleBackColor = false;
             button.BackColor = Color.FromArgb(60, 60, 60);
@@ -83,10 +89,8 @@ namespace ETS2_Assist_GUI
             {
                 var parent = btnMapEditor.Parent ?? this;
 
-                // The old Map Editor button is at the bottom of the original absolute
-                // layout (topY + 560). Reusing its Location made the new unified grid
-                // start there, leaving the whole top half of the form empty. Use the
-                // original first-button position instead.
+                // Start the unified button grid at the first button, not at the old
+                // absolute position of the Map Editor button.
                 var location = btnStart.Location;
 
                 _mainButtonGrid = new TableLayoutPanel
@@ -130,7 +134,6 @@ namespace ETS2_Assist_GUI
                         StyleMainButton(button);
 
                     control.Dock = DockStyle.Fill;
-                    control.Margin = new Padding(0, 0, 0, 6);
                     _mainButtonGrid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                     _mainButtonGrid.Controls.Add(control, 0, row);
                     _mainButtonGrid.SetColumnSpan(control, 2);
@@ -145,7 +148,6 @@ namespace ETS2_Assist_GUI
 
                     StyleMainButton(btnAr2);
                     btnAr2.Dock = DockStyle.Fill;
-                    btnAr2.Margin = new Padding(0, 0, 0, 6);
                     _mainButtonGrid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                     _mainButtonGrid.Controls.Add(btnAr2, 0, row);
 
@@ -154,8 +156,9 @@ namespace ETS2_Assist_GUI
                         if (chkAr2Grid.Parent != null)
                             chkAr2Grid.Parent.Controls.Remove(chkAr2Grid);
                         chkAr2Grid.AutoSize = true;
+                        chkAr2Grid.Padding = Padding.Empty;
                         chkAr2Grid.Anchor = AnchorStyles.Left;
-                        chkAr2Grid.Margin = new Padding(0, 0, 0, 6);
+                        chkAr2Grid.Margin = new Padding(2, 0, 0, 0);
                         _mainButtonGrid.Controls.Add(chkAr2Grid, 1, row);
                     }
                     row++;
@@ -166,7 +169,6 @@ namespace ETS2_Assist_GUI
                     Name = "btnMapEditor2",
                     Text = "Редактор карты 2",
                     Dock = DockStyle.Fill,
-                    Margin = new Padding(0, 0, 0, 6),
                     TabStop = true
                 };
                 StyleMainButton(_btnMapEditor2);
@@ -177,8 +179,8 @@ namespace ETS2_Assist_GUI
 
                 parent.Controls.SetChildIndex(_mainButtonGrid, 0);
 
-                // The grid has its own AutoSize/scrolling. Do not grow the form based on
-                // its old absolute-layout location: that was the source of the huge gap.
+                // The grid owns its vertical size. Keep scrolling enabled so a small
+                // working area never forces text or the bottom buttons to be clipped.
                 this.AutoScroll = true;
                 this.AutoScrollMinSize = Size.Empty;
                 PerformLayout();
