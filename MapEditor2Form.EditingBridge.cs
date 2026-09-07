@@ -36,6 +36,14 @@ namespace ETS2_Assist_GUI
         {
             var message = e.TryGetWebMessageAsString();
             if (string.IsNullOrWhiteSpace(message)) return;
+
+            // Map Editor 2 uses plain-text handshake/control messages such as
+            // "map2-ready" and "map2-generate-terrain". This bridge handles
+            // only JSON point-operation commands, so never try to parse the
+            // plain-text messages as JObject (that caused the startup popup).
+            var trimmed = message.TrimStart();
+            if (!trimmed.StartsWith("{", StringComparison.Ordinal)) return;
+
             try
             {
                 var cmd = JObject.Parse(message);
