@@ -2,7 +2,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
-using System.Linq;
 using System.Windows.Forms;
 
 namespace ETS2_Assist_GUI
@@ -55,15 +54,8 @@ namespace ETS2_Assist_GUI
                     string path = AppDataPaths.CustomTargetsFile;
                     AppDataPaths.EnsureUserData();
                     JObject root;
-                    if (File.Exists(path))
-                        root = JObject.Parse(File.ReadAllText(path));
-                    else
-                        root = new JObject();
-                    if (root["customTargets"] is not JArray targets)
-                    {
-                        targets = new JArray();
-                        root["customTargets"] = targets;
-                    }
+                    if (File.Exists(path)) root = JObject.Parse(File.ReadAllText(path)); else root = new JObject();
+                    if (root["customTargets"] is not JArray targets) { targets = new JArray(); root["customTargets"] = targets; }
 
                     var saved = new JObject
                     {
@@ -95,12 +87,8 @@ namespace ETS2_Assist_GUI
                         ["enterXp"] = point["EnterXp"]?.Value<int>() ?? 0,
                         ["afterXp"] = point["AfterXp"]?.Value<int>() ?? 0
                     };
-
                     for (int i = targets.Count - 1; i >= 0; i--)
-                    {
-                        if (string.Equals((string?)targets[i]?["gameName"] ?? (string?)targets[i]?["id"], id, StringComparison.Ordinal))
-                            targets.RemoveAt(i);
-                    }
+                        if (string.Equals((string?)targets[i]?["gameName"] ?? (string?)targets[i]?["id"], id, StringComparison.Ordinal)) targets.RemoveAt(i);
                     targets.Add(saved);
                     File.WriteAllText(path, root.ToString(Formatting.Indented));
                     await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2Saved && window.MapEditor2Saved({JsonConvert.SerializeObject(saved.ToString(Formatting.None))});");
@@ -116,8 +104,7 @@ namespace ETS2_Assist_GUI
                     var root = JObject.Parse(File.ReadAllText(path));
                     if (root["customTargets"] is not JArray targets) return;
                     for (int i = targets.Count - 1; i >= 0; i--)
-                        if (string.Equals((string?)targets[i]?["gameName"] ?? (string?)targets[i]?["id"], id, StringComparison.Ordinal))
-                            targets.RemoveAt(i);
+                        if (string.Equals((string?)targets[i]?["gameName"] ?? (string?)targets[i]?["id"], id, StringComparison.Ordinal)) targets.RemoveAt(i);
                     File.WriteAllText(path, root.ToString(Formatting.Indented));
                     await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2Deleted && window.MapEditor2Deleted({JsonConvert.SerializeObject(id)});");
                 }
@@ -128,16 +115,10 @@ namespace ETS2_Assist_GUI
             }
         }
 
-        private static void InstallEditingBridgeStatic()
-        {
-            EnsureMapEditor2EditingBridge();
-        }
-
-        // Static constructor is intentionally in this partial so the bridge is installed
-        // before the first editor receives a save/delete message.
         static MapEditor2Form()
         {
             EnsureMapEditor2EditingBridge();
+            InitializeMapEditor2Hotkeys();
         }
     }
 }
