@@ -9,7 +9,7 @@
       state). They are not treated as build failures; concrete nullable issues in
       smaller files are fixed at source.
     -->
-    <NoWarn>$(NoWarn);CS0219;CS0414;CS0162;CS0169;CS8600;CS8601;CS8602;CS8603;CS8604;CS8620;CS8622;CS8625;CS3002</NoWarn>
+    <NoWarn>$(NoWarn);CS0219;CS0414;CS0162;CS0169;CS8600;CS8601;CS8602;CS8603;CS8604;CS8620;CS8622;CS8625;IL3002</NoWarn>
   </PropertyGroup>
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'ETS2_Assist_GUI'">
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
