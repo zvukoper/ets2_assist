@@ -25,6 +25,7 @@ namespace ETS2_Assist_GUI
         private string TerrainScriptPath => Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "tools", "generate_heightmap.py");
         private string TerrainPngPath => Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "terrain_height.png");
         private string TerrainMetaPath => Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "terrain_height_meta.json");
+        private string TerrainRuntimePatchPath => Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "terrain_runtime_patch.js");
 
         private TerrainSettings LoadTerrainSettings()
         {
@@ -134,8 +135,9 @@ namespace ETS2_Assist_GUI
             html = html.Replace("labelCtx.lineWidth=selected?5:3;labelCtx.strokeStyle=selected?'lime':'black';", "labelCtx.lineWidth=selected?3.5:2;labelCtx.strokeStyle=selected?'lime':'#0a0c0f';");
 
             const marker = "window.chrome?.webview?.postMessage('map2-ready');";
-            var patchPath = Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "terrain_runtime_patch.js");
-            var patch = File.Exists(patchPath) ? File.ReadAllText(patchPath, Encoding.UTF8) : string.Empty;
+            string patch = File.Exists(TerrainRuntimePatchPath)
+                ? File.ReadAllText(TerrainRuntimePatchPath, Encoding.UTF8)
+                : string.Empty;
             return html.Replace(marker, patch + "\n" + marker);
         }
     }
