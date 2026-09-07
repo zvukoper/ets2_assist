@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -44,28 +43,8 @@ namespace ETS2_Assist_GUI
                 "ets2assist-map.local",
                 AppDataPaths.StaticDataDirectory,
                 CoreWebView2HostResourceAccessKind.Allow);
-            _webView.CoreWebView2.AddWebResourceRequestedFilter(
-                "https://ets2assist-map.local/map_editor2/index.html",
-                CoreWebView2WebResourceContext.Document);
-            _webView.CoreWebView2.WebResourceRequested += OnWebResourceRequested;
             _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
             _webView.Source = new Uri("https://ets2assist-map.local/map_editor2/index.html");
-        }
-
-        private void OnWebResourceRequested(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
-        {
-            try
-            {
-                var stream = new MemoryStream();
-                string htmlPath = Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "index.html");
-                string html = PrepareMapEditor2Html(File.ReadAllText(htmlPath));
-                byte[] bytes = Encoding.UTF8.GetBytes(html);
-                stream.Write(bytes, 0, bytes.Length);
-                stream.Position = 0;
-                e.Response = _webView.CoreWebView2.Environment.CreateWebResourceResponse(
-                    stream, 200, "OK", "Content-Type: text/html; charset=utf-8");
-            }
-            catch { }
         }
 
         private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -74,7 +53,6 @@ namespace ETS2_Assist_GUI
             if (string.Equals(message, "map2-ready", StringComparison.Ordinal))
             {
                 _pageReady = true;
-                await InstallDebugGridAsync();
                 await SendStaticPointFilesAsync();
                 await SendTargetsAsync();
                 return;
