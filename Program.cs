@@ -9,6 +9,7 @@ namespace ETS2_Assist_GUI
     {
         private const string InstanceMutexName = "Local\\ETS2_Assist_MainInstance";
         private const string InstanceSignalName = "Local\\ETS2_Assist_MainWindowSignal";
+        internal const string ShutdownSignalName = "Local\\ETS2_Assist_GracefulShutdownSignal";
         private static Mutex? _instanceMutex;
         internal static EventWaitHandle? InstanceSignal { get; private set; }
 
@@ -24,9 +25,27 @@ namespace ETS2_Assist_GUI
             }
         }
 
-        [STAThread]
-        static void Main()
+        internal static void SignalGracefulShutdown()
         {
+            try
+            {
+                using var signal = EventWaitHandle.OpenExisting(ShutdownSignalName);
+                signal.Set();
+            }
+            catch (WaitHandleCannotBeOpenedException)
+            {
+            }
+        }
+
+        [STAThread]
+        static void Main(string[]? args)
+        {
+            if (args != null && Array.Exists(args, a => string.Equals(a, "--shutdown", StringComparison.OrdinalIgnoreCase)))
+            {
+                SignalGracefulShutdown();
+                return;
+            }
+
             _instanceMutex = new Mutex(true, InstanceMutexName, out bool createdNew);
             if (!createdNew)
             {
@@ -35,8 +54,8 @@ namespace ETS2_Assist_GUI
             }
 
             InstanceSignal = new EventWaitHandle(false, EventResetMode.AutoReset, InstanceSignalName);
+            using var shutdownSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShutdownSignalName);
 
-            // Лог запуска
             File.AppendAllText("startup.log", $"{DateTime.Now}: Application started BUILD={BuildInfo.Version}\n");
 
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -58,7 +77,6 @@ namespace ETS2_Assist_GUI
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            // Показываем сплеш-экран с логотипом
             using (var splash = new SplashForm())
             {
                 splash.ShowDialog();
@@ -66,7 +84,29 @@ namespace ETS2_Assist_GUI
 
             try
             {
-                Application.Run(new MainForm());
+                var mainForm = new MainForm();
+                _ = ThreadPool.RegisterWaitForSingleObject(
+                    shutdownSignal,
+                    static (_, state) =>
+                    {
+                        if (state is not Form form || form.IsDisposed)
+                            return;
+                        try
+                        {
+                            if (form.InvokeRequired)
+                                form.BeginInvoke(new Action(Application.Exit));
+                            else
+                                Application.Exit();
+                        }
+                        catch
+                        {
+                        }
+                    },
+                    mainForm,
+                    -1,
+                    executeOnlyOnce: false);
+
+                Application.Run(mainForm);
             }
             catch (Exception ex)
             {
