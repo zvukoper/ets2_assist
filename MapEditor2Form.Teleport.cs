@@ -16,30 +16,10 @@ namespace ETS2_Assist_GUI
         {
             if (_hotkeyFilterInitialized) return;
             _hotkeyFilterInitialized = true;
-            Application.Idle += InstallMapEditor2HotkeyFilter;
-        }
-
-        private static void InstallMapEditor2HotkeyFilter(object? sender, EventArgs e)
-        {
-            bool hasEditor2 = false;
-            foreach (Form form in Application.OpenForms)
-            {
-                if (form is MapEditor2Form editor && !editor.IsDisposed)
-                {
-                    hasEditor2 = true;
-                    break;
-                }
-            }
-
-            if (hasEditor2 && !_hotkeyFilterInstalled)
+            if (!_hotkeyFilterInstalled)
             {
                 Application.AddMessageFilter(_hotkeyFilter);
                 _hotkeyFilterInstalled = true;
-            }
-            else if (!hasEditor2 && _hotkeyFilterInstalled)
-            {
-                Application.RemoveMessageFilter(_hotkeyFilter);
-                _hotkeyFilterInstalled = false;
             }
         }
 
