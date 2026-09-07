@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>ETS2 Map Editor 2</title></head>
+<body>
+<script>
+(async()=>{
+  try{
+    const base=await fetch('index_base.html?ts='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('index_base.html HTTP '+r.status);return r.text()});
+    const patch=await fetch('terrain_runtime_patch.js?ts='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('terrain_runtime_patch.js HTTP '+r.status);return r.text()});
+    let html=base;
+    html=html.replace('<canvas id="grid"></canvas>','<canvas id="terrain"></canvas><canvas id="grid"></canvas>');
+    html=html.replace('#grid{z-index:0}#gl{z-index:1;cursor:default}#labels{z-index:2;pointer-events:none}','#terrain{z-index:0;pointer-events:none}#grid{z-index:1}#gl{z-index:2;cursor:default}#labels{z-index:3;pointer-events:none}');
+    html=html.replace('<div class="menuItem" data-menu="service">Сервис</div>','<div class="menuItem" data-menu="service">Сервис</div><div class="menuItem" data-menu="tools">Инструменты</div>');
+    html=html.replace('<div id="viewPopup" class="menuPopup"><button class="menuBtn" id="fontPlus">Шрифт+</button><button class="menuBtn" id="fontMinus">Шрифт-</button></div>','<div id="viewPopup" class="menuPopup"><button class="menuBtn" id="fontPlus">Шрифт+</button><button class="menuBtn" id="fontMinus">Шрифт-</button></div><div id="toolsPopup" class="menuPopup" style="left:310px"><button class="menuBtn" id="generateTerrain">Генерировать карту высот</button></div>');
+    const marker="window.chrome?.webview?.postMessage('map2-ready');";
+    if(html.includes(marker)) html=html.replace(marker,patch+'\n'+marker);
+    document.open();document.write(html);document.close();
+  }catch(err){document.body.textContent='Ошибка загрузки редактора: '+err.message;console.error(err)}
+})();
+</script>
+</body>
+</html>
