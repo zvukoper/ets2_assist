@@ -12,11 +12,6 @@ using System.Windows.Forms;
 
 namespace ETS2_Assist_GUI
 {
-    /// <summary>
-    /// Completely isolated map renderer prototype.
-    /// The browser canvas owns pan/zoom/render input; WinForms hosts WebView2
-    /// and supplies the current target snapshot and static point file manifest.
-    /// </summary>
     internal sealed partial class MapEditor2Form : Form
     {
         private readonly WebView2 _webView = new() { Dock = DockStyle.Fill };
@@ -34,27 +29,23 @@ namespace ETS2_Assist_GUI
             ControlBox = true;
             BackColor = Color.FromArgb(15, 18, 23);
             Controls.Add(_webView);
-
             Load += async (_, _) => await InitializeAsync();
-            FormClosed += (_, _) =>
-            {
-                try { _webView.Dispose(); } catch { }
-            };
+            FormClosed += (_, _) => { try { _webView.Dispose(); } catch { } };
         }
 
         private async Task InitializeAsync()
         {
             AppDataPaths.EnsureUserData();
             _targetSnapshotJson = BuildTargetSnapshotJson();
-
             await _webView.EnsureCoreWebView2Async();
             _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "ets2assist-map.local",
                 AppDataPaths.StaticDataDirectory,
                 CoreWebView2HostResourceAccessKind.Allow);
-
             _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
-            _webView.Source = new Uri("https://ets2assist-map.local/map_editor2/index.html");
+            string htmlPath = Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "index.html");
+            string html = File.ReadAllText(htmlPath);
+            _webView.NavigateToString(PrepareMapEditor2Html(html));
         }
 
         private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -66,6 +57,12 @@ namespace ETS2_Assist_GUI
                 await InstallDebugGridAsync();
                 await SendStaticPointFilesAsync();
                 await SendTargetsAsync();
+                return;
+            }
+
+            if (string.Equals(message, "map2-generate-terrain", StringComparison.Ordinal))
+            {
+                await GenerateTerrainAsync();
                 return;
             }
 
@@ -87,22 +84,16 @@ namespace ETS2_Assist_GUI
                                 $"window.MapEditor2ShowNewPoint({x.ToString(System.Globalization.CultureInfo.InvariantCulture)},{y.ToString(System.Globalization.CultureInfo.InvariantCulture)},{z.ToString(System.Globalization.CultureInfo.InvariantCulture)});");
                     }
                 }
-                catch
-                {
-                    // Ignore malformed browser commands; the map remains interactive.
-                }
+                catch { }
             }
         }
 
         private async Task SendStaticPointFilesAsync()
         {
-            if (!_pageReady || _webView.CoreWebView2 == null)
-                return;
-
+            if (!_pageReady || _webView.CoreWebView2 == null) return;
             var files = BuildStaticPointFileList();
             var json = JsonConvert.SerializeObject(files, Formatting.None);
-            await _webView.CoreWebView2.ExecuteScriptAsync(
-                $"window.MapEditor2SetStaticPointFiles({json});");
+            await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2SetStaticPointFiles({json});");
         }
 
         private IReadOnlyList<string> BuildStaticPointFileList()
@@ -110,29 +101,20 @@ namespace ETS2_Assist_GUI
             try
             {
                 string root = Path.Combine(AppDataPaths.StaticDataDirectory, "editor_static_data");
-                if (!Directory.Exists(root))
-                    return Array.Empty<string>();
-
+                if (!Directory.Exists(root)) return Array.Empty<string>();
                 return Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories)
                     .Where(path => !string.Equals(Path.GetFileName(path), "meta.json", StringComparison.OrdinalIgnoreCase))
                     .Select(path => Path.GetRelativePath(AppDataPaths.StaticDataDirectory, path).Replace(Path.DirectorySeparatorChar, '/'))
-                    .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
+                    .OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
             }
-            catch
-            {
-                return Array.Empty<string>();
-            }
+            catch { return Array.Empty<string>(); }
         }
 
         private async Task SendTargetsAsync()
         {
-            if (!_pageReady || _webView.CoreWebView2 == null)
-                return;
-
+            if (!_pageReady || _webView.CoreWebView2 == null) return;
             var escaped = JsonConvert.ToString(_targetSnapshotJson);
-            await _webView.CoreWebView2.ExecuteScriptAsync(
-                $"window.MapEditor2SetTargets(JSON.parse({escaped}));");
+            await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2SetTargets(JSON.parse({escaped}));");
         }
 
         private string BuildTargetSnapshotJson()
@@ -140,48 +122,32 @@ namespace ETS2_Assist_GUI
             try
             {
                 var path = AppDataPaths.CustomTargetsFile;
-                if (!File.Exists(path))
-                    return "[]";
-
+                if (!File.Exists(path)) return "[]";
                 var root = JToken.Parse(File.ReadAllText(path));
                 var array = root is JArray ja ? ja : root["customTargets"] as JArray;
-                if (array == null)
-                    return "[]";
-
+                if (array == null) return "[]";
                 var result = new List<object>();
                 foreach (var t in array)
                 {
-                    if (t.Type != JTokenType.Object)
-                        continue;
-
+                    if (t.Type != JTokenType.Object) continue;
                     if (!double.TryParse((string?)t["x"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x))
                         x = t["x"]?.Value<double?>() ?? double.NaN;
                     if (!double.TryParse((string?)t["z"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var z))
                         z = t["z"]?.Value<double?>() ?? double.NaN;
-                    if (double.IsNaN(x) || double.IsNaN(z))
-                        continue;
-
+                    if (double.IsNaN(x) || double.IsNaN(z)) continue;
                     var id = (string?)t["gameName"] ?? (string?)t["id"] ?? "";
                     var name = (string?)t["realName"] ?? (string?)t["name"] ?? id;
                     var color = (string?)t["color"] ?? "default";
                     result.Add(new { id, name, x, z, color });
                 }
-
                 return JsonConvert.SerializeObject(result, Formatting.None);
             }
-            catch
-            {
-                return "[]";
-            }
+            catch { return "[]"; }
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if (keyData == Keys.Escape)
-            {
-                Close();
-                return true;
-            }
+            if (keyData == Keys.Escape) { Close(); return true; }
             return base.ProcessCmdKey(ref msg, keyData);
         }
     }
