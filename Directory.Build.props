@@ -3,4 +3,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'ETS2_Assist_GUI'">
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
+  </ItemGroup>
 </Project>
