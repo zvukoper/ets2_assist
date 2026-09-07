@@ -96,6 +96,9 @@ namespace ETS2_Assist_GUI
         private async Task ApplyMapEditor2UiOverridesAsync()
         {
             if (_webView.CoreWebView2 == null) return;
+            // Keep this override layer limited to layout behavior. Point-label size and
+            // typography are defined by index.html so map labels and sidebar categories
+            // stay in sync; do not globally rewrite Canvas fonts here.
             const string script = @"
 (() => {
     try {
@@ -107,31 +110,6 @@ namespace ETS2_Assist_GUI
             style.id = styleId;
             style.textContent = '#rightBody{overflow-y:auto;overflow-x:hidden;min-height:0;scrollbar-width:auto;}';
             document.head.appendChild(style);
-        }
-        if (!window.__ets2AssistPointFontPatchInstalled) {
-            const originalFillText = CanvasRenderingContext2D.prototype.fillText;
-            const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText;
-            const normalizeFont = font => {
-                const match = String(font || '').match(/^(.*?)(\\d+(?:\\.\\d+)?)px(.*)$/i);
-                if (!match) return font;
-                const px = Number(match[2]);
-                if (!Number.isFinite(px) || px < 10 || px > 40) return font;
-                const normalized = px * 11 / 13;
-                return match[1] + normalized.toFixed(3) + 'px' + match[3];
-            };
-            CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth) {
-                const old = this.font, next = normalizeFont(old);
-                if (next !== old) this.font = next;
-                try { return maxWidth === undefined ? originalFillText.call(this,text,x,y) : originalFillText.call(this,text,x,y,maxWidth); }
-                finally { if (next !== old) this.font = old; }
-            };
-            CanvasRenderingContext2D.prototype.strokeText = function(text, x, y, maxWidth) {
-                const old = this.font, next = normalizeFont(old);
-                if (next !== old) this.font = next;
-                try { return maxWidth === undefined ? originalStrokeText.call(this,text,x,y) : originalStrokeText.call(this,text,x,y,maxWidth); }
-                finally { if (next !== old) this.font = old; }
-            };
-            window.__ets2AssistPointFontPatchInstalled = true;
         }
     } catch (err) { console.warn('Map Editor 2 UI override failed', err); }
 })();";
