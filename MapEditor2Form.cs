@@ -4,6 +4,7 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -83,6 +84,11 @@ namespace ETS2_Assist_GUI
                 await GenerateTerrainAsync();
                 return;
             }
+            if (string.Equals(message, "map2-open-terrain-file", StringComparison.Ordinal))
+            {
+                OpenTerrainFileInExplorer();
+                return;
+            }
             if (!string.IsNullOrWhiteSpace(message))
             {
                 try
@@ -102,6 +108,38 @@ namespace ETS2_Assist_GUI
                     }
                 }
                 catch { }
+            }
+        }
+
+        private void OpenTerrainFileInExplorer()
+        {
+            try
+            {
+                string path = TerrainPngPath;
+                string directory = Path.GetDirectoryName(path) ?? AppDataPaths.StaticDataDirectory;
+                if (File.Exists(path))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = "/select,\"" + path + "\"",
+                        UseShellExecute = true
+                    });
+                }
+                else
+                {
+                    Directory.CreateDirectory(directory);
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = "\"" + directory + "\"",
+                        UseShellExecute = true
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Не удалось открыть расположение карты высот.\n\n" + ex.Message, "Карта высот", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
