@@ -6,10 +6,10 @@ if(!terrainCanvas0){
 const terrainCanvas=document.getElementById('terrain'),terrainCtx=terrainCanvas?.getContext('2d');
 let terrainImage=null,terrainMeta=null,terrainVisible=true,terrainStatusElement=null;
 const terrainAssetLabel='data\\map_editor2\\terrain_height.png';
-if(terrainCanvas){terrainCanvas.style.zIndex='0';terrainCanvas.style.pointerEvents='none';}
-if(gridCanvas)gridCanvas.style.zIndex='1';
-if(glCanvas)glCanvas.style.zIndex='2';
-if(labelCanvas)labelCanvas.style.zIndex='3';
+if(terrainCanvas){terrainCanvas.style.zIndex='2';terrainCanvas.style.pointerEvents='none';}
+if(gridCanvas)gridCanvas.style.zIndex='3';
+if(glCanvas)glCanvas.style.zIndex='1';
+if(labelCanvas)labelCanvas.style.zIndex='4';
 function ensureTerrainStatus(){
   if(terrainStatusElement||!status)return;
   terrainStatusElement=document.createElement('span');
@@ -70,7 +70,7 @@ function drawTerrain(){
   const ex=s.w*.5+(mx1-camera.x)/camera.mpp;
   const ey=s.h*.5+(mz1-camera.z)/camera.mpp;
   terrainCtx.save();
-  terrainCtx.globalAlpha=.72;
+  terrainCtx.globalAlpha=.48;
   terrainCtx.filter='brightness(2.0) contrast(1.08) saturate(1.25)';
   terrainCtx.imageSmoothingEnabled=true;
   terrainCtx.drawImage(terrainImage,sx,sy,ex-sx,ey-sy);
@@ -113,7 +113,7 @@ function drawPointFill(p,q,radius){
   if(selected)drawSelectionRing(q,radius);
   labelCtx.save();
   labelCtx.shadowColor='rgba(0,0,0,.82)';
-  labelCtx.shadowBlur=2.1;
+  labelCtx.shadowBlur=4;
   labelCtx.shadowOffsetX=0;
   labelCtx.shadowOffsetY=0;
   labelCtx.beginPath();
@@ -168,16 +168,13 @@ drawPointsAndLabels=function(){
   const normalSelected=normal.filter(selectedPointFor);
   const normalPlain=normal.filter(p=>!selectedPointFor(p));
 
-  // 1. Every visible ordinary point body.
   for(const p of normalPlain)drawNormalPoint(p);
-  // 2. Selected ordinary points stay above ordinary point bodies.
   for(const p of normalSelected)drawNormalPoint(p);
-  // 3. Ordinary labels sit above ordinary points.
   for(const p of normalPlain){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-60||q.y>s.h+40)continue;drawPointLabel(p,q,4.8,{city:false,selected:false})}
   for(const p of normalSelected){const q=worldToScreen(p);if(q.x<-100||q.x>s.w+100||q.y<-60||q.y>s.h+40)continue;drawPointLabel(p,q,6.4,{city:false,selected:true})}
-  // 4. City point bodies are above ALL other point bodies and ordinary labels.
+  // City point bodies are above all ordinary points and ordinary labels.
   for(const p of cities)drawCityPoint(p);
-  // 5. City names are the final layer and therefore always cover city points.
+  // City names are the final layer and are above all city points.
   for(const p of cities){const q=worldToScreen(p);if(q.x<-130||q.x>s.w+130||q.y<-80||q.y>s.h+50)continue;drawPointLabel(p,q,selectedPointFor(p)?7.2:5.6,{city:true,selected:selectedPointFor(p)})}
 }
 
