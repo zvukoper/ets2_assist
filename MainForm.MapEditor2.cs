@@ -9,7 +9,6 @@ namespace ETS2_Assist_GUI
     {
         private TableLayoutPanel? _mainButtonGrid;
         private Button? _btnMapEditor2;
-        private Thread? _mapEditor2BootstrapThread;
 
         static MainForm()
         {
@@ -37,7 +36,7 @@ namespace ETS2_Assist_GUI
                         continue;
                     }
 
-                    if (form.IsDisposed || form.Disposing || form.Disposed)
+                    if (form.IsDisposed || form.Disposing)
                         return;
 
                     if (!form.IsHandleCreated || form.btnMapEditor == null || form.btnMapEditor.IsDisposed)
@@ -49,13 +48,13 @@ namespace ETS2_Assist_GUI
                     form.BeginInvoke(new Action(form.AddMapEditor2Button));
                     return;
                 }
-                catch (InvalidOperationException)
-                {
-                    Thread.Sleep(40);
-                }
                 catch (ObjectDisposedException)
                 {
                     return;
+                }
+                catch (InvalidOperationException)
+                {
+                    Thread.Sleep(40);
                 }
                 catch
                 {
@@ -156,8 +155,6 @@ namespace ETS2_Assist_GUI
 
                 parent.Controls.SetChildIndex(_mainButtonGrid, 0);
 
-                // The grid itself never overlaps adjacent controls. Increase the form
-                // height enough for all rows; AutoScroll remains the fallback on short screens.
                 int requiredHeight = _mainButtonGrid.GetPreferredSize(new Size(230, 0)).Height + location.Y + 16;
                 this.AutoScroll = true;
                 this.MinimumSize = new Size(MinimumSize.Width, Math.Max(MinimumSize.Height, Math.Min(requiredHeight, Screen.FromControl(this).WorkingArea.Height)));
