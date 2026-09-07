@@ -134,7 +134,7 @@ namespace ETS2_Assist_GUI
             html = html.Replace("<div id=\"viewPopup\" class=\"menuPopup\"><button class=\"menuBtn\" id=\"fontPlus\">Шрифт+</button><button class=\"menuBtn\" id=\"fontMinus\">Шрифт-</button></div>", "<div id=\"viewPopup\" class=\"menuPopup\"><button class=\"menuBtn\" id=\"fontPlus\">Шрифт+</button><button class=\"menuBtn\" id=\"fontMinus\">Шрифт-</button></div><div id=\"toolsPopup\" class=\"menuPopup\" style=\"left:310px\"><button class=\"menuBtn\" id=\"generateTerrain\">Генерировать карту высот</button></div>");
             html = html.Replace("labelCtx.lineWidth=selected?5:3;labelCtx.strokeStyle=selected?'lime':'black';", "labelCtx.lineWidth=selected?3.5:2;labelCtx.strokeStyle=selected?'lime':'#0a0c0f';");
 
-            const marker = "window.chrome?.webview?.postMessage('map2-ready');";
+            const string marker = "window.chrome?.webview?.postMessage('map2-ready');";
             string patch = File.Exists(TerrainRuntimePatchPath)
                 ? File.ReadAllText(TerrainRuntimePatchPath, Encoding.UTF8)
                 : string.Empty;
