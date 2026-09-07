@@ -96,9 +96,10 @@ namespace ETS2_Assist_GUI
         private async Task ApplyMapEditor2UiOverridesAsync()
         {
             if (_webView.CoreWebView2 == null) return;
-            // Keep this override layer limited to layout behavior. Point-label size and
-            // typography are defined by index.html so map labels and sidebar categories
-            // stay in sync; do not globally rewrite Canvas fonts here.
+            // Точная типографика подписей карты. Подписи рисуются в Canvas, поэтому CSS
+            // не меняет их font. Перехватываем только canvas #labels и приводим размер к
+            // базовому размеру названий категорий в сайдбаре: 11px * --font-scale.
+            // Города делаем на 20% крупнее. Обычные точки — medium, выделенные — bold.
             const string script = @"
 (() => {
     try {
@@ -111,7 +112,70 @@ namespace ETS2_Assist_GUI
             style.textContent = '#rightBody{overflow-y:auto;overflow-x:hidden;min-height:0;scrollbar-width:auto;}';
             document.head.appendChild(style);
         }
-    } catch (err) { console.warn('Map Editor 2 UI override failed', err); }
+
+        if (!window.__ets2AssistPointFontPatchInstalled) {
+            const originalFillText = CanvasRenderingContext2D.prototype.fillText;
+            const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText;
+
+            const getScale = () => {
+                const n = Number.parseFloat(
+                    getComputedStyle(document.documentElement).getPropertyValue('--font-scale')
+                );
+                return Number.isFinite(n) ? n : 1.15;
+            };
+
+            const normalizeLabelFont = (ctx) => {
+                if (!ctx || !ctx.canvas || ctx.canvas.id !== 'labels') return null;
+                const current = String(ctx.font || '');
+                const match = current.match(/^\\s*(\\d+(?:\\.\\d+)?)px\\s+(.+)$/i);
+                if (!match) return null;
+                const oldPx = Number.parseFloat(match[1]);
+                if (!Number.isFinite(oldPx)) return null;
+
+                const scale = getScale();
+                const basePx = 11 * scale;
+                const oldNormalPx = 13 * scale;
+                // drawLabel() currently uses 13px for normal/selected labels and
+                // 13*1.2px for city labels. The larger value identifies a city.
+                const isCity = oldPx > oldNormalPx * 1.08;
+                const weight = /700/.test(current) ? 700 : 500;
+                const targetPx = basePx * (isCity ? 1.20 : 1.0);
+                return `${weight} ${targetPx.toFixed(3)}px Roboto, Arial, sans-serif`;
+            };
+
+            CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth) {
+                const old = this.font;
+                const next = normalizeLabelFont(this);
+                if (next && next !== old) this.font = next;
+                try {
+                    return maxWidth === undefined
+                        ? originalFillText.call(this, text, x, y)
+                        : originalFillText.call(this, text, x, y, maxWidth);
+                }
+                finally {
+                    if (next && next !== old) this.font = old;
+                }
+            };
+
+            CanvasRenderingContext2D.prototype.strokeText = function(text, x, y, maxWidth) {
+                const old = this.font;
+                const next = normalizeLabelFont(this);
+                if (next && next !== old) this.font = next;
+                try {
+                    return maxWidth === undefined
+                        ? originalStrokeText.call(this, text, x, y)
+                        : originalStrokeText.call(this, text, x, y, maxWidth);
+                }
+                finally {
+                    if (next && next !== old) this.font = old;
+                }
+            };
+
+            window.__ets2AssistPointFontPatchInstalled = true;
+        }
+    } catch (err) {
+        console.warn('Map Editor 2 point font override failed', err);
+    }
 })();";
             try { await _webView.CoreWebView2.ExecuteScriptAsync(script); } catch { }
         }
