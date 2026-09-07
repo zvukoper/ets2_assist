@@ -6,79 +6,64 @@ namespace ETS2_Assist_GUI
     // Режим отображения поля в панели редактирования точки.
     public enum PointFieldMode
     {
-        Editable,  // обычное редактируемое поле
-        ReadOnly,  // показываем, но не даём менять (устаревшее, но нужное для совместимости)
-        Hidden     // не показываем вовсе (OFF — окончательно устаревшее)
+        Editable,
+        ReadOnly,
+        Hidden
     }
 
-    // Описание одного редактируемого поля точки. Используется панелью
-    // редактирования для генерации контролов в нужном порядке/группах.
+    // Описание одного редактируемого поля точки.
     public sealed class PointField
     {
-        public string Key;            // имя свойства в PointData
-        public string Label;         // подпись на русском
-        public bool Required;        // обязательное (блокирует сохранение, если пусто)
+        public string Key = "";
+        public string Label = "";
+        public bool Required;
         public PointFieldMode Mode = PointFieldMode.Editable;
         public string Group = "Основное";
-        public Type ValueType = typeof(string); // string / double / int / bool
+        public Type ValueType = typeof(string);
     }
 
     // Единая модель данных точки (цели/пользовательской точки) на карте.
-    // Все свойства сохраняются в overrides (формат совместим с custom_targets.json,
-    // плюс расширения: category, enabled, ...). НИКОГДА не удаляй свойства —
-    // для обратной совместимости; устаревшие помечай Mode=Hidden/ReadOnly в Fields.
     public sealed class PointData
     {
-        // --- Идентификация ---
-        public string GameName = "";      // системный id (обязательно)
-        public string RealName = "";      // отображаемое имя (обязательно)
+        public string GameName = "";
+        public string RealName = "";
         public string Category = "Пользовательское";
-        public bool Enabled = true;       // статус Включена/Отключена
-        public string Description = "";   // многострочное описание (textarea)
+        public bool Enabled = true;
+        public string Description = "";
 
-        // --- Координаты (обязательны) ---
         public double X, Y, Z;
 
-        // --- Внешний вид ---
-        public string Color = "default"; // #rrggbb или named
+        public string Color = "default";
         public string Icon = "default";
-        public float LabelStroke = 1f;    // толщина чёрной обводки названия, px (0 = без обводки)
+        public float LabelStroke = 1f;
 
-        // --- Триггер / зона ---
-        public double TriggerRadius = 200;   // радиус триггера, м
-        public int CooldownMinutes = 0;       // кулдаун, мин (0 = нет)
-        public int Hidden = 0;                // 0/1 — невидима на карте, но триггер активен
-        public int DeleteOnComplete = 0;      // 0 оставить / 1 удалить / 2 пересоздать
+        public double TriggerRadius = 200;
+        public int CooldownMinutes = 0;
+        public int Hidden = 0;
+        public int DeleteOnComplete = 0;
 
-        // --- Диалог / действие ---
-        public string DialogId = "";          // enterDialog
+        public string DialogId = "";
         public string Action = "";
         public string Caption = "";
-        public int EnterReward = 0;           // награда при входе, р
-        public int AfterReward = 0;           // награда после, р
+        public int EnterReward = 0;
+        public int AfterReward = 0;
         public int EnterXp = 0;
         public int AfterXp = 0;
 
-        // --- Служебные (не редактируются в панели) ---
         public bool IsRandom = false;
         public string QuestType = "";
 
-        // --- Только в редакторе (НЕ сохраняются в overrides) ---
-        public bool IsNew;        // создана в редакторе, ещё не записана в файл
-        public bool IsOverride;   // переопределяет статическую точку
-        public string SourceFile = ""; // файл overrides, которому принадлежит
-        public DateTime CooldownUntil = DateTime.MinValue; // для отображения кулдауна в редакторе
+        public bool IsNew;
+        public bool IsOverride;
+        public string SourceFile = "";
+        public DateTime CooldownUntil = DateTime.MinValue;
 
-        // --- Тип точки (только в редакторе, НЕ сохраняется в overrides) ---
-        public bool IsCity;   // точка — город (из localized_cities)
-        public bool IsPoi;    // точка — POI (из оверлеев)
-        public bool IsSdo;    // точка — SDO (Static Data Objects, выгрузка редактора игры)
+        public bool IsCity;
+        public bool IsPoi;
+        public bool IsSdo;
 
-        // Поверхностная копия (все поля — значимые/строковые) для отмены/сравнения в редакторе.
         public PointData Clone() => (PointData)MemberwiseClone();
 
-        // Список полей для панели редактирования (порядок = порядок в UI).
-        // Устаревшие свойства помечаем Mode=Hidden/ReadOnly, но НЕ удаляем.
         public static readonly PointField[] Fields = new[]
         {
             new PointField { Key="GameName", Label="Системное имя (id)", Required=true, Group="Основное", ValueType=typeof(string) },
