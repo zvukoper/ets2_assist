@@ -8,22 +8,7 @@ namespace ETS2_Assist_GUI
 {
     internal sealed partial class MapEditor2Form
     {
-        private static bool _editingBridgeHookInstalled;
         private bool _mapEditor2EditingHooked;
-
-        private static void EnsureMapEditor2EditingBridge()
-        {
-            if (_editingBridgeHookInstalled) return;
-            _editingBridgeHookInstalled = true;
-            Application.Idle += (_, _) =>
-            {
-                foreach (Form form in Application.OpenForms)
-                {
-                    if (form is MapEditor2Form editor && !editor.IsDisposed)
-                        editor.AttachEditingBridge();
-                }
-            };
-        }
 
         private void AttachEditingBridge()
         {
@@ -36,11 +21,6 @@ namespace ETS2_Assist_GUI
         {
             var message = e.TryGetWebMessageAsString();
             if (string.IsNullOrWhiteSpace(message)) return;
-
-            // Map Editor 2 uses plain-text handshake/control messages such as
-            // "map2-ready" and "map2-generate-terrain". This bridge handles
-            // only JSON point-operation commands, so never try to parse the
-            // plain-text messages as JObject (that caused the startup popup).
             var trimmed = message.TrimStart();
             if (!trimmed.StartsWith("{", StringComparison.Ordinal)) return;
 
@@ -99,7 +79,8 @@ namespace ETS2_Assist_GUI
                         if (string.Equals((string?)targets[i]?["gameName"] ?? (string?)targets[i]?["id"], id, StringComparison.Ordinal)) targets.RemoveAt(i);
                     targets.Add(saved);
                     File.WriteAllText(path, root.ToString(Formatting.Indented));
-                    await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2Saved && window.MapEditor2Saved({JsonConvert.SerializeObject(saved.ToString(Formatting.None))});");
+                    if (_webView.CoreWebView2 != null)
+                        await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2Saved && window.MapEditor2Saved({JsonConvert.SerializeObject(saved.ToString(Formatting.None))});");
                     return;
                 }
 
@@ -114,7 +95,8 @@ namespace ETS2_Assist_GUI
                     for (int i = targets.Count - 1; i >= 0; i--)
                         if (string.Equals((string?)targets[i]?["gameName"] ?? (string?)targets[i]?["id"], id, StringComparison.Ordinal)) targets.RemoveAt(i);
                     File.WriteAllText(path, root.ToString(Formatting.Indented));
-                    await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2Deleted && window.MapEditor2Deleted({JsonConvert.SerializeObject(id)});");
+                    if (_webView.CoreWebView2 != null)
+                        await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2Deleted && window.MapEditor2Deleted({JsonConvert.SerializeObject(id)});");
                 }
             }
             catch (Exception ex)
@@ -125,7 +107,6 @@ namespace ETS2_Assist_GUI
 
         static MapEditor2Form()
         {
-            EnsureMapEditor2EditingBridge();
             InitializeMapEditor2Hotkeys();
         }
     }
