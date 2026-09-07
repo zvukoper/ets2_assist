@@ -1498,7 +1498,7 @@ namespace ETS2_Assist_GUI.AR
                     {
                         try
                         {
-                            using var nameFont = new Font("Segoe UI", 12.5f, FontStyle.Bold);
+                            using var nameFont = new Font("Roboto", 12.5f, FontStyle.Regular);
                             using var gameFont = new Font("Segoe UI", 9.5f, FontStyle.Regular);
                             EnsureText(ref _txt1,
                                 (string.IsNullOrEmpty(tg.RealName) ? tg.GameName : tg.RealName) +
