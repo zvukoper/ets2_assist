@@ -96,10 +96,10 @@ namespace ETS2_Assist_GUI
         private async Task ApplyMapEditor2UiOverridesAsync()
         {
             if (_webView.CoreWebView2 == null) return;
-            // Точная типографика подписей карты. Подписи рисуются в Canvas, поэтому CSS
-            // не меняет их font. Перехватываем только canvas #labels и приводим размер к
-            // базовому размеру названий категорий в сайдбаре: 11px * --font-scale.
-            // Города делаем на 20% крупнее. Обычные точки — medium, выделенные — bold.
+            // Базовая типографика Map Editor 2: ВСЕ названия точек и категории —
+            // одинаковый Roboto Regular. Города на карте — Roboto SemiBold и +20%.
+            // Canvas-надписи нельзя надёжно переопределить обычным CSS, поэтому здесь
+            // нормализуем и DOM, и canvas #labels.
             const string script = @"
 (() => {
     try {
@@ -109,7 +109,14 @@ namespace ETS2_Assist_GUI
         if (!document.getElementById(styleId)) {
             const style = document.createElement('style');
             style.id = styleId;
-            style.textContent = '#rightBody{overflow-y:auto;overflow-x:hidden;min-height:0;scrollbar-width:auto;}';
+            style.textContent = `
+.categoryHead,
+.pointButton,
+.pointName {
+    font-family: Roboto, Arial, sans-serif !important;
+    font-weight: 400 !important;
+}
+`;
             document.head.appendChild(style);
         }
 
@@ -135,12 +142,12 @@ namespace ETS2_Assist_GUI
                 const scale = getScale();
                 const basePx = 11 * scale;
                 const oldNormalPx = 13 * scale;
-                // drawLabel() currently uses 13px for normal/selected labels and
-                // 13*1.2px for city labels. The larger value identifies a city.
+                // drawLabel() uses 13px for normal/selected labels and 13*1.2px for cities.
+                // Any larger label is a city label.
                 const isCity = oldPx > oldNormalPx * 1.08;
-                const weight = /700/.test(current) ? 700 : 500;
+                const targetWeight = isCity ? 600 : 400;
                 const targetPx = basePx * (isCity ? 1.20 : 1.0);
-                return `${weight} ${targetPx.toFixed(3)}px Roboto, Arial, sans-serif`;
+                return `${targetWeight} ${targetPx.toFixed(3)}px Roboto, Arial, sans-serif`;
             };
 
             CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth) {
