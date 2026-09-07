@@ -1,44 +1,12 @@
 {
   "citiesList": [
     {
-      "gameName": "abatskoe",
-      "realName": "Абатское",
-      "country": "russia",
-      "x": "1436.4",
-      "y": "34.6806",
-      "z": "34400.4"
-    },
-    {
       "gameName": "akyar",
       "realName": "Акъяр",
       "country": "russia",
       "x": "159839",
       "y": "165.551",
       "z": "-49935"
-    },
-    {
-      "gameName": "argayash",
-      "realName": "Аргаяш",
-      "country": "russia",
-      "x": "1436.56",
-      "y": "34.6684",
-      "z": "34400.6"
-    },
-    {
-      "gameName": "arsk",
-      "realName": "Арск",
-      "country": "russia",
-      "x": "1436.57",
-      "y": "34.6661",
-      "z": "34400.6"
-    },
-    {
-      "gameName": "asbest",
-      "realName": "Асбест",
-      "country": "russia",
-      "x": "1436.4",
-      "y": "34.6807",
-      "z": "34400.4"
     },
     {
       "gameName": "abatskoe",
@@ -47,14 +15,6 @@
       "x": "175179",
       "y": "158.387",
       "z": "-94620.9"
-    },
-    {
-      "gameName": "akyar",
-      "realName": "Акъяр",
-      "country": "russia",
-      "x": "159839",
-      "y": "165.551",
-      "z": "-49935"
     },
     {
       "gameName": "argayash",
