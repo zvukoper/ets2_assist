@@ -17,7 +17,7 @@ namespace ETS2_Assist_GUI
     /// The browser canvas owns all pan/zoom/render input; WinForms only hosts WebView2
     /// and supplies the current target snapshot.
     /// </summary>
-    internal sealed class MapEditor2Form : Form
+    internal sealed partial class MapEditor2Form : Form
     {
         private readonly WebView2 _webView = new() { Dock = DockStyle.Fill };
         private bool _pageReady;
@@ -28,7 +28,10 @@ namespace ETS2_Assist_GUI
             Text = "Редактор карты 2";
             StartPosition = FormStartPosition.CenterScreen;
             WindowState = FormWindowState.Maximized;
-            FormBorderStyle = FormBorderStyle.None;
+            FormBorderStyle = FormBorderStyle.Sizable;
+            MaximizeBox = true;
+            MinimizeBox = true;
+            ControlBox = true;
             BackColor = Color.FromArgb(15, 18, 23);
             Controls.Add(_webView);
 
@@ -60,6 +63,7 @@ namespace ETS2_Assist_GUI
                 return;
 
             _pageReady = true;
+            await InstallDebugGridAsync();
             await SendTargetsAsync();
         }
 
