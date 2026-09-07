@@ -13,8 +13,8 @@ namespace ETS2_Assist_GUI
     {
         private sealed class TerrainSettings
         {
-            public string LowColor { get; set; } = "#0f1c06";
-            public string HighColor { get; set; } = "#2d4a18";
+            public string LowColor { get; set; } = "#15260a";
+            public string HighColor { get; set; } = "#2f531c";
             public int Width { get; set; } = 4096;
             public int Neighbors { get; set; } = 12;
             public double Power { get; set; } = 2.0;
@@ -34,7 +34,14 @@ namespace ETS2_Assist_GUI
                 if (File.Exists(TerrainSettingsPath))
                 {
                     var settings = JsonConvert.DeserializeObject<TerrainSettings>(File.ReadAllText(TerrainSettingsPath));
-                    if (settings != null) return settings;
+                    if (settings != null)
+                    {
+                        if (string.Equals(settings.LowColor, "#0f1c06", StringComparison.OrdinalIgnoreCase))
+                            settings.LowColor = "#15260a";
+                        if (string.Equals(settings.HighColor, "#2d4a18", StringComparison.OrdinalIgnoreCase))
+                            settings.HighColor = "#2f531c";
+                        return settings;
+                    }
                 }
             }
             catch { }
@@ -129,7 +136,7 @@ namespace ETS2_Assist_GUI
         private string PrepareMapEditor2Html(string html)
         {
             html = html.Replace("<canvas id=\"grid\"></canvas>", "<canvas id=\"terrain\"></canvas><canvas id=\"grid\"></canvas>");
-            html = html.Replace("#grid{z-index:0}#gl{z-index:1;cursor:default}#labels{z-index:2;pointer-events:none}", "#terrain{z-index:0;pointer-events:none}#grid{z-index:1}#gl{z-index:2;cursor:default}#labels{z-index:3;pointer-events:none}");
+            html = html.Replace("#grid{z-index:0}#gl{z-index:1;cursor:default}#labels{z-index:2;pointer-events:none}", "#terrain{z-index:0;pointer-events:none}#gl{z-index:1;cursor:default}#grid{z-index:2;pointer-events:none}#labels{z-index:3;pointer-events:none}");
             html = html.Replace("<div class=\"menuItem\" data-menu=\"service\">Сервис</div>", "<div class=\"menuItem\" data-menu=\"service\">Сервис</div><div class=\"menuItem\" data-menu=\"tools\">Инструменты</div>");
             html = html.Replace("<div id=\"viewPopup\" class=\"menuPopup\"><button class=\"menuBtn\" id=\"fontPlus\">Шрифт+</button><button class=\"menuBtn\" id=\"fontMinus\">Шрифт-</button></div>", "<div id=\"viewPopup\" class=\"menuPopup\"><button class=\"menuBtn\" id=\"fontPlus\">Шрифт+</button><button class=\"menuBtn\" id=\"fontMinus\">Шрифт-</button></div><div id=\"toolsPopup\" class=\"menuPopup\" style=\"left:310px\"><button class=\"menuBtn\" id=\"generateTerrain\">Генерировать карту высот</button></div>");
             html = html.Replace("labelCtx.lineWidth=selected?5:3;labelCtx.strokeStyle=selected?'lime':'black';", "labelCtx.lineWidth=selected?3.5:2;labelCtx.strokeStyle=selected?'lime':'#0a0c0f';");
