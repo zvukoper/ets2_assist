@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -34,8 +33,7 @@ namespace ETS2_Assist_GUI
                 if (File.Exists(TerrainSettingsPath))
                 {
                     var settings = JsonConvert.DeserializeObject<TerrainSettings>(File.ReadAllText(TerrainSettingsPath));
-                    if (settings != null)
-                        return settings;
+                    if (settings != null) return settings;
                 }
             }
             catch { }
@@ -60,7 +58,6 @@ namespace ETS2_Assist_GUI
 
             var settings = SaveTerrainSettings();
             Directory.CreateDirectory(Path.GetDirectoryName(TerrainPngPath)!);
-
             if (_pageReady && _webView.CoreWebView2 != null)
                 await _webView.CoreWebView2.ExecuteScriptAsync("window.MapEditor2TerrainProgress && window.MapEditor2TerrainProgress('Генерация карты высот…');");
 
@@ -73,12 +70,8 @@ namespace ETS2_Assist_GUI
                 CreateNoWindow = true,
                 Arguments = BuildTerrainArguments("-3")
             };
-
             Process? process = null;
-            try
-            {
-                process = Process.Start(psi);
-            }
+            try { process = Process.Start(psi); }
             catch
             {
                 psi.FileName = "python";
@@ -91,15 +84,12 @@ namespace ETS2_Assist_GUI
                 }
             }
 
-            if (process == null)
-                return false;
-
+            if (process == null) return false;
             using (process)
             {
                 string stdout = await process.StandardOutput.ReadToEndAsync();
                 string stderr = await process.StandardError.ReadToEndAsync();
                 await process.WaitForExitAsync();
-
                 if (process.ExitCode != 0 || !File.Exists(TerrainPngPath) || !File.Exists(TerrainMetaPath))
                 {
                     var details = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
@@ -113,36 +103,25 @@ namespace ETS2_Assist_GUI
                 await _webView.CoreWebView2.ExecuteScriptAsync("window.MapEditor2ReloadTerrain && window.MapEditor2ReloadTerrain();");
                 await _webView.CoreWebView2.ExecuteScriptAsync("window.MapEditor2TerrainProgress && window.MapEditor2TerrainProgress('Карта высот обновлена.');");
             }
-
             return true;
         }
 
         private string BuildTerrainArguments(string pythonSelector)
         {
             var settings = LoadTerrainSettings();
-            var q = (string value) => "\"" + value.Replace("\"", "\\\"") + "\"";
+            static string Quote(string value) => "\"" + value.Replace("\"", "\\\"") + "\"";
             var args = new List<string>();
-            if (!string.IsNullOrWhiteSpace(pythonSelector))
-                args.Add(pythonSelector);
-            args.Add(q(TerrainScriptPath));
-            args.Add("--data-root");
-            args.Add(q(AppDataPaths.StaticDataDirectory));
-            args.Add("--output");
-            args.Add(q(TerrainPngPath));
-            args.Add("--metadata");
-            args.Add(q(TerrainMetaPath));
-            args.Add("--width");
-            args.Add(settings.Width.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            args.Add("--low-color");
-            args.Add(q(settings.LowColor));
-            args.Add("--high-color");
-            args.Add(q(settings.HighColor));
-            args.Add("--neighbors");
-            args.Add(settings.Neighbors.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            args.Add("--power");
-            args.Add(settings.Power.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            args.Add("--sigma");
-            args.Add(settings.Sigma.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (!string.IsNullOrWhiteSpace(pythonSelector)) args.Add(pythonSelector);
+            args.Add(Quote(TerrainScriptPath));
+            args.Add("--data-root"); args.Add(Quote(AppDataPaths.StaticDataDirectory));
+            args.Add("--output"); args.Add(Quote(TerrainPngPath));
+            args.Add("--metadata"); args.Add(Quote(TerrainMetaPath));
+            args.Add("--width"); args.Add(settings.Width.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            args.Add("--low-color"); args.Add(Quote(settings.LowColor));
+            args.Add("--high-color"); args.Add(Quote(settings.HighColor));
+            args.Add("--neighbors"); args.Add(settings.Neighbors.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            args.Add("--power"); args.Add(settings.Power.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            args.Add("--sigma"); args.Add(settings.Sigma.ToString(System.Globalization.CultureInfo.InvariantCulture));
             return string.Join(" ", args);
         }
 
@@ -153,16 +132,15 @@ namespace ETS2_Assist_GUI
             html = html.Replace("<div class=\"menuItem\" data-menu=\"service\">Сервис</div>", "<div class=\"menuItem\" data-menu=\"service\">Сервис</div><div class=\"menuItem\" data-menu=\"tools\">Инструменты</div>");
             html = html.Replace("<div id=\"viewPopup\" class=\"menuPopup\"><button class=\"menuBtn\" id=\"fontPlus\">Шрифт+</button><button class=\"menuBtn\" id=\"fontMinus\">Шрифт-</button></div>", "<div id=\"viewPopup\" class=\"menuPopup\"><button class=\"menuBtn\" id=\"fontPlus\">Шрифт+</button><button class=\"menuBtn\" id=\"fontMinus\">Шрифт-</button></div><div id=\"toolsPopup\" class=\"menuPopup\" style=\"left:310px\"><button class=\"menuBtn\" id=\"generateTerrain\">Генерировать карту высот</button></div>");
             html = html.Replace("labelCtx.lineWidth=selected?5:3;labelCtx.strokeStyle=selected?'lime':'black';", "labelCtx.lineWidth=selected?5:2;labelCtx.strokeStyle=selected?'lime':'#0a0c0f';");
-
             const marker = "window.chrome?.webview?.postMessage('map2-ready');";
             var patch = @"
 const terrainCanvas=document.getElementById('terrain'),terrainCtx=terrainCanvas?.getContext('2d');
 let terrainImage=null,terrainMeta=null;
 async function loadTerrain(){try{const m=await fetch('../map_editor2/terrain_height_meta.json?ts='+Date.now(),{cache:'no-store'});if(!m.ok)throw Error('HTTP '+m.status);terrainMeta=await m.json();const img=new Image();img.src='../map_editor2/terrain_height.png?ts='+Date.now();await img.decode();terrainImage=img;}catch(e){terrainMeta=null;terrainImage=null;console.warn('Terrain load failed',e)}dirty=true;requestFrame()}
 function drawTerrain(){if(!terrainCanvas||!terrainCtx||!terrainImage||!terrainMeta)return;const s=mapSize();terrainCanvas.width=Math.floor(s.w*dpr);terrainCanvas.height=Math.floor(s.h*dpr);terrainCanvas.style.width=s.w+'px';terrainCanvas.style.height=s.h+'px';terrainCtx.setTransform(dpr,0,0,dpr,0,0);terrainCtx.clearRect(0,0,s.w,s.h);const mx0=Number(terrainMeta.minX),mx1=Number(terrainMeta.maxX),mz0=Number(terrainMeta.minZ),mz1=Number(terrainMeta.maxZ);const sx=s.w*.5+(mx0-camera.x)/camera.mpp,sy=s.h*.5+(mz0-camera.z)/camera.mpp,ex=s.w*.5+(mx1-camera.x)/camera.mpp,ey=s.h*.5+(mz1-camera.z)/camera.mpp;terrainCtx.drawImage(terrainImage,sx,sy,ex-sx,ey-sy)}
-function terrainProgress(text){if(window.MapEditor2TerrainProgress){} status.textContent='Map Editor 2 · '+text}
+function terrainProgress(text){status.textContent='Map Editor 2 · '+text}
 window.MapEditor2TerrainProgress=terrainProgress;window.MapEditor2ReloadTerrain=loadTerrain;
-const originalResize=resize;resize=function(){originalResize();if(terrainCanvas){const s=mapSize();terrainCanvas.width=Math.floor(s.w*dpr);terrainCanvas.height=Math.floor(s.h*dpr);terrainCanvas.style.width=s.w+'px';terrainCanvas.style.height=s.h+'px';}dirty=true;requestFrame()};
+window.addEventListener('resize',()=>{if(!terrainCanvas)return;const s=mapSize();terrainCanvas.width=Math.floor(s.w*dpr);terrainCanvas.height=Math.floor(s.h*dpr);terrainCanvas.style.width=s.w+'px';terrainCanvas.style.height=s.h+'px';dirty=true;requestFrame()});
 const originalRender=render;render=function(){if(!dirty)return;dirty=false;gl.viewport(0,0,glCanvas.width,glCanvas.height);gl.clearColor(15/255,18/255,23/255,1);gl.clear(gl.COLOR_BUFFER_BIT);drawTerrain();updateGrid();drawRoads();drawPointsAndLabels();mapInfo.textContent=`Zoom ${camera.mpp.toFixed(3)} m/px · клетка ${gridWorldStep.toFixed(3)} м · roads ${roadsCount.toLocaleString()} · points ${allPoints.length.toLocaleString()} · cities ${categories.find(c=>c.key==='__cities')?.points.length?.toLocaleString()||'0'}`};
 loadTerrain();
 const toolsPopup=document.getElementById('toolsPopup');document.querySelector('[data-menu="tools"]').addEventListener('click',e=>{e.stopPropagation();toolsPopup.classList.toggle('open');viewPopup.classList.remove('open')});document.getElementById('generateTerrain')?.addEventListener('click',()=>window.chrome?.webview?.postMessage('map2-generate-terrain'));";
@@ -170,4 +148,3 @@ const toolsPopup=document.getElementById('toolsPopup');document.querySelector('[
         }
     }
 }
-"}
