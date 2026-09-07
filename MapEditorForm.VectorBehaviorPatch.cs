@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -8,6 +7,9 @@ using System.Windows.Media;
 using FormsMouseButtons = System.Windows.Forms.MouseButtons;
 using FormsMouseEventArgs = System.Windows.Forms.MouseEventArgs;
 using FormsCursors = System.Windows.Forms.Cursors;
+using FormsFormClosedEventArgs = System.Windows.Forms.FormClosedEventArgs;
+using FormsInvalidateEventArgs = System.Windows.Forms.InvalidateEventArgs;
+using DrawingColor = System.Drawing.Color;
 using WpfPoint = System.Windows.Point;
 
 namespace ETS2_Assist_GUI
@@ -21,10 +23,10 @@ namespace ETS2_Assist_GUI
 
         protected override void OnLoad(EventArgs e)
         {
-            base.OnLoad(e);
             // Подключаем быстрый renderer до первой нормальной отрисовки формы.
             EnsureVectorRenderer();
             InstallBehaviorOverlay();
+            base.OnLoad(e);
         }
 
         private void InstallBehaviorOverlay()
@@ -43,6 +45,15 @@ namespace ETS2_Assist_GUI
             surface.SetSelectionState(Array.Empty<string>(), null, false);
             surface.IsHitTestVisible = false;
 
+            // После установки WPF overlay сам принимает весь mouse input.
+            // Старые ElementHost handlers отключаем, чтобы один клик не обрабатывался дважды.
+            host.MouseDown -= ForwardMouseDown;
+            host.MouseMove -= ForwardMouseMove;
+            host.MouseUp -= ForwardMouseUp;
+            host.MouseClick -= ForwardMouseClick;
+            host.MouseLeave -= ForwardMouseLeave;
+            host.MouseWheel -= ForwardMouseWheel;
+
             host.Child = null;
 
             _behaviorMapGrid = new Grid();
@@ -54,9 +65,11 @@ namespace ETS2_Assist_GUI
             host.Child = _behaviorMapGrid;
             _mapPanel.Invalidated += BehaviorOverlayInvalidated;
             FormClosed += BehaviorOverlayFormClosed;
+
+            _behaviorPointOverlay.InvalidateVisual();
         }
 
-        private void BehaviorOverlayFormClosed(object? sender, FormClosedEventArgs e)
+        private void BehaviorOverlayFormClosed(object? sender, FormsFormClosedEventArgs e)
         {
             FormClosed -= BehaviorOverlayFormClosed;
             _mapPanel.Invalidated -= BehaviorOverlayInvalidated;
@@ -66,7 +79,7 @@ namespace ETS2_Assist_GUI
             _behaviorOverlayInstalled = false;
         }
 
-        private void BehaviorOverlayInvalidated(object? sender, InvalidateEventArgs e)
+        private void BehaviorOverlayInvalidated(object? sender, FormsInvalidateEventArgs e)
         {
             // Existing vector surface must not draw a second selected point layer.
             if (_vectorMapSurface != null)
@@ -92,9 +105,9 @@ namespace ETS2_Assist_GUI
                     : isCity && pm != null ? pm.RealName : target.name;
 
                 var color = target.color;
-                if (isCity) color = Color.FromArgb(255, 230, 0);
+                if (isCity) color = DrawingColor.FromArgb(255, 230, 0);
                 else if (isPoi && pm != null) color = CategoryColor(pm.Category);
-                else if (disabled) color = Color.FromArgb(120, 120, 120);
+                else if (disabled) color = DrawingColor.FromArgb(120, 120, 120);
 
                 var layer = isCity ? 1_000_000 : (isSdo || isPoi ? SdoMeta.LayerOf(pm?.Category ?? "") : 100);
 
@@ -107,9 +120,9 @@ namespace ETS2_Assist_GUI
         }
 
         private bool TryGetBehaviorPoint(
-            (string id, string name, double x, double z, Color color) target,
+            (string id, string name, double x, double z, DrawingColor color) target,
             out string name,
-            out Color color,
+            out DrawingColor color,
             out bool isCity,
             out bool isPoi,
             out bool disabled)
@@ -139,9 +152,9 @@ namespace ETS2_Assist_GUI
             else if (isCity && pm != null)
                 name = pm.RealName;
 
-            if (isCity) color = Color.FromArgb(255, 230, 0);
+            if (isCity) color = DrawingColor.FromArgb(255, 230, 0);
             else if (isPoi && pm != null) color = CategoryColor(pm.Category);
-            else if (disabled) color = Color.FromArgb(120, 120, 120);
+            else if (disabled) color = DrawingColor.FromArgb(120, 120, 120);
 
             return true;
         }
@@ -214,7 +227,7 @@ namespace ETS2_Assist_GUI
                 {
                     if (!_owner.TryGetBehaviorPoint(
                             target, out var name, out var color,
-                            out var isCity, out var isPoi, out var disabled))
+                            out var isCity, out var isPoi, out _, out var disabled))
                         continue;
 
                     if (_owner.BehaviorOnlySelected && !_owner.BehaviorIsSelected(target.id))
