@@ -63,7 +63,6 @@
     <PackageReference Include="System.Management" Version="10.0.10" />
     <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
     <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
-    <PackageReference Include="WebSocketSharp-netstandard" Version="3.8.3" />
     <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
   </ItemGroup>
 </Project>
