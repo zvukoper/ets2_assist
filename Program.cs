@@ -87,7 +87,7 @@ namespace ETS2_Assist_GUI
                 var mainForm = new MainForm();
                 _ = ThreadPool.RegisterWaitForSingleObject(
                     shutdownSignal,
-                    static (_, state) =>
+                    static (state, _) =>
                     {
                         if (state is not Form form || form.IsDisposed)
                             return;
