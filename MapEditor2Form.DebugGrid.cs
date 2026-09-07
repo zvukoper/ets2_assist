@@ -37,13 +37,16 @@ namespace ETS2_Assist_GUI
     let scale = 1;
     const baseSpacing = 80;
 
+    function size() {
+        return { w: Math.max(1, host.clientWidth), h: Math.max(1, host.clientHeight) };
+    }
+
     function resize() {
-        const w = Math.max(1, Math.floor(innerWidth * dpr));
-        const h = Math.max(1, Math.floor(innerHeight * dpr));
-        grid.width = w;
-        grid.height = h;
-        grid.style.width = innerWidth + 'px';
-        grid.style.height = innerHeight + 'px';
+        const s = size();
+        grid.width = Math.floor(s.w * dpr);
+        grid.height = Math.floor(s.h * dpr);
+        grid.style.width = s.w + 'px';
+        grid.style.height = s.h + 'px';
         draw();
     }
 
@@ -56,8 +59,8 @@ namespace ETS2_Assist_GUI
     }
 
     function draw() {
-        const w = innerWidth;
-        const h = innerHeight;
+        const s = size();
+        const w = s.w, h = s.h;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, w, h);
 
@@ -97,7 +100,7 @@ namespace ETS2_Assist_GUI
         ctx.font = '11px Segoe UI, Arial, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText('GRID · ' + Math.round(step) + ' px', 12, 34);
+        ctx.fillText('GRID · ' + Math.round(step) + ' px', 12, 10);
     }
 
     source.addEventListener('pointermove', e => {
