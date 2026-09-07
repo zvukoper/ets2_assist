@@ -26,6 +26,7 @@ namespace ETS2_Assist_GUI
         private string TerrainPngPath => Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "terrain_height.png");
         private string TerrainMetaPath => Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "terrain_height_meta.json");
         private string TerrainRuntimePatchPath => Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "terrain_runtime_patch.js");
+        private string TerrainFinalPatchPath => Path.Combine(AppDataPaths.StaticDataDirectory, "map_editor2", "final_runtime_fixes.js");
 
         private TerrainSettings LoadTerrainSettings()
         {
@@ -140,12 +141,17 @@ namespace ETS2_Assist_GUI
             html = html.Replace("<div class=\"menuItem\" data-menu=\"service\">Сервис</div>", "<div class=\"menuItem\" data-menu=\"service\">Сервис</div><div class=\"menuItem\" data-menu=\"tools\">Инструменты</div>");
             html = html.Replace("<div id=\"viewPopup\" class=\"menuPopup\"><button class=\"menuBtn\" id=\"fontPlus\">Шрифт+</button><button class=\"menuBtn\" id=\"fontMinus\">Шрифт-</button></div>", "<div id=\"viewPopup\" class=\"menuPopup\"><button class=\"menuBtn\" id=\"fontPlus\">Шрифт+</button><button class=\"menuBtn\" id=\"fontMinus\">Шрифт-</button></div><div id=\"toolsPopup\" class=\"menuPopup\" style=\"left:310px\"><button class=\"menuBtn\" id=\"generateTerrain\">Генерировать карту высот</button></div>");
             html = html.Replace("labelCtx.lineWidth=selected?5:3;labelCtx.strokeStyle=selected?'lime':'black';", "labelCtx.lineWidth=selected?3.5:2;labelCtx.strokeStyle=selected?'lime':'#0a0c0f';");
+            html = html.Replace("alpha:false", "alpha:true");
+            html = html.Replace("gl.clearColor(15/255,18/255,23/255,1);", "gl.clearColor(0,0,0,0);");
 
             const string marker = "window.chrome?.webview?.postMessage('map2-ready');";
             string patch = File.Exists(TerrainRuntimePatchPath)
                 ? File.ReadAllText(TerrainRuntimePatchPath, Encoding.UTF8)
                 : string.Empty;
-            return html.Replace(marker, patch + "\n" + marker);
+            string finalPatch = File.Exists(TerrainFinalPatchPath)
+                ? File.ReadAllText(TerrainFinalPatchPath, Encoding.UTF8)
+                : string.Empty;
+            return html.Replace(marker, patch + "\n" + finalPatch + "\n" + marker);
         }
     }
 }
