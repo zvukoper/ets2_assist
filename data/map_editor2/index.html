@@ -10,387 +10,62 @@ body{touch-action:none;user-select:none}
 #map{position:relative}
 canvas{position:absolute;inset:0;display:block}
 #labels{pointer-events:none}
-#status{position:absolute;left:12px;top:10px;z-index:5;color:#737b86;font:11px "Segoe UI",sans-serif;background:rgba(15,18,23,.72);padding:5px 8px;border-radius:3px;pointer-events:none;white-space:nowrap}
+#status{position:absolute;left:12px;top:10px;z-index:5;color:#d6dce5;font:11px "Segoe UI",sans-serif;background:rgba(15,18,23,.88);padding:6px 9px;border-radius:3px;pointer-events:none;white-space:nowrap}
 </style>
 </head>
 <body>
-<div id="map">
-  <canvas id="gl"></canvas>
-  <canvas id="labels"></canvas>
-  <div id="status">Map Editor 2 · WebGL2</div>
-</div>
+<div id="map"><canvas id="gl"></canvas><canvas id="labels"></canvas><div id="status">Map Editor 2 · loading…</div></div>
 <script>
-(() => {
-  'use strict';
-
-  const glCanvas = document.getElementById('gl');
-  const labelCanvas = document.getElementById('labels');
-  const labelCtx = labelCanvas.getContext('2d');
-  const status = document.getElementById('status');
-  const gl = glCanvas.getContext('webgl2', {
-    antialias: false,
-    alpha: false,
-    depth: false,
-    stencil: false,
-    powerPreference: 'high-performance',
-    preserveDrawingBuffer: false
-  });
-
-  if (!gl) {
-    status.textContent = 'Map Editor 2: WebGL2 unavailable';
-    return;
-  }
-
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-  const camera = { x: 0, z: 0, mpp: 100 };
-  const limits = { minMpp: 0.02, maxMpp: 10000 };
-  const bounds = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
-
-  let roadsBuffer = null;
-  let roadsCount = 0;
-  let pointsPos = null;
-  let pointsColor = null;
-  let pointsLabel = [];
-  let pointsCount = 0;
-  let dragging = false;
-  let lastX = 0;
-  let lastY = 0;
-  let dirty = true;
-  let raf = 0;
-
-  const roadVS = `#version 300 es
-  precision highp float;
-  layout(location=0) in vec2 a_a;
-  layout(location=1) in vec2 a_b;
-  layout(location=2) in vec2 a_corner;
-  uniform vec2 u_center;
-  uniform float u_mpp;
-  uniform vec2 u_viewport;
-  uniform float u_widthWorld;
-  void main() {
-    vec2 dir = a_b - a_a;
-    float len = max(length(dir), 0.0001);
-    dir /= len;
-    vec2 perp = vec2(-dir.y, dir.x);
-    vec2 p = mix(a_a, a_b, a_corner.x) + perp * ((a_corner.y * 2.0 - 1.0) * u_widthWorld * 0.5);
-    float sx = u_viewport.x * 0.5 + (p.x - u_center.x) / u_mpp * ${dpr.toFixed(3)};
-    float sy = u_viewport.y * 0.5 + (p.y - u_center.y) / u_mpp * ${dpr.toFixed(3)};
-    vec2 clip = vec2(sx / u_viewport.x * 2.0 - 1.0, 1.0 - sy / u_viewport.y * 2.0);
-    gl_Position = vec4(clip, 0.0, 1.0);
-  }`;
-
-  const flatFS = `#version 300 es
-  precision mediump float;
-  uniform vec4 u_color;
-  out vec4 outColor;
-  void main(){ outColor = u_color; }`;
-
-  const pointVS = `#version 300 es
-  precision highp float;
-  layout(location=0) in vec2 a_pos;
-  layout(location=1) in vec4 a_color;
-  uniform vec2 u_center;
-  uniform float u_mpp;
-  uniform vec2 u_viewport;
-  uniform float u_radiusPx;
-  out vec4 v_color;
-  void main(){
-    float sx = u_viewport.x * 0.5 + (a_pos.x - u_center.x) / u_mpp * ${dpr.toFixed(3)};
-    float sy = u_viewport.y * 0.5 + (a_pos.y - u_center.y) / u_mpp * ${dpr.toFixed(3)};
-    vec2 clip = vec2(sx / u_viewport.x * 2.0 - 1.0, 1.0 - sy / u_viewport.y * 2.0);
-    gl_Position = vec4(clip, 0.0, 1.0);
-    gl_PointSize = u_radiusPx * 2.0 * ${dpr.toFixed(3)};
-    v_color = a_color;
-  }`;
-
-  const pointFS = `#version 300 es
-  precision mediump float;
-  in vec4 v_color;
-  out vec4 outColor;
-  void main(){
-    vec2 p = gl_PointCoord * 2.0 - 1.0;
-    float d = dot(p,p);
-    if(d > 1.0) discard;
-    float edge = smoothstep(1.0, 0.82, d);
-    vec3 c = mix(vec3(0.03,0.04,0.05), v_color.rgb, edge);
-    outColor = vec4(c, 1.0);
-  }`;
-
-  function shader(type, source) {
-    const s = gl.createShader(type);
-    gl.shaderSource(s, source);
-    gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
-    return s;
-  }
-  function program(vs, fs) {
-    const p = gl.createProgram();
-    gl.attachShader(p, shader(gl.VERTEX_SHADER, vs));
-    gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
-    gl.linkProgram(p);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
-    return p;
-  }
-
-  const roadProgram = program(roadVS, flatFS);
-  const pointProgram = program(pointVS, pointFS);
-
-  const roadVao = gl.createVertexArray();
-  const roadCornerBuffer = gl.createBuffer();
-  const roadEndpointBuffer = gl.createBuffer();
-  gl.bindVertexArray(roadVao);
-  gl.bindBuffer(gl.ARRAY_BUFFER, roadCornerBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0, 1,0, 1,1, 0,1]), gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(2);
-  gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
-  gl.vertexAttribDivisor(2, 0);
-  gl.bindBuffer(gl.ARRAY_BUFFER, roadEndpointBuffer);
-  gl.enableVertexAttribArray(0);
-  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 16, 0);
-  gl.vertexAttribDivisor(0, 1);
-  gl.enableVertexAttribArray(1);
-  gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 16, 8);
-  gl.vertexAttribDivisor(1, 1);
-  gl.bindVertexArray(null);
-
-  const pointVao = gl.createVertexArray();
-  const pointPosBuffer = gl.createBuffer();
-  const pointColorBuffer = gl.createBuffer();
-  gl.bindVertexArray(pointVao);
-  gl.bindBuffer(gl.ARRAY_BUFFER, pointPosBuffer);
-  gl.enableVertexAttribArray(0);
-  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-  gl.bindBuffer(gl.ARRAY_BUFFER, pointColorBuffer);
-  gl.enableVertexAttribArray(1);
-  gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 0, 0);
-  gl.bindVertexArray(null);
-
-  function updateSize() {
-    const w = Math.max(1, Math.floor(innerWidth * dpr));
-    const h = Math.max(1, Math.floor(innerHeight * dpr));
-    glCanvas.width = w; glCanvas.height = h;
-    labelCanvas.width = w; labelCanvas.height = h;
-    glCanvas.style.width = innerWidth + 'px'; glCanvas.style.height = innerHeight + 'px';
-    labelCanvas.style.width = innerWidth + 'px'; labelCanvas.style.height = innerHeight + 'px';
-    labelCtx.setTransform(dpr,0,0,dpr,0,0);
-    dirty = true;
-    requestFrame();
-  }
-  addEventListener('resize', updateSize);
-  updateSize();
-
-  function addBounds(x,z) {
-    if(x < bounds.minX) bounds.minX = x;
-    if(x > bounds.maxX) bounds.maxX = x;
-    if(z < bounds.minZ) bounds.minZ = z;
-    if(z > bounds.maxZ) bounds.maxZ = z;
-  }
-
-  function loadRoads() {
-    status.textContent = 'Map Editor 2 · loading roads…';
-    fetch('../GeoJson/roads.geojson', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(geo => {
-        const segments = [];
-        const clipX = 111805.88;
-        const clipZ = -36536.58;
-        function pushLine(coords) {
-          if(!Array.isArray(coords) || coords.length < 2) return;
-          for(let i=1;i<coords.length;i++){
-            const a = coords[i-1], b = coords[i];
-            if(!a || !b || a.length < 2 || b.length < 2) continue;
-            const ax = Number(a[0]), az = Number(a[1]);
-            const bx = Number(b[0]), bz = Number(b[1]);
-            if(!Number.isFinite(ax)||!Number.isFinite(az)||!Number.isFinite(bx)||!Number.isFinite(bz)) continue;
-            if(ax < clipX || bx < clipX || az > clipZ || bz > clipZ) continue;
-            segments.push(ax,az,bx,bz);
-            addBounds(ax,az); addBounds(bx,bz);
-          }
-        }
-        for(const f of (geo.features || [])) {
-          const g = f && f.geometry;
-          if(!g) continue;
-          if(g.type === 'LineString') pushLine(g.coordinates);
-          else if(g.type === 'MultiLineString') for(const line of g.coordinates || []) pushLine(line);
-        }
-        roadsCount = segments.length / 4;
-        roadsBuffer = new Float32Array(segments);
-        gl.bindBuffer(gl.ARRAY_BUFFER, roadEndpointBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, roadsBuffer, gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        fitView();
-        status.textContent = `Map Editor 2 · WebGL2 · roads ${roadsCount.toLocaleString()}`;
-        dirty = true;
-        requestFrame();
-      })
-      .catch(err => { status.textContent = 'Road load failed: ' + err.message; });
-  }
-
-  window.MapEditor2SetTargets = function(items) {
-    const safe = Array.isArray(items) ? items : [];
-    const pos = new Float32Array(safe.length * 2);
-    const col = new Float32Array(safe.length * 4);
-    pointsLabel = [];
-    let valid = 0;
-    for(const item of safe){
-      const x = Number(item && item.x), z = Number(item && item.z);
-      if(!Number.isFinite(x)||!Number.isFinite(z)) continue;
-      pos[valid*2] = x; pos[valid*2+1] = z;
-      const c = parseColor(item.color);
-      col[valid*4] = c[0]; col[valid*4+1] = c[1]; col[valid*4+2] = c[2]; col[valid*4+3] = 1;
-      pointsLabel.push({x,z,name:String(item.name||item.id||'')});
-      addBounds(x,z);
-      valid++;
-    }
-    pointsCount = valid;
-    pointsPos = pos.subarray(0, valid*2);
-    pointsColor = col.subarray(0, valid*4);
-    gl.bindBuffer(gl.ARRAY_BUFFER, pointPosBuffer); gl.bufferData(gl.ARRAY_BUFFER, pointsPos, gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, pointColorBuffer); gl.bufferData(gl.ARRAY_BUFFER, pointsColor, gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    if (roadsCount === 0) fitView();
-    dirty = true;
-    requestFrame();
-  };
-
-  function parseColor(s) {
-    if(typeof s !== 'string' || !s) return [0.65,0.65,0.65];
-    let t = s.trim().toLowerCase();
-    const named = { red:[1,0.2,0.2], green:[0.35,0.9,0.4], blue:[0.3,0.6,1], yellow:[1,0.9,0.2], orange:[1,0.55,0.2], gray:[0.65,0.65,0.65], grey:[0.65,0.65,0.65], white:[0.95,0.95,0.95] };
-    if(named[t]) return named[t];
-    if(t[0]==='#') t=t.slice(1);
-    if(/^[0-9a-f]{6}$/.test(t)) return [parseInt(t.slice(0,2),16)/255,parseInt(t.slice(2,4),16)/255,parseInt(t.slice(4,6),16)/255];
-    if(/^[0-9a-f]{3}$/.test(t)) return [parseInt(t[0]+t[0],16)/255,parseInt(t[1]+t[1],16)/255,parseInt(t[2]+t[2],16)/255];
-    return [0.65,0.65,0.65];
-  }
-
-  function cssSize() { return {w: innerWidth, h: innerHeight}; }
-  function fitView() {
-    if(!Number.isFinite(bounds.minX) || !Number.isFinite(bounds.minZ)) return;
-    const s = cssSize();
-    camera.x = (bounds.minX + bounds.maxX) * 0.5;
-    camera.z = (bounds.minZ + bounds.maxZ) * 0.5;
-    const dx = Math.max(1, bounds.maxX - bounds.minX);
-    const dz = Math.max(1, bounds.maxZ - bounds.minZ);
-    camera.mpp = Math.max(limits.minMpp, Math.min(limits.maxMpp, Math.max(dx/(s.w*0.82), dz/(s.h*0.82))));
-    dirty = true;
-    requestFrame();
-  }
-
-  function screenToWorld(px, py) {
-    return { x: camera.x + (px-innerWidth/2)*camera.mpp, z: camera.z + (py-innerHeight/2)*camera.mpp };
-  }
-  function requestFrame() {
-    if(raf) return;
-    raf = requestAnimationFrame(() => { raf=0; render(); });
-  }
-
-  function render() {
-    if(!dirty) return;
-    dirty = false;
-    const css = cssSize();
-    gl.viewport(0,0,glCanvas.width,glCanvas.height);
-    gl.disable(gl.DEPTH_TEST);
-    gl.disable(gl.CULL_FACE);
-    gl.clearColor(15/255,18/255,23/255,1);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-
-    if(roadsCount) {
-      gl.bindVertexArray(roadVao);
-      gl.useProgram(roadProgram);
-      const vp = gl.getUniformLocation(roadProgram,'u_viewport');
-      gl.uniform2f(gl.getUniformLocation(roadProgram,'u_center'), camera.x, camera.z);
-      gl.uniform1f(gl.getUniformLocation(roadProgram,'u_mpp'), camera.mpp);
-      gl.uniform2f(vp, glCanvas.width, glCanvas.height);
-      const widthLoc = gl.getUniformLocation(roadProgram,'u_widthWorld');
-      const colorLoc = gl.getUniformLocation(roadProgram,'u_color');
-      gl.uniform1f(widthLoc, 55);
-      gl.uniform4f(colorLoc, 0.08,0.10,0.13,1);
-      gl.drawArraysInstanced(gl.TRIANGLE_FAN,0,4,roadsCount);
-      gl.uniform1f(widthLoc, 31);
-      gl.uniform4f(colorLoc, 0.31,0.34,0.39,1);
-      gl.drawArraysInstanced(gl.TRIANGLE_FAN,0,4,roadsCount);
-      gl.bindVertexArray(null);
-    }
-
-    if(pointsCount) {
-      gl.bindVertexArray(pointVao);
-      gl.useProgram(pointProgram);
-      gl.uniform2f(gl.getUniformLocation(pointProgram,'u_center'), camera.x, camera.z);
-      gl.uniform1f(gl.getUniformLocation(pointProgram,'u_mpp'), camera.mpp);
-      gl.uniform2f(gl.getUniformLocation(pointProgram,'u_viewport'), glCanvas.width, glCanvas.height);
-      gl.uniform1f(gl.getUniformLocation(pointProgram,'u_radiusPx'), 5.5);
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      gl.drawArrays(gl.POINTS,0,pointsCount);
-      gl.disable(gl.BLEND);
-      gl.bindVertexArray(null);
-    }
-
-    drawLabels(css.w, css.h);
-  }
-
-  function drawLabels(w,h) {
-    labelCtx.clearRect(0,0,w,h);
-    labelCtx.font = '12px Segoe UI, Arial, sans-serif';
-    labelCtx.textAlign = 'center';
-    labelCtx.textBaseline = 'bottom';
-    labelCtx.lineJoin = 'round';
-    labelCtx.lineWidth = 3;
-    labelCtx.strokeStyle = 'rgba(0,0,0,0.92)';
-    labelCtx.fillStyle = '#d9d9d9';
-    const margin = 30;
-    for(const p of pointsLabel) {
-      const sx = w/2 + (p.x-camera.x)/camera.mpp;
-      const sy = h/2 + (p.z-camera.z)/camera.mpp;
-      if(sx < -margin || sx > w+margin || sy < -margin || sy > h+margin) continue;
-      labelCtx.strokeText(p.name, sx, sy-8);
-      labelCtx.fillText(p.name, sx, sy-8);
-    }
-  }
-
-  glCanvas.addEventListener('pointerdown', e => {
-    if(e.button !== 0) return;
-    dragging = true;
-    lastX = e.clientX; lastY = e.clientY;
-    glCanvas.setPointerCapture(e.pointerId);
-    glCanvas.style.cursor = 'grabbing';
-  });
-  glCanvas.addEventListener('pointermove', e => {
-    if(!dragging) return;
-    camera.x -= (e.clientX-lastX)*camera.mpp;
-    camera.z -= (e.clientY-lastY)*camera.mpp;
-    lastX = e.clientX; lastY = e.clientY;
-    dirty = true; requestFrame();
-  });
-  function stopDrag(e){
-    if(!dragging) return;
-    dragging=false;
-    try{glCanvas.releasePointerCapture(e.pointerId)}catch{}
-    glCanvas.style.cursor='grab';
-  }
-  glCanvas.addEventListener('pointerup', stopDrag);
-  glCanvas.addEventListener('pointercancel', stopDrag);
-  glCanvas.addEventListener('pointerleave', e => { if(!dragging) glCanvas.style.cursor='grab'; });
-  glCanvas.style.cursor='grab';
-
-  glCanvas.addEventListener('wheel', e => {
-    e.preventDefault();
-    const before = screenToWorld(e.clientX,e.clientY);
-    const factor = Math.pow(1.13, e.deltaY/100);
-    camera.mpp = Math.max(limits.minMpp, Math.min(limits.maxMpp, camera.mpp*factor));
-    const after = screenToWorld(e.clientX,e.clientY);
-    camera.x += before.x-after.x;
-    camera.z += before.z-after.z;
-    dirty = true; requestFrame();
-  }, {passive:false});
-
-  addEventListener('keydown', e => {
-    if(e.key === 'Home') fitView();
-  });
-
-  try { window.chrome.webview.postMessage('map2-ready'); } catch {}
-  loadRoads();
+(()=>{
+'use strict';
+const glCanvas=document.getElementById('gl'),labelCanvas=document.getElementById('labels'),labelCtx=labelCanvas.getContext('2d'),status=document.getElementById('status');
+const gl=glCanvas.getContext('webgl2',{antialias:false,alpha:false,depth:false,stencil:false,powerPreference:'high-performance',preserveDrawingBuffer:false});
+if(!gl){status.textContent='Map Editor 2 · WebGL2 unavailable';return;}
+const dpr=Math.min(devicePixelRatio||1,1.5),camera={x:0,z:0,mpp:100},limits={minMpp:.02,maxMpp:10000},bounds={minX:Infinity,maxX:-Infinity,minZ:Infinity,maxZ:-Infinity};
+let roadsCount=0,roadCasing=null,roadInner=null,roadCasingBuffer=null,roadInnerBuffer=null,roadVertexCount=0;
+let pointsCount=0,pointsLabel=[],dragging=false,lastX=0,lastY=0,dirty=true,raf=0;
+const roadVS=`#version 300 es
+precision highp float;
+layout(location=0) in vec2 a_pos;
+uniform vec2 u_center;uniform float u_mpp;uniform vec2 u_viewport;
+void main(){float sx=u_viewport.x*.5+(a_pos.x-u_center.x)/u_mpp*${dpr.toFixed(3)};float sy=u_viewport.y*.5+(a_pos.y-u_center.y)/u_mpp*${dpr.toFixed(3)};gl_Position=vec4(sx/u_viewport.x*2.-1.,1.-sy/u_viewport.y*2.,0,1);}`;
+const flatFS=`#version 300 es
+precision mediump float;uniform vec4 u_color;out vec4 outColor;void main(){outColor=u_color;}`;
+const pointVS=`#version 300 es
+precision highp float;layout(location=0) in vec2 a_pos;layout(location=1) in vec4 a_color;uniform vec2 u_center;uniform float u_mpp;uniform vec2 u_viewport;out vec4 v_color;void main(){float sx=u_viewport.x*.5+(a_pos.x-u_center.x)/u_mpp*${dpr.toFixed(3)};float sy=u_viewport.y*.5+(a_pos.y-u_center.y)/u_mpp*${dpr.toFixed(3)};gl_Position=vec4(sx/u_viewport.x*2.-1.,1.-sy/u_viewport.y*2.,0,1);gl_PointSize=11.*${dpr.toFixed(3)};v_color=a_color;}`;
+const pointFS=`#version 300 es
+precision mediump float;in vec4 v_color;out vec4 outColor;void main(){vec2 p=gl_PointCoord*2.-1.;float d=dot(p,p);if(d>1.)discard;float e=smoothstep(1.,.78,d);outColor=vec4(mix(vec3(.02,.025,.03),v_color.rgb,e),1.);}`;
+function sh(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(x));return x;}
+function prog(v,f){const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,v));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,f));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(p));return p;}
+const roadProgram=prog(roadVS,flatFS),pointProgram=prog(pointVS,pointFS);
+const roadVAO=gl.createVertexArray(),roadCasingBufferObj=gl.createBuffer(),roadInnerBufferObj=gl.createBuffer();
+gl.bindVertexArray(roadVAO);gl.bindBuffer(gl.ARRAY_BUFFER,roadCasingBufferObj);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);gl.bindVertexArray(null);
+const pointVAO=gl.createVertexArray(),pointPosBuffer=gl.createBuffer(),pointColorBuffer=gl.createBuffer();
+gl.bindVertexArray(pointVAO);gl.bindBuffer(gl.ARRAY_BUFFER,pointPosBuffer);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,pointColorBuffer);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,0,0);gl.bindVertexArray(null);
+function resize(){const w=Math.max(1,Math.floor(innerWidth*dpr)),h=Math.max(1,Math.floor(innerHeight*dpr));glCanvas.width=w;glCanvas.height=h;labelCanvas.width=w;labelCanvas.height=h;glCanvas.style.width=innerWidth+'px';glCanvas.style.height=innerHeight+'px';labelCanvas.style.width=innerWidth+'px';labelCanvas.style.height=innerHeight+'px';labelCtx.setTransform(dpr,0,0,dpr,0,0);dirty=true;requestFrame();}
+addEventListener('resize',resize);resize();
+function resetBounds(){bounds.minX=Infinity;bounds.maxX=-Infinity;bounds.minZ=Infinity;bounds.maxZ=-Infinity;}
+function addBounds(x,z){if(x<bounds.minX)bounds.minX=x;if(x>bounds.maxX)bounds.maxX=x;if(z<bounds.minZ)bounds.minZ=z;if(z>bounds.maxZ)bounds.maxZ=z;}
+function pushLine(coords,seg){if(!Array.isArray(coords)||coords.length<2)return;for(let i=1;i<coords.length;i++){const a=coords[i-1],b=coords[i];if(!Array.isArray(a)||!Array.isArray(b)||a.length<2||b.length<2)continue;const ax=Number(a[0]),az=Number(a[1]),bx=Number(b[0]),bz=Number(b[1]);if(!Number.isFinite(ax)||!Number.isFinite(az)||!Number.isFinite(bx)||!Number.isFinite(bz))continue;seg.push(ax,az,bx,bz);addBounds(ax,az);addBounds(bx,bz);}}
+function buildMesh(seg,width){const out=[];const hw=width*.5;for(let i=0;i<seg.length;i+=4){const ax=seg[i],az=seg[i+1],bx=seg[i+2],bz=seg[i+3],dx0=bx-ax,dz0=bz-az,len=Math.hypot(dx0,dz0);if(len<1e-6)continue;const dx=dx0/len,dz=dz0/len,px=-dz*hw,pz=dx*hw,x1=ax+px,z1=az+pz,x2=ax-px,z2=az-pz,x3=bx-px,z3=bz-pz,x4=bx+px,z4=bz+pz;out.push(x1,z1,x2,z2,x3,z3,x1,z1,x3,z3,x4,z4);}return new Float32Array(out);}
+function fitRoads(){if(!Number.isFinite(bounds.minX))return;const w=Math.max(1,innerWidth),h=Math.max(1,innerHeight);camera.x=(bounds.minX+bounds.maxX)*.5;camera.z=(bounds.minZ+bounds.maxZ)*.5;const dx=Math.max(1,bounds.maxX-bounds.minX),dz=Math.max(1,bounds.maxZ-bounds.minZ);camera.mpp=Math.max(limits.minMpp,Math.min(limits.maxMpp,Math.max(dx/(w*.88),dz/(h*.88))));dirty=true;requestFrame();}
+function loadRoads(){status.textContent='Map Editor 2 · loading roads…';fetch('../GeoJson/roads.geojson',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json();}).then(geo=>{resetBounds();const seg=[];for(const f of geo.features||[]){const g=f&&f.geometry;if(!g)continue;if(g.type==='LineString')pushLine(g.coordinates,seg);else if(g.type==='MultiLineString')for(const l of g.coordinates||[])pushLine(l,seg);}roadsCount=seg.length/4;roadCasing=buildMesh(seg,55);roadInner=buildMesh(seg,31);roadVertexCount=roadInner.length/2;roadCasingBuffer=roadCasing;roadInnerBuffer=roadInner;gl.bindBuffer(gl.ARRAY_BUFFER,roadCasingBufferObj);gl.bufferData(gl.ARRAY_BUFFER,roadCasingBuffer,gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,roadInnerBufferObj);gl.bufferData(gl.ARRAY_BUFFER,roadInnerBuffer,gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,null);fitRoads();status.textContent='Map Editor 2 · roads '+roadsCount.toLocaleString()+' · full fit';dirty=true;requestFrame();}).catch(e=>{status.textContent='Road load failed: '+e.message;console.error(e);});}
+function screenToWorld(px,py){return{x:camera.x+(px-innerWidth*.5)*camera.mpp,z:camera.z+(py-innerHeight*.5)*camera.mpp};}
+function requestFrame(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;render();});}
+function drawRoadBuffer(buf,count,color){gl.bindBuffer(gl.ARRAY_BUFFER,roadCasingBufferObj===buf?roadCasingBufferObj:roadInnerBufferObj);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);gl.useProgram(roadProgram);gl.uniform2f(gl.getUniformLocation(roadProgram,'u_center'),camera.x,camera.z);gl.uniform1f(gl.getUniformLocation(roadProgram,'u_mpp'),camera.mpp);gl.uniform2f(gl.getUniformLocation(roadProgram,'u_viewport'),glCanvas.width,glCanvas.height);gl.uniform4f(gl.getUniformLocation(roadProgram,'u_color'),color[0],color[1],color[2],1);gl.drawArrays(gl.TRIANGLES,0,count);}
+function drawRoads(){if(!roadsCount)return;gl.bindVertexArray(roadVAO);drawRoadBuffer(roadCasingBuffer,roadCasing.length/2,[.055,.065,.08]);drawRoadBuffer(roadInnerBuffer,roadInner.length/2,[.42,.46,.52]);gl.bindVertexArray(null);}
+function drawPoints(){if(!pointsCount)return;gl.bindVertexArray(pointVAO);gl.useProgram(pointProgram);gl.uniform2f(gl.getUniformLocation(pointProgram,'u_center'),camera.x,camera.z);gl.uniform1f(gl.getUniformLocation(pointProgram,'u_mpp'),camera.mpp);gl.uniform2f(gl.getUniformLocation(pointProgram,'u_viewport'),glCanvas.width,glCanvas.height);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.POINTS,0,pointsCount);gl.disable(gl.BLEND);gl.bindVertexArray(null);}
+function drawLabels(){const w=innerWidth,h=innerHeight;labelCtx.clearRect(0,0,w,h);labelCtx.font='12px Segoe UI,Arial,sans-serif';labelCtx.textAlign='center';labelCtx.textBaseline='bottom';labelCtx.lineJoin='round';labelCtx.lineWidth=3;labelCtx.strokeStyle='rgba(0,0,0,.94)';labelCtx.fillStyle='#e0e4ea';for(const p of pointsLabel){const sx=w*.5+(p.x-camera.x)/camera.mpp,sy=h*.5+(p.z-camera.z)/camera.mpp;if(sx<-40||sx>w+40||sy<-30||sy>h+30)continue;labelCtx.strokeText(p.name,sx,sy-9);labelCtx.fillText(p.name,sx,sy-9);}}
+function render(){if(!dirty)return;dirty=false;gl.viewport(0,0,glCanvas.width,glCanvas.height);gl.clearColor(15/255,18/255,23/255,1);gl.clear(gl.COLOR_BUFFER_BIT);drawRoads();drawPoints();drawLabels();}
+glCanvas.addEventListener('pointerdown',e=>{if(e.button!==0)return;dragging=true;lastX=e.clientX;lastY=e.clientY;glCanvas.setPointerCapture(e.pointerId);glCanvas.style.cursor='grabbing';});
+glCanvas.addEventListener('pointermove',e=>{if(!dragging)return;camera.x-=(e.clientX-lastX)*camera.mpp;camera.z-=(e.clientY-lastY)*camera.mpp;lastX=e.clientX;lastY=e.clientY;dirty=true;requestFrame();});
+function stop(e){if(!dragging)return;dragging=false;try{glCanvas.releasePointerCapture(e.pointerId);}catch{}glCanvas.style.cursor='grab';}
+glCanvas.addEventListener('pointerup',stop);glCanvas.addEventListener('pointercancel',stop);glCanvas.style.cursor='grab';
+glCanvas.addEventListener('wheel',e=>{e.preventDefault();const before=screenToWorld(e.clientX,e.clientY),factor=Math.pow(1.13,e.deltaY/100);camera.mpp=Math.max(limits.minMpp,Math.min(limits.maxMpp,camera.mpp*factor));const after=screenToWorld(e.clientX,e.clientY);camera.x+=before.x-after.x;camera.z+=before.z-after.z;dirty=true;requestFrame();},{passive:false});
+addEventListener('keydown',e=>{if(e.key==='Home')fitRoads();});
+window.MapEditor2SetTargets=function(items){const safe=Array.isArray(items)?items:[],pos=[],col=[];pointsLabel=[];for(const item of safe){const x=Number(item&&item.x),z=Number(item&&item.z);if(!Number.isFinite(x)||!Number.isFinite(z))continue;pos.push(x,z);const c=parseColor(item&&item.color);col.push(c[0],c[1],c[2],1);pointsLabel.push({x,z,name:String(item&&item.name||item&&item.id||'')});}pointsCount=pos.length/2;gl.bindBuffer(gl.ARRAY_BUFFER,pointPosBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(pos),gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,pointColorBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(col),gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,null);dirty=true;requestFrame();};
+function parseColor(s){if(typeof s!=='string'||!s)return[.65,.65,.65];let t=s.trim().toLowerCase();const n={red:[1,.2,.2],green:[.35,.9,.4],blue:[.3,.6,1],yellow:[1,.9,.2],orange:[1,.55,.2],gray:[.65,.65,.65],grey:[.65,.65,.65],white:[.95,.95,.95]};if(n[t])return n[t];if(t[0]==='#')t=t.slice(1);if(/^[0-9a-f]{6}$/.test(t))return[parseInt(t.slice(0,2),16)/255,parseInt(t.slice(2,4),16)/255,parseInt(t.slice(4,6),16)/255];if(/^[0-9a-f]{3}$/.test(t))return[parseInt(t[0]+t[0],16)/255,parseInt(t[1]+t[1],16)/255,parseInt(t[2]+t[2],16)/255];return[.65,.65,.65];}
+loadRoads();window.chrome?.webview?.postMessage?.('map2-ready');
 })();
 </script>
 </body>
