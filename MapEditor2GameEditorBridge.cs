@@ -291,13 +291,24 @@ namespace ETS2_Assist_GUI
             bool available=position!=null;
             bool previous=Volatile.Read(ref _coordinatesAvailable);
             Volatile.Write(ref _coordinatesAvailable,available);
-            if(available){Volatile.Write(ref _diagnosticCycle,false);if(!previous)Log("Есть доступ к координатам");}
-            else if(previous)Log("Координаты редактора не найдены");
+            if(available)
+            {
+                if(!previous) Log("Есть доступ к координатам");
+            }
+            else if(previous)
+            {
+                Log("Координаты редактора не найдены");
+                Volatile.Write(ref _diagnosticCycle,false);
+            }
         }
 
         private static EditorPosition? ReadEditorPosition()
         {
-            if(!Volatile.Read(ref _diagnosticCycle)){Volatile.Write(ref _diagnosticCycle,true);Log("Поиск координат: ищу процесс eurotrucks2.exe...");}
+            if(!Volatile.Read(ref _diagnosticCycle))
+            {
+                Volatile.Write(ref _diagnosticCycle,true);
+                Log("Поиск координат: ищу процесс eurotrucks2.exe...");
+            }
             var processIds=new HashSet<uint>();
             foreach(var process in Process.GetProcessesByName("eurotrucks2")){try{processIds.Add((uint)process.Id);}catch{}finally{process.Dispose();}}
             if(processIds.Count==0){LogDebug("Поиск координат: eurotrucks2.exe не найден");return null;}
