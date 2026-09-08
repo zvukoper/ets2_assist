@@ -60,6 +60,7 @@ namespace ETS2_Assist_GUI
             _targetSnapshotJson = BuildTargetSnapshotJson();
             await _webView.EnsureCoreWebView2Async();
             AttachEditingBridge();
+            AttachOverridesBridge();
             _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "ets2assist-map.local",
                 AppDataPaths.StaticDataDirectory,
@@ -101,11 +102,21 @@ namespace ETS2_Assist_GUI
                 await ApplyMapEditor2UiOverridesAsync();
                 await SendStaticPointFilesAsync();
                 await SendTargetsAsync();
+                // Секция «Сохранение точек»: список файлов + применение overrides к точкам.
+                await SendOverridesToEditorAsync();
                 return;
             }
             if (string.Equals(message, "map2-generate-terrain", StringComparison.Ordinal))
             {
                 await GenerateTerrainAsync();
+                return;
+            }
+            if (string.Equals(message, "map2-data-ready", StringComparison.Ordinal))
+            {
+                // Статические точки/категории полностью загружены — ПЕРЕД отрисовкой
+                // применяем переопределения из map_overrides (первая строка
+                // load_order.txt = высший приоритет).
+                await SendOverridesToEditorAsync();
                 return;
             }
             if (string.Equals(message, "map2-open-terrain-file", StringComparison.Ordinal))
