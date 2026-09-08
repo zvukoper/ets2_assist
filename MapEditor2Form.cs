@@ -18,6 +18,26 @@ namespace ETS2_Assist_GUI
         private readonly WebView2 _webView = new() { Dock = DockStyle.Fill };
         private bool _pageReady;
         private string _targetSnapshotJson = "[]";
+        private System.Windows.Forms.Timer? _editorStatusTimer;
+        private bool _lastEditorRunning;
+
+        // v39.89: создание точки по координатам из игрового редактора (Ctrl+Shift+X).
+        // Вызывается из MainForm, когда MapEditor2Form открыт. Маршалит на UI-поток
+        // и вызывает JS MapEditor2CreatePointFromEditor (аналог ЛКМ-клика в режиме
+        // «Добавить»), с системным именем MapEditor<координаты>, зумом к точке и
+        // фокусом на поле «Отображаемое имя».
+        internal void CreatePointFromEditor(double x, double y, double z)
+        {
+            try
+            {
+                if (IsDisposed || _webView.IsDisposed || _webView.CoreWebView2 == null) return;
+                string sx = x.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+                string sy = y.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+                string sz = z.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+                _ = _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2CreatePointFromEditor?.({sx},{sy},{sz});");
+            }
+            catch { }
+        }
 
         public MapEditor2Form()
         {
@@ -46,6 +66,25 @@ namespace ETS2_Assist_GUI
                 CoreWebView2HostResourceAccessKind.Allow);
             _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
             _webView.Source = new Uri("https://ets2assist-map.local/map_editor2/index.html");
+
+            // v39.90: таймер обновления индикатора «Редактор запущен» в статусбаре.
+            _editorStatusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+            _editorStatusTimer.Tick += (_, _) => UpdateEditorStatusIndicator();
+            _editorStatusTimer.Start();
+        }
+
+        // v39.90: обновляет индикатор «Редактор запущен» (lime) в статусбаре под картой.
+        private void UpdateEditorStatusIndicator()
+        {
+            try
+            {
+                bool running = MapEditor2GameEditorBridge.IsEditorRunning();
+                if (running == _lastEditorRunning) return;
+                _lastEditorRunning = running;
+                if (_webView.IsDisposed || _webView.CoreWebView2 == null) return;
+                _ = _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2SetEditorRunning?.({(running ? "true" : "false")});");
+            }
+            catch { }
         }
 
         private async void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -54,6 +93,11 @@ namespace ETS2_Assist_GUI
             if (string.Equals(message, "map2-ready", StringComparison.Ordinal))
             {
                 _pageReady = true;
+                // v39.91: при загрузке страницы принудительно обновляем индикатор
+                // «Редактор запущен» (иначе он мог остаться скрытым, если CoreWebView2
+                // не был готов на момент первого тика таймера).
+                _lastEditorRunning = !MapEditor2GameEditorBridge.IsEditorRunning();
+                UpdateEditorStatusIndicator();
                 await ApplyMapEditor2UiOverridesAsync();
                 await SendStaticPointFilesAsync();
                 await SendTargetsAsync();

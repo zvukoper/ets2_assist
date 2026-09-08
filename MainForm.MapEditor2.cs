@@ -196,8 +196,11 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                using var form = new MapEditor2Form();
-                form.ShowDialog(this);
+                // v39.91: немодальный Show вместо ShowDialog — модальный диалог блокировал
+                // основное окно приложения (нельзя было кликать по нему, пока открыт редактор).
+                var form = new MapEditor2Form();
+                form.FormClosed += (_, _) => form.Dispose();
+                form.Show(this);
             }
             catch (Exception ex)
             {

@@ -2299,6 +2299,27 @@ RegisterHotKeyChecked(
             catch { return false; }
         }
 
+        // v39.89: запись координат из игрового редактора в Logs/map_editor_coords.txt.
+        // Чтобы даже если точка не сохранилась, координаты можно было достать из лога.
+        private void LogEditorCoordsToFile(double x, double y, double z)
+        {
+            try
+            {
+                string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+                Directory.CreateDirectory(logDir);
+                string file = Path.Combine(logDir, "map_editor_coords.txt");
+                string line = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                    "{0:yyyy-MM-dd HH:mm:ss}  X={1:F2}  Y={2:F2}  Z={3:F2}",
+                    DateTime.Now, x, y, z);
+                File.AppendAllText(file, line + Environment.NewLine);
+                AppendLog($"Координаты редактора записаны в {file}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Ошибка записи координат редактора в лог: {ex.Message}");
+            }
+        }
+
         // ================================================================
         // DEVELOPER MODE (g_developer "2" g_console "1" в config.cfg ETS2)
         // ================================================================
@@ -2526,10 +2547,41 @@ RegisterHotKeyChecked(
                         SendCommandToMap("start_recording");
                         break;
                     case HOTKEY_STOP_REC:
-                        // v71: Shift+Ctrl+X теперь «Пометить в АР» (перенос с кнопки,
-                        // требование 31.08.2026 — «с кнопкой отбой»).
-                        AppendLog("Hotkey AR pin (Shift+Ctrl+X)");
-                        PlacePinFromArAndOpenEditor();
+                        // v71: Shift+Ctrl+X — «Пометить в АР» (перенос с кнопки).
+                        // v39.90: если открыт Map Editor 2 — СРАЗУ переводим фокус на него,
+                        // затем берём последние координаты из кэша (собираются каждые 250 мс),
+                        // пишем в Logs/map_editor_coords.txt и создаём точку. Иначе — AR pin.
+                        var mapEditor2 = Application.OpenForms.OfType<MapEditor2Form>().FirstOrDefault();
+                        if (mapEditor2 != null && !mapEditor2.IsDisposed)
+                        {
+                            // 1) Фокус на наш редактор карты (мгновенно).
+                            try
+                            {
+                                if (mapEditor2.WindowState == FormWindowState.Minimized)
+                                    mapEditor2.WindowState = FormWindowState.Normal;
+                                mapEditor2.Activate();
+                                mapEditor2.BringToFront();
+                            }
+                            catch { }
+
+                            // 2) Последние координаты из кэша (собираются фоном каждые 250 мс).
+                            var pos = MapEditor2GameEditorBridge.GetLastPosition();
+                            if (pos != null)
+                            {
+                                AppendLog("Hotkey (Shift+Ctrl+X): создаю точку из координат редактора.");
+                                LogEditorCoordsToFile(pos.Value.X, pos.Value.Y, pos.Value.Z);
+                                mapEditor2.CreatePointFromEditor(pos.Value.X, pos.Value.Y, pos.Value.Z);
+                            }
+                            else
+                            {
+                                AppendLog("Hotkey (Shift+Ctrl+X): координаты редактора не получены, точка не создана.");
+                            }
+                        }
+                        else
+                        {
+                            AppendLog("Hotkey AR pin (Shift+Ctrl+X)");
+                            PlacePinFromArAndOpenEditor();
+                        }
                         break;
                     case HOTKEY_MARKER:
                         if (IsGamePaused())
@@ -3641,13 +3693,40 @@ RegisterHotKeyChecked(
             if (_isExiting)
                 return;
 
-            var result = MessageBox.Show(
-                lang.Get("exit_confirm") ?? "Are you sure you want to exit?",
-                lang.Get("exit_title") ?? "Exit",
-                MessageBoxButtons.YesNo);
+            // v39.85: диалог подтверждения выхода. DefaultDesktopOnly НЕЛЬЗЯ сочетать с
+            // owner (недопустимая операция) — используем его БЕЗ owner: он показывает диалог
+            // на рабочем столе поверх всех окон, включая полноэкранную игру (eurotrucks2.exe).
+            // Раньше (v39.84) fallback с owner снова прятал диалог за игрой → «висение».
+            AppendLog("Exit: показываю диалог подтверждения выхода.");
+            DialogResult result;
+            try
+            {
+                result = MessageBox.Show(
+                    lang.Get("exit_confirm") ?? "Are you sure you want to exit?",
+                    lang.Get("exit_title") ?? "Exit",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2,
+                    MessageBoxOptions.DefaultDesktopOnly);
+            }
+            catch (Exception ex)
+            {
+                // Fallback: если DefaultDesktopOnly недоступен (нестандартный рабочий стол),
+                // показываем обычный диалог без owner (owner прятал бы его за игрой).
+                AppendLog($"Exit: DefaultDesktopOnly недоступен ({ex.Message}), показываю обычный диалог.");
+                result = MessageBox.Show(
+                    lang.Get("exit_confirm") ?? "Are you sure you want to exit?",
+                    lang.Get("exit_title") ?? "Exit",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+            }
 
             if (result != DialogResult.Yes)
+            {
+                AppendLog("Exit: выход отменён пользователем.");
                 return;
+            }
+            AppendLog("Exit: подтверждено, выполняю остановку системы.");
 
             _isExiting = true;
 

@@ -2,6 +2,152 @@
 
 > Папка для памяти между сессиями. Обновляется вручную в конце каждой сессии.
 
+## Сессия 08.09.2026 (22) — v39.91: немодальный редактор + фикс статусбара + 100мс
+- **v39.91-EDITOR-MODELESS-STATUS-FIX-09.08-1244** (exe=txt=manifest MATCH, data 558).
+  Лимиты ~7,9% → ~8,5%, RESET 1ч16м. Модель deepseek-v4-flash:cloud.
+- **ФИДБЕК v39.90:** статусбар пуст; открытое окно нашего редактора блокирует основное окно.
+- **ЗАДАЧА 1 (статусбар пуст):** `UpdateEditorStatusIndicator` сбрасывал `_lastEditorRunning`
+  даже если CoreWebView2 ещё не готов (страница не загружена) → индикатор не обновлялся после
+  загрузки. ФИКС: при `map2-ready` принудительно `_lastEditorRunning = !IsEditorRunning()` +
+  `UpdateEditorStatusIndicator()`.
+- **ЗАДАЧА 2 (частота):** сбор координат 250мс → **100мс** (MonitorLoop).
+- **ЗАДАЧА 3 (блокировка основного окна):** `OpenMapEditor2` использовал `ShowDialog(this)`
+  (модальный) → блокировал основное окно. ФИКС: немодальный `Show(this)` + FormClosed→Dispose.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать v39.91 (а) «Редактор запущен» (lime) в статусбаре;
+  (б) основное окно доступно при открытом редакторе; (в) Ctrl+Shift+X — мгновенный фокус + точка.
+
+## Сессия 08.09.2026 (21) — v39.90: мониторинг редактора + статусбар + мгновенный фокус
+- **v39.90-EDITOR-MONITOR-STATUS-FOCUS-09.08-1229** (exe=txt=manifest MATCH, data 558).
+  Лимиты ~6,6% → ~7,5%, RESET 2ч. Модель deepseek-v4-flash:cloud.
+- **ФИДБЕК v39.89:** фокус на наш редактор карты НЕ переходил; от нажатия до появления точки
+  12 секунд (одноразовое чтение координат через UI Automation было медленным).
+- **ПЕРЕРАБОТКА (требование пользователя):**
+  - **Bridge:** фоновый поток `MonitorLoop` — раз в 5 сек проверяет запущен ли игровой редактор
+    (окно "Map editor" процесса eurotrucks2.exe, `IsEditorProcessRunning` без UI Automation).
+    Если запущен — собирает координаты из координатного поля каждые 250 мс в кэш `_lastPosition`.
+    `IsEditorRunning()` (volatile) + `GetLastPosition()` (кэш). `ReadCurrentPosition` удалён.
+  - **index.html:** span `#editorRunning` («Редактор запущен», lime) в статусбаре + JS
+    `MapEditor2SetEditorRunning(running)`.
+  - **MapEditor2Form:** таймер 1с `UpdateEditorStatusIndicator` — обновляет индикатор по
+    `IsEditorRunning()` (только при смене состояния).
+  - **MainForm Ctrl+Shift+X:** СРАЗУ фокус на MapEditor2Form (Activate/BringToFront/развернуть),
+    затем `GetLastPosition()` из кэша → `LogEditorCoordsToFile` → `CreatePointFromEditor`.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать v39.90 (а) при запущенном игровом редакторе в статусбаре
+  Map Editor 2 появляется «Редактор запущен» (lime); (б) Ctrl+Shift+X — мгновенный фокус на
+  наш редактор + точка с координатами; (в) координаты в Logs/map_editor_coords.txt.
+
+## Сессия 08.09.2026 (20) — v39.89: координаты редактора по требованию (Ctrl+Shift+X)
+- **v39.89-EDITOR-COORDS-ON-DEMAND-09.08-1210** (exe=txt=manifest MATCH, data 558).
+  Лимиты ~5% → ~6%, RESET 2ч. Модель deepseek-v4-flash:cloud.
+- **ПЕРЕРАБОТКА ЛОГИКИ (требование пользователя):** убран постоянный опрос координат редактора
+  и загрузка в статус-бар. Убраны из статус-бара текст координат и кнопка. Всё — по требованию.
+- **MapEditor2GameEditorBridge:** удалён фоновый PollLoop (Thread), WebView2-мост
+  (RegisterWebView/InstallPageBridge/BuildPageBridgeScript/PushPositionToWebViews/PushPosition),
+  поля _lastPosition/_coordinatesAvailable/_diagnostic*. Осталось одноразовое чтение:
+  `ReadCurrentPosition()` (internal) → `ReadEditorPosition()` (UI Automation StatusBar.Pane2).
+  Initialize: только Application.ApplicationExit += Shutdown.
+- **MapEditor2Form:** убран вызов RegisterWebView. `CreatePointFromEditor(x,y,z)` теперь вызывает
+  JS `MapEditor2CreatePointFromEditor`.
+- **index.html:** `MapEditor2CreatePointFromEditor(x,y,z)` — создаёт точку с системным именем
+  `MapEditor<X><Y><Z>` (без знаков/точек/запятых, Math.round), RealName пустой, зум к точке
+  (camera.x/z, mpp=.5), фокус на поле RealName («Отображаемое имя») через setTimeout 50мс.
+- **MainForm WndProc HOTKEY_STOP_REC (Ctrl+Shift+X):** если открыт MapEditor2Form —
+  `ReadCurrentPosition()` → `LogEditorCoordsToFile(x,y,z)` (пишет в Logs/map_editor_coords.txt,
+  формат `yyyy-MM-dd HH:mm:ss  X=..  Y=..  Z=..`) → `CreatePointFromEditor`. Иначе — AR pin.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать v39.89 (а) статус-бар без координат/кнопки; (б) Ctrl+Shift+X
+  при открытом Map Editor 2 — создаётся точка MapEditor<координаты>, зум, фокус на имя;
+  (в) координаты дописаны в Logs/map_editor_coords.txt.
+
+## Сессия 08.09.2026 (19) — v39.88: убрана кнопка, координаты слева, Ctrl+Shift+X создаёт точку
+- **v39.88-EDITOR-COORDS-CREATE-POINT-09.08-1152** (exe=txt=manifest MATCH, data 558).
+  Лимиты ~2,8% → ~3,5%, RESET 2ч. Модель deepseek-v4-flash:cloud.
+- **ЗАДАЧА 1:** кнопка «Получить координаты» УБРАНА (HTML+JS+C# обработчик map2-get-editor-coords).
+- **ЗАДАЧА 2:** координаты редактора (info/sep) снова через `insertBefore(cursorInfo)` — СЛЕВА
+  от координат курсора через разделитель `|`. Кнопка `⌖` остаётся справа (appendChild).
+- **ЗАДАЧА 3 (Ctrl+Shift+X создаёт точку из координат редактора):**
+  - index.html: экспорт `window.MapEditor2CreatePointAt(x,y,z)` → `createNewPointAt` (аналог ЛКМ).
+  - MapEditor2Form: метод `CreatePointFromEditor(x,y,z)` → ExecuteScriptAsync.
+  - MainForm WndProc HOTKEY_STOP_REC (Ctrl+Shift+X): если открыт MapEditor2Form — создаёт точку
+    из `GetLastPosition()`; иначе — старое поведение (AR pin, PlacePinFromArAndOpenEditor).
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать v39.88 (а) кнопки нет; (б) «Редактор:» слева от координат
+  курсора; (в) Ctrl+Shift+X при открытом Map Editor 2 создаёт точку с координатами из редактора.
+
+## Сессия 08.09.2026 (18) — v39.87: фикс deadlock кнопки + позиция «Редактор:»
+- **v39.87-EDITOR-COORDS-POSITION-FIX-09.08-1138** (exe=txt=manifest MATCH, data 558).
+  Лимиты ~2,5% → ~3%, RESET 2ч. Модель deepseek-v4-flash:cloud.
+- **ФИДБЕК v39.86:** координаты ПОЯВИЛИСЬ в статус-баре (bridge работает!). Но кнопка
+  «Получить координаты» вешала приложение; надпись «Редактор:» была слева впритык к «города».
+- **ЗАДАЧА 1 (deadlock кнопки) — КОРЕНЬ:** `MessageBox.Show(this, ...)` вызывался ВНУТРИ
+  обработчика WebView2-сообщения (`OnWebMessageReceived`). Модальный диалог поверх обработки
+  сообщения WebView2 → deadlock → «висение». ФИКС: диалог через `this.BeginInvoke(...)`
+  (откладывается до завершения текущего обработчика).
+- **ЗАДАЧА 2 (позиция «Редактор:») — КОРЕНЬ:** элементы info/sep/center вставлялись через
+  `insertBefore(cursorInfo)` — ДО координат курсора (слева, впритык к «города»). ФИКС: заменено
+  на `appendChild` — теперь «Редактор: X=… Y=… Z=… | ⌖» встают ПОСЛЕ координат курсора (справа).
+- **УРОК:** MessageBox.Show с owner внутри обработчика WebView2-сообщения = deadlock. Показывать
+  через BeginInvoke.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать v39.87 (а) кнопка «Получить координаты» — диалог без
+  зависания; (б) «Редактор:» справа от координат курсора.
+
+## Сессия 08.09.2026 (17) — v39.86: тестовая кнопка «Получить координаты»
+- **v39.86-EDITOR-COORDS-TEST-BUTTON-09.08-1129** (exe=txt=manifest MATCH, data 558).
+  Лимиты ~2,1% → ~2,5%, RESET 3ч. Модель deepseek-v4-flash:cloud.
+- **ФИДБЕК v39.85:** Exit работает без проблем. Координаты НЕ появились (проблема визуальная).
+- **СДЕЛАНО (тестовая кнопка):** в статус-бар Map Editor 2 (index.html) добавлена кнопка
+  «Получить координаты». По нажатию JS шлёт `map2-get-editor-coords` через chrome.webview;
+  C# (MapEditor2Form.OnWebMessageReceived) вызывает `MapEditor2GameEditorBridge.GetLastPosition()`
+  и показывает OK-диалог с X/Y/Z (или сообщение, что координаты не получены).
+- **Bridge:** добавлено статическое поле `_lastPosition` (обновляется в UpdateAvailability) +
+  метод `GetLastPosition()` (internal, возвращает (X,Y,Z)?).
+- **ЦЕЛЬ:** убедиться, что bridge читает координаты (проблема только визуальная — маркер/статус
+  не отображаются), прежде чем чинить отображение.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать кнопку (а) при открытом Map editor — диалог с X/Y/Z;
+  (б) без Map editor — сообщение «не получены». Затем чинить визуальное отображение координат.
+
+## Сессия 08.09.2026 (16) — v39.85: фикс UI-потока CoreWebView2 + Exit-диалог без owner
+- **v39.85-EXIT-DIALOG-UI-THREAD-FIX-09.08-1125** (exe=txt=manifest MATCH, data 558).
+  Лимиты ~1,7% → ~2%, RESET 3ч. Модель deepseek-v4-flash:cloud.
+- **ФИДБЕК v39.84:** координаты НЕ появились + Exit снова повис + Fatal Error
+  `CoreWebView2 can only be accessed from the UI thread` (PushPositionToWebViews, line 447).
+- **ЗАДАЧА 2 (координаты) — КОРЕНЬ:** `PushPositionToWebViews` обращался к
+  `webView.CoreWebView2` НА ФОНОВОМ ПОТОКЕ (`PollLoop`), а CoreWebView2 доступен ТОЛЬКО
+  с UI-потока → исключение → координаты не показывались + Fatal Error. ФИКС: проверка
+  `CoreWebView2` и `ExecuteScriptAsync` перенесены ВНУТРЬ `PushPosition`, который маршалит
+  на UI-поток через `form.BeginInvoke`. В `PushPositionToWebViews` убрано обращение к
+  `webView.CoreWebView2` (только `IsDisposed` + `FindForm`).
+- **ЗАДАЧА 1 (Exit) — КОРЕНЬ:** `DefaultDesktopOnly` НЕЛЬЗЯ сочетать с owner (недопустимая
+  операция: «Показ окна служебного уведомления с окном владельца является недопустимой
+  операцией»). Fallback с owner снова прятал диалог за игрой → «висение». ФИКС: в
+  `ConfirmExit` `DefaultDesktopOnly` БЕЗ owner (показывает поверх всех окон, включая
+  полноэкранную игру); fallback тоже БЕЗ owner.
+- **УРОК:** (1) CoreWebView2 — только UI-поток, никогда не трогать из фоновых циклов;
+  (2) MessageBoxOptions.DefaultDesktopOnly несовместим с owner — использовать без owner.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать v39.85 (а) координаты редактора под картой;
+  (б) Exit при запущенной игре — диалог виден, выход работает.
+
+## Сессия 08.09.2026 (15) — фикс невидимого Exit-диалога + координаты редактора (v39.84)
+- **v39.84-EXIT-DIALOG-FIX-EDITOR-COORDS-09.08-1118** (exe=txt=manifest MATCH, data 558).
+  Лимиты 1,3% → 1,7%, RESET 3ч. Модель deepseek-v4-flash:cloud.
+- **ЗАДАЧА 1 (Exit виснет при запущенном eurotrucks2.exe):** КОРЕНЬ — приложение НЕ зависало,
+  оно ждало ответа на **НЕВИДИМЫЙ MessageBox** подтверждения выхода. `ConfirmExit()` вызывал
+  `MessageBox.Show(...)` БЕЗ owner и БЕЗ `MessageBoxOptions`. При запущенной полноэкранной игре
+  диалог появлялся ЗА игрой и не получал фокус → пользователь его не видел, приложение «висело».
+  Диагностика: в процессах найдено скрытое окно `'Exit confirmation'` (visible=False), в логе
+  НЕТ записи «Stopping system...» (значит StopSystem не запускался). ФИКС (MainForm.cs ConfirmExit):
+  `MessageBox.Show(this, ..., MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+  MessageBoxDefaultButton.Button2, MessageBoxOptions.DefaultDesktopOnly)` + fallback на обычный
+  диалог с owner при недоступности DefaultDesktopOnly + логирование шагов выхода.
+- **ЗАДАЧА 2 (координаты редактора не показываются под картой):** рассинхрона `data` НЕТ
+  (хэши index.html совпадают). КОРЕНЬ — bridge регистрировал WebView2 ТОЛЬКО через
+  `Application.Idle`, который НЕ срабатывает при модальном `ShowDialog(MapEditor2Form)` →
+  WebView2 не регистрировался, мост не устанавливался, координаты не показывались. В логе
+  были только записи про поиск координат, но НЕ про WebView2/мост. ФИКС: `RegisterWebView`
+  сделан `internal` и вызывается ЯВНО из `MapEditor2Form.InitializeAsync` (после установки
+  Source) + try/catch с логированием.
+- **СЛЕДУЮЩИЙ ШАГ:** верифицировать у пользователя (а) Exit при запущенной игре — диалог виден
+  поверх игры, приложение выходит; (б) в Map Editor 2 под картой в статус-баре появляются
+  координаты редактора (X/Y/Z) и маркер на карте.
+
 ## Сессия 05.09.2026 (14) — урок: текст коммита при завершении сессии
 - **ЗАМЕЧАНИЕ ПОЛЬЗОВАТЕЛЯ:** сессия 13 завершена НЕ по правилам INSTRUCTIONS.md
   (раздел «Важнаые понятия и терминлогия» → «Завершение сессии»): агент не написал

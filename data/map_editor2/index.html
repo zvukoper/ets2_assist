@@ -25,7 +25,7 @@
 <body><div id="app">
 <div id="topMenu"><div class="brand">Редактор карты 2</div><div class="menuItem" data-menu="file">Файл</div><div class="menuItem" data-menu="view">Вид</div><div class="menuItem" data-menu="points">Точки</div><div class="menuItem" data-menu="service">Сервис</div><div class="menuItem" data-menu="tools">Инструменты</div><div id="viewPopup" class="menuPopup"><button class="menuBtn" id="fontPlus">Шрифт+</button><button class="menuBtn" id="fontMinus">Шрифт-</button></div><div id="toolsPopup" class="menuPopup"><button class="menuBtn" id="generateTerrain">Генерировать карту высот</button></div></div>
 <div id="workspace"><aside id="leftPane"><div id="pointTools"><button class="tool" id="showAllBtn">Показать все</button><button class="tool" id="hideAllBtn">Скрыть все</button><button class="tool" id="invertBtn">Инверсия</button><button class="tool" id="resetBtn">Сброс</button><button class="tool active" data-tool="select">Выбор</button><button class="tool" data-tool="add">Добавить</button><button class="tool" data-tool="delete">Удалить</button><button class="tool" id="fitBtn">Fit</button></div><div id="categoryList"><div class="loading">Загрузка категорий…</div></div></aside>
-<section id="mapPane"><div id="map"><canvas id="roads"></canvas><canvas id="grid"></canvas><canvas id="labels"></canvas><div id="interaction"></div><div id="tooltip"></div><div id="mapInfo"></div></div><div id="status"><label class="statusToggle"><input id="onlySelectedChk" type="checkbox">только выделенные<span id="selectedCount"></span></label><label class="statusToggle"><input id="showNamesChk" type="checkbox" checked>названия</label><label class="statusToggle"><input id="showCitiesChk" type="checkbox" checked>города</label><span id="cursorInfo">X=— Y=— Z=—</span></div></section>
+<section id="mapPane"><div id="map"><canvas id="roads"></canvas><canvas id="grid"></canvas><canvas id="labels"></canvas><div id="interaction"></div><div id="tooltip"></div><div id="mapInfo"></div></div><div id="status"><label class="statusToggle"><input id="onlySelectedChk" type="checkbox">только выделенные<span id="selectedCount"></span></label><label class="statusToggle"><input id="showNamesChk" type="checkbox" checked>названия</label><label class="statusToggle"><input id="showCitiesChk" type="checkbox" checked>города</label><span id="cursorInfo">X=— Y=— Z=—</span><span id="editorRunning" style="display:none;color:lime;margin-left:12px;font-weight:600">Редактор запущен</span></div></section>
 <aside id="rightPane"><div id="rightTitle">Редактирование точки</div><div id="rightBody"><div class="editHint">Выберите точку в левом сайдбаре или на карте.</div></div></aside></div>
 <footer id="footer"><div><span>ETS2 Assist</span><span style="margin-left:14px">Map Editor 2</span></div><span>Canvas</span></footer></div>
 <script>
@@ -106,6 +106,26 @@ window.MapEditor2SetStaticPointFiles=files=>{state.staticFiles=Array.isArray(fil
 async function loadStaticPointData(){try{const r=await fetch('../editor_static_data/meta.json',{cache:'no-store'});if(r.ok){const m=await r.json();state.meta=m?.categories&&typeof m.categories==='object'?m.categories:{}}}catch{}groupCategories();await loadAllCategories();window.chrome?.webview?.postMessage('map2-data-ready')}
 window.MapEditor2SetTargets=items=>{state.externalPoints=Array.isArray(items)?items.map((p,i)=>({...p,source:'custom',category:'__custom',name:p.name||p.id||('Цель '+(i+1)),RealName:p.name||p.id||('Цель '+(i+1)),GameName:p.id||'',color:p.color||'#ffd45c'})):[];let c=state.categories.find(x=>x.key==='__custom');if(!c){c={key:'__custom',label:'Цели',color:'#a78945',files:[],points:[],loaded:true,visible:true};state.categories.push(c)}c.points=state.externalPoints;rebuildPoints();renderCategories();fitPoints()};
 window.MapEditor2ShowNewPoint=(x,y,z)=>{state.createMarker={x:Number(x),y:Number(y),z:Number(z)};requestRender()};
+// v39.90: показать/скрыть индикатор «Редактор запущен» в статусбаре.
+window.MapEditor2SetEditorRunning=running=>{const el=document.getElementById('editorRunning');if(el)el.style.display=running?'inline':'none'};
+// v39.89: создание точки из координат игрового редактора (Ctrl+Shift+X).
+// Системное имя = MapEditor<X><Y><Z> (без знаков/точек/запятых). Карта зумится к точке,
+// фокус на поле «Отображаемое имя» (RealName) для быстрого ввода имени.
+window.MapEditor2CreatePointFromEditor=(x,y,z)=>{
+    const y2=Number.isFinite(state.lastCursor?.y)?state.lastCursor.y:nearestPointHeight(Number(x),Number(z));
+    const clean=n=>String(Math.round(n)).replace('-','');
+    const sysName='MapEditor'+clean(x)+clean(y2)+clean(z);
+    state.selectedIds.clear();state.selectedPoint=null;state.multi=false;
+    state.createMarker={x:Number(x),y:y2,z:Number(z)};
+    const p={id:'new:'+Date.now(),uid:'',GameName:sysName,RealName:'',name:'',Category:'Пользовательское',category:'Пользовательское',Description:'',Enabled:true,X:Number(x),Y:y2,Z:Number(z),x:Number(x),y:y2,z:Number(z),Color:'#ffff00',color:'#ffff00',Icon:'default',LabelStroke:1,TriggerRadius:200,CooldownMinutes:0,Hidden:0,DeleteOnComplete:0,DialogId:'',Action:'',Caption:'',EnterReward:0,AfterReward:0,EnterXp:0,AfterXp:0,file:'',source:'custom'};
+    state.selectedPoint=p;
+    renderEditPanel(p);
+    document.querySelectorAll('[data-tool="select"]').forEach(b=>b.classList.add('active'));
+    window.chrome?.webview?.postMessage(JSON.stringify({type:'map2-create-point',x:Number(x),y:y2,z:Number(z)}));
+    syncSelection();requestRender();
+    camera.x=Number(x);camera.z=Number(z);camera.mpp=.5;requestRender();
+    setTimeout(()=>{const f=rightBody.querySelector('[data-field-key="RealName"]');if(f)f.focus();},50);
+};
 resize();loadRoads();window.chrome?.webview?.postMessage('map2-ready');
 })();
 </script></body></html>

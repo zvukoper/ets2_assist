@@ -8,8 +8,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Automation;
 using System.Windows.Forms;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.WinForms;
 
 namespace ETS2_Assist_GUI
 {
@@ -18,18 +16,16 @@ namespace ETS2_Assist_GUI
         private sealed record EditorPosition(double X, double Y, double Z);
 
         private static readonly object Sync = new();
-        private static readonly List<WeakReference<WebView2>> WebViews = new();
         private static readonly Regex CoordinateRegex = new(
             @"\[\s*([-+]?\d+(?:\.\d+)?)\s*,\s*([-+]?\d+(?:\.\d+)?)\s*,\s*([-+]?\d+(?:\.\d+)?)\s*\]",
             RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private static readonly ManualResetEventSlim StopEvent = new(false);
 
-        private static Thread? _pollThread;
         private static bool _initialized;
         private static bool _shutdown;
-        private static bool _coordinatesAvailable;
-        private static bool _diagnosticCycle;
-        private static int _diagnosticStage;
+        private static Thread? _monitorThread;
+        private static volatile bool _editorRunning;
+        private static EditorPosition? _lastPosition;
 
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -53,278 +49,87 @@ namespace ETS2_Assist_GUI
             }
 
             Log("Map Editor bridge: инициализация");
-            Log("Map Editor bridge: запускаю фоновый поиск раз в секунду");
-            Application.Idle += OnApplicationIdle;
             Application.ApplicationExit += OnApplicationExit;
 
-            _pollThread = new Thread(PollLoop)
+            // v39.90: фоновый мониторинг игрового редактора. Раз в 5 сек проверяем, запущен ли
+            // процесс игрового редактора (окно "Map editor" процесса eurotrucks2.exe). Если
+            // запущен — собираем координаты из координатного поля каждые 250 мс в кэш.
+            _monitorThread = new Thread(MonitorLoop)
             {
                 IsBackground = true,
-                Name = "MapEditor2.GameEditorCoordinateReader"
+                Name = "MapEditor2.GameEditorMonitor"
             };
-            _pollThread.Start();
+            _monitorThread.Start();
         }
 
         private static void OnApplicationExit(object? sender, EventArgs e) => Shutdown();
 
-        private static void OnApplicationIdle(object? sender, EventArgs e)
-        {
-            if (Volatile.Read(ref _shutdown)) return;
-            try
-            {
-                foreach (Form form in Application.OpenForms)
-                {
-                    if (!string.Equals(form.GetType().Name, "MapEditor2Form", StringComparison.Ordinal)) continue;
-                    var webView = FindWebView(form);
-                    if (webView == null || webView.IsDisposed) continue;
-                    RegisterWebView(form, webView);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogDebug($"Map Editor bridge: ошибка регистрации WebView2: {ex.Message}");
-            }
-        }
-
-        private static WebView2? FindWebView(Control parent)
-        {
-            foreach (Control child in parent.Controls)
-            {
-                if (child is WebView2 webView) return webView;
-                var nested = FindWebView(child);
-                if (nested != null) return nested;
-            }
-            return null;
-        }
-
-        private static void RegisterWebView(Form form, WebView2 webView)
-        {
-            lock (Sync)
-            {
-                for (int i = WebViews.Count - 1; i >= 0; i--)
-                {
-                    if (!WebViews[i].TryGetTarget(out var existing) || existing.IsDisposed)
-                        WebViews.RemoveAt(i);
-                }
-
-                foreach (var reference in WebViews)
-                    if (reference.TryGetTarget(out var existing) && ReferenceEquals(existing, webView))
-                        return;
-
-                WebViews.Add(new WeakReference<WebView2>(webView));
-            }
-
-            Log("Map Editor bridge: WebView2 найден");
-
-            EventHandler<CoreWebView2InitializationCompletedEventArgs>? initHandler = null;
-            EventHandler<CoreWebView2NavigationCompletedEventArgs>? navigationHandler = null;
-
-            navigationHandler = (_, args) =>
-            {
-                try
-                {
-                    if (!args.IsSuccess)
-                    {
-                        Log($"Map Editor bridge: загрузка Map Editor 2 завершилась ошибкой {args.WebErrorStatus}");
-                        return;
-                    }
-                    Log("Map Editor bridge: страница Map Editor 2 загружена");
-                    InstallPageBridge(form, webView);
-                }
-                catch (Exception ex)
-                {
-                    Log($"Map Editor bridge: ошибка NavigationCompleted: {ex.Message}");
-                }
-            };
-
-            try
-            {
-                if (webView.CoreWebView2 != null)
-                {
-                    webView.CoreWebView2.NavigationCompleted += navigationHandler;
-                    Log("Map Editor bridge: NavigationCompleted подключён");
-                }
-                else
-                {
-                    initHandler = (_, args) =>
-                    {
-                        try
-                        {
-                            if (initHandler != null)
-                                webView.CoreWebView2InitializationCompleted -= initHandler;
-                            if (!args.IsSuccess || webView.CoreWebView2 == null)
-                            {
-                                Log($"Map Editor bridge: CoreWebView2 не инициализирован: {args.InitializationException?.Message}");
-                                return;
-                            }
-                            Log("Map Editor bridge: CoreWebView2 инициализирован");
-                            webView.CoreWebView2.NavigationCompleted += navigationHandler;
-                            Log("Map Editor bridge: NavigationCompleted подключён");
-                        }
-                        catch (Exception ex)
-                        {
-                            Log($"Map Editor bridge: ошибка инициализации WebView2: {ex.Message}");
-                        }
-                    };
-                    webView.CoreWebView2InitializationCompleted += initHandler;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Map Editor bridge: не удалось подключить события WebView2: {ex.Message}");
-            }
-        }
-
-        private static void InstallPageBridge(Form form, WebView2 webView)
-        {
-            if (Volatile.Read(ref _shutdown) || webView.IsDisposed || webView.CoreWebView2 == null) return;
-            try
-            {
-                _ = webView.CoreWebView2.ExecuteScriptAsync(BuildPageBridgeScript());
-                Log("Map Editor bridge: JS-мост установлен после загрузки страницы");
-            }
-            catch (Exception ex)
-            {
-                Log($"Map Editor bridge: ошибка установки JS-моста: {ex.Message}");
-            }
-        }
-
-        private static string BuildPageBridgeScript()
-        {
-            return """
-(() => {
-    try {
-        const bridgeId='ets2assist-map-editor-bridge';
-        if (window.__ets2AssistGameEditorBridgeId===bridgeId) return;
-        window.__ets2AssistGameEditorBridgeId=bridgeId;
-        const map=document.getElementById('map');
-        const interaction=document.getElementById('interaction');
-        const status=document.getElementById('status');
-        const cursorInfo=document.getElementById('cursorInfo');
-        if(!map||!interaction||!status||!cursorInfo)return;
-        const markerId='ets2assist-game-editor-marker',infoId='ets2assist-game-editor-info',sepId='ets2assist-game-editor-sep',buttonId='ets2assist-game-editor-center';
-
-        let marker=document.getElementById(markerId);
-        if(!marker){
-            marker=document.createElement('div');
-            marker.id=markerId;
-            marker.style.cssText='position:absolute;z-index:20;display:none;width:28px;height:28px;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;';
-            marker.innerHTML='<div style="position:absolute;left:1px;right:1px;top:13px;height:2px;background:#b7ff46;box-shadow:0 0 4px #000"></div>'+
-                '<div style="position:absolute;top:1px;bottom:1px;left:13px;width:2px;background:#b7ff46;box-shadow:0 0 4px #000"></div>'+
-                '<div style="position:absolute;left:50%;top:8px;width:10px;height:10px;transform:translateX(-50%);border:2px solid #b7ff46;border-radius:50%;box-shadow:0 0 4px #000"></div>'+
-                '<div style="position:absolute;left:50%;top:-25px;transform:translateX(-50%);white-space:nowrap;color:#b7ff46;font:400 11px Roboto,Arial,sans-serif;text-shadow:0 0 4px #000">Map editor</div>';
-            marker.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();},true);
-            marker.addEventListener('click',e=>{
-                e.preventDefault();e.stopPropagation();
-                const p=window.__ets2AssistGameEditorLatest;
-                const rightBody=document.getElementById('rightBody');
-                if(!p||!rightBody)return;
-                document.getElementById('ets2assist-game-editor-panel')?.remove();
-                const panel=document.createElement('div');
-                panel.id='ets2assist-game-editor-panel';
-                panel.className='editPanel';
-                panel.innerHTML='<div class="editToolbar"><div class="editBtn primary" style="cursor:default;color:#b7ff46">Map editor</div></div>'+
-                    '<div class="editGroup"><div class="editGroupTitle">Координаты камеры</div>'+
-                    '<div class="editRow"><label class="editLabel">Координата X</label><input class="editInput" value="'+p.x.toFixed(2)+'" readonly></div>'+ 
-                    '<div class="editRow"><label class="editLabel">Координата Y</label><input class="editInput" value="'+p.y.toFixed(2)+'" readonly></div>'+ 
-                    '<div class="editRow"><label class="editLabel">Координата Z</label><input class="editInput" value="'+p.z.toFixed(2)+'" readonly></div></div>'+ 
-                    '<div class="editMeta">Источник: окно Map editor процесса eurotrucks2.exe</div>';
-                rightBody.appendChild(panel);
-            });
-            map.appendChild(marker);
-        }
-
-        let info=document.getElementById(infoId);
-        if(!info){info=document.createElement('span');info.id=infoId;info.style.cssText='display:none;color:#b7ff46;white-space:nowrap;font-variant-numeric:tabular-nums;';status.insertBefore(info,cursorInfo);}
-        let sep=document.getElementById(sepId);
-        if(!sep){sep=document.createElement('span');sep.id=sepId;sep.textContent='|';sep.style.cssText='display:none;margin:0 8px;color:#66717f;';status.insertBefore(sep,cursorInfo);}
-        let center=document.getElementById(buttonId);
-        if(!center){
-            center=document.createElement('button');center.id=buttonId;center.type='button';center.textContent='⌖';center.title='Перейти к Map editor';
-            center.style.cssText='display:none;width:24px;height:22px;margin:0 5px 0 4px;padding:0;border:1px solid rgba(150,165,185,.25);border-radius:3px;background:#202732;color:#b7ff46;cursor:pointer;font:400 16px Segoe UI,Arial,sans-serif;line-height:18px;';
-            status.insertBefore(center,cursorInfo);
-            center.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();window.__ets2AssistGameEditorCenter?.();});
-        }
-
-        let lastMouseClient=null,mouseButtons=0;
-        interaction.addEventListener('pointermove',e=>{if(e.isTrusted){lastMouseClient={x:e.clientX,y:e.clientY};mouseButtons=e.buttons||0;}},true);
-        interaction.addEventListener('pointerdown',e=>{if(e.isTrusted)mouseButtons=e.buttons||1;},true);
-        interaction.addEventListener('pointerup',e=>{if(e.isTrusted)mouseButtons=e.buttons||0;},true);
-        window.addEventListener('pointerup',e=>{if(e.isTrusted)mouseButtons=0;},true);
-
-        const parseCursor=text=>{const m=String(text||'').match(/X=\s*([-+]?\d+(?:\.\d+)?)\s+Y=\s*([-+]?\d+(?:\.\d+)?)\s+Z=\s*([-+]?\d+(?:\.\d+)?)/);return m?{x:Number(m[1]),y:Number(m[2]),z:Number(m[3])}:null;};
-        const probe=(localX,localY)=>{const r=map.getBoundingClientRect();interaction.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,cancelable:true,pointerId:9911,pointerType:'mouse',clientX:r.left+localX,clientY:r.top+localY,buttons:0}));return parseCursor(cursorInfo.textContent);};
-        const restoreMouse=()=>{if(!lastMouseClient)return;try{interaction.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,cancelable:true,pointerId:9912,pointerType:'mouse',clientX:lastMouseClient.x,clientY:lastMouseClient.y,buttons:mouseButtons}));}catch{}};
-        const transform=()=>{if(mouseButtons)return null;const r=map.getBoundingClientRect(),cx=r.width/2,cy=r.height/2,p0=probe(cx,cy),px=probe(Math.min(r.width-2,cx+100),cy),pz=probe(cx,Math.min(r.height-2,cy+100));restoreMouse();if(!p0||!px||!pz)return null;const dx=px.x-p0.x,dz=pz.z-p0.z;if(!Number.isFinite(dx)||!Number.isFinite(dz)||Math.abs(dx)<1e-6||Math.abs(dz)<1e-6)return null;return{r,cx,cy,mppX:dx/100,mppZ:dz/100};};
-        const render=()=>{const p=window.__ets2AssistGameEditorLatest;if(!p){info.style.display='none';sep.style.display='none';center.style.display='none';marker.style.display='none';return;}info.textContent='Редактор: X='+p.x.toFixed(2)+' Y='+p.y.toFixed(2)+' Z='+p.z.toFixed(2);info.style.display='inline';sep.style.display='inline';center.style.display='inline-block';const tr=transform();if(!tr)return;const p0=probe(tr.cx,tr.cy);restoreMouse();if(!p0)return;const x=tr.cx+(p.x-p0.x)/tr.mppX,y=tr.cy+(p.z-p0.z)/tr.mppZ;marker.style.left=x+'px';marker.style.top=y+'px';marker.style.display=(x>=-32&&x<=tr.r.width+32&&y>=-32&&y<=tr.r.height+32)?'block':'none';};
-        window.__ets2AssistGameEditorSet=(x,y,z)=>{window.__ets2AssistGameEditorLatest={x:Number(x),y:Number(y),z:Number(z)};render();};
-        window.__ets2AssistGameEditorClear=()=>{window.__ets2AssistGameEditorLatest=null;info.style.display='none';sep.style.display='none';center.style.display='none';marker.style.display='none';document.getElementById('ets2assist-game-editor-panel')?.remove();};
-        window.__ets2AssistGameEditorCenter=()=>{const p=window.__ets2AssistGameEditorLatest;if(!p||mouseButtons)return;const tr=transform();if(!tr)return;const p0=probe(tr.cx,tr.cy);restoreMouse();if(!p0)return;const targetX=tr.cx+(p.x-p0.x)/tr.mppX,targetY=tr.cy+(p.z-p0.z)/tr.mppZ,dx=tr.cx-targetX,dy=tr.cy-targetY,cx=tr.r.left+tr.cx,cy=tr.r.top+tr.cy;interaction.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,pointerId:9921,pointerType:'mouse',button:2,buttons:2,clientX:cx,clientY:cy}));interaction.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,cancelable:true,pointerId:9921,pointerType:'mouse',button:2,buttons:2,clientX:cx+dx,clientY:cy+dy}));interaction.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,cancelable:true,pointerId:9921,pointerType:'mouse',button:2,buttons:0,clientX:cx+dx,clientY:cy+dy}));render();};
-        if(!window.__ets2AssistGameEditorTimer)window.__ets2AssistGameEditorTimer=setInterval(()=>{if(window.__ets2AssistGameEditorLatest)render();},1000);
-        render();
-    }catch(e){console.warn('Map Editor bridge JS error',e);}
-})();
-""";
-        }
-
-        private static void PollLoop()
+        // v39.90: фоновый цикл мониторинга. Не запущен редактор — проверка раз в 5 сек;
+        // запущен — сбор координат каждые 250 мс.
+        private static void MonitorLoop()
         {
             while (!StopEvent.IsSet)
             {
-                try
+                bool running = IsEditorProcessRunning();
+                if (running)
                 {
-                    var position = ReadEditorPosition();
-                    UpdateAvailability(position);
-                    PushPositionToWebViews(position);
+                    Volatile.Write(ref _editorRunning, true);
+                    var pos = ReadEditorPosition();
+                    lock (Sync) _lastPosition = pos;
+                    StopEvent.Wait(TimeSpan.FromMilliseconds(100));
                 }
-                catch (Exception ex)
+                else
                 {
-                    LogDebug($"Map Editor bridge: ошибка фонового цикла: {ex.Message}");
-                    UpdateAvailability(null);
-                    PushPositionToWebViews(null);
+                    Volatile.Write(ref _editorRunning, false);
+                    lock (Sync) _lastPosition = null;
+                    StopEvent.Wait(TimeSpan.FromSeconds(5));
                 }
-                StopEvent.Wait(TimeSpan.FromSeconds(1));
             }
         }
 
-        private static void UpdateAvailability(EditorPosition? position)
+        // v39.90: запущен ли игровой редактор (окно "Map editor" процесса eurotrucks2.exe).
+        internal static bool IsEditorRunning() => Volatile.Read(ref _editorRunning);
+
+        // v39.90: последние собранные координаты (кэш, обновляется каждые 250 мс).
+        internal static (double X, double Y, double Z)? GetLastPosition()
         {
-            bool available = position != null;
-            bool wasAvailable = Volatile.Read(ref _coordinatesAvailable);
-            Volatile.Write(ref _coordinatesAvailable, available);
-            if (available)
+            lock (Sync)
             {
-                Volatile.Write(ref _diagnosticCycle, false);
-                _diagnosticStage = 0;
-                if (!wasAvailable) Log("Есть доступ к координатам");
-                return;
-            }
-            if (wasAvailable)
-            {
-                Log("Координаты редактора не найдены");
-                _diagnosticCycle = false;
-                _diagnosticStage = 0;
+                if (_lastPosition == null) return null;
+                return (_lastPosition.X, _lastPosition.Y, _lastPosition.Z);
             }
         }
 
-        private static void Diagnostic(string message, int stage)
+        // v39.90: проверка наличия окна "Map editor" процесса eurotrucks2.exe (без UI Automation).
+        private static bool IsEditorProcessRunning()
         {
-            if (Volatile.Read(ref _coordinatesAvailable)) return;
-            if (!_diagnosticCycle)
+            var processIds = new HashSet<uint>();
+            foreach (var process in Process.GetProcessesByName("eurotrucks2"))
             {
-                _diagnosticCycle = true;
-                _diagnosticStage = 0;
+                try { processIds.Add((uint)process.Id); }
+                catch { }
+                finally { process.Dispose(); }
             }
-            if (stage > _diagnosticStage)
+            if (processIds.Count == 0) return false;
+
+            bool found = false;
+            EnumWindows((hWnd, _) =>
             {
-                _diagnosticStage = stage;
-                Log(message);
-            }
+                GetWindowThreadProcessId(hWnd, out uint pid);
+                if (!processIds.Contains(pid)) return true;
+                string title = GetWindowTitle(hWnd);
+                if (title.IndexOf("Map editor", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    found = true;
+                    return false;
+                }
+                return true;
+            }, IntPtr.Zero);
+            return found;
         }
 
         private static EditorPosition? ReadEditorPosition()
         {
-            Diagnostic("Поиск координат: ищу процесс eurotrucks2.exe...", 1);
             var processIds = new HashSet<uint>();
             foreach (var process in Process.GetProcessesByName("eurotrucks2"))
             {
@@ -334,12 +139,7 @@ namespace ETS2_Assist_GUI
             }
             if (processIds.Count == 0) return null;
 
-            Diagnostic($"Поиск координат: найдено процессов eurotrucks2.exe: {processIds.Count}", 2);
-            Diagnostic("Поиск координат: ищу окно с заголовком \"Map editor\"...", 3);
-
             IntPtr editorWindow = IntPtr.Zero;
-            uint editorPid = 0;
-            string editorTitle = string.Empty;
             EnumWindows((hWnd, _) =>
             {
                 GetWindowThreadProcessId(hWnd, out uint pid);
@@ -347,14 +147,10 @@ namespace ETS2_Assist_GUI
                 string title = GetWindowTitle(hWnd);
                 if (title.IndexOf("Map editor", StringComparison.OrdinalIgnoreCase) < 0) return true;
                 editorWindow = hWnd;
-                editorPid = pid;
-                editorTitle = title;
                 return false;
             }, IntPtr.Zero);
             if (editorWindow == IntPtr.Zero) return null;
 
-            Diagnostic($"Поиск координат: найдено окно Map editor, PID={editorPid}, HWND=0x{editorWindow.ToInt64():X}, title=\"{editorTitle}\"", 4);
-            Diagnostic("Поиск координат: подключаю UI Automation...", 5);
             try
             {
                 var root = AutomationElement.FromHandle(editorWindow);
@@ -366,15 +162,9 @@ namespace ETS2_Assist_GUI
                 var pane = root.FindFirst(TreeScope.Descendants, paneCondition);
                 if (pane != null)
                 {
-                    Diagnostic("Поиск координат: StatusBar.Pane2 (Edit) найден", 6);
                     string text = GetAutomationText(pane);
-                    Diagnostic($"Поиск координат: текст StatusBar.Pane2 = \"{text}\"", 7);
                     var parsed = ParsePosition(text);
                     if (parsed != null) return parsed;
-                }
-                else
-                {
-                    Diagnostic("Поиск координат: StatusBar.Pane2 не найден, запускаю резервный поиск Edit-контролов...", 7);
                 }
 
                 var editCondition = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit);
@@ -383,7 +173,6 @@ namespace ETS2_Assist_GUI
                     string text = GetAutomationText(candidate);
                     var parsed = ParsePosition(text);
                     if (parsed == null) continue;
-                    Diagnostic("Поиск координат: резервный Edit-контрол с координатами найден", 8);
                     return parsed;
                 }
                 return null;
@@ -434,53 +223,13 @@ namespace ETS2_Assist_GUI
             catch { return string.Empty; }
         }
 
-        private static void PushPositionToWebViews(EditorPosition? position)
-        {
-            WeakReference<WebView2>[] views;
-            lock (Sync) views = WebViews.ToArray();
-            foreach (var reference in views)
-            {
-                if (!reference.TryGetTarget(out var webView) || webView.IsDisposed || webView.CoreWebView2 == null) continue;
-                if (webView.FindForm() is not Form form || form.IsDisposed) continue;
-                PushPosition(form, webView, position);
-            }
-        }
-
-        private static void PushPosition(Form form, WebView2 webView, EditorPosition? position)
-        {
-            try
-            {
-                if (Volatile.Read(ref _shutdown) || !form.IsHandleCreated || form.IsDisposed) return;
-                form.BeginInvoke(new Action(async () =>
-                {
-                    try
-                    {
-                        if (Volatile.Read(ref _shutdown) || webView.IsDisposed || webView.CoreWebView2 == null) return;
-                        if (position == null)
-                        {
-                            await webView.CoreWebView2.ExecuteScriptAsync("window.__ets2AssistGameEditorClear?.();");
-                            return;
-                        }
-                        string x = position.X.ToString("R", CultureInfo.InvariantCulture);
-                        string y = position.Y.ToString("R", CultureInfo.InvariantCulture);
-                        string z = position.Z.ToString("R", CultureInfo.InvariantCulture);
-                        await webView.CoreWebView2.ExecuteScriptAsync($"window.__ets2AssistGameEditorSet?.({x},{y},{z});");
-                    }
-                    catch { }
-                }));
-            }
-            catch { }
-        }
-
         internal static void Shutdown()
         {
             lock (Sync)
             {
                 if (!_initialized || _shutdown) return;
                 _shutdown = true;
-                WebViews.Clear();
             }
-            try { Application.Idle -= OnApplicationIdle; } catch { }
             try { Application.ApplicationExit -= OnApplicationExit; } catch { }
             try { StopEvent.Set(); } catch { }
             Log("Map Editor bridge: остановка");
@@ -493,7 +242,5 @@ namespace ETS2_Assist_GUI
             try { Debug.WriteLine($"[MapEditor2GameEditor] {message}"); } catch { }
             try { Logger.Current?.Workflow($"[MapEditor2GameEditor] {message}"); } catch { }
         }
-
-        private static void LogDebug(string message) => Log(message);
     }
 }
