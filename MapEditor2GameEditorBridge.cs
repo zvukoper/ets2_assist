@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Automation;
 using System.Windows.Forms;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
 namespace ETS2_Assist_GUI
@@ -121,7 +122,7 @@ namespace ETS2_Assist_GUI
             }
             else
             {
-                EventHandler? handler = null;
+                EventHandler<CoreWebView2InitializationCompletedEventArgs>? handler = null;
                 handler = (_, _) =>
                 {
                     try
@@ -168,7 +169,6 @@ namespace ETS2_Assist_GUI
         const infoId = 'ets2assist-game-editor-info';
         const sepId = 'ets2assist-game-editor-sep';
         const btnId = 'ets2assist-game-editor-center';
-        const bridgeId = 'ets2assist-game-editor-bridge-{{sequence}}';
 
         window.__ets2AssistGameEditorBridgeInstalled = true;
         window.__ets2AssistGameEditorBridgeLatest = null;
@@ -196,9 +196,32 @@ namespace ETS2_Assist_GUI
                 e.stopPropagation();
                 const p = window.__ets2AssistGameEditorBridgeLatest;
                 if (!p) return;
-                if (typeof window.MapEditor2ShowNewPoint === 'function') {
-                    window.MapEditor2ShowNewPoint(p.x, p.y, p.z);
-                }
+
+                // Reuse the editor's normal "Добавить" click path so the right-hand
+                // edit panel is populated with exactly the same fields/handlers as a
+                // regular empty-map click.
+                const addButton = document.querySelector('[data-tool="add"]');
+                if (!addButton) return;
+                const oldToolButton = document.querySelector('[data-tool].active');
+                const oldTool = oldToolButton?.getAttribute('data-tool') || 'select';
+                addButton.click();
+
+                const r = map.getBoundingClientRect();
+                const tr = getTransform();
+                if (!tr) return;
+                const p0 = probe(tr.cx, tr.cy);
+                restoreMouse();
+                if (!p0) return;
+                const sx = tr.cx + (p.x - p0.x) / tr.mppX;
+                const sy = tr.cy + (p.z - p0.z) / tr.mppZ;
+                const down = new PointerEvent('pointerdown', {bubbles:true,cancelable:true,isPrimary:true,pointerId:7781,pointerType:'mouse',button:0,buttons:1,clientX:r.left+sx,clientY:r.top+sy});
+                interaction.dispatchEvent(down);
+                const up = new PointerEvent('pointerup', {bubbles:true,cancelable:true,isPrimary:true,pointerId:7781,pointerType:'mouse',button:0,buttons:0,clientX:r.left+sx,clientY:r.top+sy});
+                interaction.dispatchEvent(up);
+
+                // Restore the visual tool selection. A second select click would toggle
+                // multi-select, so restore only the active class instead of invoking its handler.
+                document.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('active', b.getAttribute('data-tool') === oldTool));
             });
             map.appendChild(marker);
         }
@@ -317,10 +340,6 @@ namespace ETS2_Assist_GUI
             const tr = getTransform();
             if (!tr) return;
             const sr = map.getBoundingClientRect();
-            const sx = (sr.width / 2) + (p.x - (p.x - 0)) / tr.mppX;
-            void sx;
-
-            // p0 is stored through a second probe so the target projection uses the live camera origin.
             const p0 = probe(tr.cx, tr.cy);
             restoreMouse();
             if (!p0) return;
