@@ -2961,6 +2961,7 @@ RegisterHotKeyChecked(
         }
 
         // CTRL+F (открыть Find в активном окне). Возвращает true, если SendInput прошёл полностью.
+        // Используем физические scan codes (не зависят от раскладки/языка ввода): Ctrl=0x1D, F=0x21.
         private bool PressCtrlF()
         {
             INPUT[] inputs =
@@ -2970,7 +2971,7 @@ RegisterHotKeyChecked(
                     type = INPUT_KEYBOARD,
                     union = new INPUTUNION
                     {
-                        keyboard = new KEYBDINPUT { wVk = 0x11 }
+                        keyboard = new KEYBDINPUT { wVk = 0, wScan = 0x1D, dwFlags = KEYEVENTF_SCANCODE }
                     }
                 },
                 new INPUT
@@ -2978,7 +2979,7 @@ RegisterHotKeyChecked(
                     type = INPUT_KEYBOARD,
                     union = new INPUTUNION
                     {
-                        keyboard = new KEYBDINPUT { wVk = (ushort)Keys.F }
+                        keyboard = new KEYBDINPUT { wVk = 0, wScan = 0x21, dwFlags = KEYEVENTF_SCANCODE }
                     }
                 },
                 new INPUT
@@ -2986,7 +2987,7 @@ RegisterHotKeyChecked(
                     type = INPUT_KEYBOARD,
                     union = new INPUTUNION
                     {
-                        keyboard = new KEYBDINPUT { wVk = (ushort)Keys.F, dwFlags = KEYEVENTF_KEYUP }
+                        keyboard = new KEYBDINPUT { wVk = 0, wScan = 0x21, dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP }
                     }
                 },
                 new INPUT
@@ -2994,7 +2995,7 @@ RegisterHotKeyChecked(
                     type = INPUT_KEYBOARD,
                     union = new INPUTUNION
                     {
-                        keyboard = new KEYBDINPUT { wVk = 0x11, dwFlags = KEYEVENTF_KEYUP }
+                        keyboard = new KEYBDINPUT { wVk = 0, wScan = 0x1D, dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP }
                     }
                 }
             };
