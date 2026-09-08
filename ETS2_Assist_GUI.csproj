@@ -13,8 +13,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>39</VersionSet>
-    <VersionIter>79</VersionIter>
-    <VersionDesc>MAP2-ROBOTO-FONTS</VersionDesc>
+    <VersionIter>80</VersionIter>
+    <VersionDesc>MAP2-EDITOR-CAMERA</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>
@@ -27,6 +27,10 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>data\ets2_assist.ico</ApplicationIcon>
 </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="UIAutomationClient" />
+    <Reference Include="UIAutomationTypes" />
+  </ItemGroup>
   <ItemGroup>
     <None Remove="data\**\*" />
     <Content Include="data\**\*" Exclude="data\bin\WebOverlay.exe.WebView2\**">
