@@ -16,16 +16,31 @@ namespace ETS2_Assist_GUI
         private sealed record EditorPosition(double X, double Y, double Z);
 
         private static readonly object Sync = new();
+        private static readonly object UiaSync = new();
         private static readonly Regex CoordinateRegex = new(
             @"\[\s*([-+]?\d+(?:\.\d+)?)\s*,\s*([-+]?\d+(?:\.\d+)?)\s*,\s*([-+]?\d+(?:\.\d+)?)\s*\]",
             RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private static readonly ManualResetEventSlim StopEvent = new(false);
+
+        // Горячий цикл намеренно короткий: координата игрового редактора должна попасть
+        // в кэш практически на следующем UI-тикe, а горячая клавиша при этом читает
+        // текущее значение напрямую из уже найденного UIA-контрола.
+        private const int ActivePollMs = 16;
+        private const int InactivePollMs = 1000;
 
         private static bool _initialized;
         private static bool _shutdown;
         private static Thread? _monitorThread;
         private static volatile bool _editorRunning;
         private static EditorPosition? _lastPosition;
+
+        // Кэшируем HWND игрового Map editor и сам контрол координат.
+        // Старый код заново перечислял процессы, окна и всё UI Automation-дерево КАЖДЫЕ
+        // 100 мс — из-за этого «период в 100 мс» на практике превращался в большой lag.
+        private static IntPtr _editorWindow;
+        private static uint _editorProcessId;
+        private static AutomationElement? _coordinateElement;
+        private static ValuePattern? _coordinateValuePattern;
 
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -37,6 +52,8 @@ namespace ETS2_Assist_GUI
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
         [DllImport("user32.dll")]
         private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+        [DllImport("user32.dll")]
+        private static extern bool IsWindow(IntPtr hWnd);
 
         [ModuleInitializer]
         internal static void Initialize()
@@ -51,9 +68,6 @@ namespace ETS2_Assist_GUI
             Log("Map Editor bridge: инициализация");
             Application.ApplicationExit += OnApplicationExit;
 
-            // v39.90: фоновый мониторинг игрового редактора. Раз в 5 сек проверяем, запущен ли
-            // процесс игрового редактора (окно "Map editor" процесса eurotrucks2.exe). Если
-            // запущен — собираем координаты из координатного поля каждые 250 мс в кэш.
             _monitorThread = new Thread(MonitorLoop)
             {
                 IsBackground = true,
@@ -64,35 +78,59 @@ namespace ETS2_Assist_GUI
 
         private static void OnApplicationExit(object? sender, EventArgs e) => Shutdown();
 
-        // v39.90: фоновый цикл мониторинга. Не запущен редактор — проверка раз в 5 сек;
-        // запущен — сбор координат каждые 250 мс.
         private static void MonitorLoop()
         {
             while (!StopEvent.IsSet)
             {
-                bool running = IsEditorProcessRunning();
-                if (running)
+                try
                 {
+                    if (!EnsureEditorWindow())
+                    {
+                        Volatile.Write(ref _editorRunning, false);
+                        ClearCoordinateElement();
+                        ClearLastPosition();
+                        StopEvent.Wait(TimeSpan.FromMilliseconds(InactivePollMs));
+                        continue;
+                    }
+
                     Volatile.Write(ref _editorRunning, true);
-                    var pos = ReadEditorPosition();
-                    lock (Sync) _lastPosition = pos;
-                    StopEvent.Wait(TimeSpan.FromMilliseconds(100));
+
+                    // Читаем ТОЛЬКО уже найденный coordinate-control. Никаких повторных
+                    // FindAll/FindFirst по дереву UI на каждом тике.
+                    var pos = ReadCachedCoordinate();
+                    if (pos != null)
+                    {
+                        lock (Sync) _lastPosition = pos;
+                    }
+
+                    StopEvent.Wait(TimeSpan.FromMilliseconds(ActivePollMs));
                 }
-                else
+                catch (Exception ex)
                 {
-                    Volatile.Write(ref _editorRunning, false);
-                    lock (Sync) _lastPosition = null;
-                    StopEvent.Wait(TimeSpan.FromSeconds(5));
+                    LogDebug($"Map Editor bridge: цикл мониторинга: {ex.Message}");
+                    StopEvent.Wait(TimeSpan.FromMilliseconds(50));
                 }
             }
         }
 
-        // v39.90: запущен ли игровой редактор (окно "Map editor" процесса eurotrucks2.exe).
         internal static bool IsEditorRunning() => Volatile.Read(ref _editorRunning);
 
-        // v39.90: последние собранные координаты (кэш, обновляется каждые 250 мс).
+        // Возвращает МАКСИМАЛЬНО АКТУАЛЬНУЮ координату.
+        // Сначала делаем лёгкое чтение из уже найденного UIA-контрола — поэтому Ctrl+Shift+X
+        // не зависит от того, когда именно завершился очередной 16-мс цикл кэша.
+        // Если прямое чтение временно недоступно, отдаём последний подтверждённый snapshot.
         internal static (double X, double Y, double Z)? GetLastPosition()
         {
+            if (!IsEditorRunning() && !EnsureEditorWindow())
+                return null;
+
+            var current = ReadCachedCoordinate();
+            if (current != null)
+            {
+                lock (Sync) _lastPosition = current;
+                return (current.X, current.Y, current.Z);
+            }
+
             lock (Sync)
             {
                 if (_lastPosition == null) return null;
@@ -100,86 +138,158 @@ namespace ETS2_Assist_GUI
             }
         }
 
-        // v39.90: проверка наличия окна "Map editor" процесса eurotrucks2.exe (без UI Automation).
-        private static bool IsEditorProcessRunning()
+        private static bool EnsureEditorWindow()
         {
-            var processIds = new HashSet<uint>();
+            if (IsWindow(_editorWindow))
+            {
+                GetWindowThreadProcessId(_editorWindow, out uint currentPid);
+                if (currentPid != 0 && currentPid == _editorProcessId)
+                {
+                    EnsureCoordinateElement();
+                    return true;
+                }
+            }
+
+            IntPtr foundWindow = IntPtr.Zero;
+            uint foundPid = 0;
+
             foreach (var process in Process.GetProcessesByName("eurotrucks2"))
             {
-                try { processIds.Add((uint)process.Id); }
+                try
+                {
+                    uint pid = (uint)process.Id;
+                    EnumWindows((hWnd, _) =>
+                    {
+                        GetWindowThreadProcessId(hWnd, out uint windowPid);
+                        if (windowPid != pid) return true;
+
+                        string title = GetWindowTitle(hWnd);
+                        if (title.IndexOf("Map editor", StringComparison.OrdinalIgnoreCase) < 0)
+                            return true;
+
+                        foundWindow = hWnd;
+                        foundPid = pid;
+                        return false;
+                    }, IntPtr.Zero);
+
+                    if (foundWindow != IntPtr.Zero) break;
+                }
                 catch { }
                 finally { process.Dispose(); }
             }
-            if (processIds.Count == 0) return false;
 
-            bool found = false;
-            EnumWindows((hWnd, _) =>
+            if (foundWindow == IntPtr.Zero)
             {
-                GetWindowThreadProcessId(hWnd, out uint pid);
-                if (!processIds.Contains(pid)) return true;
-                string title = GetWindowTitle(hWnd);
-                if (title.IndexOf("Map editor", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    found = true;
-                    return false;
-                }
-                return true;
-            }, IntPtr.Zero);
-            return found;
+                if (_editorWindow != IntPtr.Zero)
+                    ClearEditorWindow();
+                return false;
+            }
+
+            bool changed = foundWindow != _editorWindow || foundPid != _editorProcessId;
+            _editorWindow = foundWindow;
+            _editorProcessId = foundPid;
+
+            if (changed)
+            {
+                ClearCoordinateElement();
+                ClearLastPosition();
+            }
+
+            EnsureCoordinateElement();
+            return true;
         }
 
-        private static EditorPosition? ReadEditorPosition()
+        private static void EnsureCoordinateElement()
         {
-            var processIds = new HashSet<uint>();
-            foreach (var process in Process.GetProcessesByName("eurotrucks2"))
-            {
-                try { processIds.Add((uint)process.Id); }
-                catch { }
-                finally { process.Dispose(); }
-            }
-            if (processIds.Count == 0) return null;
+            if (!IsWindow(_editorWindow)) return;
 
-            IntPtr editorWindow = IntPtr.Zero;
-            EnumWindows((hWnd, _) =>
+            lock (UiaSync)
             {
-                GetWindowThreadProcessId(hWnd, out uint pid);
-                if (!processIds.Contains(pid)) return true;
-                string title = GetWindowTitle(hWnd);
-                if (title.IndexOf("Map editor", StringComparison.OrdinalIgnoreCase) < 0) return true;
-                editorWindow = hWnd;
-                return false;
-            }, IntPtr.Zero);
-            if (editorWindow == IntPtr.Zero) return null;
+                if (_coordinateElement != null && _coordinateValuePattern != null)
+                    return;
+            }
 
             try
             {
-                var root = AutomationElement.FromHandle(editorWindow);
-                if (root == null) return null;
+                var root = AutomationElement.FromHandle(_editorWindow);
+                if (root == null) return;
 
+                // Самый стабильный путь: координатная строка — StatusBar.Pane2.
                 var paneCondition = new AndCondition(
                     new PropertyCondition(AutomationElement.AutomationIdProperty, "StatusBar.Pane2", PropertyConditionFlags.IgnoreCase),
                     new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
                 var pane = root.FindFirst(TreeScope.Descendants, paneCondition);
-                if (pane != null)
+
+                // Fallback для версий редактора, где AutomationId отличается.
+                if (pane == null)
                 {
-                    string text = GetAutomationText(pane);
-                    var parsed = ParsePosition(text);
-                    if (parsed != null) return parsed;
+                    var editCondition = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit);
+                    foreach (AutomationElement candidate in root.FindAll(TreeScope.Descendants, editCondition))
+                    {
+                        string text = GetAutomationText(candidate);
+                        if (ParsePosition(text) == null) continue;
+                        pane = candidate;
+                        break;
+                    }
                 }
 
-                var editCondition = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit);
-                foreach (AutomationElement candidate in root.FindAll(TreeScope.Descendants, editCondition))
+                if (pane == null) return;
+                if (!pane.TryGetCurrentPattern(ValuePattern.Pattern, out object? patternObject) || patternObject is not ValuePattern valuePattern)
+                    return;
+
+                lock (UiaSync)
                 {
-                    string text = GetAutomationText(candidate);
-                    var parsed = ParsePosition(text);
-                    if (parsed == null) continue;
-                    return parsed;
+                    _coordinateElement = pane;
+                    _coordinateValuePattern = valuePattern;
                 }
-                return null;
             }
             catch (Exception ex)
             {
-                Log($"Поиск координат: ошибка UI Automation: {ex.Message}");
+                LogDebug($"Map Editor bridge: поиск координатного поля: {ex.Message}");
+            }
+        }
+
+        private static EditorPosition? ReadCachedCoordinate()
+        {
+            ValuePattern? pattern;
+            AutomationElement? element;
+            lock (UiaSync)
+            {
+                pattern = _coordinateValuePattern;
+                element = _coordinateElement;
+            }
+
+            if (pattern == null || element == null)
+            {
+                EnsureCoordinateElement();
+                lock (UiaSync)
+                {
+                    pattern = _coordinateValuePattern;
+                    element = _coordinateElement;
+                }
+            }
+
+            if (pattern == null || element == null)
+                return null;
+
+            try
+            {
+                string text = pattern.Current.Value ?? string.Empty;
+                var parsed = ParsePosition(text);
+                if (parsed != null) return parsed;
+
+                // Некоторые реализации UIA не обновляют ValuePattern, но обновляют Name.
+                string name = GetAutomationText(element);
+                parsed = ParsePosition(name);
+                if (parsed != null) return parsed;
+
+                return null;
+            }
+            catch
+            {
+                // Control/window мог быть пересоздан самим игровым редактором. Сбрасываем
+                // только UIA-кэш; следующий тик заново найдёт нужный control.
+                ClearCoordinateElement();
                 return null;
             }
         }
@@ -223,6 +333,27 @@ namespace ETS2_Assist_GUI
             catch { return string.Empty; }
         }
 
+        private static void ClearCoordinateElement()
+        {
+            lock (UiaSync)
+            {
+                _coordinateElement = null;
+                _coordinateValuePattern = null;
+            }
+        }
+
+        private static void ClearEditorWindow()
+        {
+            _editorWindow = IntPtr.Zero;
+            _editorProcessId = 0;
+            ClearCoordinateElement();
+        }
+
+        private static void ClearLastPosition()
+        {
+            lock (Sync) _lastPosition = null;
+        }
+
         internal static void Shutdown()
         {
             lock (Sync)
@@ -232,6 +363,8 @@ namespace ETS2_Assist_GUI
             }
             try { Application.ApplicationExit -= OnApplicationExit; } catch { }
             try { StopEvent.Set(); } catch { }
+            ClearEditorWindow();
+            ClearLastPosition();
             Log("Map Editor bridge: остановка");
         }
 
@@ -241,6 +374,11 @@ namespace ETS2_Assist_GUI
             try { Console.WriteLine($"[MapEditor2GameEditor] {message}"); } catch { }
             try { Debug.WriteLine($"[MapEditor2GameEditor] {message}"); } catch { }
             try { Logger.Current?.Workflow($"[MapEditor2GameEditor] {message}"); } catch { }
+        }
+
+        private static void LogDebug(string message)
+        {
+            try { Debug.WriteLine($"[MapEditor2GameEditor] {message}"); } catch { }
         }
     }
 }
