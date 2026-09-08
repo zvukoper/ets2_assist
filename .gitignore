@@ -458,3 +458,5 @@ artifacts/
 
 # Ollama usage tracking
 MemoryAI/ollama_parsed_usage.txt
+startup.log
+crash.log

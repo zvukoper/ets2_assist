@@ -2312,7 +2312,6 @@ RegisterHotKeyChecked(
                     "{0:yyyy-MM-dd HH:mm:ss}  X={1:F2}  Y={2:F2}  Z={3:F2}",
                     DateTime.Now, x, y, z);
                 File.AppendAllText(file, line + Environment.NewLine);
-                AppendLog($"Координаты редактора записаны в {file}");
             }
             catch (Exception ex)
             {
