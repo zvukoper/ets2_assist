@@ -65,6 +65,9 @@ namespace ETS2_Assist_GUI
                     case "map2-override-create":
                         await CreateOverrideFileAsync(cmd);
                         break;
+                    case "map2-export":
+                        await ExportPointsAsync(cmd);
+                        break;
                 }
             }
             catch (Exception ex)
@@ -115,9 +118,11 @@ namespace ETS2_Assist_GUI
             {
                 AppDataPaths.EnsureUserData();
                 Directory.CreateDirectory(AppDataPaths.MapOverridesDirectory);
-                string path = Path.Combine(AppDataPaths.MapOverridesDirectory, file);
-                // Безопасность пути: только имя файла внутри map_overrides.
-                if (Path.GetFullPath(path) != Path.GetFullPath(Path.Combine(AppDataPaths.MapOverridesDirectory, Path.GetFileName(file))))
+                // Резолвим относительный путь (рекурсивный поиск, если имя без каталога).
+                var rel = ResolveOverrideRelativePath(file);
+                string path = string.IsNullOrEmpty(rel) ? "" : OverrideFileAbsolutePath(rel);
+                // Безопасность пути: только внутри map_overrides.
+                if (string.IsNullOrEmpty(path))
                 {
                     await SendSaveResultAsync(false, file, "Недопустимое имя файла");
                     return;
@@ -162,9 +167,9 @@ namespace ETS2_Assist_GUI
                 File.WriteAllText(path, root.ToString(Newtonsoft.Json.Formatting.Indented));
 
                 // Файл мог быть не в load_order — регистрируем (в конец, низший приоритет).
-                EnsureFileInLoadOrder(file);
+                EnsureFileInLoadOrder(rel);
 
-                bool inList = IsFileInLoadOrder(file);
+                bool inList = IsFileInLoadOrder(rel);
                 var files = BuildOverrideFileList();
                 Logger.Current?.Workflow($"[MAP2OVR] Сохранено '{gn}' -> {file} ({(updated ? "перезаписано" : "добавлено")}, полей={fields.Properties().Count()})");
                 await SendSaveResultAsync(true, file, null, updated, files);
@@ -197,8 +202,9 @@ namespace ETS2_Assist_GUI
                 var order = ReadLoadOrder();
                 foreach (var f in order)
                 {
-                    string path = Path.Combine(AppDataPaths.MapOverridesDirectory, f);
-                    if (!File.Exists(path)) continue;
+                    var rel = ResolveOverrideRelativePath(f);
+                    string path = string.IsNullOrEmpty(rel) ? "" : OverrideFileAbsolutePath(rel);
+                    if (string.IsNullOrEmpty(path) || !File.Exists(path)) continue;
                     JObject root;
                     try { root = JObject.Parse(File.ReadAllText(path)); }
                     catch { continue; }
@@ -248,8 +254,9 @@ namespace ETS2_Assist_GUI
             int count = 0;
             foreach (var f in ReadLoadOrder())
             {
-                string path = Path.Combine(AppDataPaths.MapOverridesDirectory, f);
-                if (!File.Exists(path)) continue;
+                var rel = ResolveOverrideRelativePath(f);
+                string path = string.IsNullOrEmpty(rel) ? "" : OverrideFileAbsolutePath(rel);
+                if (string.IsNullOrEmpty(path) || !File.Exists(path)) continue;
                 try
                 {
                     var root = JObject.Parse(File.ReadAllText(path));
@@ -272,22 +279,33 @@ namespace ETS2_Assist_GUI
                 await SendCreateResultAsync(false, null, "Пустое имя файла");
                 return;
             }
-            // Валидация имени: только латиница, цифры, подчёркивание (+ .json).
+            // Валидация имени: латиница, цифры, подчёркивание, точка в подкаталоге
+            // (имя вида "подкаталог/файл" или голое имя) + .json.
             var baseName = file.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
                 ? file.Substring(0, file.Length - 5)
                 : file;
-            if (string.IsNullOrWhiteSpace(baseName) || !System.Text.RegularExpressions.Regex.IsMatch(baseName, "^[A-Za-z0-9_]+$"))
+            var parts = baseName.Replace('\\', '/').Split('/');
+            foreach (var part in parts)
             {
-                await SendCreateResultAsync(false, null, "Имя файла: только латиница, цифры и подчёркивание");
-                return;
+                if (string.IsNullOrWhiteSpace(part) || !System.Text.RegularExpressions.Regex.IsMatch(part, "^[A-Za-z0-9_]+$") || part.Equals("..", StringComparison.Ordinal))
+                {
+                    await SendCreateResultAsync(false, null, "Имя файла: только латиница, цифры и подчёркивание");
+                    return;
+                }
             }
-            var fname = baseName + ".json";
+            var fname = string.Join('\\', parts) + ".json";
             try
             {
                 AppDataPaths.EnsureUserData();
                 Directory.CreateDirectory(AppDataPaths.MapOverridesDirectory);
-                string path = Path.Combine(AppDataPaths.MapOverridesDirectory, fname);
-                if (File.Exists(path))
+                string path = OverrideFileAbsolutePath(fname);
+                if (string.IsNullOrEmpty(path))
+                {
+                    await SendCreateResultAsync(false, null, "Недопустимое имя файла");
+                    return;
+                }
+                // Голое имя: проверяем дубли и в существующих подкаталогах.
+                if (File.Exists(path) || EnumerateOverrideFilesRecursive().Any(f => string.Equals(Path.GetFileName(f), Path.GetFileName(fname), StringComparison.OrdinalIgnoreCase)))
                 {
                     await SendCreateResultAsync(false, null, $"Файл «{fname}» уже существует");
                     return;
@@ -329,6 +347,190 @@ namespace ETS2_Assist_GUI
             catch { }
         }
 
+        // ==== ЭКСПОРТ ВЫДЕЛЕННЫХ ТОЧЕК ====
+        // json — формат оверрайдов ({customTargets:[...]}) в папку map_overrides (БЕЗ
+        // подключения в load_order — файл просто лежит рядом, подключается вручную);
+        // sii — хранилище игрового редактора (editor_item_storage + viewport_placements),
+        // тот же формат, что генерируют generate_viewports*.ps1, в
+        //  <ETS2>\editor\storages\ (если найдена) иначе — в map_overrides.
+        private async Task ExportPointsAsync(JObject cmd)
+        {
+            var file = (string?)cmd["file"] ?? "";
+            var format = ((string?)cmd["format"] ?? "json").ToLowerInvariant();
+            var points = cmd["points"] as JArray;
+            if (string.IsNullOrWhiteSpace(file) || points == null || points.Count == 0)
+            {
+                await SendExportResultAsync(false, file, format, 0, "Нет файла или точек");
+                return;
+            }
+            if (!System.Text.RegularExpressions.Regex.IsMatch(file, "^[A-Za-z0-9_]+$") || file.Length > 64)
+            {
+                await SendExportResultAsync(false, file, format, 0, "Имя файла: только латиница, цифры и подчёркивание");
+                return;
+            }
+            try
+            {
+                AppDataPaths.EnsureUserData();
+                Directory.CreateDirectory(AppDataPaths.MapOverridesDirectory);
+                string outPath;
+                if (format == "sii")
+                {
+                    string content = BuildSiiStorage(points);
+                    string outDir = FindEditorStoragesDirectory();
+                    Directory.CreateDirectory(outDir);
+                    outPath = Path.Combine(outDir, file + ".sii");
+                    File.WriteAllText(outPath, content, new UTF8Encoding(false));
+                }
+                else
+                {
+                    var root = new JObject();
+                    var arr = new JArray();
+                    foreach (var t in points.OfType<JObject>())
+                    {
+                        var entry = new JObject
+                        {
+                            ["gameName"] = (string?)t["gameName"] ?? "",
+                            ["realName"] = (string?)t["realName"] ?? "",
+                            ["coords"] = (string?)t["coords"] ?? "0, 0, 0",
+                            ["status"] = "active",
+                            ["icon"] = "default",
+                            ["color"] = string.IsNullOrEmpty((string?)t["color"]) ? "default" : t["color"],
+                            ["targetMapOverview"] = false,
+                            ["isRandom"] = false
+                        };
+                        var cat = (string?)t["category"];
+                        if (!string.IsNullOrWhiteSpace(cat)) entry["category"] = cat;
+                        arr.Add(entry);
+                    }
+                    root["customTargets"] = arr;
+                    outPath = Path.Combine(AppDataPaths.MapOverridesDirectory, file + ".json");
+                    File.WriteAllText(outPath, root.ToString(Newtonsoft.Json.Formatting.Indented));
+                }
+                Logger.Current?.Workflow($"[MAP2OVR] Экспорт {points.Count} точек -> {outPath} (формат {format})");
+                await SendExportResultAsync(true, Path.GetFileName(outPath), format, points.Count, null);
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Warning("[MAP2OVR] Ошибка экспорта: " + ex.Message);
+                await SendExportResultAsync(false, file, format, 0, ex.Message);
+            }
+        }
+
+        // Ищет папку editor\storages в стандартных местах установки ETS2/ATS.
+        private static string FindEditorStoragesDirectory()
+        {
+            var candidates = new List<string>();
+            string? documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            for (char c = 'A'; c <= 'Z'; c++)
+            {
+                candidates.Add($@"{c}:\Users\Docs\Euro Truck Simulator 2\editor\storages");
+                candidates.Add($@"{c}:\Users\Docs\American Truck Simulator\editor\storages");
+            }
+            if (!string.IsNullOrEmpty(documents))
+            {
+                candidates.Add(Path.Combine(documents, "Euro Truck Simulator 2", "editor", "storages"));
+                candidates.Add(Path.Combine(documents, "American Truck Simulator", "editor", "storages"));
+            }
+            foreach (var dir in candidates)
+                if (Directory.Exists(dir)) return dir;
+            // Не нашли — сохраняем рядом с оверрайдами, чтобы файл не потерялся.
+            return AppDataPaths.MapOverridesDirectory;
+        }
+
+        // Формат editor_item_storage — как в generate_viewports.ps1 (проверен пользователем):
+        // каждая точка = один viewport (камера к югу от точки +Z, 10 м, 40°).
+        private static string BuildSiiStorage(JArray points)
+        {
+            var pts = points.OfType<JObject>()
+                .Select(t => new
+                {
+                    Name = (string?)t["realName"] ?? (string?)t["gameName"] ?? "",
+                    Coords = (string?)t["coords"] ?? "0, 0, 0"
+                })
+                // Защита от NaN/Infinity: невалидная точка не должна попадать в sii.
+                .Where(t => { var v = ParseXYZ(t.Coords); return v[0] == v[0] && v[2] == v[2]; })
+                .ToList();
+            double[] ParseXYZ(string s)
+            {
+                var parts = s.Split(new[] { ',', ' ', ';' }, StringSplitOptions.RemoveEmptyEntries);
+                double x = 0, y = 0, z = 0;
+                if (parts.Length > 0) double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out x);
+                if (parts.Length > 1) double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out y);
+                if (parts.Length > 2) double.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out z);
+                return new[] { x, y, z };
+            }
+            static string FloatToHex(float f)
+            {
+                if (float.IsNaN(f) || float.IsInfinity(f)) f = 0f;   // NaN/Infinity → 0 (не «ffc00000»)
+                var bytes = BitConverter.GetBytes(f);
+                Array.Reverse(bytes);
+                var sb = new StringBuilder(bytes.Length * 2);
+                foreach (var b in bytes) sb.Append(b.ToString("x2"));
+                return sb.ToString();
+            }
+            const double dist = 10.0;
+            double ang = Math.PI * (40.0 / 180.0);   // 40° возвышения, 10 м — как в генераторе viewports
+            double horiz = dist * Math.Cos(ang);
+            double vert = dist * Math.Sin(ang);
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var lines = new List<string>
+            {
+                "SiiNunit",
+                "{",
+                "editor_item_storage : _nameless.278.335e.44f8 {",
+                " map_name: \"/map/europe.mbd\"",
+                " version: 1",
+                " map_items: 0",
+                " map_item_colors: 0",
+                " map_item_names: 0",
+                " map_item_timestamps: 0",
+                $" viewport_placements: {pts.Count}"
+            };
+            for (int i = 0; i < pts.Count; i++)
+            {
+                var xyz = ParseXYZ(pts[i].Coords);
+                double x = xyz[0], y = xyz[1], z = xyz[2];
+                double cx = x, cy = y + vert, cz = z + horiz;
+                double dx = x - cx, dy = y - cy, dz = z - cz;
+                double len = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+                if (len < 1e-9) { dx = 0; dy = 0; dz = -1; len = 1; }
+                dx /= len; dy /= len; dz /= len;
+                double w = 1 - dz, qx = dy, qy = -dx, qz = 0.0;
+                double qlen = Math.Sqrt(w * w + qx * qx + qy * qy + qz * qz);
+                if (qlen < 1e-9) { w = 1; qx = qy = qz = 0; qlen = 1; }
+                w /= qlen; qx /= qlen; qy /= qlen; qz /= qlen;
+                lines.Add($" viewport_placements[{i}]: (&{FloatToHex((float)cx)}, &{FloatToHex((float)cy)}, &{FloatToHex((float)cz)}) (&{FloatToHex((float)w)}; &{FloatToHex((float)qx)}, &{FloatToHex((float)qy)}, &{FloatToHex((float)qz)})");
+            }
+            lines.Add($" viewport_types: {pts.Count}");
+            for (int i = 0; i < pts.Count; i++) lines.Add($" viewport_types[{i}]: free_camera");
+            lines.Add($" viewport_colors: {pts.Count}");
+            for (int i = 0; i < pts.Count; i++) lines.Add($" viewport_colors[{i}]: 16777215");
+            lines.Add($" viewport_names: {pts.Count}");
+            for (int i = 0; i < pts.Count; i++) lines.Add($" viewport_names[{i}]: \"{EscapeSiiString(pts[i].Name)}\"");
+            lines.Add($" viewport_timestamps: {pts.Count}");
+            for (int i = 0; i < pts.Count; i++) lines.Add($" viewport_timestamps[{i}]: {now}");
+            lines.Add(" selected_viewport: (0, 0, 0) (1; 0, 0, 0)");
+            lines.Add("}");
+            lines.Add("");
+            lines.Add("}");
+            return string.Join("\r\n", lines);
+        }
+
+        private static string EscapeSiiString(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return string.Empty;
+            return s.Replace("\\", "\\\\").Replace("\"", "\\\\\"");
+        }
+
+        private async Task SendExportResultAsync(bool ok, string? file, string format, int count, string? error)
+        {
+            if (_webView.IsDisposed || _webView.CoreWebView2 == null) return;
+            var res = new JObject { ["ok"] = ok, ["file"] = file ?? "", ["format"] = format, ["count"] = count, ["error"] = error ?? "" };
+            var json = JsonConvert.SerializeObject(res.ToString(Newtonsoft.Json.Formatting.None));
+            try { await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2ExportResult && window.MapEditor2ExportResult(JSON.parse({json}));"); }
+            catch { }
+        }
+
         // ==== ПОЗИЦИЯ ФАЙЛА В LOAD_ORDER ====
 
         // pos: 1..N — новая позиция файла (файл с позиции N сдвигается вниз);
@@ -340,7 +542,8 @@ namespace ETS2_Assist_GUI
             {
                 if (string.IsNullOrWhiteSpace(file)) return;
                 var order = ReadLoadOrder();
-                string? cur = order.FirstOrDefault(f => f.Equals(file, StringComparison.OrdinalIgnoreCase));
+                var rel = ResolveOverrideRelativePath(file);
+                string? cur = order.FirstOrDefault(f => LoadOrderMatches(f, rel));
                 int curIdx = cur != null ? order.IndexOf(cur) : -1;
 
                 if (pos <= 0)
@@ -352,7 +555,7 @@ namespace ETS2_Assist_GUI
                     int target = Math.Min(pos - 1, order.Count - (cur != null ? 1 : 0));
                     if (target < 0) target = 0;
                     if (curIdx >= 0) order.RemoveAt(curIdx);
-                    order.Insert(Math.Min(target, order.Count), file);
+                    order.Insert(Math.Min(target, order.Count), string.IsNullOrEmpty(rel) ? file : rel);
                     Logger.Current?.Workflow($"[MAP2OVR] {file} -> позиция {target + 1} в load_order");
                 }
                 WriteLoadOrder(order);
@@ -370,10 +573,70 @@ namespace ETS2_Assist_GUI
             {
                 return File.Exists(AppDataPaths.MapOverridesLoadOrderFile)
                     ? File.ReadAllLines(AppDataPaths.MapOverridesLoadOrderFile)
-                        .Select(l => l.Trim()).Where(l => l.Length > 0).ToList()
+                        .Select(l => l.Trim()).Where(l => l.Length > 0)
+                        // Нормализация разделителей к '\\' и фильтр вложенных путей (..).
+                        .Select(l => l.Replace('/', '\\'))
+                        .Where(l => !l.Contains("..")).ToList()
                     : new List<string>();
             }
             catch { return new List<string>(); }
+        }
+
+        // Нормализация имени файла к ОТНОСИТЕЛЬНОМУ пути внутри map_overrides:
+        // если пришло голое имя — ищем его рекурсивно во всех подкаталогах;
+        // иначе нормализуем разделители и возвращаем относительный путь как есть.
+        private static string ResolveOverrideRelativePath(string name)
+        {
+            var rel = (name ?? "").Replace('/', '\\').TrimStart('\\');
+            if (string.IsNullOrWhiteSpace(rel)) return string.Empty;
+            // Уже содержит подкаталог — оставляем как есть (после нормализации).
+            if (rel.Contains('\\'))
+            {
+                var abs = OverrideFileAbsolutePath(rel);
+                return string.IsNullOrEmpty(abs) ? string.Empty : rel;
+            }
+            // Голое имя: сначала корень, затем рекурсивный поиск по подкаталогам.
+            var rootPath = Path.Combine(AppDataPaths.MapOverridesDirectory, rel);
+            if (File.Exists(rootPath)) return rel;
+            foreach (var found in EnumerateOverrideFilesRecursive())
+            {
+                if (string.Equals(Path.GetFileName(found), rel, StringComparison.OrdinalIgnoreCase))
+                    return found;
+            }
+            return rel;   // не нашли — вернём как есть (файл может появиться позже)
+        }
+
+        // Рекурсивный поиск *.json в map_overrides: возвращает ОТНОСИТЕЛЬНЫЕ пути
+        // (напр. "ets2_overrides\\targets.json"), кроме load_order.txt.
+        private static List<string> EnumerateOverrideFilesRecursive()
+        {
+            var result = new List<string>();
+            try
+            {
+                Directory.CreateDirectory(AppDataPaths.MapOverridesDirectory);
+                foreach (var full in Directory.EnumerateFiles(AppDataPaths.MapOverridesDirectory, "*.json", SearchOption.AllDirectories))
+                {
+                    string rel = Path.GetRelativePath(AppDataPaths.MapOverridesDirectory, full);
+                    if (rel.Equals("load_order.txt", StringComparison.OrdinalIgnoreCase)) continue;
+                    result.Add(rel);
+                }
+                result.Sort(StringComparer.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Warning("[MAP2OVR] Ошибка рекурсивного списка файлов: " + ex.Message);
+            }
+            return result;
+        }
+
+        // Абсолютный путь по относительному имени (с подкаталогом).
+        private static string OverrideFileAbsolutePath(string rel)
+        {
+            rel = (rel ?? "").Replace('/', '\\').TrimStart('\\');
+            var abs = Path.GetFullPath(Path.Combine(AppDataPaths.MapOverridesDirectory, rel));
+            var root = Path.GetFullPath(AppDataPaths.MapOverridesDirectory);
+            if (!abs.StartsWith(root, StringComparison.OrdinalIgnoreCase)) return string.Empty;
+            return abs;
         }
 
         private static void WriteLoadOrder(List<string> order)
@@ -382,19 +645,49 @@ namespace ETS2_Assist_GUI
             File.WriteAllLines(AppDataPaths.MapOverridesLoadOrderFile, order, new UTF8Encoding(false));
         }
 
-        private static bool IsFileInLoadOrder(string file) => ReadLoadOrder().Any(f => f.Equals(file, StringComparison.OrdinalIgnoreCase));
+        // Сравнение имени файла с записью load_order: запись может быть с путём или без —
+        // сверяем и полный относительный путь, и голое имя (устаревшие load_order).
+        private static bool LoadOrderMatches(string entry, string rel)
+        {
+            if (string.Equals(entry, rel, StringComparison.OrdinalIgnoreCase)) return true;
+            return string.Equals(Path.GetFileName(entry), Path.GetFileName(rel), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsFileInLoadOrder(string file)
+        {
+            var rel = ResolveOverrideRelativePath(file);
+            if (string.IsNullOrEmpty(rel)) return false;
+            return ReadLoadOrder().Any(f => LoadOrderMatches(f, rel));
+        }
 
         private static void EnsureFileInLoadOrder(string file)
         {
-            if (IsFileInLoadOrder(file)) return;
-            var order = ReadLoadOrder();
-            order.Add(file);
-            WriteLoadOrder(order);
+            var rel = ResolveOverrideRelativePath(file);
+            if (string.IsNullOrWhiteSpace(rel)) return;
+            if (ReadLoadOrder().Any(f => LoadOrderMatches(f, rel)))
+            {
+                // Голое имя в load_order, а файл найден в подкаталоге — обновляем запись на путь.
+                var order = ReadLoadOrder();
+                int idx = order.FindIndex(f => LoadOrderMatches(f, rel));
+                if (idx >= 0 && !string.Equals(order[idx], rel, StringComparison.OrdinalIgnoreCase))
+                {
+                    string before = order[idx];
+                    order[idx] = rel;
+                    WriteLoadOrder(order);
+                    Logger.Current?.Workflow($"[MAP2OVR] load_order обновлён: '{before}' -> '{rel}'");
+                }
+                return;
+            }
+            var order2 = ReadLoadOrder();
+            order2.Add(rel);
+            WriteLoadOrder(order2);
         }
 
         // ==== СПИСОК ФАЙЛОВ + ДАННЫЕ OVERRIDES ДЛЯ JS ====
 
-        // Список всех *.json в map_overrides: [{name,pos}] (pos=0 -> префикс * в UI).
+        // Список всех *.json в map_overdims (РЕКУРСИВНО, с подкаталогами):
+        // [{name,pos}] — name = ОТНОСИТЕЛЬНЫЙ путь (напр. "ets2_overrides\\targets.json"),
+        // pos=0 -> префикс * в UI (файл вне load_order).
         private JArray BuildOverrideFileList()
         {
             var result = new JArray();
@@ -402,14 +695,10 @@ namespace ETS2_Assist_GUI
             {
                 Directory.CreateDirectory(AppDataPaths.MapOverridesDirectory);
                 var order = ReadLoadOrder();
-                var files = Directory.EnumerateFiles(AppDataPaths.MapOverridesDirectory, "*.json")
-                    .Select(Path.GetFileName)
-                    .Where(n => n != null && !n.Equals("load_order.txt", StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(n => n, StringComparer.OrdinalIgnoreCase);
-                foreach (var name in files)
+                foreach (var rel in EnumerateOverrideFilesRecursive())
                 {
-                    int pos = order.FindIndex(f => f.Equals(name, StringComparison.OrdinalIgnoreCase)) + 1;
-                    result.Add(new JObject { ["name"] = name, ["pos"] = pos });
+                    int pos = order.FindIndex(f => LoadOrderMatches(f, rel)) + 1;
+                    result.Add(new JObject { ["name"] = rel, ["pos"] = pos });
                 }
             }
             catch (Exception ex)
@@ -439,13 +728,19 @@ namespace ETS2_Assist_GUI
                 var order = ReadLoadOrder();
                 foreach (var f in order)
                 {
-                    var path = Path.Combine(AppDataPaths.MapOverridesDirectory, f);
-                    if (!File.Exists(path)) continue;
+                    // Запись может быть голым именем — резолвим в относительный путь.
+                    var rel = ResolveOverrideRelativePath(f);
+                    var path = string.IsNullOrEmpty(rel) ? null : OverrideFileAbsolutePath(rel);
+                    if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                    {
+                        Logger.Current?.Data($"[MAP2OVR] файл из load_order не найден: {f}");
+                        continue;
+                    }
                     try
                     {
                         var list = JObject.Parse(File.ReadAllText(path))["customTargets"] as JArray;
                         if (list == null || list.Count == 0) continue;
-                        result.Add(new JObject { ["name"] = f, ["points"] = list.DeepClone() });
+                        result.Add(new JObject { ["name"] = rel, ["points"] = list.DeepClone() });
                     }
                     catch (Exception ex)
                     {

@@ -353,6 +353,14 @@ namespace ETS2_Assist_GUI
                 {
                     continue;
                 }
+                // 3c) Служебные записи пользовательских категорий (из Map Editor 2):
+                // __category__:<имя> — это описание категории (название/цвет), НЕ точка.
+                // На миникарту не попадают, редактор карты 2 читает их сам.
+                if (key.StartsWith("__category__:", StringComparison.Ordinal) ||
+                    key.StartsWith("__", StringComparison.Ordinal))
+                {
+                    continue;
+                }
                 // 4) Пользовательская точка (только в overrides).
                 var up = new PointData { GameName = key };
                 MapEditorForm.ApplyJObjectToPoint(up, entry);
@@ -384,15 +392,37 @@ namespace ETS2_Assist_GUI
                 yield break;
             }
             var orderLines = File.ReadAllLines(orderFile)
-                .Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
+                .Select(l => l.Trim().Replace('/', '\\')).Where(l => l.Length > 0).ToList();
             Logger.Current?.Data($"[OVR] load_order.txt: [{string.Join(", ", orderLines)}] (снизу=низший приоритет)");
             foreach (var f in orderLines)
             {
-                var path = Path.Combine(dir, f);
+                // Запись может быть голым именем — резолвим рекурсивно в подкаталогах.
+                var rel = f;
+                var path = Path.Combine(dir, rel);
                 if (!File.Exists(path))
                 {
-                    Logger.Current?.Data($"[OVR] файл из load_order не найден: {f} (пропущен)");
-                    continue;
+                    // Рекурсивный поиск по голому имени.
+                    string? found = null;
+                    try
+                    {
+                        foreach (var full in Directory.EnumerateFiles(dir, "*.json", SearchOption.AllDirectories))
+                        {
+                            if (string.Equals(Path.GetFileName(full), rel, StringComparison.OrdinalIgnoreCase))
+                            {
+                                found = Path.GetRelativePath(dir, full);
+                                break;
+                            }
+                        }
+                    }
+                    catch { }
+                    if (found == null)
+                    {
+                        Logger.Current?.Data($"[OVR] файл из load_order не найден: {f} (пропущен)");
+                        continue;
+                    }
+                    rel = found;
+                    path = Path.Combine(dir, rel);
+                    Logger.Current?.Data($"[OVR] файл '{f}' найден в подкаталоге: {rel}");
                 }
                 JArray? list = null;
                 try
@@ -409,8 +439,8 @@ namespace ETS2_Assist_GUI
                 {
                     var k = (string?)t["gameName"] ?? (string?)t["id"] ?? "?";
                     var crd = (string?)t["coords"] ?? $"{t["x"]},{t["z"]}";
-                    Logger.Current?.Data($"[OVR]   {f} -> {k}: {crd}");
-                    yield return (f, t);
+                    Logger.Current?.Data($"[OVR]   {rel} -> {k}: {crd}");
+                    yield return (rel, t);
                 }
             }
         }
