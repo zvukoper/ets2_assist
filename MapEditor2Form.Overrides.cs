@@ -720,6 +720,8 @@ namespace ETS2_Assist_GUI
         // Данные overrides для JS: файлы в ПОРЯДКЕ ПРИМЕНЕНИЯ (первый = высший приоритет,
         // т.е. первая строка load_order). JS применяет их по очереди; первый файл задаёт
         // значение, последующие НЕ переопределяют его поля (см. MapEditor2ApplyOverrides).
+        // Файлы ВНЕ load_order идут с inOrder=false: JS НЕ применяет их на карту, только
+        // показывает точки в «Сохранённых» (курсив + звёздочка, клик = создание новой точки).
         private JArray BuildOverrideDataForJs()
         {
             var result = new JArray();
@@ -740,7 +742,7 @@ namespace ETS2_Assist_GUI
                     {
                         var list = JObject.Parse(File.ReadAllText(path))["customTargets"] as JArray;
                         if (list == null || list.Count == 0) continue;
-                        result.Add(new JObject { ["name"] = rel, ["points"] = list.DeepClone() });
+                        result.Add(new JObject { ["name"] = rel, ["inOrder"] = true, ["points"] = list.DeepClone() });
                     }
                     catch (Exception ex)
                     {
@@ -755,10 +757,42 @@ namespace ETS2_Assist_GUI
             return result;
         }
 
+        // Данные ТОЧЕК из файлов ВНЕ load_order (inOrder=false): применяются ТОЛЬКО
+        // в списке «Сохранённые» (курсив + звёздочка, на карте скрыты, клик = новая точка).
+        private JArray BuildExcludedOverrideDataForJs()
+        {
+            var result = new JArray();
+            try
+            {
+                var order = ReadLoadOrder();
+                foreach (var rel in EnumerateOverrideFilesRecursive())
+                {
+                    bool inOrder = order.Any(f => LoadOrderMatches(f, rel));
+                    if (inOrder) continue;
+                    var path = OverrideFileAbsolutePath(rel);
+                    if (string.IsNullOrEmpty(path) || !File.Exists(path)) continue;
+                    try
+                    {
+                        var list = JObject.Parse(File.ReadAllText(path))["customTargets"] as JArray;
+                        if (list == null || list.Count == 0) continue;
+                        result.Add(new JObject { ["name"] = rel, ["inOrder"] = false, ["points"] = list.DeepClone() });
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Warning("[MAP2OVR] Ошибка сборки данных неактивных overrides: " + ex.Message);
+            }
+            return result;
+        }
+
         private async Task SendOverridesDataAsync()
         {
             if (!_pageReady || _webView.IsDisposed || _webView.CoreWebView2 == null) return;
             var data = BuildOverrideDataForJs();
+            var excluded = BuildExcludedOverrideDataForJs();
+            foreach (var ex in excluded) data.Add(ex);
             var json = JsonConvert.SerializeObject(data.ToString(Newtonsoft.Json.Formatting.None));
             try
             {

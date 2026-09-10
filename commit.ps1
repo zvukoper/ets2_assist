@@ -23,4 +23,7 @@ Start-Process -FilePath $tortoiseExe -ArgumentList "/command:commit /path:."
 Write-Host "Commit dialog opened for: $(Get-Location)"
 
 cd $env:localappdata\ETS2_Assist\map_overrides\ets2_overrides
-git commit -m "Upd" *> $null; git push *> $null
+git commit -m "Upd"
+git push
+
+cd $PSScriptRoot
