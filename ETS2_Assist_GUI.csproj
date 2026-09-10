@@ -14,7 +14,7 @@
     <VersionStage>0</VersionStage>
     <VersionSet>40</VersionSet>
     <VersionIter>13</VersionIter>
-    <VersionDesc>MAP2-DIRECT-FIX-OVERRIDES</VersionDesc>
+    <VersionDesc>MAP2-PRESTABLE-SMALL-FIXES</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>
