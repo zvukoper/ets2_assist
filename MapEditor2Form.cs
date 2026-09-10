@@ -21,11 +21,6 @@ namespace ETS2_Assist_GUI
         private System.Windows.Forms.Timer? _editorStatusTimer;
         private bool _lastEditorRunning;
 
-        // v39.89: создание точки по координатам из игрового редактора (Ctrl+Shift+X).
-        // Вызывается из MainForm, когда MapEditor2Form открыт. Маршалит на UI-поток
-        // и вызывает JS MapEditor2CreatePointFromEditor (аналог ЛКМ-клика в режиме
-        // «Добавить»), с системным именем MapEditor<координаты>, зумом к точке и
-        // фокусом на поле «Отображаемое имя».
         internal void CreatePointFromEditor(double x, double y, double z)
         {
             try
@@ -50,10 +45,6 @@ namespace ETS2_Assist_GUI
             ControlBox = true;
             BackColor = Color.FromArgb(15, 18, 23);
             Controls.Add(_webView);
-
-            // Bugfix preload должен быть подключён раньше InitializeAsync,
-            // чтобы NavigationStarting поймал первую навигацию и установил
-            // document-created script до выполнения page scripts.
             RegisterMap2BugfixLoadHook();
             Load += async (_, _) => await InitializeAsync();
             FormClosed += (_, _) => { try { _webView.Dispose(); } catch { } };
@@ -72,14 +63,11 @@ namespace ETS2_Assist_GUI
                 CoreWebView2HostResourceAccessKind.Allow);
             _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
             _webView.Source = new Uri("https://ets2assist-map.local/map_editor2/index.html");
-
-            // v39.90: таймер обновления индикатора «Редактор запущен» в статусбаре.
             _editorStatusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             _editorStatusTimer.Tick += (_, _) => UpdateEditorStatusIndicator();
             _editorStatusTimer.Start();
         }
 
-        // v39.90: обновляет индикатор «Редактор запущен» (lime) в статусбаре под картой.
         private void UpdateEditorStatusIndicator()
         {
             try
@@ -99,15 +87,11 @@ namespace ETS2_Assist_GUI
             if (string.Equals(message, "map2-ready", StringComparison.Ordinal))
             {
                 _pageReady = true;
-                // v39.91: при загрузке страницы принудительно обновляем индикатор
-                // «Редактор запущен» (иначе он мог остаться скрытым, если CoreWebView2
-                // не был готов на момент первого тика таймера).
                 _lastEditorRunning = !MapEditor2GameEditorBridge.IsEditorRunning();
                 UpdateEditorStatusIndicator();
                 await ApplyMapEditor2UiOverridesAsync();
                 await SendStaticPointFilesAsync();
                 await SendTargetsAsync();
-                // Секция «Сохранение точек»: список файлов + применение overrides к точкам.
                 await SendOverridesToEditorAsync();
                 return;
             }
@@ -118,9 +102,6 @@ namespace ETS2_Assist_GUI
             }
             if (string.Equals(message, "map2-data-ready", StringComparison.Ordinal))
             {
-                // Статические точки/категории полностью загружены — ПЕРЕД отрисовкой
-                // применяем переопределения из map_overrides (первая строка
-                // load_order.txt = высший приоритет).
                 await SendOverridesToEditorAsync();
                 return;
             }
@@ -156,10 +137,6 @@ namespace ETS2_Assist_GUI
         private async Task ApplyMapEditor2UiOverridesAsync()
         {
             if (_webView.CoreWebView2 == null) return;
-            // Базовая типографика Map Editor 2: ВСЕ названия точек и категории —
-            // одинаковый Roboto Regular. Города на карте — Roboto SemiBold и +20%.
-            // Canvas-надписи нельзя надёжно переопределить обычным CSS, поэтому здесь
-            // нормализуем и DOM, и canvas #labels.
             const string script = @"
 (() => {
     try {
@@ -179,11 +156,9 @@ namespace ETS2_Assist_GUI
 `;
             document.head.appendChild(style);
         }
-
         if (!window.__ets2AssistPointFontPatchInstalled) {
             const originalFillText = CanvasRenderingContext2D.prototype.fillText;
             const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText;
-
             CanvasRenderingContext2D.prototype.fillText = function(text, x, y, maxWidth) {
                 try {
                     const root = document.documentElement;
@@ -198,7 +173,6 @@ namespace ETS2_Assist_GUI
                 } catch (_) { }
                 return maxWidth == null ? originalFillText.call(this, text, x, y) : originalFillText.call(this, text, x, y, maxWidth);
             };
-
             CanvasRenderingContext2D.prototype.strokeText = function(text, x, y, maxWidth) {
                 try {
                     const root = document.documentElement;
@@ -213,12 +187,94 @@ namespace ETS2_Assist_GUI
                 } catch (_) { }
                 return maxWidth == null ? originalStrokeText.call(this, text, x, y) : originalStrokeText.call(this, text, x, y, maxWidth);
             };
-
             window.__ets2AssistPointFontPatchInstalled = true;
         }
     } catch (_) { }
 })();";
-            await _webView.CoreWebView2.ExecuteScriptAsync(script);
+            try { await _webView.CoreWebView2.ExecuteScriptAsync(script); } catch { }
+        }
+
+        private void OpenTerrainFileInExplorer()
+        {
+            try
+            {
+                string path = TerrainPngPath;
+                string directory = Path.GetDirectoryName(path) ?? AppDataPaths.StaticDataDirectory;
+                if (File.Exists(path))
+                    Process.Start(new ProcessStartInfo { FileName = "explorer.exe", Arguments = "/select,\"" + path + "\"", UseShellExecute = true });
+                else
+                {
+                    Directory.CreateDirectory(directory);
+                    Process.Start(new ProcessStartInfo { FileName = "explorer.exe", Arguments = "\"" + directory + "\"", UseShellExecute = true });
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Не удалось открыть расположение карты высот.\n\n" + ex.Message, "Карта высот", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private async Task SendStaticPointFilesAsync()
+        {
+            if (!_pageReady || _webView.CoreWebView2 == null) return;
+            var files = BuildStaticPointFileList();
+            var json = JsonConvert.SerializeObject(files, Formatting.None);
+            await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2SetStaticPointFiles({json});");
+        }
+
+        private IReadOnlyList<string> BuildStaticPointFileList()
+        {
+            try
+            {
+                string root = Path.Combine(AppDataPaths.StaticDataDirectory, "editor_static_data");
+                if (!Directory.Exists(root)) return Array.Empty<string>();
+                return Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories)
+                    .Where(path => !string.Equals(Path.GetFileName(path), "meta.json", StringComparison.OrdinalIgnoreCase))
+                    .Select(path => Path.GetRelativePath(AppDataPaths.StaticDataDirectory, path).Replace(Path.DirectorySeparatorChar, '/'))
+                    .OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
+            }
+            catch { return Array.Empty<string>(); }
+        }
+
+        private async Task SendTargetsAsync()
+        {
+            if (!_pageReady || _webView.CoreWebView2 == null) return;
+            var escaped = JsonConvert.ToString(_targetSnapshotJson);
+            await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2SetTargets(JSON.parse({escaped}));");
+        }
+
+        private string BuildTargetSnapshotJson()
+        {
+            try
+            {
+                var path = AppDataPaths.CustomTargetsFile;
+                if (!File.Exists(path)) return "[]";
+                var root = JToken.Parse(File.ReadAllText(path));
+                var array = root is JArray ja ? ja : root["customTargets"] as JArray;
+                if (array == null) return "[]";
+                var result = new List<object>();
+                foreach (var t in array)
+                {
+                    if (t.Type != JTokenType.Object) continue;
+                    if (!double.TryParse((string?)t["x"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x))
+                        x = t["x"]?.Value<double?>() ?? double.NaN;
+                    if (!double.TryParse((string?)t["z"], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var z))
+                        z = t["z"]?.Value<double?>() ?? double.NaN;
+                    if (double.IsNaN(x) || double.IsNaN(z)) continue;
+                    var id = (string?)t["gameName"] ?? (string?)t["id"] ?? "";
+                    var name = (string?)t["realName"] ?? (string?)t["name"] ?? id;
+                    var color = (string?)t["color"] ?? "default";
+                    result.Add(new { id, name, x, z, color });
+                }
+                return JsonConvert.SerializeObject(result, Formatting.None);
+            }
+            catch { return "[]"; }
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape) { Close(); return true; }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
     }
 }
