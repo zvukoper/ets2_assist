@@ -4,18 +4,11 @@ using Microsoft.Web.WebView2.Core;
 namespace ETS2_Assist_GUI
 {
     // Дополнительный защитный слой для Map Editor 2.
-    // Исправляет четыре краевых случая:
-    // 1) клик по заголовку файла в «Сохранённых»;
-    // 2) сохранение новой точки в выбранный override-файл;
-    // 3) сохранение статичной точки без потери RealName;
-    // 4) отображение/сохранение поля «Категория».
+    // Не вмешивается в навигацию WebView2: страница должна загружаться штатно.
     internal sealed partial class MapEditor2Form
     {
         private bool _map2BugfixNavigationHooked;
-        private bool _map2BugfixFirstNavigation = true;
-        private bool _map2BugfixAllowNextNavigation;
 
-        // Вызывается из конструктора основной части Form, до InitializeAsync.
         private void RegisterMap2BugfixLoadHook()
         {
             Load -= OnMap2BugfixLoad;
@@ -26,43 +19,35 @@ namespace ETS2_Assist_GUI
         {
             if (_map2BugfixNavigationHooked || _webView.IsDisposed) return;
             _map2BugfixNavigationHooked = true;
-            _webView.NavigationStarting += OnMap2BugfixNavigationStarting;
+            _webView.NavigationCompleted += OnMap2BugfixNavigationCompleted;
         }
 
-        // Ставим preload ДО запуска page scripts: первую навигацию отменяем,
-        // регистрируем document-created script и повторяем ту же навигацию.
-        private async void OnMap2BugfixNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
+        private async void OnMap2BugfixNavigationCompleted(
+            object? sender,
+            CoreWebView2NavigationCompletedEventArgs e)
         {
-            if (_map2BugfixAllowNextNavigation)
+            if (_webView.IsDisposed || _webView.CoreWebView2 == null) return;
+
+            _webView.NavigationCompleted -= OnMap2BugfixNavigationCompleted;
+
+            if (!e.IsSuccess)
             {
-                _map2BugfixAllowNextNavigation = false;
+                Logger.Current?.Warning("[MAP2FIX] Map Editor 2 navigation failed.");
                 return;
             }
 
-            if (!_map2BugfixFirstNavigation) return;
-            _map2BugfixFirstNavigation = false;
-
-            var uri = e.Uri;
-            e.Cancel = true;
-
             try
             {
-                if (_webView.CoreWebView2 != null)
-                    await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(Map2BugfixPreloadScript);
-
-                _map2BugfixAllowNextNavigation = true;
-                _webView.Source = new Uri(uri);
+                await _webView.CoreWebView2.ExecuteScriptAsync(Map2BugfixRuntimeScript);
             }
             catch (Exception ex)
             {
-                Logger.Current?.Warning("[MAP2FIX] Не удалось установить preload: " + ex.Message);
-                _map2BugfixAllowNextNavigation = true;
-                try { _webView.Source = new Uri(uri); } catch { }
+                Logger.Current?.Warning("[MAP2FIX] Runtime JS fix failed: " + ex.Message);
             }
         }
 
-        // C# raw string literal: внутри JS не требуется экранировать кавычки.
-        private const string Map2BugfixPreloadScript = """
+        // Выполняется после штатной загрузки страницы. Навигация не отменяется и не повторяется.
+        private const string Map2BugfixRuntimeScript = """
 (() => {
     'use strict';
     try {
@@ -71,7 +56,6 @@ namespace ETS2_Assist_GUI
 
         // ================================================================
         // 1. Заголовок файла в «Сохранённых» становится кликабельным.
-        // C# уже обрабатывает команду map2-open-override-file.
         // ================================================================
         document.addEventListener('click', function (e) {
             try {
@@ -105,9 +89,8 @@ namespace ETS2_Assist_GUI
 
         // ================================================================
         // 2. Поле «Категория».
-        // В текущем renderEditPanel select создаётся, но не добавляется в DOM.
-        // Важно подключить именно этот select: closure save-handler уже держит
-        // его в Map controls.
+        // Оно создаётся renderEditPanel как detached select.
+        // Перехватываем только будущие select и подключаем нужный к строке Category.
         // ================================================================
         const detachedSelects = new Set();
         const originalCreateElement = Document.prototype.createElement;
@@ -123,7 +106,7 @@ namespace ETS2_Assist_GUI
                 for (const row of rows) {
                     const wrap = row.querySelector('.editFieldWrap');
                     if (!wrap) continue;
-                    if (wrap.querySelector('select[data-field-key="Category"]')) continue;
+                    if (wrap.querySelector('select.editInput')) continue;
 
                     const candidates = Array.from(detachedSelects).filter(el =>
                         el && !el.isConnected &&
@@ -136,6 +119,7 @@ namespace ETS2_Assist_GUI
                     const ctrl = candidates[candidates.length - 1];
                     wrap.appendChild(ctrl);
                     detachedSelects.delete(ctrl);
+                    break;
                 }
             } catch (_) { }
         };
@@ -143,17 +127,16 @@ namespace ETS2_Assist_GUI
         const observer = new MutationObserver(() => {
             try { attachDetachedCategorySelect(); } catch (_) { }
         });
-        if (document.documentElement)
+        if (document.documentElement) {
             observer.observe(document.documentElement, { childList: true, subtree: true });
-
+        }
         setTimeout(attachDetachedCategorySelect, 0);
         setTimeout(attachDetachedCategorySelect, 50);
         setTimeout(attachDetachedCategorySelect, 250);
 
         // ================================================================
-        // 3. Нормализация команды map2-override-save.
-        // Гарантируем, что при сохранении заполненные GameName / RealName /
-        // Category / координаты реально уходят в существующий C# bridge.
+        // 3. Сохранение override.
+        // Перед отправкой команды в существующий C# bridge явно сохраняем ключевые значения формы.
         // ================================================================
         const webview = window.chrome && window.chrome.webview;
         if (webview && typeof webview.postMessage === 'function' && !webview.__ets2AssistSaveFixInstalled) {
