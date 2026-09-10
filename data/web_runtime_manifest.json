@@ -6,7 +6,10 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build":  "1.0.40.3-MAP2-ROUTES-UI-09.10-1032",
+    "build":  "1.0.40.12-MAP2-FIX-NEWPOINT-AND-PRESERVE-09.10-1316",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }
+
+
+

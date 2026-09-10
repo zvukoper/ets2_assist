@@ -44,12 +44,15 @@ namespace ETS2_Assist_GUI
             {
                 if (string.Equals(message, "map2-open-overrides-folder", StringComparison.Ordinal))
                 {
+                    Logger.Current?.Data("[MAP2OVR][MSG] map2-open-overrides-folder");
                     OpenOverridesFolder();
                     return;
                 }
                 if (!trimmed.StartsWith("{", StringComparison.Ordinal)) return;
                 var cmd = JObject.Parse(message);
-                switch ((string?)cmd["type"])
+                var cmdType = (string?)cmd["type"] ?? "?";
+                Logger.Current?.Data($"[MAP2OVR][MSG] type={cmdType} rawLen={message.Length}");
+                switch (cmdType)
                 {
                     case "map2-override-save":
                         await SavePointToOverrideFileAsync(cmd);
@@ -67,6 +70,22 @@ namespace ETS2_Assist_GUI
                         break;
                     case "map2-export":
                         await ExportPointsAsync(cmd);
+                        break;
+                    case "map2-open-override-file":
+                        OpenOverrideFileInExplorer((string?)cmd["file"] ?? "");
+                        break;
+                    case "map2-log":
+                        // JS-логирование: пишем в app_data.log с префиксом [MAP2JS].
+                        // Длинные data обрезаем, чтобы не засорять лог.
+                        try
+                        {
+                            var jsm = (string?)cmd["msg"] ?? "";
+                            var jsv = cmd["data"];
+                            var jsvStr = jsv == null ? "" : (jsv.ToString(Newtonsoft.Json.Formatting.None) ?? "");
+                            if (jsvStr.Length > 500) jsvStr = jsvStr.Substring(0, 500) + "...";
+                            Logger.Current?.Data($"[MAP2JS] {jsm} {jsvStr}");
+                        }
+                        catch (Exception lex) { Logger.Current?.Data("[MAP2JS][log-parse-err] " + lex.Message); }
                         break;
                 }
             }
@@ -95,6 +114,84 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        // Клик по заголовку файла в категории «Сохранённые» редактора карты 2:
+        // открывает файл в дефолтном редакторе (ассоциированном с .json), как
+        // просили. Если файла нет — открывает папку overrides.
+        // Защита: путь должен быть ВНУТРИ AppDataPaths.MapOverridesDirectory (защита
+        // от path traversal, если придёт мусорное имя).
+        private void OpenOverrideFileInExplorer(string file)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(file))
+                {
+                    OpenOverridesFolder();
+                    return;
+                }
+                var baseDir = AppDataPaths.MapOverridesDirectory;
+                Directory.CreateDirectory(baseDir);
+                var abs = Path.GetFullPath(Path.Combine(baseDir, file));
+                // Нормализуем базу тоже (чтобы корректно сравнивать через StartsWith).
+                var baseFull = Path.GetFullPath(baseDir) + Path.DirectorySeparatorChar;
+                if (!abs.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show(this,
+                        $"Недопустимый путь к файлу: {file}\n\nФайл должен быть в {baseDir}.",
+                        "Редактор карты 2", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if (File.Exists(abs))
+                {
+                    // Открыть в ассоциированном редакторе (VS Code/Notepad++/блокнот).
+                    // UseShellExecute=true + FileName=путь к файлу → запускается
+                    // программа, ассоциированная с расширением .json.
+                    Logger.Current?.Data($"[MAP2OVR][OPEN-FILE] exist=true path={abs}");
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = abs,
+                            UseShellExecute = true
+                        });
+                        Logger.Current?.Data($"[MAP2OVR][OPEN-FILE] Process.Start OK");
+                    }
+                    catch (Exception exStart)
+                    {
+                        Logger.Current?.Warning($"[MAP2OVR][OPEN-FILE] Process.Start FAIL: {exStart.Message}");
+                        // Fallback: открыть проводник с подсветкой файла.
+                        try
+                        {
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = "explorer.exe",
+                                Arguments = "/select,\"" + abs + "\"",
+                                UseShellExecute = true
+                            });
+                            Logger.Current?.Data($"[MAP2OVR][OPEN-FILE] fallback explorer OK");
+                        }
+                        catch (Exception exExp)
+                        {
+                            Logger.Current?.Warning($"[MAP2OVR][OPEN-FILE] fallback FAIL: {exExp.Message}");
+                            MessageBox.Show(this, "Не удалось открыть файл overrides:\n\n" + exStart.Message,
+                                "Редактор карты 2", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                    }
+                }
+                else
+                {
+                    // Файл удалён/переименован — откроем папку.
+                    Logger.Current?.Data($"[MAP2OVR][OPEN-FILE] exist=false path={abs} -> open folder");
+                    OpenOverridesFolder();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Warning("[MAP2OVR][OPEN-FILE] outer-err: " + ex.Message);
+                MessageBox.Show(this, "Не удалось открыть файл overrides:\n\n" + ex.Message,
+                    "Редактор карты 2", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
         // ==== ЗАПИСЬ ГРЯЗНЫХ ПОЛЕЙ ТОЧКИ В OVERRIDE-ФАЙЛ ====
 
         private async Task SavePointToOverrideFileAsync(JObject cmd)
@@ -102,14 +199,17 @@ namespace ETS2_Assist_GUI
             var file = (string?)cmd["file"] ?? "";
             var gn = (string?)cmd["gameName"] ?? "";
             var fields = cmd["fields"] as JObject;
+            Logger.Current?.Data($"[MAP2OVR][SAVE] enter file='{file}' gn='{gn}' fieldsNull={fields==null} fieldsCount={fields?.Count??0}");
             if (string.IsNullOrWhiteSpace(file) || string.IsNullOrWhiteSpace(gn) || fields == null)
             {
+                Logger.Current?.Data($"[MAP2OVR][SAVE] reject: пустое имя или fields");
                 await SendSaveResultAsync(false, file, "Не указан файл или системное имя");
                 return;
             }
             // Защита: не даём писать в test_targets.json (это цели тестовых кнопок, не overrides точек).
             if (file.Equals("test_targets.json", StringComparison.OrdinalIgnoreCase))
             {
+                Logger.Current?.Data($"[MAP2OVR][SAVE] reject: test_targets.json");
                 await SendSaveResultAsync(false, file, "test_targets.json недоступен для сохранения точек");
                 return;
             }
@@ -121,9 +221,11 @@ namespace ETS2_Assist_GUI
                 // Резолвим относительный путь (рекурсивный поиск, если имя без каталога).
                 var rel = ResolveOverrideRelativePath(file);
                 string path = string.IsNullOrEmpty(rel) ? "" : OverrideFileAbsolutePath(rel);
+                Logger.Current?.Data($"[MAP2OVR][SAVE] resolved rel='{rel}' path='{path}'");
                 // Безопасность пути: только внутри map_overrides.
                 if (string.IsNullOrEmpty(path))
                 {
+                    Logger.Current?.Data($"[MAP2OVR][SAVE] reject: недопустимое имя файла");
                     await SendSaveResultAsync(false, file, "Недопустимое имя файла");
                     return;
                 }
@@ -165,6 +267,7 @@ namespace ETS2_Assist_GUI
                     targets.Add(entry);
                 }
                 File.WriteAllText(path, root.ToString(Newtonsoft.Json.Formatting.Indented));
+                Logger.Current?.Data($"[MAP2OVR][SAVE] file written ok path={path} updated={updated}");
 
                 // Файл мог быть не в load_order — регистрируем (в конец, низший приоритет).
                 EnsureFileInLoadOrder(rel);
@@ -173,13 +276,16 @@ namespace ETS2_Assist_GUI
                 var files = BuildOverrideFileList();
                 Logger.Current?.Workflow($"[MAP2OVR] Сохранено '{gn}' -> {file} ({(updated ? "перезаписано" : "добавлено")}, полей={fields.Properties().Count()})");
                 await SendSaveResultAsync(true, file, null, updated, files);
+                Logger.Current?.Data($"[MAP2OVR][SAVE] SendSaveResultAsync(ok=true) отправлен");
                 // Повторная рассылка данных: точка в редакторе получает метки override
                 // (обводка полей, имя файла у label, звёздочка в имени).
                 await SendOverridesDataAsync();
+                Logger.Current?.Data($"[MAP2OVR][SAVE] SendOverridesDataAsync done");
             }
             catch (Exception ex)
             {
                 Logger.Current?.Warning("[MAP2OVR] Ошибка сохранения в " + file + ": " + ex.Message);
+                Logger.Current?.Data($"[MAP2OVR][SAVE] FAIL ex.Message={ex.Message} StackTrace={ex.StackTrace}");
                 await SendSaveResultAsync(false, file, ex.Message);
             }
         }
@@ -191,6 +297,7 @@ namespace ETS2_Assist_GUI
         private async Task DeletePointFromOverrideFilesAsync(JObject cmd)
         {
             var gn = (string?)cmd["gameName"] ?? "";
+            Logger.Current?.Data($"[MAP2OVR][DEL] enter gn='{gn}'");
             if (string.IsNullOrWhiteSpace(gn))
             {
                 await SendDeleteResultAsync(false, null, "Пустое системное имя");
@@ -241,11 +348,16 @@ namespace ETS2_Assist_GUI
 
         private async Task SendDeleteResultAsync(bool ok, string? file, string? error, int remaining = 0)
         {
-            if (_webView.IsDisposed || _webView.CoreWebView2 == null) return;
+            if (_webView.IsDisposed || _webView.CoreWebView2 == null)
+            {
+                Logger.Current?.Data($"[MAP2OVR][DEL-RESULT] webview DISPOSED/null — результат НЕ отправлен в JS: ok={ok} file={file} err={error}");
+                return;
+            }
             var res = new JObject { ["ok"] = ok, ["file"] = file ?? "", ["error"] = error ?? "", ["remaining"] = remaining };
             var json = JsonConvert.SerializeObject(res.ToString(Newtonsoft.Json.Formatting.None));
+            Logger.Current?.Data($"[MAP2OVR][DEL-RESULT] -> JS: ok={ok} file={file} err={error} remaining={remaining}");
             try { await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2DeleteOverrideResult && window.MapEditor2DeleteOverrideResult(JSON.parse({json}));"); }
-            catch { }
+            catch (Exception ex) { Logger.Current?.Data($"[MAP2OVR][DEL-RESULT] ExecuteScriptAsync FAIL: {ex.Message}"); }
         }
 
         // Сколько override-файлов (по load_order) содержат запись точки.
@@ -339,12 +451,17 @@ namespace ETS2_Assist_GUI
 
         private async Task SendSaveResultAsync(bool ok, string file, string? error, bool updated = false, JArray? files = null)
         {
-            if (_webView.IsDisposed || _webView.CoreWebView2 == null) return;
-            var res = new JObject { ["ok"] = ok, ["file"] = file, ["updated"] = updated };
+            if (_webView.IsDisposed || _webView.CoreWebView2 == null)
+            {
+                Logger.Current?.Data($"[MAP2OVR][SAVE-RESULT] webview DISPOSED/null — результат НЕ отправлен в JS: ok={ok} file={file} err={error}");
+                return;
+            }
+            var res = new JObject { ["ok"] = ok, ["file"] = file, ["updated"] = updated, ["error"] = error ?? "" };
             if (files != null) res["files"] = files;
             var json = JsonConvert.SerializeObject(res.ToString(Newtonsoft.Json.Formatting.None));
+            Logger.Current?.Data($"[MAP2OVR][SAVE-RESULT] -> JS: ok={ok} file={file} err={error} updated={updated}");
             try { await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2SaveOverrideResult && window.MapEditor2SaveOverrideResult(JSON.parse({json}));"); }
-            catch { }
+            catch (Exception ex) { Logger.Current?.Data($"[MAP2OVR][SAVE-RESULT] ExecuteScriptAsync FAIL: {ex.Message}"); }
         }
 
         // ==== ЭКСПОРТ ВЫДЕЛЕННЫХ ТОЧЕК ====

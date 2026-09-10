@@ -1,4 +1,9 @@
-﻿# ollama_limits_usage.txt — учёт расхода лимитов ollama (Session usage)
+﻿# ollama_limits_usage.txt — УСТАРЕВШИЙ (не источник истины)
+
+> **ВНИМАНИЕ (10.09.2026):** этот файл — текстовая копия старой версии. Актуальный источник —
+> `MemoryAI/ollama_limits_usage.md`. Содержимое ниже сохранено для истории; при добавлении
+> новых записей пишите в `.md` файл. **Для проверки Session usage использовать
+> `MemoryAI/ollama_parsed_usage.txt` (расширение `ets2assist.ollama-usage-monitor`)**.
 
 Правила (см. MemoryAI/INSTRUCTIONS.md):
 - ПЕРЕД НАЧАЛОМ любой задачи ВСЕГДА создавать план TODO (manage_todo_list).
