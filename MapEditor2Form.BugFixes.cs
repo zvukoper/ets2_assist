@@ -15,14 +15,11 @@ namespace ETS2_Assist_GUI
         private bool _map2BugfixFirstNavigation = true;
         private bool _map2BugfixAllowNextNavigation;
 
-        // Поле-инициализатор выполняется до тела конструктора, поэтому Load-handler
-        // устанавливается раньше существующего InitializeAsync из MapEditor2Form.cs.
-        private readonly bool _map2BugfixLoadHook = RegisterMap2BugfixLoadHook();
-
-        private bool RegisterMap2BugfixLoadHook()
+        // Вызывается из конструктора основной части Form, до InitializeAsync.
+        private void RegisterMap2BugfixLoadHook()
         {
+            Load -= OnMap2BugfixLoad;
             Load += OnMap2BugfixLoad;
-            return true;
         }
 
         private void OnMap2BugfixLoad(object? sender, EventArgs e)
