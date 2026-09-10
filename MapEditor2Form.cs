@@ -89,6 +89,8 @@ namespace ETS2_Assist_GUI
                 _lastEditorRunning = !MapEditor2GameEditorBridge.IsEditorRunning();
                 UpdateEditorStatusIndicator();
                 await ApplyMapEditor2UiOverridesAsync();
+                await SendBuildVersionAsync();
+                await SendEditorHistoryAsync();
                 await SendStaticPointFilesAsync();
                 await SendTargetsAsync();
                 await SendOverridesToEditorAsync();
@@ -191,6 +193,57 @@ namespace ETS2_Assist_GUI
     } catch (_) { }
 })();";
             try { await _webView.CoreWebView2.ExecuteScriptAsync(script); } catch { }
+        }
+
+        private async Task SendBuildVersionAsync()
+        {
+            if (_webView.IsDisposed || _webView.CoreWebView2 == null) return;
+            try
+            {
+                var json = JsonConvert.ToString(BuildInfo.Version);
+                await _webView.CoreWebView2.ExecuteScriptAsync(
+                    $"window.MapEditor2SetBuildVersion && window.MapEditor2SetBuildVersion(JSON.parse({json}));");
+            }
+            catch { }
+        }
+
+        private async Task SendEditorHistoryAsync()
+        {
+            if (_webView.IsDisposed || _webView.CoreWebView2 == null) return;
+            try
+            {
+                AppDataPaths.EnsureUserData();
+                var path = AppDataPaths.GameEditorPointsHistoryFile;
+                if (!File.Exists(path))
+                    File.WriteAllText(path, "{\n  \"points\": []\n}\n", new System.Text.UTF8Encoding(false));
+
+                JArray points;
+                try
+                {
+                    var token = JToken.Parse(File.ReadAllText(path));
+                    points = token as JArray ?? token["points"] as JArray ?? new JArray();
+                }
+                catch
+                {
+                    points = new JArray();
+                }
+
+                foreach (var item in points.OfType<JObject>())
+                {
+                    var gn = ((string?)item["gameName"] ?? "").Trim();
+                    var rn = ((string?)item["realName"] ?? "").Trim();
+                    if (!string.IsNullOrEmpty(gn) && string.IsNullOrEmpty(rn))
+                        item["realName"] = gn;
+                }
+
+                var json = JsonConvert.ToString(points.ToString(Newtonsoft.Json.Formatting.None));
+                await _webView.CoreWebView2.ExecuteScriptAsync(
+                    $"window.MapEditor2SetEditorHistory && window.MapEditor2SetEditorHistory(JSON.parse({json}));");
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Warning("[MAP2HISTORY] Ошибка загрузки истории: " + ex.Message);
+            }
         }
 
         private void OpenTerrainFileInExplorer()

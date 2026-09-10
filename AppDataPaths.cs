@@ -18,6 +18,7 @@ namespace ETS2_Assist_GUI
         public static string TestTargetsFile => Path.Combine(UserDataDirectory, "map_overrides", "test_targets.json");
         public static string MapOverridesDirectory => Path.Combine(UserDataDirectory, "map_overrides");
         public static string MapOverridesLoadOrderFile => Path.Combine(UserDataDirectory, "map_overrides", "load_order.txt");
+        public static string GameEditorPointsHistoryFile => Path.Combine(UserDataDirectory, "autosave", "game_editor_points.json");
         public static string WebDataFile => Path.Combine(UserDataDirectory, "web_data.json");
         public static string JobStateFile => Path.Combine(UserDataDirectory, "job_state.json");
         public static string ConfigFile => Path.Combine(UserDataDirectory, "config.json");
@@ -27,6 +28,7 @@ namespace ETS2_Assist_GUI
         {
             Directory.CreateDirectory(UserDataDirectory);
             Directory.CreateDirectory(SavedTracksDirectory);
+            Directory.CreateDirectory(Path.Combine(UserDataDirectory, "autosave"));
             MigrateLegacyUserData();
             SeedFile("custom_targets.default.json", CustomTargetsFile);
             SeedFile("web_data.default.json", WebDataFile);

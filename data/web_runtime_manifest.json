@@ -1,4 +1,4 @@
-﻿{
+{
     "static_data_policy":  "preserve-existing",
     "required_static":  [
                             "GeoJson/roads.geojson",
@@ -6,7 +6,7 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build":  "1.0.40.12-MAP2-FIX-NEWPOINT-AND-PRESERVE-09.10-1316",
+    "build":  "1.0.40.13-MAP2-PRESTABLE-SMALL-FIXES-09.10-1010",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }

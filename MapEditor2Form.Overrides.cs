@@ -74,6 +74,15 @@ namespace ETS2_Assist_GUI
                     case "map2-open-override-file":
                         OpenOverrideFileInExplorer((string?)cmd["file"] ?? "");
                         break;
+                    case "map2-history-upsert":
+                        await UpsertEditorHistoryPointAsync(cmd);
+                        break;
+                    case "map2-history-delete":
+                        await DeleteEditorHistoryPointAsync(cmd);
+                        break;
+                    case "map2-history-clear":
+                        await ClearEditorHistoryAsync();
+                        break;
                     case "map2-log":
                         // JS-логирование: пишем в app_data.log с префиксом [MAP2JS].
                         // Длинные data обрезаем, чтобы не засорять лог.
@@ -92,6 +101,104 @@ namespace ETS2_Assist_GUI
             catch (Exception ex)
             {
                 Logger.Current?.Warning("[MAP2OVR] Ошибка обработки сообщения overrides: " + ex.Message);
+            }
+        }
+
+        private async Task UpsertEditorHistoryPointAsync(JObject cmd)
+        {
+            try
+            {
+                var point = cmd["point"] as JObject;
+                if (point == null) return;
+                var gn = ((string?)point["gameName"] ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(gn)) return;
+                var rn = ((string?)point["realName"] ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(rn)) rn = gn;
+                point["gameName"] = gn;
+                point["realName"] = rn;
+                if (point["category"] == null || string.IsNullOrWhiteSpace((string?)point["category"]))
+                    point["category"] = "Пользовательское";
+
+                AppDataPaths.EnsureUserData();
+                var path = AppDataPaths.GameEditorPointsHistoryFile;
+                var root = new JObject { ["points"] = new JArray() };
+                if (File.Exists(path))
+                {
+                    try
+                    {
+                        var token = JToken.Parse(File.ReadAllText(path));
+                        root = token as JObject ?? new JObject { ["points"] = token is JArray a ? a : new JArray() };
+                    }
+                    catch { }
+                }
+                if (root["points"] is not JArray points)
+                {
+                    points = new JArray();
+                    root["points"] = points;
+                }
+
+                bool replaced = false;
+                for (int i = 0; i < points.Count; i++)
+                {
+                    if (points[i] is JObject item &&
+                        string.Equals(((string?)item["gameName"] ?? (string?)item["id"] ?? "").Trim(), gn, StringComparison.Ordinal))
+                    {
+                        points[i] = point.DeepClone();
+                        replaced = true;
+                        break;
+                    }
+                }
+                if (!replaced) points.Add(point.DeepClone());
+                File.WriteAllText(path, root.ToString(Newtonsoft.Json.Formatting.Indented), new UTF8Encoding(false));
+                Logger.Current?.Workflow($"[MAP2HISTORY] {(replaced ? "Обновлена" : "Добавлена")} точка '{gn}' -> {path}");
+                await SendEditorHistoryAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Warning("[MAP2HISTORY] Ошибка сохранения истории: " + ex.Message);
+            }
+        }
+
+        private async Task DeleteEditorHistoryPointAsync(JObject cmd)
+        {
+            try
+            {
+                var gn = ((string?)cmd["gameName"] ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(gn)) return;
+                AppDataPaths.EnsureUserData();
+                var path = AppDataPaths.GameEditorPointsHistoryFile;
+                if (!File.Exists(path)) { await SendEditorHistoryAsync(); return; }
+                var token = JToken.Parse(File.ReadAllText(path));
+                var points = token is JArray a ? a : token["points"] as JArray ?? new JArray();
+                for (int i = points.Count - 1; i >= 0; i--)
+                {
+                    if (points[i] is JObject item && string.Equals(((string?)item["gameName"] ?? "").Trim(), gn, StringComparison.Ordinal))
+                        points.RemoveAt(i);
+                }
+                var root = new JObject { ["points"] = points };
+                File.WriteAllText(path, root.ToString(Newtonsoft.Json.Formatting.Indented), new UTF8Encoding(false));
+                Logger.Current?.Workflow($"[MAP2HISTORY] Удалена точка '{gn}' из истории");
+                await SendEditorHistoryAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Warning("[MAP2HISTORY] Ошибка удаления из истории: " + ex.Message);
+            }
+        }
+
+        private async Task ClearEditorHistoryAsync()
+        {
+            try
+            {
+                AppDataPaths.EnsureUserData();
+                var path = AppDataPaths.GameEditorPointsHistoryFile;
+                File.WriteAllText(path, "{\n  \"points\": []\n}\n", new UTF8Encoding(false));
+                Logger.Current?.Workflow("[MAP2HISTORY] История игрового редактора очищена");
+                await SendEditorHistoryAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Warning("[MAP2HISTORY] Ошибка очистки истории: " + ex.Message);
             }
         }
 
