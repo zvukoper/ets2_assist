@@ -6,7 +6,7 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build":  "1.0.40.2-MAP2-SAVED-UI-09.10-1023",
+    "build":  "1.0.40.3-MAP2-ROUTES-UI-09.10-1032",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }
