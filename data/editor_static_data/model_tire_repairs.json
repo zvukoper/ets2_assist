@@ -1,6 +1,6 @@
 {
-    "category":  "radio_tower_big",
-    "source":  "model_radio_tower_big.txt",
+    "category":  "tire_repairs",
+    "source":  "model_tire_repairs.txt",
     "easter":  false,
     "count":  51,
     "objects":  [
