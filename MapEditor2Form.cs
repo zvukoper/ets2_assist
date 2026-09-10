@@ -45,7 +45,6 @@ namespace ETS2_Assist_GUI
             ControlBox = true;
             BackColor = Color.FromArgb(15, 18, 23);
             Controls.Add(_webView);
-            RegisterMap2BugfixLoadHook();
             Load += async (_, _) => await InitializeAsync();
             FormClosed += (_, _) => { try { _webView.Dispose(); } catch { } };
         }
