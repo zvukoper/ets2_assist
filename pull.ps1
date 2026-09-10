@@ -2,6 +2,12 @@
 
 git pull
 
+cd $env:localappdata\ETS2_Assist\map_overrides\ets2_overrides
+
+git pull
+
+cd $PSScriptRoot
+
 dotnet clean
 dotnet restore
 dotnet publish -c Release
