@@ -1,4 +1,10 @@
-& "$PSScriptRoot\bin\Release\net10.0-windows\win-x64\ETS2_Assist.exe" --shutdown
+Get-Process -Name ETS2_Assist -ErrorAction SilentlyContinue | Out-Null
+if ($?) {
+    Write-Host "ETS2_Assist is running, sending shutdown..."
+    & "$PSScriptRoot\bin\Release\net10.0-windows\win-x64\ETS2_Assist.exe" --shutdown
+} else {
+    Write-Host "ETS2_Assist is not running, skipping shutdown."
+}
 # Stage 1: aggressive WebView2 cache wipe
 # 1a. Kill any leftover msedgewebview2 processes from previous sessions.
 Get-Process -Name msedgewebview2 -ErrorAction SilentlyContinue | ForEach-Object {
