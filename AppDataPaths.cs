@@ -19,6 +19,10 @@ namespace ETS2_Assist_GUI
         public static string MapOverridesDirectory => Path.Combine(UserDataDirectory, "map_overrides");
         public static string MapOverridesLoadOrderFile => Path.Combine(UserDataDirectory, "map_overrides", "load_order.txt");
         public static string GameEditorPointsHistoryFile => Path.Combine(UserDataDirectory, "autosave", "game_editor_points.json");
+        // Измерения и маршруты редактора карты 2 (линейка). Пишутся в свои файлы,
+        // НЕ через систему overrides (map_overrides).
+        public static string MeasurementsFile => Path.Combine(UserDataDirectory, "measurements.json");
+        public static string WaypointsFile => Path.Combine(UserDataDirectory, "waypoints.json");
         public static string WebDataFile => Path.Combine(UserDataDirectory, "web_data.json");
         public static string JobStateFile => Path.Combine(UserDataDirectory, "job_state.json");
         public static string ConfigFile => Path.Combine(UserDataDirectory, "config.json");

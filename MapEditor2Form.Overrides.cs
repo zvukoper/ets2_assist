@@ -83,6 +83,12 @@ namespace ETS2_Assist_GUI
                     case "map2-history-clear":
                         await ClearEditorHistoryAsync();
                         break;
+                    case "map2-measure-save":
+                        await SaveMeasureAsync(cmd);
+                        break;
+                    case "map2-measure-delete":
+                        await DeleteMeasureAsync(cmd);
+                        break;
                     case "map2-log":
                         // JS-логирование: пишем в app_data.log с префиксом [MAP2JS].
                         // Длинные data обрезаем, чтобы не засорять лог.
@@ -376,10 +382,11 @@ namespace ETS2_Assist_GUI
                 File.WriteAllText(path, root.ToString(Newtonsoft.Json.Formatting.Indented));
                 Logger.Current?.Data($"[MAP2OVR][SAVE] file written ok path={path} updated={updated}");
 
-                // Файл мог быть не в load_order — регистрируем (в конец, низший приоритет).
-                EnsureFileInLoadOrder(rel);
-
-                bool inList = IsFileInLoadOrder(rel);
+                // v1.0.40.17: БЕЗ авторегистрации в load_order. Раньше сохранение точки
+                // добавляло файл в load_order, и файл, помеченный пользователем как
+                // неактивный (позиция 0, курсив + '*'), сам становился активным —
+                // курсив в списке файлов пропадал. Теперь принадлежность к load_order
+                // меняется ТОЛЬКО вручную (поле «Позиция файла» → SetOverrideFilePosition).
                 var files = BuildOverrideFileList();
                 Logger.Current?.Workflow($"[MAP2OVR] Сохранено '{gn}' -> {file} ({(updated ? "перезаписано" : "добавлено")}, полей={fields.Properties().Count()})");
                 await SendSaveResultAsync(true, file, null, updated, files);
@@ -398,13 +405,15 @@ namespace ETS2_Assist_GUI
         }
 
         // ==== УДАЛЕНИЕ ТОЧКИ ИЗ OVERRIDE-ФАЙЛОВ ====
-        // Удаляет запись точки из ПЕРВОГО по приоритету файла (первая строка load_order),
-        // где она сохранена. Если в более низких файлах остаются другие данные — они
-        // продолжают применяться. Возвращает имя удалённого файла.
+        // v1.0.40.19: если фронтенд передал file (удаление точки из НЕАКТИВНОГО файла,
+        // которого нет в load_order) — удаляем именно из него. Иначе — прежнее поведение:
+        // ПЕРВЫЙ по приоритету файл (первая строка load_order), где точка сохранена.
+        // Если в более низких файлах остаются другие данные — они продолжают применяться.
         private async Task DeletePointFromOverrideFilesAsync(JObject cmd)
         {
             var gn = (string?)cmd["gameName"] ?? "";
-            Logger.Current?.Data($"[MAP2OVR][DEL] enter gn='{gn}'");
+            var explicitFile = (string?)cmd["file"] ?? "";
+            Logger.Current?.Data($"[MAP2OVR][DEL] enter gn='{gn}' file='{explicitFile}'");
             if (string.IsNullOrWhiteSpace(gn))
             {
                 await SendDeleteResultAsync(false, null, "Пустое системное имя");
@@ -413,6 +422,30 @@ namespace ETS2_Assist_GUI
             try
             {
                 AppDataPaths.EnsureUserData();
+
+                // Явно указан файл — удаляем только из него (в т.ч. файл вне load_order).
+                if (!string.IsNullOrWhiteSpace(explicitFile))
+                {
+                    var rel0 = ResolveOverrideRelativePath(explicitFile);
+                    string path0 = string.IsNullOrEmpty(rel0) ? "" : OverrideFileAbsolutePath(rel0);
+                    if (string.IsNullOrEmpty(path0) || !File.Exists(path0))
+                    {
+                        Logger.Current?.Data($"[MAP2OVR][DEL] file not found: '{explicitFile}' -> '{path0}'");
+                        await SendDeleteResultAsync(false, explicitFile, "Файл не найден: " + explicitFile);
+                        return;
+                    }
+                    if (!RemovePointFromFile(path0, gn))
+                    {
+                        await SendDeleteResultAsync(false, explicitFile, "Точка не найдена в файле " + explicitFile);
+                        return;
+                    }
+                    int rem0 = CountFilesContainingPoint(gn, includeExcluded: true);
+                    Logger.Current?.Workflow($"[MAP2OVR] Удалена точка '{gn}' из {explicitFile} (файл вне load_order, осталось={rem0})");
+                    await SendDeleteResultAsync(true, explicitFile, null, rem0);
+                    await SendOverridesDataAsync();
+                    return;
+                }
+
                 var order = ReadLoadOrder();
                 foreach (var f in order)
                 {
@@ -438,7 +471,7 @@ namespace ETS2_Assist_GUI
                         File.WriteAllText(path, root.ToString(Newtonsoft.Json.Formatting.Indented));
                         Logger.Current?.Workflow($"[MAP2OVR] Удалена точка '{gn}' из {f}");
                         // Сколько файлов ещё содержат эту точку (для частичного удаления).
-                        int remaining = CountFilesContainingPoint(gn);
+                        int remaining = CountFilesContainingPoint(gn, includeExcluded: true);
                         await SendDeleteResultAsync(true, f, null, remaining);
                         await SendOverridesDataAsync();
                         return;
@@ -451,6 +484,29 @@ namespace ETS2_Assist_GUI
                 Logger.Current?.Warning("[MAP2OVR] Ошибка удаления точки: " + ex.Message);
                 await SendDeleteResultAsync(false, null, ex.Message);
             }
+        }
+
+        // v1.0.40.19: удаление записи точки из конкретного файла. Возвращает true, если
+        // запись найдена и удалена (файл перезаписан).
+        private static bool RemovePointFromFile(string path, string gn)
+        {
+            JObject root;
+            try { root = JObject.Parse(File.ReadAllText(path)); }
+            catch { return false; }
+            if (root["customTargets"] is not JArray targets) return false;
+            bool removed = false;
+            for (int i = targets.Count - 1; i >= 0; i--)
+            {
+                if (targets[i] is JObject t &&
+                    string.Equals((string?)t["gameName"] ?? (string?)t["id"], gn, StringComparison.Ordinal))
+                {
+                    targets.RemoveAt(i);
+                    removed = true;
+                }
+            }
+            if (!removed) return false;
+            File.WriteAllText(path, root.ToString(Newtonsoft.Json.Formatting.Indented));
+            return true;
         }
 
         private async Task SendDeleteResultAsync(bool ok, string? file, string? error, int remaining = 0)
@@ -467,11 +523,22 @@ namespace ETS2_Assist_GUI
             catch (Exception ex) { Logger.Current?.Data($"[MAP2OVR][DEL-RESULT] ExecuteScriptAsync FAIL: {ex.Message}"); }
         }
 
-        // Сколько override-файлов (по load_order) содержат запись точки.
-        private int CountFilesContainingPoint(string gn)
+        // Сколько override-файлов содержат запись точки.
+        // v1.0.40.19: includeExcluded=true — учитываем и файлы ВНЕ load_order (иначе после
+        // удаления из неактивного файла remaining=0 неверно сообщал «больше нигде нет»).
+        private int CountFilesContainingPoint(string gn, bool includeExcluded = false)
         {
             int count = 0;
-            foreach (var f in ReadLoadOrder())
+            var names = new List<string>();
+            if (includeExcluded)
+            {
+                names.AddRange(EnumerateOverrideFilesRecursive());
+            }
+            else
+            {
+                names.AddRange(ReadLoadOrder());
+            }
+            foreach (var f in names)
             {
                 var rel = ResolveOverrideRelativePath(f);
                 string path = string.IsNullOrEmpty(rel) ? "" : OverrideFileAbsolutePath(rel);
@@ -1035,6 +1102,7 @@ namespace ETS2_Assist_GUI
             {
                 await SendOverrideFilesAsync();
                 await SendOverridesDataAsync();
+                await SendMeasuresToEditorAsync();
             }
             catch (Exception ex)
             {

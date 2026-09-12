@@ -36,8 +36,13 @@ namespace ETS2_Assist_GUI
                 var y = target.Value<double?>("y") ?? 0d;
                 var z = target.Value<double?>("z") ?? 0d;
 
+                // v1.0.40.17: телепорт в РЕДАКТОРЕ — камера ставится с юга от цели
+                // (дистанция 7 м, высота +2 м), а не в саму координату точки.
                 if (editorTeleport)
-                    MainForm.MapEditor2TeleportEditor(x, y, z);
+                    MainForm.MapEditor2TeleportEditor(
+                        x,
+                        y + MainForm.EditorCamHeightM,
+                        z + MainForm.EditorCamDistanceM);
                 else
                     await MainForm.MapEditor2TeleportGameAsync(x, y, z);
             }

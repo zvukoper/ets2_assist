@@ -2,7 +2,9 @@
 
 ## Project Guidelines
 - В этом проекте значительная часть web/runtime-ресурсов и статических данных находится в `D:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data`. Основные файлы картографических данных: `Overlays.json`, `custom_targets.json`, `localized_cities\cities_sibirmap.json`, `GeoJson\cities.geojson` и `GeoJson\roads.geojson`. При анализе миникарты нужно проверять именно эту publish-папку.
-- Финальная сборка проекта выполняется командой `dotnet publish -c Release`. Runtime-папку `bin\Release\net10.0-windows\win-x64\publish\data` нельзя считать исходником, если публикация формирует её заново; статические web-файлы нужно явно сохранять/копировать в publish после публикации или включить в проект.
+- Финальная сборка проекта выполняется командой `dotnet publish -c Release`.
+- **ФИНАЛЬНАЯ СБОРКА — ТОЛЬКО через `compile.ps1`** (корень репозитория). Скрипт сам: гасит запущенный `ETS2_Assist.exe` (`--shutdown`), чистит кэш WebView2 (профиль + `<exe>.WebView2`), делает `dotnet clean` + `restore` + `publish -c Release`, повторно чистит кэш WebView2 и запускает приложение. Запускать как есть, без модификаций — автозапуск работает нормально.
+- Runtime-папку `bin\Release\net10.0-windows\win-x64\publish\data` нельзя считать исходником, если публикация формирует её заново; статические web-файлы нужно явно сохранять/копировать в publish после публикации или включить в проект.
 - В проекте используется собственная схема внутренних версий: MAJOR.MINOR.PATCH-ОПИСАНИЕ-ДАТА-ВРЕМЯ; при следующих изменениях нужно повышать patch и сохранять это именование в приложении и публикации.
 
 ## Architecture Guidelines

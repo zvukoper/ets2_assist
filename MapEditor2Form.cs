@@ -20,6 +20,18 @@ namespace ETS2_Assist_GUI
         private string _targetSnapshotJson = "[]";
         private System.Windows.Forms.Timer? _editorStatusTimer;
         private bool _lastEditorRunning;
+        // v1.0.40.20: телеметрия фуры (грузовик + конус обзора на карте).
+        // v1.0.40.25: System.Windows.Forms.Timer, созданный внутри async InitializeAsync,
+        // НЕ тикал (heartbeat — 0 записей за всю историю), поэтому метка обновлялась один
+        // раз при загрузке страницы и дальше стояла. Заменён на System.Threading.Timer
+        // (не зависит от очереди сообщений WinForms) + BeginInvoke на UI-поток для WebView2.
+        private System.Threading.Timer? _truckTimer;
+        private int _truckPushTick;
+        private bool _truckPushQueued;
+        private long _lastTruckRevision = -1;
+        private bool _lastTruckLive;
+        private bool _truckSent;
+        private bool _lastTruckLiveLogged;   // для лога переходов live->offline (без спама)
 
         internal void CreatePointFromEditor(double x, double y, double z)
         {
@@ -46,7 +58,14 @@ namespace ETS2_Assist_GUI
             BackColor = Color.FromArgb(15, 18, 23);
             Controls.Add(_webView);
             Load += async (_, _) => await InitializeAsync();
-            FormClosed += (_, _) => { try { _webView.Dispose(); } catch { } };
+            FormClosed += (_, _) =>
+            {
+                try { _truckTimer?.Dispose(); _truckTimer = null; } catch { }
+                try { _editorStatusTimer?.Stop(); _editorStatusTimer?.Dispose(); _editorStatusTimer = null; } catch { }
+                // Фид телеметрии не должен висеть после закрытия редактора.
+                try { TruckTelemetry.Stop(); } catch { }
+                try { _webView.Dispose(); } catch { }
+            };
         }
 
         private async Task InitializeAsync()
@@ -55,8 +74,7 @@ namespace ETS2_Assist_GUI
             _targetSnapshotJson = BuildTargetSnapshotJson();
             await _webView.EnsureCoreWebView2Async();
             AttachEditingBridge();
-            AttachOverridesBridge();
-            _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            AttachOverridesBridge();            _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                 "ets2assist-map.local",
                 AppDataPaths.StaticDataDirectory,
                 CoreWebView2HostResourceAccessKind.Allow);
@@ -65,6 +83,70 @@ namespace ETS2_Assist_GUI
             _editorStatusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             _editorStatusTimer.Tick += (_, _) => UpdateEditorStatusIndicator();
             _editorStatusTimer.Start();
+            // v1.0.40.20: фид телеметрии фуры живёт, пока открыт редактор.
+            TruckTelemetry.Start();
+            // v1.0.40.26: интервал берётся из настроек (задаётся полем в редакторе).
+            _truckIntervalMs = Math.Clamp(AppSettings.TruckIntervalMs, 100, 60000);
+            _truckTimer = new System.Threading.Timer(_ => QueueTruckPush(), null, _truckIntervalMs, _truckIntervalMs);
+            Logger.Current?.Data($"[TRUCK] редактор 2: таймер телеметрии запущен ({_truckIntervalMs} мс, System.Threading.Timer)");
+        }
+
+        // Планирует отправку на UI-поток (WebView2 вызываем только из него).
+        // Флаг не даёт скапливать очередь, если UI занят.
+        private void QueueTruckPush()
+        {
+            try
+            {
+                if (_truckPushQueued || IsDisposed || !IsHandleCreated) return;
+                _truckPushQueued = true;
+                BeginInvoke(new Action(() =>
+                {
+                    _truckPushQueued = false;
+                    PushTruckTelemetry();
+                }));
+            }
+            catch { _truckPushQueued = false; }
+        }
+
+        // Отправляет снимок телеметрии в страницу РАЗ В СЕКУНДУ (без гейта по revision —
+        // именно его отсутствие давало «метка стоит на месте»).
+        private void PushTruckTelemetry()
+        {
+            try
+            {
+                _truckPushTick++;
+                // Диагностика: первые тики + каждые 30 с — видно, что таймер живёт.
+                if (_truckPushTick <= 3 || _truckPushTick % 30 == 0)
+                {
+                    Logger.Current?.Data($"[TRUCK] редактор 2: тик #{_truckPushTick} " +
+                        $"webView={(!_webView.IsDisposed && _webView.CoreWebView2 != null)} " +
+                        $"pageReady={_pageReady} live={TruckTelemetry.IsLive}");
+                }
+                if (_webView.IsDisposed || _webView.CoreWebView2 == null) return;
+                if (!TruckTelemetry.TryGetSnapshot(out var snap, out _, out bool haveSample) || !haveSample)
+                    return;   // валидных данных ещё не было — отправлять нечего
+
+                if (!_truckSent || snap.Live != _lastTruckLiveLogged)
+                {
+                    _lastTruckLiveLogged = snap.Live;
+                    _truckSent = true;
+                    Logger.Current?.Data(
+                        $"[TRUCK] -> карта: x={snap.X:F1} z={snap.Z:F1} h={snap.Heading:F3} live={snap.Live}");
+                }
+                _lastTruckRevision = 0;
+                _lastTruckLive = snap.Live;
+
+                string s = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                    "{{x:{0:R},y:{1:R},z:{2:R},heading:{3:R},headYaw:{4:R},headPitch:{5:R},live:{6}}}",
+                    snap.X, snap.Y, snap.Z, snap.Heading, snap.HeadYaw, snap.HeadPitch,
+                    snap.Live ? "true" : "false");
+
+                _ = _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2SetTruck && window.MapEditor2SetTruck({s});");
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Data("[TRUCK] редактор 2: ошибка отправки: " + ex.Message);
+            }
         }
 
         private void UpdateEditorStatusIndicator()
@@ -86,6 +168,12 @@ namespace ETS2_Assist_GUI
             if (string.Equals(message, "map2-ready", StringComparison.Ordinal))
             {
                 _pageReady = true;
+                Logger.Current?.Data("[TRUCK] редактор 2: страница готова (map2-ready) — сбрасываю счётчик отправки");
+                // Страница перезагрузилась: снимок нужно отправить заново, даже если
+                // revision не менялся (иначе метка не появится до следующего изменения).
+                _lastTruckRevision = -1;
+                _truckSent = false;
+                PushTruckTelemetry();
                 _lastEditorRunning = !MapEditor2GameEditorBridge.IsEditorRunning();
                 UpdateEditorStatusIndicator();
                 await ApplyMapEditor2UiOverridesAsync();
@@ -94,6 +182,7 @@ namespace ETS2_Assist_GUI
                 await SendStaticPointFilesAsync();
                 await SendTargetsAsync();
                 await SendOverridesToEditorAsync();
+                await SendTruckIntervalAsync();
                 return;
             }
             if (string.Equals(message, "map2-generate-terrain", StringComparison.Ordinal))
@@ -118,7 +207,8 @@ namespace ETS2_Assist_GUI
                     var trimmed = message.TrimStart();
                     if (!trimmed.StartsWith("{", StringComparison.Ordinal)) return;
                     var cmd = JObject.Parse(message);
-                    if (string.Equals((string?)cmd["type"], "map2-create-point", StringComparison.Ordinal))
+                    var cmdType = (string?)cmd["type"];
+                    if (string.Equals(cmdType, "map2-create-point", StringComparison.Ordinal))
                     {
                         var x = cmd["x"]?.Value<double>() ?? 0d;
                         var y = cmd["y"]?.Value<double>() ?? 0d;
@@ -130,9 +220,55 @@ namespace ETS2_Assist_GUI
                             await _webView.CoreWebView2.ExecuteScriptAsync(
                                 $"window.MapEditor2ShowNewPoint({x.ToString(System.Globalization.CultureInfo.InvariantCulture)},{y.ToString(System.Globalization.CultureInfo.InvariantCulture)},{z.ToString(System.Globalization.CultureInfo.InvariantCulture)});");
                     }
+                    else if (string.Equals(cmdType, "map2-truck-interval", StringComparison.Ordinal))
+                    {
+                        // v1.0.40.26: интервал обновления метки задаётся из UI редактора.
+                        int ms = cmd["ms"]?.Value<int>() ?? DefaultTruckIntervalMs;
+                        SetTruckInterval(ms, persist: true);
+                    }
                 }
                 catch { }
             }
+        }
+
+        // v1.0.40.26: интервал обновления метки грузовика (мс).
+        // Ограничение 100..60000 защищает от нуля/мусора из поля ввода.
+        private const int DefaultTruckIntervalMs = 1000;
+        private int _truckIntervalMs = DefaultTruckIntervalMs;
+
+        internal void SetTruckInterval(int ms, bool persist)
+        {
+            int clamped = Math.Clamp(ms, 100, 60000);
+            if (clamped == _truckIntervalMs && _truckTimer != null) return;
+            _truckIntervalMs = clamped;
+            try
+            {
+                _truckTimer?.Change(clamped, clamped);
+                Logger.Current?.Data($"[TRUCK] редактор 2: интервал обновления = {clamped} мс");
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Data("[TRUCK] редактор 2: ошибка смены интервала: " + ex.Message);
+            }
+            if (persist)
+            {
+                try { AppSettings.TruckIntervalMs = clamped; AppSettings.Save(); } catch { }
+            }
+        }
+
+        // Применяет сохранённое значение и отправляет его на страницу, чтобы поле ввода
+        // показывало актуальное число (а не дефолт).
+        private async Task SendTruckIntervalAsync()
+        {
+            try
+            {
+                SetTruckInterval(AppSettings.TruckIntervalMs, persist: false);
+                if (_webView.IsDisposed || _webView.CoreWebView2 == null) return;
+                var ms = _truckIntervalMs.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                await _webView.CoreWebView2.ExecuteScriptAsync(
+                    $"window.MapEditor2SetTruckInterval && window.MapEditor2SetTruckInterval({ms});");
+            }
+            catch { }
         }
 
         private async Task ApplyMapEditor2UiOverridesAsync()

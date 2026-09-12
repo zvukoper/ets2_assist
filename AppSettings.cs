@@ -21,6 +21,10 @@ namespace ETS2_Assist_GUI
         public static int? WindowHeight { get; set; }
         public static string? WindowDeviceName { get; set; }
 
+        // v1.0.40.26: интервал обновления метки грузовика в Map Editor 2 (мс).
+        // Задаётся полем ввода рядом с кнопкой «Найти грузовик».
+        public static int TruckIntervalMs { get; set; } = 1000;
+
         static AppSettings()
         {
             AppDataPaths.EnsureUserData();
@@ -47,6 +51,7 @@ namespace ETS2_Assist_GUI
                     WindowWidth = settings.WindowWidth;
                     WindowHeight = settings.WindowHeight;
                     WindowDeviceName = settings.WindowDeviceName;
+                    TruckIntervalMs = settings.TruckIntervalMs > 0 ? settings.TruckIntervalMs : 1000;
                 }
             }
             catch { /* ignore errors */ }
@@ -68,7 +73,8 @@ namespace ETS2_Assist_GUI
                     WindowY = WindowY,
                     WindowWidth = WindowWidth,
                     WindowHeight = WindowHeight,
-                    WindowDeviceName = WindowDeviceName
+                    WindowDeviceName = WindowDeviceName,
+                    TruckIntervalMs = TruckIntervalMs
                 };
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(SettingsFile, json);
@@ -89,6 +95,7 @@ namespace ETS2_Assist_GUI
             public int? WindowWidth { get; set; }
             public int? WindowHeight { get; set; }
             public string? WindowDeviceName { get; set; }
+            public int TruckIntervalMs { get; set; } = 1000;
         }
     }
 }

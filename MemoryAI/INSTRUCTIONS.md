@@ -307,6 +307,20 @@
   ```
   dotnet publish ETS2_Assist_GUI.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
   ```
+- **ФИНАЛЬНАЯ СБОРКА — ТОЛЬКО через `compile.ps1` (КОРЕНЬ РЕПО, ПРАВИЛО 12.09.2026):**
+  финальную сборку проекта делать командой `.\compile.ps1` — скрипт сам:
+  1) гасит запущенный `ETS2_Assist.exe` (`--shutdown`); 2) убивает зависшие `msedgewebview2`;
+  3) чистит кэш WebView2 (профиль `%LOCALAPPDATA%\ETS2_Assist\EBWebView` + все `<exe>.WebView2`
+     рядом с exe в `publish` и `bin`); 4) `dotnet clean` + `restore` + `publish -c Release`;
+  5) повторно чистит `<exe>.WebView2`; 6) запускает приложение
+     (`Start-Process ... -Verb RunAs`).
+  **Запускать скрипт КАК ЕСТЬ, без модификаций** — автозапуск в конце работает нормально,
+  отдельный ключ `-NoStart` НЕ нужен (проверено пользователем 12.09.2026: «просто запускай
+  скрипт, всё сработает, так уже делали»).
+  После скрипта всё равно сверить `exe = data/ets2_assist_build.txt = data/web_runtime_manifest.json`
+  (п.4 ниже) и при расхождении дозаписать оба data-файла (штамм времени `Hmm` может отличаться
+  от того, что попал в exe).
+  Ручной `dotnet publish` использовать ТОЛЬКО для промежуточных проверок компиляции.
 - Результат: `bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe` (~130 МБ).
   Имя EXE задано через `<AssemblyName>ETS2_Assist</AssemblyName>` в csproj (namespace проекта
   остаётся `ETS2_Assist_GUI`).

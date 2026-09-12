@@ -6,7 +6,7 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build":  "1.0.40.14-MAP2-POINT-NAME-LABEL-09.12-1201",
+    "build": "1.0.40.26-TRUCK-INTERVAL-FIELD-09.12-1932",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }

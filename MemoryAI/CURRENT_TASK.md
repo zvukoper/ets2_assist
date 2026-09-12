@@ -1,7 +1,217 @@
 # Текущая задача:
-# PRE-STABLE: Map Editor 2 — v1.0.40.12
-- **10.09.2026:** пользователь подтвердил полную работоспособность большого этапа Map Editor 2 после прямого исправления `data/map_editor2/index.html`: сохранение новых точек, сохранение RealName/Category существующих статичных точек, отображение/редактирование категории и заголовков файлов в «Сохранённых» работают. `1.0.40.12` зафиксирована как **pre-stable baseline**.
-- Далее — только мелкие фиксы и доводка; runtime/preload-патчи для Map Editor 2 не использовать.
+# PRE-STABLE: Map Editor 2 — v1.0.40.26
+- **12.09.2026:** поле ввода интервала обновления метки грузовика (мс) рядом с кнопкой «Найти грузовик».
+- **ПРАВИЛО СБОРКИ:** финальная сборка — ТОЛЬКО `\compile.ps1` (см. INSTRUCTIONS.md).
+
+# СЕССИЯ 12.09.2026 — v1.0.40.26: поле интервала обновления метки
+## Что сделано
+- **`index.html`:** рядом с кнопкой «Найти грузовик» — `#truckIntervalWrap` с числовым полем
+  `#truckIntervalInput` (min 100, max 60000, step 100). Поле скрыто вместе с кнопкой и
+  показывается вместе с ней (когда есть метка).
+  - `TRUCK_IV_KEY='map2.truckIntervalMs'` в localStorage; `clampTruckInterval()` — 100..60000 мс;
+  - `applyTruckInterval()` — пишет в localStorage И отправляет в C#
+    (`postMessage {type:'map2-truck-interval', ms}`); `initTruckInterval()` — инициализация,
+    сохранение по `change` и с задержкой 500 мс по `input`; блокировка изменения колесом мыши;
+  - `window.MapEditor2SetTruckInterval(ms)` — приёмник: C# присылает сохранённое значение,
+    чтобы поле показывало реальный интервал, а не дефолт.
+- **`MapEditor2Form.cs`:** обработка `map2-truck-interval` → `SetTruckInterval(ms, persist:true)`
+  (clamp 100..60000, `Timer.Change`, запись в настройки); `SendTruckIntervalAsync()` при `map2-ready`;
+  таймер создаётся уже с сохранённым интервалом; диагностика в лог.
+- **`AppSettings.cs`:** новая настройка `TruckIntervalMs` (по умолчанию 1000) в `appsettings.json`.
+## Проверено по логам
+`[TRUCK] редактор 2: интервал обновления = 200 мс` + в `appsettings.json` записано
+`"TruckIntervalMs": 200` — цепочка «поле → postMessage → таймер → сохранение» работает
+(значение 200 было выставлено в поле при проверке).
+## Версия / сборка
+`1.0.40.26-TRUCK-INTERVAL-FIELD-09.12-1932` — через `compile.ps1`, `node --check` OK.
+
+# СЕССИЯ 12.09.2026 — v1.0.40.25: живое обновление метки + кнопка «Найти грузовик»
+## Корень бага «метка обновляется один раз»
+**`System.Windows.Forms.Timer`, созданный внутри `async InitializeAsync()`, НЕ тикал.**
+Доказательство: heartbeat — **0 записей** за всю историю, а `[TRUCK] -> карта` — ровно **2**
+(обе из обработчика `map2-ready`). То есть метка получала координаты только при загрузке
+страницы и дальше не двигалась.
+**Решение:** заменён на `System.Threading.Timer` (не зависит от очереди сообщений WinForms),
+с маршалингом в UI-поток через `BeginInvoke` для вызова WebView2. Флаг `_truckPushQueued`
+не даёт скапливать очередь, если UI занят.
+## Что сделано
+- **`MapEditor2Form.cs`:** `_truckTimer` → `System.Threading.Timer` (1000 мс); `QueueTruckPush()`
+  + `BeginInvoke`; `PushTruckTelemetry()` шлёт снимок КАЖДУЮ СЕКУНДУ (убран гейт по `revision`,
+  который и давал «стоит на месте»); диагностика первых 3 тиков + раз в 30 с.
+- **`data/map_editor2/index.html`:**
+  - кнопка `#findTruckBtn` «Найти грузовик» в статусбаре — показывается, когда есть метка
+    (даже если данные уже устарели); по клику — `findTruckOnMap()` центрирует карту на метке
+    (`camera.x/z = truck.x/z`, `mpp = 0.5`);
+  - метка грузовика в 2 раза больше (`shape=[[0,-18],[-10,14],[0,9],[10,14]]` вместо 9/5/4.5/5);
+  - тень темнее и толще (`shadowColor rgba(0,0,0,.92)`, `shadowBlur=9`, `offsetY=3`),
+    обводка `lineWidth=3` вместо 1.5, подпись поднята на `y-30`.
+## Проверено по логам
+`тик #1/#2/#3 ... webView=True live=True` — таймер живой; `-> карта` уходит регулярно.
+## Версия / сборка
+`1.0.40.25-MAP2-TRUCK-LIVE-UPDATE-09.12-1914` — через `compile.ps1`, `node --check` OK.
+## Урок
+Timer, созданный внутри `async` метода, может не тикать (проблема с контекстом/очередью).
+Проверять признак жизни таймера (heartbeat) СРАЗУ после первой сборки, а не по косвенным данным.
+
+# СЕССИЯ 12.09.2026 — v1.0.40.24: гарантированное завершение по --shutdown
+## Корень проблемы (три бага)
+1. **`Program.cs`: обработчик сигнала вызывал `Application.Exit()` В ОБХОД `StopSystem()`** —
+   поэтому `KillChildProcesses()` (там и убивался `WebOverlay`) НЕ выполнялся никогда.
+   Вот почему оверлеи оставались висеть фоном даже при штатном выходе.
+2. **`--shutdown` только посылал событие и сразу выходил.** Если приложение висело или
+   событие никто не слушал — процесс оставался в памяти, и убрать его было нечем.
+3. `KillOverlayProcesses()`/`KillChildProcesses()` убивали процессы без ожидания завершения
+   и без повтора — одной попытки для нескольких WebOverlay недостаточно.
+## Что сделано
+- **`Program.cs`:**
+  - `--shutdown`: сигнал → ожидание до 6 с → принудительная зачистка `EnsureEverythingStopped()`
+    (ETS2_Assist кроме себя, WebOverlay, pano, наши msedgewebview2).
+  - Обработчик сигнала теперь маршалит в `MainForm.ShutdownFromSignal()` вместо
+    `Application.Exit()` — завершение идёт ШТАТНЫМ путём через `StopSystem()`.
+  - `KillOurWebView2()` — убивает msedgewebview2 ТОЛЬКО с `WebOverlay`/`ETS2_Assist`
+    в командной строке (фильтр через WMI): WebView2 используют и чужие приложения.
+  - Журнал `shutdown.log` рядом с exe (появляется только если потребовалась принудительная зачистка).
+- **`MainForm.cs`:**
+  - Новый `internal ShutdownFromSignal()` — тот же путь, что и Exit, но без диалога подтверждения;
+    в конце страховка `KillOverlayProcesses()` + `KillStuckWebView2()` → `Application.Exit()`.
+  - `KillProcessByName(name, waitMs, attempts)` — убийство с ожиданием и повтором (2 попытки).
+    Используется в `KillChildProcesses()` и `KillOverlayProcesses()`.
+  - Та же страховка добавлена в `finally` обычного `ConfirmExit()`.
+## Проверено практически
+- Запущены `ETS2_Assist` + отдельный зависший `WebOverlay.exe` → `--shutdown` →
+  **оба процесса завершены**, остатков нет, чужие msedgewebview2 не тронуты.
+## Версия / сборка
+`1.0.40.24-SHUTDOWN-GUARANTEED-09.12-1811` — через `compile.ps1`, exe = build.txt = manifest.
+
+# СЕССИЯ 12.09.2026 — v1.0.40.21: индикатор TruckTel по реальной телеметрии
+## Что обнаружено (корень бага)
+- `UpdateIndicators()` считал телеметрию живой по mtime файла `%LOCALAPPDATA%\ETS2_Assist\web_data.json`
+  (младше 5 с). Этот файл писал СТАРЫЙ TruckTel-бридж (внутри `"timestamp": "2026-08-23"`, `speed: 0`);
+  сейчас его трогает только `UpdateTruckTelPort()` разово при старте → mtime был 127 с назад →
+  индикатор всегда «NO DATA», хотя REST `http://localhost:8080/api/rest/flat/truck` отвечал 200
+  и отдавал `truck.world.placement` / `truck.speed` / `truck.head.offset`.
+- Диагностика по логам: `[TruckTel] Найден порт через активные соединения: 8080` — порт находится,
+  но живость данных не проверялась вовсе.
+## Что сделано
+- **`TruckTelemetry.cs`:** добавлены `Snapshot.SpeedKmh` (из `truck.speed`, м/с×3.6),
+  `IsLive`, `SpeedKmh`, `Port`; скорость парсится и в кадрах БЕЗ placement;
+  `Start()/Stop()` переведены на СЧЁТЧИК ССЫЛОК (`_refCount`) — фид держат два потребителя
+  (MainForm для индикатора, MapEditor2Form для карты) и гасится только при нуле.
+- **`MainForm.cs`:** `IsTelemetryDataFresh() => TruckTelemetry.IsLive`;
+  `GetCurrentSpeed()` — из фида; подпись индикатора — реальный `TruckTelemetry.Port`;
+  офлайн-текст различает причину: «NO DATA» (игра идёт, данных нет) / «GAME OFF»;
+  `TruckTelemetry.Start()` в конструкторе и `Stop()` в `StopSystem()`.
+## Версия / сборка
+`1.0.40.21-TRUCKTEL-LIVE-INDICATOR-09.12-1704` — собрано через `\compile.ps1`,
+exe = build.txt = manifest, хеши совпали. По логам: `[TRUCK] Фид телеметрии запущен`,
+`[TRUCK] WS подключён: ws://localhost:8080/api/ws/delta/flat/`.
+## Следующий шаг
+- Верифицировать у пользователя: индикатор TruckTel показывает скорость (lime) при живой игре;
+  маркер грузовика и конус на карте Map Editor 2.
+
+# СЕССИЯ 12.09.2026 — v1.0.40.20: грузовик и конус обзора на карте редактора
+## Что уже сделано
+- **Новый `TruckTelemetry.cs`** — общий лёгкий фид телеметрии: WS-дельта
+  (`ws://localhost:{port}/api/ws/delta/flat/?throttle=50`) + REST-снимок
+  (`/api/rest/flat/truck`, 1/с), порт из `web_data.json`. Экспорт: `Start()`/`Stop()`,
+  `TryGetSnapshot(out Snapshot, out long revision, out bool haveSample)`, `Snapshot.Live`
+  (свежесть 3 с). Чтение чисел через `Value<double>()` (ловушка ru-RU запятой — урок v64).
+  Позиция НЕ обнуляется при пропадании телеметрии — заморозка на последнем значении.
+- **`MapEditor2Form.cs`:** `TruckTelemetry.Start()` при открытии / `Stop()` при закрытии (Фид не висит),
+  таймер 500 мс `PushTruckTelemetry()` шлёт снимок в JS только при смене revision или флага Live.
+- **`data/map_editor2/index.html`:** `state.truck`, мост `MapEditor2SetTruck`, `drawTruck()`
+  (вызывается из `drawLabels()` после `drawCreateMarker()`): конус обзора — полуугол
+  `clamp(|headPitch*360|,5,45)°`, радиус `min(1500, полдиагонали×mpp)`, жёлтый/серый;
+  дельтоид по `heading` — красный `#ff4d4d` / серый; подпись «Грузовик» / «Грузовик (нет данных)».
+  При пропадании телеметрии позиция и угол ЗАМОРАЖИВАЮТСЯ, меняется только цвет.
+- **Индикаторы (оба оставлены — это разные вещи):** новый `#gameData` — «Есть данные от игры»
+  (lime) / «Нет данных от игры» (серый) по флагу live; существующий `#editorRunning` —
+  «Редактор запущен» по UIA (`MapEditor2GameEditorBridge.IsEditorRunning`).
+- **Правило сборки зафиксировано:** `MemoryAI/INSTRUCTIONS.md` («ФИНАЛЬНАЯ СБОРКА — ТОЛЬКО
+  через `compile.ps1`»), `.github/copilot-instructions.md`, память репозитория.
+## Версия / сборка
+`1.0.40.20-MAP2-TRUCK-CONE-09.12-1654` — собрано через `\compile.ps1`, exe = build.txt =
+manifest, хеши `index.html`/`build.txt`/`manifest` в `data` и `publish\data` совпали,
+`node --check` для JS — OK.
+## Следующий шаг
+- Верифицировать: маркер грузовика и конус на карте, красный/жёлтый при живой телеметрии,
+  серые и замороженные при отключении, индикатор «Есть данные от игры».
+
+# СЕССИЯ 12.09.2026 — v1.0.40.19: удаление точки из неактивного файла
+## Что уже сделано
+- **Проблема:** точки из неактивных файлов (вне `load_order`) не попадали в `state.ovrMap`
+  (они в `state.ovrExcluded`), поэтому `del.disabled = !ovrEntry(gn)` блокировала «Удалить»,
+  а клик по такой точке создавал КОПИЮ (`__ovrClickCreate` → `createPointFromSaved`) вместо выбора.
+- **JS (`data/map_editor2/index.html`):**
+  - `ensureSavedCategory`: у точек из неактивных файлов `__ovrClickCreate=false` (клик = выбор),
+    добавлено поле `__savedFile = src.name` (файл-источник).
+  - `updateActionButtons`: `del.disabled=!ovrEntry(gn)&&!String(state.selectedPoint?.__savedFile||'')`.
+  - `del.onclick`: файл берётся как `ovrChain[0].__file || p.__savedFile`, имя файла уходит
+    в `postMessage` (`file:file||''`).
+  - `MapEditor2DeleteOverrideResult`: удаление записи из `state.ovrExcluded` для этого файла
+    перед перерисовкой (иначе точка оставалась бы в списке).
+- **C# (`MapEditor2Form.Overrides.cs`):**
+  - `DeletePointFromOverrideFilesAsync`: новый параметр `file` из JS — если задан, удаляет
+    запись ИМЕННО из этого файла (в т.ч. вне `load_order`); иначе — прежнее поведение по `load_order`.
+  - Новый helper `RemovePointFromFile(path, gn)` — удаление записи из конкретного файла.
+  - `CountFilesContainingPoint(gn, includeExcluded)` — учитывает и файлы вне `load_order`
+    (иначе `remaining` был бы занижен).
+## Версия / сборка
+`1.0.40.19-MAP2-DELETE-INACTIVE-FILE-09.12-1632` — exe = build.txt = manifest, published,
+`node --check` для JS — OK, 0 ошибок компиляции.
+## Следующий шаг
+- Верифицировать у пользователя: выбор точки из неактивного файла → клик выбирает точку
+  (не создаёт копию) → кнопка «Удалить» доступна → удаляет из того самого файла.
+
+# СЕССИЯ 12.09.2026 — v1.0.40.18: телепорт камеры редактора с юга + фикс load_order
+## Что уже сделано
+- **Телепорт редактора (Ctrl+Shift+T):** камера больше НЕ прилетает в координату объекта.
+  Теперь всегда заходит с ЮГА и смотрит на точку с юга на север: дистанция **7 м**, высота **+5 м**
+  (пользователь подтвердил работоспособность варианта +2 м и попросил поднять до 5 м).
+  - Константы `MainForm.EditorCamDistanceM = 7.0`, `MainForm.EditorCamHeightM = 5.0` (internal).
+  - `MainForm.ComputeEditorCamera(x,y,z)` → `(x, y + EditorCamHeightM, z + EditorCamDistanceM)`
+    (ось Z растёт на юг).
+  - `MainForm.TeleportToEditorFindAsync` использует `ComputeEditorCamera` (было жёсткое `+2/+4/0`).
+  - `MapEditor2Form.HandleMapEditor2HotkeyAsync` (хоткей из Map Editor 2) применяет те же константы.
+  - Азимут/направление камеры окно Find редактора не задаёт, поэтому сторона фиксирована южной.
+- **Фикс «пропадающего курсива» неактивного файла:** убрана авторегистрация в `load_order`
+  (`MapEditor2Form.Overrides.cs`, `SavePointToOverrideFileAsync` — удалён вызов `EnsureFileInLoadOrder`).
+  Раньше сохранение точки в файл, помеченный как неактивный (позиция 0, `* имя` курсивом),
+  автоматически делало файл активным → курсив пропадал. Теперь принадлежность к `load_order`
+  меняется ТОЛЬКО вручную (поле «Позиция файла» → `SetOverrideFilePosition`).
+  Создание НОВОГО файла по-прежнему регистрирует его в `load_order` (осознанно).
+## Изменённые файлы
+`MainForm.cs`, `MapEditor2Form.Teleport.cs`, `MapEditor2Form.Overrides.cs`,
+`ETS2_Assist_GUI.csproj`, `BuildInfo.cs`, `data/ets2_assist_build.txt`, `data/web_runtime_manifest.json`.
+## Версия / сборка
+`1.0.40.18-MAP2-TELEPORT-H5-09.12-1609` — exe = build.txt = manifest, published, 0 ошибок.
+## Следующий шаг
+- Верифицировать у пользователя высоту +5 м (дистанция 7 м, юг→север).
+
+# СЕССИЯ 12.09.2026 — v1.0.40.17: телепорт камеры редактора с юга + фикс load_order
+- **Телепорт редактора (Ctrl+Shift+T):** камера больше НЕ прилетает в координату объекта.
+  Теперь всегда заходит с ЮГА и смотрит на точку с юга на север: дистанция **7 м**, высота **+2 м**.
+  - Константы `MainForm.EditorCamDistanceM = 7.0`, `MainForm.EditorCamHeightM = 2.0` (internal).
+  - `MainForm.ComputeEditorCamera(x,y,z)` → `(x, y + 2, z + 7)` (ось Z растёт на юг).
+  - `MainForm.TeleportToEditorFindAsync` использует `ComputeEditorCamera` (было жёсткое `+2/+4/0`).
+  - `MapEditor2Form.HandleMapEditor2HotkeyAsync` (хоткей из Map Editor 2) применяет те же константы.
+  - Азимут/направление камеры окно Find редактора не задаёт, поэтому сторона фиксирована южной.
+- **Фикс «пропадающего курсива» неактивного файла:** убрана авторегистрация в `load_order`
+  (`MapEditor2Form.Overrides.cs`, `SavePointToOverrideFileAsync` — удалён вызов `EnsureFileInLoadOrder`).
+  Раньше сохранение точки в файл, помеченный как неактивный (позиция 0, `* имя` курсивом),
+  автоматически делало файл активным → курсив пропадал. Теперь принадлежность к `load_order`
+  меняется ТОЛЬКО вручную (поле «Позиция файла» → `SetOverrideFilePosition`).
+  Создание НОВОГО файла по-прежнему регистрирует его в `load_order` (осознанно).
+## Изменённые файлы
+`MainForm.cs`, `MainForm.MapEditor2Teleport.cs` (без изменений), `MapEditor2Form.Teleport.cs`,
+`MapEditor2Form.Overrides.cs`, `ETS2_Assist_GUI.csproj`, `BuildInfo.cs`, `data/ets2_assist_build.txt`,
+`data/web_runtime_manifest.json`.
+## Версия / сборка
+`1.0.40.17-MAP2-TELEPORT-CAM-SOUTH-09.12-1559` — exe = build.txt = manifest, published.
+## Следующий шаг
+- ~~Верифицировать у пользователя: (а) Ctrl+Shift+T в редакторе — камера с юга, 7 м, +2 м;
+  (б) неактивный файл в списке сохраняет курсив после сохранения в него новой точки.~~
+  **ПОДТВЕРЖДЕНО 12.09.2026 пользователем: «Всё работает».** Высота +2 м заменена на +5 м в v1.0.40.18.
 
 # СЕССИЯ 10.09.2026 — v1.0.40.13: small fixes после pre-stable
 - Немедленное удаление точки из «Сохранённых» после физического удаления.

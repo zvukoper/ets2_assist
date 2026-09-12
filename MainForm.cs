@@ -141,6 +141,10 @@ namespace ETS2_Assist_GUI
         private const int HOTKEY_PLANE_DOWN = 9009;  // v97: CTRL+SHIFT+PGDN — плоскость земли −0.25 м
         private const int HOTKEY_TELEPORT = 9010;    // v39.30: CTRL+T — телепорт в ИГРЕ (goto X;Y;Z;A;E)
         private const int HOTKEY_TELEPORT_EDITOR = 9011; // v39.30: CTRL+SHIFT+T — телепорт в РЕДАКТОРЕ (Find→Position)
+        // v1.0.40.18: камера редактора при телепорте (Ctrl+Shift+T) ставится С ЮГА от цели,
+        // на 7 м дальше и на 5 м выше точки, чтобы объект оставался в поле зрения.
+        internal const double EditorCamDistanceM = 7.0;   // дистанция от цели (по оси Z, юг)
+        internal const double EditorCamHeightM = 5.0;     // превышение над высотой цели (Y)
         private bool hotKeyRegistered = false;
         // v39.49: защита от повторного Exit (рекурсия ConfirmExit → Application.Exit → FormClosing).
         private bool _isExiting = false;
@@ -243,6 +247,9 @@ namespace ETS2_Assist_GUI
             InitializeLanguage();
             InitializeProcessManager();
             InitializeStatusTimer();
+            // v1.0.40.21: фид телеметрии держим всё время работы приложения — индикатор
+            // TruckTel должен показывать живость данных независимо от окон редактора.
+            TruckTelemetry.Start();
             ApplyLanguage();
             RefreshUI();
             // Старт: выставить галочку developer mode по config.cfg (без записи в файл).
@@ -2241,6 +2248,8 @@ RegisterHotKeyChecked(
         {
             AppendLog("Stopping system...");
             StopArTargetFeed();
+            // v1.0.40.21: освобождаем фид телеметрии (счётчик ссылок TruckTelemetry).
+            try { TruckTelemetry.Stop(); } catch { }
             procManager.Stop();
             _pauseCheckTimer?.Stop();
             StopTriggerServer();
@@ -2277,20 +2286,44 @@ RegisterHotKeyChecked(
                     AppendLog($"Игра запущена, процесс {name} не убиваем.");
                     continue;
                 }
+                KillProcessByName(name, waitMs: 3000, attempts: 2);
+            }
+            AppendLog("KillChildProcesses завершён.");
+        }
+
+        // v1.0.40.24: убивает ВСЕ процессы с указанным именем с ожиданием завершения
+        // и повтором. WebOverlay запускается несколько раз (main + append), поэтому
+        // одной попытки недостаточно — процессы оставались висеть фоном.
+        private void KillProcessByName(string name, int waitMs, int attempts)
+        {
+            for (int attempt = 1; attempt <= attempts; attempt++)
+            {
+                bool any = false;
                 try
                 {
                     foreach (var proc in Process.GetProcessesByName(name))
                     {
-                        proc.Kill();
-                        AppendLog($"Процесс {name} (PID {proc.Id}) убит.");
+                        try
+                        {
+                            any = true;
+                            proc.Kill();
+                            proc.WaitForExit(waitMs);
+                            AppendLog($"Процесс {name} (PID {proc.Id}) убит.");
+                        }
+                        catch (Exception ex)
+                        {
+                            AppendLog($"Ошибка при убийстве {name} (PID {proc.Id}): {ex.Message}");
+                        }
+                        finally { proc.Dispose(); }
                     }
                 }
                 catch (Exception ex)
                 {
-                    AppendLog($"Ошибка при убийстве {name}: {ex.Message}");
+                    AppendLog($"Ошибка перечисления {name}: {ex.Message}");
                 }
+                if (!any) return;                 // больше нет — выходим
+                if (attempt < attempts) Thread.Sleep(400);
             }
-            AppendLog("KillChildProcesses завершён.");
         }
 
         private bool IsEts2ProcessRunning()
@@ -2785,7 +2818,9 @@ RegisterHotKeyChecked(
 
         // ================================================================
         // ТЕЛЕПОРТ В РЕДАКТОРЕ (v39.30): Ctrl+Shift+T.
-        // Координаты копируются без heading/elev; поднимаемся на 3 м выше над исходной точкой.
+        // v1.0.40.17: камера ставится НЕ в точку, а с юга от неё, с высоты: камера смотрит
+        // на точку с юга на север — 7 м по дистанции и +2 м по высоте (см. EditorCamDistanceM /
+        // EditorCamHeightM). Так объект гарантированно остаётся в поле зрения.
         // Переключаемся в окно редактора карты (заголовок «Map editor»), жмём CTRL+F (окно Find),
         // заполняем поля Position координатами.
         // Приоритет цели: курсор поверх точки → выбранная точка → курсор.
@@ -2802,19 +2837,25 @@ RegisterHotKeyChecked(
 
             var target = editor.ResolveTeleportTarget();
 
-            // Камера редактора: смещение от цели (+2, +4, 0) — чтобы не провалиться в объект.
-            double editorX = target.X + 2.0;
-            double editorY = target.Y + 4.0;
-            double editorZ = target.Z;
+            var cam = ComputeEditorCamera(target.X, target.Y, target.Z);
 
-            string xStr = editorX.ToString("F2", CultureInfo.InvariantCulture);
-            string yStr = editorY.ToString("F2", CultureInfo.InvariantCulture);
-            string zStr = editorZ.ToString("F2", CultureInfo.InvariantCulture);
+            string xStr = cam.X.ToString("F2", CultureInfo.InvariantCulture);
+            string yStr = cam.Y.ToString("F2", CultureInfo.InvariantCulture);
+            string zStr = cam.Z.ToString("F2", CultureInfo.InvariantCulture);
 
-            LogConsoleData($"[TELEPORT-ED] target: X={xStr}, Y={yStr}, Z={zStr}; offset=(+2,+4,0)");
+            LogConsoleData($"[TELEPORT-ED] target: X={xStr}, Y={yStr}, Z={zStr}; " +
+                $"юг→север, дистанция={EditorCamDistanceM:F1} м, высота=+{EditorCamHeightM:F1} м");
 
             return Task.Run(() => RunTeleportEditorSync(xStr, yStr, zStr));
         }
+
+        // v1.0.40.17: расчёт позиции камеры редактора для телепорта.
+        // Камера ВСЕГДА заходит с ЮГА и смотрит на точку с юга на север:
+        //   X — без изменений (та же вертикальная линия),
+        //   Z — на EditorCamDistanceM южнее цели (ось Z растёт на юг),
+        //   Y — на EditorCamHeightM выше высоты цели.
+        private static (double X, double Y, double Z) ComputeEditorCamera(double targetX, double targetY, double targetZ)
+            => (targetX, targetY + EditorCamHeightM, targetZ + EditorCamDistanceM);
 
         // v39.32: телепорт в редактор через Win32: окно Find → поля Position (WM_SETTEXT) →
         // кнопка Find (BM_CLICK). Без TypeText/Tab.
@@ -3686,6 +3727,61 @@ RegisterHotKeyChecked(
             }
         }
 
+        // v1.0.40.24: завершение по внешнему сигналу (`--shutdown` или закрытие из kill.ps1).
+        // ВАЖНО: раньше Program.cs вызывал Application.Exit() напрямую — StopSystem() НЕ
+        // выполнялся, и дочерние процессы (WebOverlay/pano) оставались висеть фоном.
+        // Теперь идём тем же путём, что и обычный Exit, только без диалога подтверждения.
+        // Вызывается из UI-потока (Program маршалит через BeginInvoke).
+        internal void ShutdownFromSignal()
+        {
+            if (_isExiting)
+                return;
+            _isExiting = true;
+            AppendLog("Exit: получен сигнал graceful shutdown — останавливаю систему.");
+
+            try { trayIcon.Visible = false; } catch { }
+            try { UnregisterHotkeysSafely(); } catch { }
+
+            // Останавливаем систему синхронно (в фоне, чтобы не блокировать UI-поток),
+            // затем обязательно зачищаем оверлеи и выходим.
+            _ = Task.Run(() =>
+            {
+                try { StopSystem(); }
+                catch (Exception ex) { AppendLog($"Exit: StopSystem error: {ex.Message}"); }
+                finally
+                {
+                    // Страховка: гарантированно добиваем оверлеи и зависшие WebView2,
+                    // даже если штатная остановка что-то не успела.
+                    try { KillOverlayProcesses(); } catch { }
+                    try { KillStuckWebView2(); } catch { }
+                    try
+                    {
+                        if (IsHandleCreated && InvokeRequired)
+                            BeginInvoke(new Action(Application.Exit));
+                        else
+                            Application.Exit();
+                    }
+                    catch { }
+                }
+            });
+        }
+
+        // Убивает зависшие msedgewebview2 ТОЛЬКО от наших окон (WebOverlay / ETS2_Assist).
+        // Нужно после закрытия: они держат файлы профиля и GPU-ресурсы.
+        // Фильтр по командной строке обязателен — WebView2 используют и другие приложения.
+        private void KillStuckWebView2()
+        {
+            try
+            {
+                Program.KillOurWebView2();
+                AppendLog("Зависшие msedgewebview2 (наши) завершены.");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Ошибка завершения msedgewebview2: {ex.Message}");
+            }
+        }
+
         // v39.49: переработанный выход. UI-поток НЕ блокируется на Wait/Join/WaitOne.
         // StopSystem() выполняется в фоне; Application.Exit() — штатное завершение WinForms.
         private async void ConfirmExit()
@@ -3744,6 +3840,10 @@ RegisterHotKeyChecked(
             }
             finally
             {
+                // v1.0.40.24: страховка — добиваем оверлеи и зависшие WebView2,
+                // даже если штатная остановка что-то не успела (процессы оставались фоном).
+                try { KillOverlayProcesses(); } catch { }
+                try { KillStuckWebView2(); } catch { }
                 Application.Exit();
             }
         }
@@ -3769,21 +3869,9 @@ RegisterHotKeyChecked(
 
         private void KillOverlayProcesses()
         {
+            // v1.0.40.24: с ожиданием завершения и повтором (см. KillProcessByName).
             foreach (string name in new[] { "WebOverlay", "pano" })
-            {
-                foreach (var proc in Process.GetProcessesByName(name))
-                {
-                    try
-                    {
-                        proc.Kill();
-                        proc.WaitForExit(3000);
-                    }
-                    catch (Exception ex)
-                    {
-                        AppendLog($"Ошибка остановки overlay {name}: {ex.Message}");
-                    }
-                }
-            }
+                KillProcessByName(name, waitMs: 3000, attempts: 2);
         }
 
         private void OpenLogFolder()
@@ -3983,11 +4071,11 @@ RegisterHotKeyChecked(
             if (gameRunning && dataFresh)
             {
                 string speedText = speed >= 0 ? $"{speed} km/h" : "0 km/h";
-                SetStatusText(indicatorTruckTel, "TruckTel 8080", speedText, true);
+                SetStatusText(indicatorTruckTel, $"TruckTel {TruckTelemetry.Port}", speedText, true);
             }
             else
             {
-                SetStatusText(indicatorTruckTel, "TruckTel 8080", "NO DATA", false);
+                SetStatusText(indicatorTruckTel, $"TruckTel {TruckTelemetry.Port}", gameRunning ? "NO DATA" : "GAME OFF", false);
             }
             SetStatusText(indicatorWebServer, "Web Server",
                 _staticWebRunning ? "8082 ON" : "8082 OFF", _staticWebRunning);
@@ -4022,30 +4110,20 @@ RegisterHotKeyChecked(
             catch { return false; }
         }
 
-        private bool IsTelemetryDataFresh()
-        {
-            try
-            {
-                string jsonPath = AppDataPaths.WebDataFile;
-                if (!File.Exists(jsonPath)) return false;
-                var lastWrite = File.GetLastWriteTime(jsonPath);
-                return (DateTime.Now - lastWrite).TotalSeconds < 5;
-            }
-            catch { return false; }
-        }
+        // v1.0.40.21: ИСТОЧНИК ЖИВОСТИ ТЕЛЕМЕТРИИ — TruckTelemetry (WS/REST TruckTel),
+        // а НЕ mtime файла web_data.json. Причина бага: web_data.json писал старый
+        // TruckTel-бридж; сейчас его трогает только UpdateTruckTelPort() разово при старте,
+        // поэтому mtime всегда был старым и индикатор вечно показывал NO DATA, хотя
+        // REST /api/rest/flat/truck отвечал и данные шли.
+        private bool IsTelemetryDataFresh() => TruckTelemetry.IsLive;
 
+        // Скорость берём из того же фида (truck.speed, м/с -> км/ч). -1 = данных ещё нет.
         private int GetCurrentSpeed()
         {
             try
             {
-                string jsonPath = AppDataPaths.WebDataFile;
-                if (!File.Exists(jsonPath)) return -1;
-                var json = File.ReadAllText(jsonPath);
-                var obj = JObject.Parse(json);
-                var speedToken = obj["speed"];
-                if (speedToken != null && speedToken.Type == JTokenType.Integer)
-                    return speedToken.Value<int>();
-                return -1;
+                if (!TruckTelemetry.IsLive) return -1;
+                return (int)Math.Round(TruckTelemetry.SpeedKmh);
             }
             catch { return -1; }
         }

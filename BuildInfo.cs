@@ -19,7 +19,7 @@ namespace ETS2_Assist_GUI
                         return attr.InformationalVersion;
                 }
                 catch { }
-                return "1.0.40.14-MAP2-POINT-NAME-LABEL";
+                return "1.0.40.26-TRUCK-INTERVAL-FIELD";
             }
         }
     }
