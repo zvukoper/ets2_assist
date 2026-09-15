@@ -39,7 +39,9 @@ namespace ETS2_Assist_GUI
                     if (form.IsDisposed || form.Disposing)
                         return;
 
-                    if (!form.IsHandleCreated || form.btnMapEditor == null || form.btnMapEditor.IsDisposed)
+                    // v1.0.40.28: якорь — кнопка Start (кнопка старого редактора карты
+                    // btnMapEditor УБРАНА: единственный редактор — «Редактор карты 2»).
+                    if (!form.IsHandleCreated || form.chkWebDebug == null || form.chkWebDebug.IsDisposed)
                     {
                         Thread.Sleep(40);
                         continue;
@@ -81,13 +83,13 @@ namespace ETS2_Assist_GUI
 
         private void AddMapEditor2Button()
         {
-            if (_mainButtonGrid != null || btnMapEditor == null || IsDisposed || Disposing)
+            if (_mainButtonGrid != null || btnStart == null || IsDisposed || Disposing)
                 return;
 
             SuspendLayout();
             try
             {
-                var parent = btnMapEditor.Parent ?? this;
+                var parent = btnStart.Parent ?? this;
 
                 // Start the unified button grid at the first button, not at the old
                 // absolute position of the Map Editor button.
@@ -118,7 +120,7 @@ namespace ETS2_Assist_GUI
                     btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit,
                     btnRefreshTracks, btnRandomTarget, btnRandomTarget2, btnRandomTarget3,
                     btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid,
-                    btnTestPause, btnResetRecordingOrigin, btnMapEditor, btnLaunchAR
+                    btnTestPause, btnResetRecordingOrigin, btnLaunchAR
                 };
 
                 int row = 0;
@@ -161,6 +163,22 @@ namespace ETS2_Assist_GUI
                         chkAr2Grid.Margin = new Padding(2, 0, 0, 0);
                         _mainButtonGrid.Controls.Add(chkAr2Grid, 1, row);
                     }
+                    row++;
+                }
+
+                // v1.0.40.28: чекбокс ОТЛАДКИ ВЕБ-КОНТЕНТА (единый debugShow(bool)
+                // во всех страницах оверлея) — отдельной строкой, рядом с AR.
+                if (chkWebDebug != null && !chkWebDebug.IsDisposed)
+                {
+                    if (chkWebDebug.Parent != null)
+                        chkWebDebug.Parent.Controls.Remove(chkWebDebug);
+                    chkWebDebug.AutoSize = true;
+                    chkWebDebug.Padding = Padding.Empty;
+                    chkWebDebug.Anchor = AnchorStyles.Left;
+                    chkWebDebug.Margin = new Padding(2, 0, 0, 6);
+                    _mainButtonGrid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                    _mainButtonGrid.Controls.Add(chkWebDebug, 0, row);
+                    _mainButtonGrid.SetColumnSpan(chkWebDebug, 2);
                     row++;
                 }
 

@@ -895,3 +895,133 @@
 8. Спам AR: см.п.2; GetCandidatePorts → LogEditorData (app_data).
 9. Logs\new_object_po_selections.txt (3 строки: город+дист / JSON {x,y,z} / пустая) — LogNewPointSelection: клик-создание в редакторе + pin из АР.
 10. КВОТА: >90% Session usage — СПРАШИВАТЬ подтверждение перед задачей.
+
+### [v1.0.40.27 12.09.2026] AR1-REVIVE — реанимация AR1 + горизонт/дистанция/конус/чекбоксы
+- **Единый набор комбинаций (НОВОЕ ПРАВИЛО):** `SHIFT+CTRL+X` — только редактор карты;
+  `CTRL+X` — ИГРОВОЙ режим (новая точка): AR-пометка (`ar_pin`) + миникарта (`ar_pin_map`)
+  + `MapEditor2Form.CreatePointFromEditor(x,y,z)` БЕЗ активации окна (фокус остаётся в игре).
+  `CTRL+PGUP/PGDN` — FOV AR1 ±1° (30..150, хранится в `AppSettings.Ar1FovDeg`,
+  рантайм — `ArBridge.FovDegreesAr1`, ОТДЕЛЬНО от FOV AR2 `FovDegrees`).
+- **AR1 = внешний процесс `WebOverlay`** (`MainWindowTitle` содержит «AR HUD»).
+  Кнопка AR1 — тумблер: `SyncAr1Button()` (опрос процессов раз в 2 с в `statusTimer`),
+  `ToggleArOverlay()`, `StopArOverlay(manual)`, `IsAr1Running`. `StopSystem` гасит AR1.
+- **ПРАВИЛО ТЕЛЕМЕТРИИ AR (урок v1.0.40.27):** `StartArTargetFeed()` обязан форсить
+  `_arTruckChanged=true`, `_arCitiesSent=false`, `_arLastHeadSent=null`;
+  `head` НЕ должен входить в гейт отправки (смена головы — отдельный триггер через
+  `_arLastHeadSent` + `JToken.DeepEquals`); на подключение нового WS-клиента
+  (`TrailBehavior.SetOnClientConnected` → `OnOpen`) — `ForceArDataResend(reason)`.
+  Иначе «AR: нет телеметрии», когда грузовик стоит (нет события изменения).
+- **ЕДИНАЯ ФОРМУЛА КОНУСА ОБЗОРА = ДИСТАНЦИЯ ДО ЗЕМЛИ ПОД ПРИЦЕЛОМ:**
+  `eyeH / |tan(pitch)|`, `eyeH = 1.5 м` (`MapEditorForm.EyeHeightActrosM`), clamp ≤ 1500 м
+  (`ViewConeMaxDistM`). Питч везде — ДОЛЯ ОБОРОТА (×2π). Реализации:
+  `MapEditorForm.GroundDistanceFromPitchM` (старый редактор → `MapEditorVectorRenderer.DrawCone`),
+  `map_draw.js` (миникарта), `map_editor2/index.html` `groundDistFromPitchM`,
+  `ar_hud.js` `CFG.eyeHeightM`.
+- **Линия горизонта (AR1 + AR2):** `ar_hud.js horizonScreenLine` / `ArRenderer.ComputeHorizonLine` —
+  проекция двух точек плоскости горизонта (вперёд 500 м, ±500 м вбок) с композитным
+  питчем (кузов + голова) и **КРЕНОМ кузова** (`Roll`, знак инвертирован) вокруг оси взгляда.
+- **Выше горизонта (пункт 8):** `dirY = sin(pitch) ≥ -1e-6` → дистанция `NaN`,
+  подписи дистанции НЕТ, на микроточке прицела — СЕРЫЙ ДИАГОНАЛЬНЫЙ микрокрестик
+  (`drawDiagCross` / `ArRenderer.DrawDiagCross`; в AR2 раньше рисовался текст «—»).
+- **Чекбоксы «Показать в AR» / «Показать на миникарте»** (`PointData.ShowInAr` / `ShowOnMap`,
+  по умолчанию `true`): JSON-ключи `showInAr` / `showOnMap`. Читать через
+  `MapEditorForm.ReadBoolToken` (`internal`, принимает bool/int/float/"true"/0/1 — JS
+  редактора-2 пишет bool как `1/0`). Миникарта — dumb-приёмник: `showOnMap` СВОРАЧИВАЕТСЯ
+  в существующий флаг `hidden` (`hidden = Hidden==1 || !Enabled || !ShowOnMap`).
+  AR-канал фильтрует по `ShowInAr`. **Решение пользователя: строгий B+** — точка без
+  галочек не показывается НИ в AR, НИ на миникарте.
+- Хелперы, используемые из других классов проекта, объявлять `internal` (иначе CS0103).
+- Минифицированный inline-JS (`map_editor2/index.html`) после правок ВСЕГДА проверять:
+  извлечь `<script>` и прогнать `node --check`.
+
+### [v1.0.40.28 15.09.2026] WEB-DEBUG-CAM — AR1-телеметрия, камера, конус=FOV, debugShow
+- **КОРНЕВОЙ УРОК (событийная рассылка):** флаг-«ЗАПРОС» и флаг-«данные изменились» должны
+  быть РАЗНЫМИ переменными. `ApplyPlacementJson` ставит `_arTruckChanged` при каждом
+  входящем пакете (WS + REST 1 Гц) и перетирал форс-запрос до тика (33 мс) → `ar_telemetry`
+  не уходила ВООБЩЕ (0 отправок за сессию; симптом — «AR1 без визуальных изменений,
+  как будто старый код»). Решение: залипающий `_arTelemetryForced`, сбрасывается ТОЛЬКО
+  тиком после отправки.
+- **КАМЕРА СЧИТАЕТСЯ ОТ ТЕЛЕМЕТРИИ** (не от констант): `truck.cabin.position` +
+  `truck.head.position` (ЛОКАЛЬНЫЕ, метры в системе фуры), `truck.head.offset` (yaw/pitch,
+  доля оборота), `truck.cabin.offset`. Положение камеры = опорная точка фуры + локальная
+  ВЫСОТА (cabin.y + head.y ≈ 2.55 м у Actros). Горизонталь — `CFG.camForwardM`/`camRightM`
+  (0, уточняется замером через debugShow-строку).
+- **КОНУС ОБЗОРА = УГОЛ FOV:** полуугол = `FOV/2` (минимум 5°) ВЕЗДЕ — `ar_hud.js`,
+  `map_draw.js` (FOV из `state.fovDeg` ← команда `ar_fov`), `map_editor2/index.html`
+  (`coneFovDeg()` ← `window.MapEditor2SetFov` ← `MapEditor2Form.SendFovAsync`).
+  **НЕ считать полуугол от питча** (прежнее `clamp(|headPitch*360|,5,45)` — ошибка).
+  Длина конуса — прежняя единая формула `eyeH/|tan(питч)|` ≤1500 м.
+- **ВЫВОД FOV:** `ar_hud.js drawFovText` — левый нижний угол, двойная чёрная обводка
+  (`CFG.fovFont/fovColor/fovMarginX/fovMarginY`).
+- **debugShow(bool) — ЕДИНЫЙ МЕТОД ДЛЯ ВСЕГО ВЕБ-КОНТЕНТА** (`data/js/debug_show.js`):
+  подключать ПЕРВЫМ в `<head>` КАЖДОЙ страницы (13 шт., включая `map_editor2/index.html`
+  и диагностические). `true` — игнорировать логику показа, контент виден принудительно
+  (CSS `.debug-show-force` + заморозка `classList`/стилей + MutationObserver + дозатор
+  500 мс, инлайн-стили запоминаются и восстанавливаются), `false` — возврат.
+  Входы: `window.debugShow(bool)`, URL `?debugshow=1`, WS `{command:'debug_show',enabled}`;
+  UI — чекбокс «Отладка веб (debugShow)» (`chkWebDebug`), `ArBridge.DebugShow` для AR2.
+- **РЕДАКТОР КАРТЫ 1 ОТКЛЮЧЁН** (решение пользователя: «редактор 2 — единственный»):
+  кнопка «Редактор карты» и поле `btnMapEditor` УДАЛЕНЫ; якорь сетки кнопок — `btnStart`.
+  `MapEditorForm` остаётся legacy (его статики использует конвейер overrides).
+  `SHIFT+CTRL+X` НЕ открывает/не фокусирует редактор и НЕ берёт координаты через
+  `MapEditor2GameEditorBridge` — обе комбинации (`CTRL+X`, `SHIFT+CTRL+X`) создают
+  **ВРЕМЕННЫЙ (виртуальный) маркер**: AR1 (`ar_pin`) + миникарта (`ar_pin_map`).
+  Сохранить такую точку нельзя — для постоянной нужно открыть редактор и поставить там.
+- **ТОЧКА ИЗ РЕДАКТОРА 2 → В AR1:** `MapEditor2Form` при `map2-create-point` зовёт
+  `MainForm.ArPlacePinAtWorld(x,z)` + `ArSendPinMap(x,y,z)` (AR1 + миникарта одной точкой).
+- `truck.*`-массивы читать через `Value<double>()` (культуро-независимо; урок v64).
+
+### [v1.0.40.29 15.09.2026] CACHE-TICK-FIX — два корня «в АР1 ноль изменений»
+- **ПРОФИЛЬ WEBVIEW2 ОВЕРЛЕЯ ЛЕЖИТ В `publish\data\bin\WebOverlay.exe.WebView2\EBWebView`**
+  (рядом с его EXE, ДВА уровня ниже `publish`, ~34 МБ). Старый `compile.ps1` искал кэш
+  через `Get-ChildItem -Filter '*.WebView2' -Directory` **без `-Recurse`** → эта папка не
+  попадала НИКОГДА, и `web_ar_hud.html` грузился из кэша («ноль изменений» при живых
+  правках и работающей миникарте). Искать РЕКУРСИВНО `*.WebView2` И `EBWebView`, удалять
+  глубокие раньше родителей, гасить `WebOverlay` перед очисткой (держит локи), + профиль
+  `%APPDATA%\ETS2_Assist\EBWebView`.
+- **compile.ps1 САМ ПРОВЕРЯЕТ ДОСТАВКУ:** Stage 3b — MD5 веб-контента (`.html/.js/.css/.json/`
+  `.ico/.png/.svg`) из `data\` против `publish\data` + размеры остальных файлов (хешировать
+  564 МБ = два EXE по 166 МБ дорого), печатает `PUBLISH DELIVERY CHECK FAILED` при
+  расхождении. Stage 3c — подтверждает, что папок `*.WebView2`/`EBWebView` не осталось.
+  При жалобе «старый код в билде» СНАЧАЛА смотреть эти две строки вывода compile.ps1.
+- **AR-ТИК — ПОТОКОВЫЙ ТАЙМЕР.** `System.Windows.Forms.Timer` для AR-тика МОЖЕТ НЕ ТИКАТЬ
+  (то же ловили в `MapEditor2Form`). Симптом: AR запущен, но в логе НЕТ ни записей из
+  `ArUpdateTick`, ни отправок `ar_telemetry`; в AR1 нет даже того, что рисуется БЕЗ
+  телеметрии (надпись FOV). Лечение: `System.Threading.Timer` + `BeginInvoke` для WS/UI,
+  `Interlocked _arTickBusy` от наложения тиков. В тике есть строка «жизни»
+  `[AR] tick alive:` (app_data, 1/5 c) — по ней отличать «тик мёртв» от «условие ложно».
+- ДИАГНОСТИЧЕСКОЕ ПРАВИЛО: если в логе нет `Command 'ar_telemetry' sent to map.` —
+  AR-сторона не получает данных вообще; проверять ТАЙМЕР раньше, чем условия отправки.
+
+### [v1.0.40.30 15.09.2026] SCS-CAMERA-POSE — реальная 6DoF-поза камеры (ЗАМЕНЯЕТ все camera-хаки)
+- **ПРАВИЛО: В AR НЕТ НИКАКИХ ПРИБЛИЖЁННЫХ ПАРАМЕТРОВ КАМЕРЫ.** Запрещено
+  использовать в runtime-проекции: `EyeHeight`, `PitchCompensation`, отдельный
+  Roll/Pitch-хак, зеркалирование `u`, сглаживание экранной координаты, prediction,
+  высоту точки через ближайший город, плоскость колёс для положения камеры.
+- **ИСТОЧНИК ПОЗЫ (SCS hierarchy, файл `AR/ScsCameraPose.cs`):**
+  `head_cabin = head.position + head.offset.position` →
+  `head_vehicle = cabin.position + cabin.offset.position + rotate(cabin.offset.orientation, …)` →
+  `head_world = truck.world.position + rotate(truck.world.orientation, …)`.
+  Ориентация — та же иерархия. Базовая голова смотрит по локальной **−Z**
+  (SCS: локальный Z назад, X вправо, Y вверх). `ScsCameraPose.Rotate` =
+  **Roll вокруг Z → Pitch вокруг X → Heading вокруг Y** (доли оборота).
+- **ЕДИНСТВЕННЫЙ ПУТЬ world→screen:** `world − camera.position` → проекции на
+  CameraForward/Right/Up → pinhole `f = W/2 / tan(FOV/2)` → пиксели. Базис
+  ортонормализуется в `TryCreate`. Никаких добавок после проекции.
+- **`ArGameState.CamX/Y/Z` = ГЛАЗ** (а НЕ truck.world.placement!); +`CameraForward/
+  Right/Up`+`CameraPoseValid`. Углы (`YawBase/PitchBody/Roll/YawHead/PitchHead`)
+  — ТОЛЬКО диагностика. `PublishArV2Snapshot` — только при валидной позе.
+- **payload `ar_telemetry`:** `camera{position,forward,right,up,fovDeg,valid}` +
+  legacy `placement`/`head` (для статуса). AR1 НЕ собирает камеру из углов.
+- **ГОРИЗОНТ — МИРОВОЙ:** горизонт = мировые лучи ⟂ Up=(0,1,0):
+  `v = cy + f*(Forward.Y + Right.Y*x)/Up.Y` (вырожденный случай — вертикальная
+  линия). Прежний `horizonScreenLine` со складыванием питчей УДАЛЁН — он
+  «не держал» горизонт (симптом: смещение при движении головы вверх/вниз).
+- **КОНУС ОБЗОРА В AR1 УБРАН** (решение пользователя: в AR1 он совпадает с нашим
+  POV). Конус остаётся ТОЛЬКО на миникарте и в редакторе карты.
+- Удалено из AR (не возвращать): `UsePinholeProjection`, старый путь v85,
+  `CabinFovDegrees` (статик), `TargetDisplayY`, `displayYFor`/`nearestCityY`/`_ySmooth`,
+  `_sm` (screen-сглаживание), `pinSmooth`/`pinLead`, зеркало `W − pPr.u`,
+  `exCam`-экстраполяция, `updateCameraWorld`/`cameraWorld`.
+- Частота AR-тика 33→16 мс, TruckTel `throttle=50`→`throttle=16` (уменьшение temporal
+  latency; геометрия точна относительно последнего сэмпла, sync/prediction — отдельно).

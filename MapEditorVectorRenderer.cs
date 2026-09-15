@@ -473,8 +473,12 @@ namespace ETS2_Assist_GUI
                 45.0);
 
             var headingDeg = -(truck.Heading + truck.HeadYaw) * 360.0;
+            // v1.0.40.27: ДЛИНА КОНУСА = ДИСТАНЦИЯ ДО ЗЕМЛИ ПОД МИКРОТОЧКОЙ ПРИЦЕЛА
+            // (единая формула проекта: eyeH / |tan(питч)|, эталон ar_head_ground.csv).
+            // Смотрим под ноги — конус короткий; взгляд к горизонту — до максимума.
+            var groundDistM = MapEditorForm.GroundDistanceFromPitchM(truck.HeadPitch);
             var lenPx = Math.Min(
-                1500.0 / _scale,
+                groundDistM / _scale,
                 Math.Sqrt(width * width + height * height) / 2.0);
 
             if (lenPx <= 1)

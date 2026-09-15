@@ -25,6 +25,10 @@ namespace ETS2_Assist_GUI
         // Задаётся полем ввода рядом с кнопкой «Найти грузовик».
         public static int TruckIntervalMs { get; set; } = 1000;
 
+        // v1.0.40.27: горизонтальный FOV страницы AR1 (web_ar_hud.html), градусы.
+        // Меняется CTRL+PGUP/PGDN (шаг 1°), НЕ влияет на FOV AR2 (D3D).
+        public static double Ar1FovDeg { get; set; } = 75.0;
+
         static AppSettings()
         {
             AppDataPaths.EnsureUserData();
@@ -52,6 +56,7 @@ namespace ETS2_Assist_GUI
                     WindowHeight = settings.WindowHeight;
                     WindowDeviceName = settings.WindowDeviceName;
                     TruckIntervalMs = settings.TruckIntervalMs > 0 ? settings.TruckIntervalMs : 1000;
+                    Ar1FovDeg = settings.Ar1FovDeg is >= 30.0 and <= 150.0 ? settings.Ar1FovDeg : 75.0;
                 }
             }
             catch { /* ignore errors */ }
@@ -74,7 +79,8 @@ namespace ETS2_Assist_GUI
                     WindowWidth = WindowWidth,
                     WindowHeight = WindowHeight,
                     WindowDeviceName = WindowDeviceName,
-                    TruckIntervalMs = TruckIntervalMs
+                    TruckIntervalMs = TruckIntervalMs,
+                    Ar1FovDeg = Ar1FovDeg
                 };
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(SettingsFile, json);
@@ -96,6 +102,8 @@ namespace ETS2_Assist_GUI
             public int? WindowHeight { get; set; }
             public string? WindowDeviceName { get; set; }
             public int TruckIntervalMs { get; set; } = 1000;
+            // v1.0.40.27: FOV AR1 (без значения в файле остаётся 0 → подставляем 75).
+            public double Ar1FovDeg { get; set; }
         }
     }
 }

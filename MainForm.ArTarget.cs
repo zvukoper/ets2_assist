@@ -31,14 +31,58 @@ namespace ETS2_Assist_GUI
         private CancellationTokenSource? _arRestCts;
         private Task? _arRestTask;
         private static readonly System.Net.Http.HttpClient _arHttp = new() { Timeout = TimeSpan.FromSeconds(3) };
-        private System.Windows.Forms.Timer? _arTimer;
+        // v1.0.40.29: потоковый таймер AR-тика (System.Windows.Forms.Timer не тикал).
+        private System.Threading.Timer? _arTickTimer;
+        private int _arTickBusy;   // 0/1 — защита от наложения тиков (Interlocked)
         private System.Windows.Forms.Timer? _arReconnectTimer;
         private double _arTruckX, _arTruckY, _arTruckZ;   // опорная точка фуры (мир)
         // v74: изменились ли данные фуры с последней телеметрии (событийная рассылка).
         private bool _arTruckChanged;
+        // v1.0.40.28 КОРЕНЬ БАГА «AR1 остаётся без визуальных изменений/нет телеметрии»:
+        // `_arTruckChanged` перетирался ВХОДЯЩИМИ данными (ApplyPlacementJson ставит
+        // _arTruckChanged = changed при КАЖДОМ пакете WS/REST) раньше, чем тик успевал
+        // его обработать. При стоянке REST-снимок (1 Гц) сбрасывал флаг в false, и
+        // ar_telemetry НЕ УХОДИЛА ВООБЩЕ (в логе: 0 отправок за сессию). Отдельный
+        // «залипающий» флаг форс-отправки НЕ сбрасывается приёмом данных — его гасит
+        // только сам тик после успешной отправки.
+        private bool _arTelemetryForced;
         private double _arHeading;                        // heading фуры (доля оборота)
         private double _arPitch, _arRoll;                 // тангаж/крен фуры
         private JArray? _arLastHead;                      // truck.head.offset (6 элементов)
+        // v1.0.40.27: последний ОТПРАВЛЕННЫЙ на страницу head — чтобы досылать телеметрию
+        // в момент, когда head появился ПОЗЖЕ первого placement (событийная модель).
+        private JArray? _arLastHeadSent;
+
+        // ================================================================
+        // v1.0.40.30 (ETS2_AR_CAMERA_POSE_IMPLEMENTATION): ПОЛНАЯ 6DoF-ПОЗА КАМЕРЫ.
+        // Источник — штатная SCS hierarchy из телеметрии:
+        //   truck.world.placement → truck.cabin.position + truck.cabin.offset
+        //                         → truck.head.position + truck.head.offset
+        // Все величины ЛОКАЛЬНЫЕ (метры в системе фуры), кроме truck.world.placement.
+        // Никаких EyeHeight/PitchCompensation/roll-хаков — поза считается ОДИН раз
+        // (ScsCameraPose.TryCreate) и далее используется как есть.
+        // ================================================================
+        private System.Numerics.Vector3 _arCabinPosition = System.Numerics.Vector3.Zero;
+        private System.Numerics.Vector3 _arCabinOffsetPosition = System.Numerics.Vector3.Zero;
+        private System.Numerics.Vector3 _arHeadPosition = System.Numerics.Vector3.Zero;
+        private System.Numerics.Vector3 _arHeadOffsetPosition = System.Numerics.Vector3.Zero;
+
+        private AR.ScsEuler _arCabinOffsetOrientation = AR.ScsEuler.Identity;
+        private AR.ScsEuler _arHeadOffsetOrientation = AR.ScsEuler.Identity;
+
+        private bool _arHeadPositionKnown;
+        private bool _arCameraPoseValid;
+        private AR.ScsCameraPose _arCameraPose;
+        private long _arPoseSequence;
+        // ================================================================
+        // v1.0.40.30 (ETS2_AR_CAMERA_POSE_IMPLEMENTATION): ПОЛНАЯ 6DoF-ПОЗА КАМЕРЫ.
+        // Источник — штатная SCS hierarchy из телеметрии:
+        //   truck.world.placement → truck.cabin.position + truck.cabin.offset
+        //                         → truck.head.position + truck.head.offset
+        // Все величины ЛОКАЛЬНЫЕ (метры в системе фуры), кроме truck.world.placement.
+        // Никаких EyeHeight/PitchCompensation/roll-хаков — поза считается ОДИН раз
+        // (ScsCameraPose.TryCreate) и далее используется как есть.
+        // ================================================================
         private bool _arTruckKnown;                       // был хотя бы один placement
 
         // ПОМЕТКА В АР (v70): «Пометить в АР» (кнопка миникарты) создаёт точку на
@@ -71,10 +115,10 @@ namespace ETS2_Assist_GUI
         private bool _arTargetMustClear; // прошлый tick: цели не было (нужно разово сказать null)
         private DateTime _arLastTargetSentAt = DateTime.MinValue;   // v93: дебаунс спама ar_target
 
-        // Частота телеметрии (30 Гц): плавная проекция в AR (страница рисует rAF
-        // ~60 FPS, интерполируя между кадрами). ar_target в этом тике НЕ шлётся
-        // постоянно — только при смене цели (см. _arLastSentGameName).
-        private const int ArUpdateIntervalMs = 33;
+        // Частота AR-тика. v1.0.40.30: 33 → 16 мс (ETS2_AR_CAMERA_POSE §9) — поза
+        // камеры обновляется чаще, чтобы уменьшить временну́ю задержку до оверлея.
+        // Геометрия от этого НЕ меняется (она точна относительно последнего сэмпла).
+        private const int ArUpdateIntervalMs = 16;
 
         // ================================================================
         // ЗАПУСК / ОСТАНОВКА (по кнопке «Запустить AR»)
@@ -84,17 +128,31 @@ namespace ETS2_Assist_GUI
             // Статическая модель точек: собираем один раз, обновляем по таймеру 1/с
             // (файл overrides редок меняется, статика вообще не меняется).
             RefreshArModel();
+            // v1.0.40.27 КОРЕНЬ БАГА «AR1 пишет: нет телеметрии от приложения»:
+            // рассылка ar_telemetry событийная (_arTruckChanged), а при старте AR1
+            // флаг НЕ сбрасывался. Если фура стоит/на паузе (координаты не меняются),
+            // ни одного пакета телеметрии не уходило, и страница вечно показывала
+            // «нет телеметрии», хотя данные есть. Теперь старт канала = форс-рассылка:
+            // одна телеметрия (с городами) и одна цель уходят сразу.
+            // v1.0.40.28: форс живёт в ОТДЕЛЬНОМ залипающем флаге (_arTelemetryForced) —
+            // _arTruckChanged перетирается приёмом данных до тика (см. объявление поля).
+            _arTruckChanged = true;
+            _arTelemetryForced = true;
+            _arCitiesSent = false;
+            _arLastHeadSent = null;
             // Новая страница AR начинает с чистого состояния — цель переотправим разово.
             _arLastSentGameName = null;
             _arTargetMustClear = false;
             try { EnsureTestTargetsFile(); } catch { }
 
-            if (_arTimer == null)
-            {
-                _arTimer = new System.Windows.Forms.Timer { Interval = ArUpdateIntervalMs };
-                _arTimer.Tick += (_, _) => ArUpdateTick();
-            }
-            _arTimer.Start();
+            // v1.0.40.29 КОРЕНЬ «в AR1 вообще ничего не меняется» (второй дефект):
+            // System.Windows.Forms.Timer для AR-тика НЕ тикал (в логе за сессии 19:20 и
+            // 20:54 — НИ ОДНОЙ записи тика; работал только прямой RefreshArModel при
+            // старте канала). Тот же баг уже ловили в MapEditor2Form («Timer, созданный
+            // внутри async-метода, может НЕ тикать») и лечили сменой на
+            // System.Threading.Timer. Здесь делаем так же: потоковый таймер не зависит
+            // от очереди сообщений WinForms, а работа с UI/отправкой — через BeginInvoke.
+            StartArTickTimer();
 
             if (_arReconnectTimer == null)
             {
@@ -103,6 +161,8 @@ namespace ETS2_Assist_GUI
             }
             _arReconnectTimer.Start();
             _ = ArConnectTelemetryAsync();
+            // v1.0.40.27: страница получает актуальный FOV AR1 сразу (CTRL+PGUP/PGDN его меняет).
+            SendAr1FovToPage();
 
             // REST-снимок: TruckTel /api/rest/flat/truck ОТДАЁТ truck.world.placement —
             //Confirmed 31.08.2026 (Invoke-RestMethod): placement в метрах карты, работает и на паузе.
@@ -114,9 +174,71 @@ namespace ETS2_Assist_GUI
             AppendLog("[AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).");
         }
 
+        // ================================================================
+        // v1.0.40.29: AR-ТИК — ПОТОКОВЫЙ ТАЙМЕР (не System.Windows.Forms.Timer).
+        // ПРИЧИНА: WinForms-таймер AR-тика НЕ тикал (в логе за сессии 19:20 / 20:54 —
+        // ни одной записи тика, работал только прямой RefreshArModel при старте канала).
+        // Симптом для пользователя: «в AR1 вообще ничего не меняется», хотя данные есть.
+        // Тот же баг уже ловили в MapEditor2Form и лечили сменой таймера — повторяем
+        // проверенное решение: System.Threading.Timer (не зависит от очереди сообщений
+        // WinForms) + маршалинг в UI-поток через BeginInvoke для работы с WebSocket/UI.
+        // ================================================================
+        private void StartArTickTimer()
+        {
+            try
+            {
+                _arTickTimer ??= new System.Threading.Timer(
+                    _ => QueueArUpdateTick(),
+                    null,
+                    Timeout.Infinite,
+                    Timeout.Infinite);
+                _arTickTimer.Change(ArUpdateIntervalMs, ArUpdateIntervalMs);
+                Logger.Current?.Data("[AR] AR-тик: потоковый таймер запущен (интервал " +
+                    ArUpdateIntervalMs + " мс).");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[AR] Не удалось запустить AR-тик: {ex.Message}");
+            }
+        }
+
+        private void StopArTickTimer()
+        {
+            try { _arTickTimer?.Change(Timeout.Infinite, Timeout.Infinite); } catch { }
+        }
+
+        // Тик приходит в потоке пула: работа с WS/UI — на UI-потоке (BeginInvoke).
+        private void QueueArUpdateTick()
+        {
+            // Наложение тиков недопустимо (отправка 33 мс может не успеть) — пропускаем.
+            if (Interlocked.CompareExchange(ref _arTickBusy, 1, 0) != 0) return;
+            bool handed = false;
+            try
+            {
+                if (IsDisposed || !IsHandleCreated) return;   // форму закрывают
+                BeginInvoke((Action)(() =>
+                {
+                    try { ArUpdateTick(); }
+                    finally { Volatile.Write(ref _arTickBusy, 0); }
+                }));
+                handed = true;   // флаг снимет сам UI-вызов в finally
+            }
+            catch
+            {
+                // BeginInvoke не сработал (форма закрывается) — тик дальше не нужен.
+            }
+            finally
+            {
+                // ВАЖНО: если вызов НЕ передан в UI-очередь, флаг надо снять здесь,
+                // иначе он «залипнет» в 1 и тик умрёт навсегда (ловушка того же класса,
+                // что и исходный баг с неработающим таймером).
+                if (!handed) Volatile.Write(ref _arTickBusy, 0);
+            }
+        }
+
         internal void StopArTargetFeed()
         {
-            _arTimer?.Stop();
+            StopArTickTimer();
             _arReconnectTimer?.Stop();
             try { _arCts?.Cancel(); } catch { }
             try { _arRestCts?.Cancel(); } catch { }
@@ -124,6 +246,55 @@ namespace ETS2_Assist_GUI
             _arWs = null;
             StopArV2Overlay();
             AppendLog("[AR] Канал AR-целей остановлен.");
+        }
+
+        // ================================================================
+        // AR1: FOV (CTRL+PGUP / CTRL+PGDN, шаг 1°) — v1.0.40.27
+        // Значение живёт в AR.ArBridge.FovDegreesAr1 (отдельно от FOV AR2),
+        // сохраняется в AppSettings и транслируется странице командой ar_fov
+        // (ar_hud.js: CFG.fovDeg). При старте AR1 значение досылается сразу.
+        // ================================================================
+        internal void SetAr1Fov(double degrees, string source)
+        {
+            double clamped = Math.Clamp(degrees, 30.0, 150.0);
+            AR.ArBridge.FovDegreesAr1 = clamped;
+            try { AppSettings.Ar1FovDeg = clamped; AppSettings.Save(); } catch { }
+            SendCommandToMap("ar_fov", new JObject { ["fov"] = clamped });
+            // Смена FOV не должна спамить workflow при автоповторе — подробности в app_data.
+            Logger.Current?.Data($"[AR] FOV AR1 = {clamped:F1}° ({source})");
+        }
+
+        // Отправка текущего FOV странице AR1 (при старте канала/страницы).
+        private void SendAr1FovToPage()
+        {
+            double fov = AR.ArBridge.FovDegreesAr1;
+            SendCommandToMap("ar_fov", new JObject { ["fov"] = fov });
+        }
+
+        // ================================================================
+        // AR1: форс-рассылка данных (v1.0.40.27)
+        // Событийная модель (телеметрия только при изменении) ломала первый показ:
+        // если фура стоит (пауза/стоянка) и страница подключилась ПОСЛЕ первой
+        // рассылки — она навсегда оставалась с «нет телеметрии». Форс-сброс флагов
+        // заставляет ближайший тик отправить телеметрию, города и цель заново.
+        // Вызывается из OnOpen WS-клиента (фоновый поток) — маршалим на UI-поток.
+        // ================================================================
+        internal void ForceArDataResend(string reason)
+        {
+            try
+            {
+                if (IsDisposed || !IsHandleCreated) return;
+                BeginInvoke((Action)(() =>
+                {
+                    _arTruckChanged = true;      // телеметрия уйдёт следующим тиком
+                    _arTelemetryForced = true;   // v1.0.40.28: приём данных его не перетрёт
+                    _arCitiesSent = false;       // города нужны новой странице
+                    _arLastHeadSent = null;      // head дослать вместе с placement
+                    _arLastSentGameName = null;  // цель переотправить
+                    Logger.Current?.Data($"[AR] Форс-рассылка данных AR ({reason}).");
+                }));
+            }
+            catch { /* канал не запущен — нечего пересылать */ }
         }
 
         // ================================================================
@@ -184,74 +355,241 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        // v1.0.40.28: чтение массивов камеры из телеметрии. Возвращает true, если
+        // значения изменились (событийная модель: лишних рассылок не делаем).
+        private static bool TryReadVec3(JObject json, string key, double[] dst)
+        {
+            try
+            {
+                var arr = json[key] as JArray ?? json.SelectToken(key) as JArray;
+                if (arr == null || arr.Count < 3) return false;
+                double nx = arr[0].Value<double>(), ny = arr[1].Value<double>(), nz = arr[2].Value<double>();
+                if (!double.IsFinite(nx) || !double.IsFinite(ny) || !double.IsFinite(nz)) return false;
+                bool ch = Math.Abs(nx - dst[0]) > 0.0005 || Math.Abs(ny - dst[1]) > 0.0005 || Math.Abs(nz - dst[2]) > 0.0005;
+                dst[0] = nx; dst[1] = ny; dst[2] = nz;
+                return ch;
+            }
+            catch { return false; }
+        }
+
+        // ================================================================
+        // v1.0.40.30: чтение SCS-компонентов позы камеры из телеметрии.
+        // TruckTel публикует SCS fvector/fplacement как массивы:
+        //   [x,y,z]          — position (truck.cabin.position / truck.head.position)
+        //   [x,y,z,h,p,r]    — placement (truck.cabin.offset / truck.head.offset)
+        // Числа читаем через Value<double>() — культуро-независимо (урок v64).
+        // ================================================================
+        private static JArray? FlatArray(JObject json, string key)
+        {
+            if (json[key] is JArray direct) return direct;
+            return json.SelectToken(key) as JArray;
+        }
+
+        private static bool TryReadVector3(JObject json, string key, out System.Numerics.Vector3 value)
+        {
+            value = System.Numerics.Vector3.Zero;
+            var a = FlatArray(json, key);
+            if (a == null || a.Count < 3) return false;
+            try
+            {
+                double x = a[0].Value<double>();
+                double y = a[1].Value<double>();
+                double z = a[2].Value<double>();
+                if (!double.IsFinite(x) || !double.IsFinite(y) || !double.IsFinite(z)) return false;
+                value = new System.Numerics.Vector3((float)x, (float)y, (float)z);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        private static bool TryReadScsPlacement(JObject json, string key,
+            out System.Numerics.Vector3 position, out AR.ScsEuler orientation)
+        {
+            position = System.Numerics.Vector3.Zero;
+            orientation = AR.ScsEuler.Identity;
+            var a = FlatArray(json, key);
+            if (a == null || a.Count < 6) return false;
+            try
+            {
+                double x = a[0].Value<double>();
+                double y = a[1].Value<double>();
+                double z = a[2].Value<double>();
+                double h = a[3].Value<double>();
+                double p = a[4].Value<double>();
+                double r = a[5].Value<double>();
+                if (!double.IsFinite(x) || !double.IsFinite(y) || !double.IsFinite(z) ||
+                    !double.IsFinite(h) || !double.IsFinite(p) || !double.IsFinite(r)) return false;
+                position = new System.Numerics.Vector3((float)x, (float)y, (float)z);
+                orientation = new AR.ScsEuler(h, p, r);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        // Пересчёт мировой позы камеры из последних SCS-компонентов.
+        // Вызывается после КАЖДОГО приёма телеметрии: cabin/head могут приходить
+        // отдельными delta-пакетами (без truck.world.placement).
+        private void RebuildArCameraPose()
+        {
+            if (!_arTruckKnown || !_arHeadPositionKnown)
+            {
+                _arCameraPoseValid = false;
+                return;
+            }
+
+            if (!AR.ScsCameraPose.TryCreate(
+                    _arTruckX, _arTruckY, _arTruckZ,
+                    new AR.ScsEuler(_arHeading, _arPitch, _arRoll),
+                    _arCabinPosition,
+                    _arCabinOffsetOrientation,
+                    _arCabinOffsetPosition,
+                    _arHeadPosition,
+                    _arHeadOffsetOrientation,
+                    _arHeadOffsetPosition,
+                    out var pose))
+            {
+                _arCameraPoseValid = false;
+                return;
+            }
+
+            _arCameraPose = pose;
+            _arCameraPoseValid = true;
+            _arPoseSequence++;
+        }
+
+        private static bool Vector3Changed(System.Numerics.Vector3 a, System.Numerics.Vector3 b)
+            => System.Numerics.Vector3.DistanceSquared(a, b) > 1e-8f;
+
+        private static bool EulerChanged(AR.ScsEuler a, AR.ScsEuler b)
+            => Math.Abs(a.Heading - b.Heading) > 0.000001 ||
+               Math.Abs(a.Pitch - b.Pitch) > 0.000001 ||
+               Math.Abs(a.Roll - b.Roll) > 0.000001;
+
         // Единый парсер placement из любого источника (REST-снимок или WS-дельта).
         // КООРДИНАТЫ TruckTel приходит УЖЕ В МЕТРАХ КАРТЫ (эмпирика 31.08.2026:
         // X=122629.27 Z=-54727.70 напрямую совпадает с дорогами/городами) —
         // НИКАКИХ делителей больше не применяем.
         private void ApplyPlacementJson(JObject json, string source)
         {
-            var placement = json["truck.world.placement"] as JArray;
-            if (placement == null) placement = json.SelectToken("truck.world.placement") as JArray;
-            if (placement == null || placement.Count < 3)
+            try
             {
-                // Нет placement (пауза/странный кадр) — подробности в app_data, 1 строка/5с.
-                if ((DateTime.Now - _arSrcLogAt).TotalMilliseconds > 5000)
+                bool changed = false;
+                bool anyData = false;
+
+                // ------------------------------------------------------------
+                // TRUCK WORLD PLACEMENT
+                // ------------------------------------------------------------
+                var placement = FlatArray(json, "truck.world.placement");
+                if (placement != null && placement.Count >= 6)
                 {
-                    _arSrcLogAt = DateTime.Now;
-                    Logger.Current?.Data($"[AR] placement отсутствует в источнике '{source}' (пауза/нет данных).");
+                    double tx = placement[0].Value<double>();
+                    double ty = placement[1].Value<double>();
+                    double tz = placement[2].Value<double>();
+                    double th = placement[3].Value<double>();
+                    double tp = placement[4].Value<double>();
+                    double tr = placement[5].Value<double>();
+
+                    if (double.IsFinite(tx) && double.IsFinite(ty) && double.IsFinite(tz) &&
+                        double.IsFinite(th) && double.IsFinite(tp) && double.IsFinite(tr))
+                    {
+                        changed |= Math.Abs(tx - _arTruckX) > 0.0005;
+                        changed |= Math.Abs(ty - _arTruckY) > 0.0005;
+                        changed |= Math.Abs(tz - _arTruckZ) > 0.0005;
+                        changed |= Math.Abs(th - _arHeading) > 0.000001;
+                        changed |= Math.Abs(tp - _arPitch) > 0.000001;
+                        changed |= Math.Abs(tr - _arRoll) > 0.000001;
+
+                        _arTruckX = tx;
+                        _arTruckY = ty;
+                        _arTruckZ = tz;
+                        _arHeading = th;
+                        _arPitch = tp;
+                        _arRoll = tr;
+
+                        _arTruckLastSeen = DateTime.Now;
+                        _arTruckKnown = true;
+                        anyData = true;
+                    }
                 }
-                return;
-            }
-            // КЛЮЧЕВОЙ ФИКС (v64): JValue.ToString() в ru-RU даёт «121657,32» (запятая), и
-            // Invariant TryParse читает запятую как разделитель тысяч -> ×1e8 мусор.
-            // Читаем число НАПРЯМУЮ через Value<double>() — Newtonsoft конвертирует
-            // культуро-независимо, никакого текстового раунд-трипа.
-            double tx = placement[0].Value<double>();
-            double tz = placement[2].Value<double>();
-            if (double.IsNaN(tx) || double.IsInfinity(tx) || double.IsInfinity(tz)) return;
 
-            // v74 (требование «никаких регулярных хартбитов»): телеметрия на сторону AR
-            // уходит ТОЛЬКО при ИЗМЕНЕНИИ данных фуры (перемещение/поворот/голова) —
-            // WS-дельта TruckTel и так шлёт только изменения, но REST-снимок повторяет
-            // те же значения; фильтр в этом методе гарантирует «одна рассылка = изменение».
-            bool changed = Math.Abs(tx - _arTruckX) > 0.05 || Math.Abs(tz - _arTruckZ) > 0.05;
-            if (placement.Count >= 2 && placement[1] != null)
-            {
-                double ny = placement[1].Value<double>();
-                changed |= Math.Abs(ny - _arTruckY) > 0.05;
-                _arTruckY = ny;
-            }
-            _arTruckX = tx;
-            _arTruckZ = tz;
-            if (placement.Count >= 4 && placement[3] != null)
-            {
-                double nh = placement[3].Value<double>();
-                changed |= Math.Abs(nh - _arHeading) > 0.0005;
-                _arHeading = nh;
-            }
-            if (placement.Count >= 5 && placement[4] != null)
-                _arPitch = placement[4].Value<double>();
-            if (placement.Count >= 6 && placement[5] != null)
-                _arRoll = placement[5].Value<double>();
-            var head = json["truck.head.offset"] as JArray;
-            if (head != null && head.Count >= 4)
-            {
-                if (_arLastHead == null || head.Count >= 5 && !JToken.DeepEquals(head, _arLastHead))
-                    changed = true;                    // голова повернулась — тоже событие
-                _arLastHead = head;
-            }
-            _arTruckChanged = changed;
-            _arTruckLastSeen = DateTime.Now;
-            _arTruckKnown = true;
+                // ------------------------------------------------------------
+                // SCS HIERARCHY: cabin.position → cabin.offset
+                //                 → head.position  → head.offset
+                // ------------------------------------------------------------
+                if (TryReadVector3(json, "truck.cabin.position", out var cabinPos))
+                {
+                    changed |= Vector3Changed(_arCabinPosition, cabinPos);
+                    _arCabinPosition = cabinPos;
+                    anyData = true;
+                }
 
-            // AR v2.0 (v76): публикация телеметрии в latest-буфер рендера (latest wins).
-            PublishArV2Snapshot();
+                if (TryReadScsPlacement(json, "truck.cabin.offset",
+                        out var cabinOffsetPos, out var cabinOffsetOrientation))
+                {
+                    changed |= Vector3Changed(_arCabinOffsetPosition, cabinOffsetPos);
+                    changed |= EulerChanged(_arCabinOffsetOrientation, cabinOffsetOrientation);
+                    _arCabinOffsetPosition = cabinOffsetPos;
+                    _arCabinOffsetOrientation = cabinOffsetOrientation;
+                    anyData = true;
+                }
 
-            // Успешное применение — в app_data, 1 строка/5с (значения координат — данные).
-            if ((DateTime.Now - _arSrcOkLogAt).TotalMilliseconds > 5000)
+                if (TryReadVector3(json, "truck.head.position", out var headPos))
+                {
+                    changed |= Vector3Changed(_arHeadPosition, headPos);
+                    _arHeadPosition = headPos;
+                    _arHeadPositionKnown = true;
+                    anyData = true;
+                }
+
+                if (TryReadScsPlacement(json, "truck.head.offset",
+                        out var headOffsetPos, out var headOffsetOrientation))
+                {
+                    changed |= Vector3Changed(_arHeadOffsetPosition, headOffsetPos);
+                    changed |= EulerChanged(_arHeadOffsetOrientation, headOffsetOrientation);
+                    _arHeadOffsetPosition = headOffsetPos;
+                    _arHeadOffsetOrientation = headOffsetOrientation;
+
+                    // raw-массив оставляем для совместимости со старым payload/логом.
+                    var rawHead = FlatArray(json, "truck.head.offset");
+                    if (rawHead != null) _arLastHead = new JArray(rawHead);
+                    anyData = true;
+                }
+
+                if (!anyData)
+                {
+                    // Нет применимых полей (пауза/странный кадр) — 1 строка/5с.
+                    if ((DateTime.Now - _arSrcLogAt).TotalMilliseconds > 5000)
+                    {
+                        _arSrcLogAt = DateTime.Now;
+                        Logger.Current?.Data($"[AR] нет применимых telemetry-полей в источнике '{source}'.");
+                    }
+                    return;
+                }
+
+                RebuildArCameraPose();
+
+                // Любое изменение положения/ориентации/головы/кабины = новая поза.
+                if (_arCameraPoseValid) changed = true;
+
+                _arTruckChanged = _arTruckChanged || changed;
+                _arTruckLastSeen = DateTime.Now;
+
+                if (_arCameraPoseValid) PublishArV2Snapshot();
+
+                // Диагностика позы — в app_data, 1 строка/5с (требование §27).
+                if (_arCameraPoseValid && (DateTime.Now - _arSrcOkLogAt).TotalMilliseconds > 5000)
+                {
+                    _arSrcOkLogAt = DateTime.Now;
+                    Logger.Current?.Data(
+                        $"[AR] pose '{source}': truck={_arTruckX:F2},{_arTruckY:F2},{_arTruckZ:F2} " +
+                        $"camera={_arCameraPose.X:F2},{_arCameraPose.Y:F2},{_arCameraPose.Z:F2} " +
+                        $"fwd={_arCameraPose.Forward.X:F3},{_arCameraPose.Forward.Y:F3},{_arCameraPose.Forward.Z:F3} " +
+                        $"up={_arCameraPose.Up.X:F3},{_arCameraPose.Up.Y:F3},{_arCameraPose.Up.Z:F3}.");
+                }
+            }
+            catch (Exception ex)
             {
-                _arSrcOkLogAt = DateTime.Now;
-                Logger.Current?.Data($"[AR] placement применён из '{source}': x={tx:F1} y={_arTruckY:F1} z={tz:F1} h={_arHeading:F3}.");
+                Logger.Current?.Data($"[AR] ошибка ApplyPlacementJson('{source}'): {ex.Message}");
             }
         }
 
@@ -264,33 +602,48 @@ namespace ETS2_Assist_GUI
         {
             try
             {
+                // v1.0.40.30: публикуем ТОЛЬКО при валидной позе камеры — до неё
+                // рендереру нечего проецировать (CameraPoseValid=false).
+                if (!_arTruckKnown || !_arCameraPoseValid) return;
+
                 var s = new AR.ArGameState
                 {
-                    CamX = _arTruckX, CamY = _arTruckY, CamZ = _arTruckZ,
+                    Sequence = _arPoseSequence,
+
+                    // CamX/Y/Z — ТЕПЕРЬ реальные мировые координаты ГЛАЗА/КАМЕРЫ.
+                    CamX = _arCameraPose.X,
+                    CamY = _arCameraPose.Y,
+                    CamZ = _arCameraPose.Z,
+
+                    CameraForward = _arCameraPose.Forward,
+                    CameraRight = _arCameraPose.Right,
+                    CameraUp = _arCameraPose.Up,
+                    CameraPoseValid = true,
+
+                    // Ориентация фуры/головы — только для диагностики, НЕ для проекции.
                     YawBase = _arHeading,
                     PitchBody = _arPitch,
                     Roll = _arRoll,
+                    YawHead = _arHeadOffsetOrientation.Heading,
+                    PitchHead = _arHeadOffsetOrientation.Pitch,
+
+                    // Высота reference point грузовика — НЕ камера.
                     GroundY = _arTruckY,
                     PlaneOffsetM = AR.ArBridge.PlaneOffsetM,
                     ShowGrid = AR.ArBridge.ShowGrid
                 };
-                var h = _arLastHead;
-                if (h != null && h.Count >= 4)
-                {
-                    s.YawHead = h[3].Value<double>();
-                    if (h.Count >= 5) s.PitchHead = h[4].Value<double>();
-                }
+
                 if (_arPin.HasValue)
                 {
-                    // v40: метка «приклеена» к плоскости земли — высота ВСЕГДА
-                    // truckY + PlaneOffsetM (X/Z хранимые). При изменении смещения
-                    // плоскости (Ctrl+Shift+PGUP/PGDN) метка движется вместе с ней.
+                    // v1.0.40.30: pin — обычная точка world space; она БОЛЬШЕ НЕ задаёт
+                    // положение камеры (раньше высота «приклеивалась» к плоскости земли
+                    // через PlaneOffsetM — эта эвристика убрана из геометрии камеры).
                     var pin = _arPin.Value;
-                    double pinY = _arTruckY + AR.ArBridge.PlaneOffsetM;
-                    s.Pin = (pin.x, pinY, pin.z);
+                    s.Pin = (pin.x, pin.y, pin.z);
                 }
 
-                // Города (уже с компенсацией −44 м) — как в payload ar_telemetry.
+                // Города — только совместимость старого UI/диагностики;
+                // в world-to-screen проекции НЕ участвуют.
                 if (_arPoints.Count > 0)
                 {
                     var cities = new List<(double, double, double)>();
@@ -344,7 +697,7 @@ namespace ETS2_Assist_GUI
             {
                 var ws = new ClientWebSocket();
                 ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
-                await ws.ConnectAsync(new Uri($"ws://localhost:{port}/api/ws/delta/flat/?throttle=50"), cts.Token);
+                await ws.ConnectAsync(new Uri($"ws://localhost:{port}/api/ws/delta/flat/?throttle=16"), cts.Token);
                 _arWs = ws;
                 AppendLog($"[AR] Телеметрия WS подключена: ws://localhost:{port}/api/ws/delta/flat/ (REST-снимок: http://localhost:{port}/api/rest/flat/truck).");
                 _ = ArReceiveLoopAsync(ws, cts.Token);
@@ -401,13 +754,13 @@ namespace ETS2_Assist_GUI
                 // Города (статика по gameName) — жёлтые как в редакторе
                 var cities = LoadStaticCities();
                 foreach (var c in cities.Values)
-                    if (c.Enabled && c.Hidden != 1)
+                    if (c.Enabled && c.Hidden != 1 && c.ShowInAr)
                         list.Add(new ArPoint(c.GameName, c.RealName, c.X, c.Y, c.Z, "city", false, "Город", ""));
 
                 // POI (статика + merged) — без hidden; category = категория оверлея
                 var pois = LoadStaticPois();
                 foreach (var p in pois.Values)
-                    if (p.Enabled && p.Hidden != 1)
+                    if (p.Enabled && p.Hidden != 1 && p.ShowInAr)
                         list.Add(new ArPoint(p.GameName, p.RealName, p.X, 0, p.Z, "poi", false, p.Category, ""));
 
                 // Накладываем overrides (те же правила, что в конвейере) поверх копии:
@@ -428,7 +781,7 @@ namespace ETS2_Assist_GUI
                             Category = cat
                         };
                         MapEditorForm.ApplyJObjectToPoint(pd, entry);
-                        if (pd.Hidden != 1 && pd.Enabled)
+                        if (pd.Hidden != 1 && pd.Enabled && pd.ShowInAr)
                             list[idx] = new ArPoint(pd.GameName, pd.RealName, pd.X, pd.Y, pd.Z, kind, false, pd.Category, pd.Color);
                         else
                             list.RemoveAt(idx);
@@ -466,18 +819,23 @@ namespace ETS2_Assist_GUI
                     var cu = (string?)entry["cooldown_until"];
                     var ovrColor = (string?)entry["color"] ?? "";
                     var ovrCat = (string?)entry["category"] ?? "";
+                    // v1.0.40.27: галочка «Показать в AR» из редактора. Нет ключа → считаем
+                    // включённой (совместимость со старыми записями); явный false/0 — скрыто.
+                    bool showInAr = entry["showInAr"] == null || MapEditorForm.ReadBoolToken(entry["showInAr"], true);
                     bool onCooldown = !string.IsNullOrEmpty(cu) &&
                         DateTime.TryParse(cu, null, DateTimeStyles.RoundtripKind, out var until) &&
                         until > DateTime.UtcNow;
 
                     if (isTarget)
                     {
-                        if (status == "inactive" || onCooldown) continue; // скрытые цели не показываем
+                        // Скрытые цели не показываем (статус/кулдаун/галочка AR).
+                        if (status == "inactive" || onCooldown || !showInAr) continue;
                         list.Add(new ArPoint(key!, nm, ex, 0, ez, "target", true, string.IsNullOrEmpty(ovrCat) ? "Цель" : ovrCat, ovrColor));
                     }
                     else
                     {
                         if (((int?)entry["hidden"] ?? 0) == 1) continue;
+                        if (!showInAr) continue;
                         list.Add(new ArPoint(key!, nm, ex, 0, ez, "poi", false, string.IsNullOrEmpty(ovrCat) ? "custom" : ovrCat, ovrColor)); // user-точка как poi
                     }
                 }
@@ -509,6 +867,9 @@ namespace ETS2_Assist_GUI
         // ================================================================
         // ПОДБОР БЛИЖАЙШЕЙ ТОЧКИ + РАССЫЛКА ar_target (v74: СОБЫТИЙНАЯ модель)
         // ================================================================
+        // v1.0.40.29: отметка времени последнего лога «жизни тика» (диагностика).
+        private DateTime _arTickLogAt = DateTime.MinValue;
+
         // ТРЕБОВАНИЕ 31.08.2026: приложение НЕ отправляет на AR ничего régulièrement.
         // AR — dumb-отрисовщик: хранит координаты точки и рисует сам. Мы шлём:
         //   1) ar_telemetry — ТОЛЬКО при изменении телеметрии фуры (см. _arTruckChanged);
@@ -519,6 +880,17 @@ namespace ETS2_Assist_GUI
         {
             try
             {
+                // v1.0.40.29 ДИАГНОСТИКА: подтверждение жизни тика (в app_data, 1 строка/5с).
+                // Без этого нельзя было отличить «тик не работает» от «условие отправки
+                // ложно»: отсутствие ar_telemetry в логе выглядело одинаково.
+                if ((DateTime.Now - _arTickLogAt).TotalMilliseconds > 5000)
+                {
+                    _arTickLogAt = DateTime.Now;
+                    Logger.Current?.Data($"[AR] tick alive: known={_arTruckKnown} changed={_arTruckChanged} " +
+                        $"forced={_arTelemetryForced} head={( _arLastHead != null)} pts={_arPoints.Count} " +
+                        $"x={_arTruckX:F1} z={_arTruckZ:F1}");
+                }
+
                 // Порт TruckTel может смениться — перечитываем web_data.json не чаще 1 раз в 3с.
                 if ((DateTime.Now - _arWsPortAt).TotalSeconds > 3)
                 {
@@ -550,17 +922,47 @@ namespace ETS2_Assist_GUI
                 // 1) ТЕЛЕМЕТРИЯ — ТОЛЬКО при изменении (v74).
                 //    Компонент cities прилагаем только в ПЕРВОЙ телеметрии (дальше список
                 //    у страницы уже есть; компенсация heights считаем на C# заранее).
-                if (_arTruckChanged && _arLastHead != null && _arLastHead.Count >= 4)
+                //    v1.0.40.27: head может прийти ПОЗЖЕ первого placement (REST-снимок в
+                //    первое время отдаёт только world.placement). Раньше условие требовало
+                //    _arLastHead != null — телеметрия «зависала» и страница писала «нет
+                //    телеметрии», хотя координаты уже были. Теперь head опционален:
+                //    страница сама отрисует без головы, а с приходом head ждём его отправки.
+                // v1.0.40.28: + _arTelemetryForced — гарантированная отправка по запросу
+                // (старт канала / подключение новой страницы), независимо от изменений.
+                bool headChanged = _arLastHead != null && !JToken.DeepEquals(_arLastHead, _arLastHeadSent);
+                if (_arTruckChanged || _arTelemetryForced || headChanged)
                 {
                     var tel = new JObject
                     {
                         ["placement"] = new JArray(_arTruckX, _arTruckY, _arTruckZ, _arHeading, _arPitch, _arRoll),
-                        ["head"] = _arLastHead
+                        // ============================================================
+                        // v1.0.40.30: ГОТОВАЯ МИРОВАЯ 6DoF-ПОЗА КАМЕРЫ (ETS2_AR_CAMERA_POSE).
+                        // Страница AR1 НЕ собирает камеру из углов — она получает
+                        // position/forward/right/up как есть и проецирует только через них.
+                        // Это убирает ВСЕ старые хаки: eyeHeight, складывание питчей,
+                        // зеркалирование u и сглаживание экранной координаты.
+                        // ============================================================
+                        ["camera"] = new JObject
+                        {
+                            ["position"] = new JArray(_arCameraPose.X, _arCameraPose.Y, _arCameraPose.Z),
+                            ["forward"] = new JArray(
+                                _arCameraPose.Forward.X, _arCameraPose.Forward.Y, _arCameraPose.Forward.Z),
+                            ["right"] = new JArray(
+                                _arCameraPose.Right.X, _arCameraPose.Right.Y, _arCameraPose.Right.Z),
+                            ["up"] = new JArray(
+                                _arCameraPose.Up.X, _arCameraPose.Up.Y, _arCameraPose.Up.Z),
+                            ["fovDeg"] = AR.ArBridge.FovDegreesAr1,
+                            ["valid"] = _arCameraPoseValid
+                        }
                     };
+                    // Legacy-поля оставляем для диагностики (проекция их не использует).
+                    if (_arLastHead != null) tel["head"] = new JArray(_arLastHead);
                     if (_arPin.HasValue)
                     {
                         tel["pin"] = new JObject { ["x"] = _arPin.Value.x, ["y"] = _arPin.Value.y, ["z"] = _arPin.Value.z };
                     }
+                    // Первый пакет (или смена модели городов): города уходят один раз —
+                    // без них страница не компенсирует высоту точек с Y=0.
                     if (!_arCitiesSent && _arPoints.Count > 0)
                     {
                         var cityArr = new JArray();
@@ -579,6 +981,7 @@ namespace ETS2_Assist_GUI
                     }
                     SendCommandToMap("ar_telemetry", tel);
                     _arTruckChanged = false;   // событие обработано
+                    _arTelemetryForced = false; // v1.0.40.28: форс снят ТОЛЬКО после отправки
                 }
 
                 // 2) ПОДБОР БЛИЖАЙШЕЙ ТОЧКИ — на КАЖДОМ тике. Это ЛОКАЛЬНЫЙ расчёт
@@ -834,6 +1237,22 @@ namespace ETS2_Assist_GUI
                 ["active"] = true,
                 ["x"] = x, ["y"] = py, ["z"] = z
             });
+        }
+
+        // v1.0.40.28: та же пометка, но и на МИНИКАРТЕ (кружок+крест) — чтобы новая
+        // точка, созданная в редакторе карты, появлялась и в AR1, и на миникарте.
+        internal void ArSendPinMap(double x, double y, double z)
+        {
+            try
+            {
+                SendCommandToMap("ar_pin_map", new JObject
+                {
+                    ["active"] = true,
+                    ["x"] = x, ["y"] = y, ["z"] = z
+                });
+                AppendLog($"[AR] Новая точка редактора ({x:F0}, {z:F0}) отправлена в AR1 и на миникарту.");
+            }
+            catch { }
         }
     }
 }

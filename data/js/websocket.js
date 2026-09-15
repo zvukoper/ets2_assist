@@ -122,6 +122,17 @@ function connectSaveWebSocket() {
                                 { x: Number(data.x) || 0, y: Number(data.y) || 0, z: Number(data.z) || 0 } : null;
                             console.log('[WS] ar_pin_map ' + (state.arPinMap ? 'установлена' : 'снята'));
                             break;
+                        case 'ar_fov':
+                            // v1.0.40.28: FOV камеры от приложения (CTRL+PGUP/PGDN в AR1).
+                            // Нужен конусу обзора на миникарте: полуугол = fov/2 (как в АР1).
+                            {
+                                const f = Number(data.fov);
+                                if (Number.isFinite(f) && f >= 30 && f <= 150) {
+                                    state.fovDeg = f;
+                                    console.log('[WS] ar_fov = ' + f.toFixed(0) + '°');
+                                }
+                            }
+                            break;
                         case 'minimap_show':
                             // Миникарта показывается только когда авто-логика включена.
                             if (!minimapAutoOff) {

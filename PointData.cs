@@ -31,6 +31,14 @@ namespace ETS2_Assist_GUI
         public bool Enabled = true;
         public string Description = "";
 
+        // v1.0.40.27: раздельный показ точки в модулях (запрос пользователя, строгий режим):
+        //   ShowInAr  — точка участвует в подборе цели AR (MainForm.ArTarget.RefreshArModel);
+        //   ShowOnMap — точка попадает в пакет map_overrides_data (миникарта).
+        // ДЕФОЛТ true: старые записи/статика без полей остаются видимыми (совместимость),
+        // скрывает только ЯВНЫЙ 0/false, записанный из редактора.
+        public bool ShowInAr = true;
+        public bool ShowOnMap = true;
+
         public double X, Y, Z;
 
         public string Color = "default";
@@ -71,6 +79,8 @@ namespace ETS2_Assist_GUI
             new PointField { Key="Description", Label="Описание", Group="Основное", ValueType=typeof(string) },
             new PointField { Key="Category", Label="Категория", Group="Основное", ValueType=typeof(string) },
             new PointField { Key="Enabled", Label="Статус: включена", Group="Основное", ValueType=typeof(bool) },
+            new PointField { Key="ShowInAr", Label="Показать в AR", Group="Основное", ValueType=typeof(bool) },
+            new PointField { Key="ShowOnMap", Label="Показать на миникарте", Group="Основное", ValueType=typeof(bool) },
             new PointField { Key="X", Label="Координата X", Required=true, Group="Координаты", ValueType=typeof(double) },
             new PointField { Key="Y", Label="Координата Y", Required=true, Group="Координаты", ValueType=typeof(double) },
             new PointField { Key="Z", Label="Координата Z", Required=true, Group="Координаты", ValueType=typeof(double) },

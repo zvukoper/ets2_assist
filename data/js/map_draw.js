@@ -346,31 +346,22 @@ function drawMinimap() {
         }
     }
 
-    // КОНУС ОБЗОРА на миникарте (v74): длина в ПРОЦЕНТАХ размера миникарты
-    // (НЕ зависит от зума/метров). 100% = от фуры до края по направлению.
-    //   питч головы: |deg| <= 8°  → стандарт 30%;
-    //                > 20° вверх → до 90%;
-    //                > 35° вниз  → минимум 10%.
-    // (между порогами — линейная интерполяция; положит. offset[4] = вверх, v67-эмпирика)
-    // v102: ПОЛУУГОЛ конуса = |питч взгляда| (формула из ar_head_ground.csv:
-    //   pitchDeg = atan(eyeH/dist), eyeH≈1.9м). Чем ближе земля — тем шире конус.
-    const VIEW_CONE_STD_PCT  = 30;          // стандартная длина, % радиуса экрана
-    const VIEW_CONE_UP_PCT   = 90;          // макс при взгляде вверх (>20°)
-    const VIEW_CONE_DOWN_PCT = 10;          // минимум при взгляде вниз (>35°)
+    // КОНУС ОБЗОРА на миникарте (v74, переработка v1.0.40.27).
+    // v1.0.40.28: КОНУС ОБЗОРА = УГОЛ ОБЗОРА КАМЕРЫ (требование пользователя:
+    // «Угол обзора должен совпадать с углом FOV в АР1»). Полуугол = FOV/2
+    // (FOV берётся из CFG.fovDeg, общий с AR1 — приходит командой ar_fov).
+    // Длина = дистанция до земли под прицелом (eyeH / |tan(питч взгляда)|) —
+    // единая формула проекта; максимум 1500 м.
+    // Раньше полуугол считался ОТ ПИТЧА (clamp 5..45°) — это и был «не тот угол».
+    const VIEW_CONE_MAX_M     = 1500;       // максимум длины конуса, м (как в АР)
+    const VIEW_CONE_EYE_H_M   = 1.5;        // глаза над опорной точкой (Actros)
+    const VIEW_CONE_MIN_HALF_DEG = 5;       // защитный минимум полуугла, °
     const VIEW_CONE_FILL = 'rgba(255,210,90,0.16)';
     const VIEW_CONE_STROKE = 'rgba(255,210,90,0.45)';
     const truckScreen = worldToScreen2(truckPos.x, truckPos.z); // (v72: ДО конуса)
     if (state.truck.heading !== undefined && (Math.abs(truckPos.x) + Math.abs(truckPos.z)) > 0.01) {
         const headPitchDeg = (Array.isArray(state.headOffset) ? (Number(state.headOffset[4]) || 0) : 0) * 360;
-        // Длина в % экранного радиуса (расстояние фура→край по направлению = 100%).
-        let pct = VIEW_CONE_STD_PCT;
-        if (headPitchDeg > 8) {
-            const k = Math.min(1, (headPitchDeg - 8) / Math.max(1, 20 - 8));   // 8..20°
-            pct = VIEW_CONE_STD_PCT + (VIEW_CONE_UP_PCT - VIEW_CONE_STD_PCT) * k;
-        } else if (headPitchDeg < -8) {
-            const k = Math.min(1, (-headPitchDeg - 8) / Math.max(1, 35 - 8));  // -8..-35°
-            pct = VIEW_CONE_STD_PCT + (VIEW_CONE_DOWN_PCT - VIEW_CONE_STD_PCT) * k;
-        }
+        // Направление конуса = камера (heading кузова + yaw головы).
         const dirAngle = state.truck.heading +
             (Array.isArray(state.headOffset) ? (Number(state.headOffset[3]) || 0) * Math.PI * 2 : 0);
         const cxT = truckScreen.x, cyT = truckScreen.y;
@@ -379,11 +370,22 @@ function drawMinimap() {
         const probeScr = worldToScreen2(truckPos.x + probeDX * 100, truckPos.z + probeDZ * 100);
         const ux = probeScr.x - cxT, uy = probeScr.y - cyT;
         const ulen = Math.sqrt(ux * ux + uy * uy) || 1;
-        // lenPx = pct% х расстояния до края миникарты (min(w,h)/2).
-        const lenPx = (Math.min(w, h) / 2) * (pct / 100);
+        // ДИСТАНЦИЯ ДО ЗЕМЛИ по взгляду (м): eyeH / |tan(pitch)|.
+        // Взгляд на горизонте/выше — земля недостижима → максимум длины.
+        const pitchRad = headPitchDeg * Math.PI / 180;
+        const tanAbs = Math.abs(Math.tan(pitchRad));
+        let groundDistM = tanAbs > 1e-4 ? VIEW_CONE_EYE_H_M / tanAbs : VIEW_CONE_MAX_M;
+        if (!Number.isFinite(groundDistM) || groundDistM <= 0) groundDistM = VIEW_CONE_MAX_M;
+        if (groundDistM > VIEW_CONE_MAX_M) groundDistM = VIEW_CONE_MAX_M;
+        // Метры → пиксели: scale2 = м/px, но конус не должен выходить за миникарту.
+        const maxPx = Math.min(w, h) / 2;
+        const lenPx = Math.min(maxPx, groundDistM / scale2);
         const baseAng = Math.atan2(uy, ux);
-        // v102: полуугол = |питч взгляда| (формула atan(eyeH/dist)), clamp 5..45°.
-        const halfDeg = Math.min(45, Math.max(5, Math.abs(headPitchDeg)));
+        // v1.0.40.28: полуугол = FOV/2 (УГОЛ ОБЗОРА камеры), НЕ питч.
+        // FOV приходит от приложения (команда ar_fov) в state.fovDeg;
+        // значение по умолчанию — 75° (как в AR1/AR2).
+        const coneFovDeg = (state && Number(state.fovDeg)) ? Number(state.fovDeg) : 75;
+        const halfDeg = Math.max(VIEW_CONE_MIN_HALF_DEG, Math.min(89, coneFovDeg / 2));
         const halfA = halfDeg * Math.PI / 180;
         if (Number.isFinite(baseAng) && Number.isFinite(lenPx) && lenPx > 1) {
             ctx.save();

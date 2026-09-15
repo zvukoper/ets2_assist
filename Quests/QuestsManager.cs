@@ -246,6 +246,47 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        // v1.0.40.28: CTRL+X и SHIFT+CTRL+X — ОДНА и та же операция «новая метка».
+        // РЕШЕНИЕ ПОЛЬЗОВАТЕЛЯ («редактор карты не вызывать»): создаётся только
+        // ВРЕМЕННЫЙ (виртуальный) маркер точки — в AR1 (ar_pin, серый крест) и на
+        // миникарте (ar_pin_map, кружок+крест). Постоянная точка здесь НЕ создаётся
+        // и сохранить её нельзя: чтобы точка стала настоящей, нужно запустить
+        // редактор карты и поставить её ещё раз (там будет уже полноценная запись).
+        // Фокус в игру/редактор не переключается.
+        private void PlaceGamePinWithEditor()
+        {
+            try
+            {
+                ArPlacePinFromViewCenter();
+                var pin = GetArPin();
+                if (pin == null) return;
+                // Журнал выбора новой точки (Logs\new_object_po_selections.txt).
+                LogNewPointSelection(pin.Value.x, pin.Value.y, pin.Value.z);
+                // Пометка на миникарте — той же иконкой (кружок + крест).
+                SendCommandToMap("ar_pin_map", new JObject
+                {
+                    ["active"] = true,
+                    ["x"] = pin.Value.x, ["y"] = pin.Value.y, ["z"] = pin.Value.z
+                });
+                // v1.0.40.28: если редактор карты 2 УЖЕ открыт — показываем точку и там
+                // (маркер в самом редакторе, без записи в файл и без активации окна).
+                var editor2 = Application.OpenForms.OfType<MapEditor2Form>().FirstOrDefault();
+                if (editor2 != null && !editor2.IsDisposed)
+                {
+                    editor2.CreatePointFromEditor(pin.Value.x, pin.Value.y, pin.Value.z);
+                    AppendLog($"[AR] Метка ({pin.Value.x:F0}, {pin.Value.z:F0}): AR1 + миникарта + маркер в редакторе 2.");
+                }
+                else
+                {
+                    AppendLog($"[AR] Метка ({pin.Value.x:F0}, {pin.Value.z:F0}): AR1 + миникарта (временная точка, не сохраняется).");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[AR] Ошибка создания метки: {ex.Message}");
+            }
+        }
+
         private void OnClientCommand(JObject data)
         {
             var command = data["command"]?.Value<string>();

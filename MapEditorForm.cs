@@ -42,6 +42,22 @@ namespace ETS2_Assist_GUI
         private double _headYaw;
         private double _headPitch;   // v102: питч головы (head.offset[4], доля оборота) — для конуса
 
+        // v1.0.40.27: ДИСТАНЦИЯ ДО ЗЕМЛИ ПОД МИКРОТОЧКОЙ ПРИЦЕЛА, м — ДЛИНА КОНУСА ОБЗОРА.
+        // Формула eyeH / |tan(питч)| (эталон ar_head_ground.csv: pitchDeg = atan(eyeH/dist)).
+        // Взгляд к горизонту/выше — земля недостижима → максимум. Единая формула для
+        // конуса на миникарте, в редакторах и в AR (v1.0.40.27).
+        internal const double EyeHeightActrosM = 1.5;    // глаза над опорной точкой (v40.7)
+        internal const double ViewConeMaxDistM = 1500.0;
+        internal static double GroundDistanceFromPitchM(double pitchFraction)
+        {
+            double pitchRad = pitchFraction * Math.PI * 2.0;
+            double tanAbs = Math.Abs(Math.Tan(pitchRad));
+            if (tanAbs < 1e-4) return ViewConeMaxDistM;      // взгляд на горизонт/выше
+            double dist = EyeHeightActrosM / tanAbs;
+            if (!double.IsFinite(dist) || dist <= 0) return ViewConeMaxDistM;
+            return Math.Min(ViewConeMaxDistM, dist);
+        }
+
         private bool _truckKnown;
         private DateTime _truckLastSeen = DateTime.MinValue;
         private DateTime _lastTruckCoordApply = DateTime.MinValue;
@@ -594,6 +610,10 @@ namespace ETS2_Assist_GUI
             if (t.ContainsKey("description")) target.Description = (string?)t["description"] ?? "";
             if (t.ContainsKey("status")) target.Enabled = (string?)t["status"] != "inactive";
             if (t.ContainsKey("enabled")) { if (bool.TryParse((string?)t["enabled"], out var en)) target.Enabled = en; }
+            // v1.0.40.27: раздельный показ в AR / на миникарте. Принимаем и bool, и 0/1
+            // (редактор 2 пишет числа через collectDirtyFields для bool-полей).
+            if (t.ContainsKey("showInAr")) target.ShowInAr = ReadBoolToken(t["showInAr"], target.ShowInAr);
+            if (t.ContainsKey("showOnMap")) target.ShowOnMap = ReadBoolToken(t["showOnMap"], target.ShowOnMap);
             double x = target.X, y = target.Y, z = target.Z;
             var coords = (string?)t["coords"];
             if (!string.IsNullOrEmpty(coords))
@@ -642,6 +662,26 @@ namespace ETS2_Assist_GUI
             }
         }
 
+        // Чтение булева токена из override (bool | 0/1 | "true"/"false"). Значение по
+        // умолчанию возвращается, если токен пустой/нераспознанный (не перетираем дефолт).
+        // v1.0.40.27: internal — используется и конвейером AR (MainForm.ArTarget.cs).
+        internal static bool ReadBoolToken(JToken? tok, bool fallback)
+        {
+            if (tok == null || tok.Type == JTokenType.Null) return fallback;
+            try
+            {
+                if (tok.Type == JTokenType.Boolean) return tok.Value<bool>();
+                if (tok.Type == JTokenType.Integer || tok.Type == JTokenType.Float)
+                    return Math.Abs(tok.Value<double>()) > 0.0001;
+                var s = tok.ToString().Trim();
+                if (bool.TryParse(s, out var b)) return b;
+                if (double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var d)) return Math.Abs(d) > 0.0001;
+                if (int.TryParse(s, out var i)) return i != 0;
+            }
+            catch { }
+            return fallback;
+        }
+
         private static PointData? PointDataFromJObject(JObject? t)
         {
             if (t == null) return null;
@@ -664,6 +704,8 @@ namespace ETS2_Assist_GUI
                 ["description"] = pd.Description,
                 ["status"] = pd.Enabled ? "active" : "inactive",
                 ["enabled"] = pd.Enabled,
+                ["showInAr"] = pd.ShowInAr,
+                ["showOnMap"] = pd.ShowOnMap,
                 ["coords"] = $"{pd.X.ToString("F2", CultureInfo.InvariantCulture)}, {pd.Y.ToString("F2", CultureInfo.InvariantCulture)}, {pd.Z.ToString("F2", CultureInfo.InvariantCulture)}",
                 ["x"] = pd.X, ["y"] = pd.Y, ["z"] = pd.Z,
                 ["color"] = pd.Color,
@@ -695,6 +737,8 @@ namespace ETS2_Assist_GUI
             ["RealName"] = new[] { "realName" },
             ["Category"] = new[] { "category" },
             ["Enabled"] = new[] { "status", "enabled" },
+            ["ShowInAr"] = new[] { "showInAr" },
+            ["ShowOnMap"] = new[] { "showOnMap" },
             ["Description"] = new[] { "description" },
             ["X"] = new[] { "coords" },
             ["Y"] = new[] { "coords" },
@@ -939,9 +983,12 @@ namespace ETS2_Assist_GUI
                 // v102: полуугол = |питч взгляда| (формула atan(eyeH/dist) из
                 // ar_head_ground.csv), clamp 5..45°. Питч головы — доля оборота.
                 double halfAngleDeg = Math.Clamp(Math.Abs(_headPitch * 360.0), 5.0, 45.0);
-                // v74: длина = min(1.5 км, половина диагонали экрана в метрах).
+                // v1.0.40.27: ДЛИНА КОНУСА = ДИСТАНЦИЯ ДО ЗЕМЛИ ПОД МИКРОТОЧКОЙ ПРИЦЕЛА
+                // (требование пользователя): dist = eyeH / |tan(питч)|. Смотрим под ноги —
+                // конус короткий; взгляд к горизонту — конус удлиняется до максимума.
+                double groundDistM = GroundDistanceFromPitchM(_headPitch);
                 double maxPx = Math.Sqrt(_mapPanel.Width * _mapPanel.Width + _mapPanel.Height * _mapPanel.Height) / 2.0;
-                double rWorld = Math.Min(1500.0, maxPx * _scale);
+                double rWorld = Math.Min(groundDistM, maxPx * _scale);
                 // heading: 0 = север (-Z), растёт против часовой (влево).
                 // Экран: ось X вправо, ось Y ВНИЗ → экранное направление взгляда:
                 // screenAngle = heading*360 по часовой от вертикали вверх + поворот головы.
@@ -2388,6 +2435,8 @@ namespace ETS2_Assist_GUI
             "Description" => "Описание точки (показывается в подсказках/диалогах).",
             "Category" => "Категория точки (группа в сайдбаре и цвет на карте).",
             "Enabled" => "Включена ли точка: снятие галочки скрывает её с карты и отключает триггер.",
+            "ShowInAr" => "Показывать точку в AR-оверлее (подбор цели AR идёт только по отмеченным).",
+            "ShowOnMap" => "Показывать точку на миникарте (пакет map_overrides_data).",
             "X" => "Координата X (восток) в игровой мировой СК.",
             "Y" => "Координата Y (высота над уровнем моря) в игровой мировой СК.",
             "Z" => "Координата Z (юг) в игровой мировой СК.",

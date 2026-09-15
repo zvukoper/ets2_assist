@@ -11,34 +11,118 @@ Get-Process -Name msedgewebview2 -ErrorAction SilentlyContinue | ForEach-Object 
     Write-Host "Kill stuck msedgewebview2 PID=$($_.Id)"
     Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
 }
-Start-Sleep -Milliseconds 500
-# 1b. Remove the per-user WebView2 profile (Service Worker, IndexedDB,
-# HTTP cache, GrResourceCache) - the most reliable cache reset.
-$userProfileEBWebView = Join-Path $env:LOCALAPPDATA 'ETS2_Assist\EBWebView'
-if (Test-Path $userProfileEBWebView) {
-    Write-Host "Remove user WebView2 profile: $userProfileEBWebView"
-    Remove-Item -LiteralPath $userProfileEBWebView -Recurse -Force -ErrorAction SilentlyContinue
+# Also kill the overlay host: it holds the WebView2 profile locks open and would
+# otherwise re-create its cache right after we delete it.
+Get-Process -Name WebOverlay -ErrorAction SilentlyContinue | ForEach-Object {
+    Write-Host "Kill WebOverlay PID=$($_.Id)"
+    Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
 }
-# 1c. Remove <exe>.WebView2 folders next to ETS2_Assist.exe (per-process
-# GrResourceCache / EBWebView) - both publish/ and bin/ locations.
+Start-Sleep -Milliseconds 800
+
 $publishRoot = Join-Path $PSScriptRoot 'bin\Release\net10.0-windows\win-x64\publish'
 $binRoot     = Join-Path $PSScriptRoot 'bin\Release\net10.0-windows\win-x64'
+
+# 1b. Remove the per-user WebView2 profiles. ETS2_Assist (main window) uses
+# %LOCALAPPDATA%\ETS2_Assist\EBWebView; WebOverlay stores its profile NEXT TO ITS
+# OWN EXE (data\bin\WebOverlay.exe.WebView2) — see 1c.
+$userProfiles = @(
+    (Join-Path $env:LOCALAPPDATA 'ETS2_Assist\EBWebView'),
+    (Join-Path $env:APPDATA 'ETS2_Assist\EBWebView')
+)
+foreach ($prof in $userProfiles) {
+    if (Test-Path $prof) {
+        Write-Host "Remove user WebView2 profile: $prof"
+        Remove-Item -LiteralPath $prof -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# 1c. Remove EVERY WebView2 profile under publish/ and bin/, RECURSIVELY.
+# ROOT CAUSE of "AR HUD (web_ar_hud.html) shows stale content": the overlay host
+# WebOverlay.exe keeps its WebView2 user-data folder at
+#   publish\data\bin\WebOverlay.exe.WebView2\EBWebView
+# i.e. TWO levels below publish. The previous version of this script scanned only
+# the TOP level of publish/ and bin/ (Get-ChildItem without -Recurse), so this
+# ~34 MB profile - including Cache / Code Cache - was NEVER deleted and the AR HUD
+# page kept being served from it.
 foreach ($root in @($publishRoot, $binRoot)) {
-    Get-ChildItem -Path $root -Filter '*.WebView2' -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-        Write-Host "Remove WebView2 cache: $($_.FullName)"
-        Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+    if (-not (Test-Path $root)) { continue }
+    $profiles = @(Get-ChildItem -Path $root -Recurse -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like '*.WebView2' -or $_.Name -eq 'EBWebView' })
+    # Deepest paths first: delete children before their parents.
+    $profiles = $profiles | Sort-Object { $_.FullName.Length } -Descending
+    foreach ($p in $profiles) {
+        if (Test-Path -LiteralPath $p.FullName) {
+            Write-Host "Remove WebView2 profile (recursive): $($p.FullName)"
+            Remove-Item -LiteralPath $p.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 # Stage 2: build
 dotnet clean
 dotnet restore
 dotnet publish -c Release
-# Stage 3: post-publish cache wipe (in case publish restored anything)
+# Stage 3: post-publish cache wipe (recursive — see 1c for the root cause) and
+# verification that the freshly built web content really reached publish\data.
 foreach ($root in @($publishRoot, $binRoot)) {
-    Get-ChildItem -Path $root -Filter '*.WebView2' -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-        Write-Host "[post-publish] Remove WebView2 cache: $($_.FullName)"
-        Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+    if (-not (Test-Path $root)) { continue }
+    $profiles = @(Get-ChildItem -Path $root -Recurse -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like '*.WebView2' -or $_.Name -eq 'EBWebView' })
+    $profiles = $profiles | Sort-Object { $_.FullName.Length } -Descending
+    foreach ($p in $profiles) {
+        if (Test-Path -LiteralPath $p.FullName) {
+            Write-Host "[post-publish] Remove WebView2 profile: $($p.FullName)"
+            Remove-Item -LiteralPath $p.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
+
+# Stage 3b: DELIVERY CHECK — the source data\ must be delivered into publish\data.
+# Guarantee that the built web content is what the overlay actually serves
+# (no silent "old code in the build").
+# Hashing EVERY file would mean ~564 MB per build (bin\ holds two ~166 MB EXEs),
+# so: full MD5 comparison for the WEB CONTENT (html/js/css/json/ico - what the
+# overlay loads), size comparison for everything else.
+$srcData = Join-Path $PSScriptRoot 'data'
+$pubData = Join-Path $publishRoot 'data'
+$webExt = @('.html', '.js', '.css', '.json', '.ico', '.png', '.svg')
+$mismatch = @()
+$hashed = 0
+if ((Test-Path $srcData) -and (Test-Path $pubData)) {
+    foreach ($src in Get-ChildItem -Path $srcData -Recurse -File -ErrorAction SilentlyContinue) {
+        if ($src.FullName -like '*WebOverlay.exe.WebView2*') { continue }   # runtime cache, never published
+        $rel = $src.FullName.Substring($srcData.Length).TrimStart('\')
+        $dst = Join-Path $pubData $rel
+        if (-not (Test-Path $dst)) { $mismatch += "MISSING: $rel"; continue }
+        if ((Get-Item $dst).Length -ne $src.Length) { $mismatch += "SIZE: $rel"; continue }
+        if ($webExt -contains $src.Extension.ToLowerInvariant()) {
+            $hashed++
+            if ((Get-FileHash $src.FullName -Algorithm MD5).Hash -ne (Get-FileHash $dst -Algorithm MD5).Hash) {
+                $mismatch += "HASH: $rel"
+            }
+        }
+    }
+}
+if ($mismatch.Count -gt 0) {
+    Write-Host "PUBLISH DELIVERY CHECK FAILED ($($mismatch.Count) files):" -ForegroundColor Red
+    $mismatch | Select-Object -First 20 | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+    Write-Host "publish\data does NOT match data\ - the overlay would serve stale content." -ForegroundColor Red
+} else {
+    Write-Host "Publish delivery check OK: web content byte-identical ($hashed files hashed), all sizes match." -ForegroundColor Green
+}
+
+# Stage 3c: WebView2 profiles must be gone, otherwise the overlay may reuse cache.
+$leftover = @()
+foreach ($root in @($publishRoot, $binRoot)) {
+    if (-not (Test-Path $root)) { continue }
+    $leftover += @(Get-ChildItem -Path $root -Recurse -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like '*.WebView2' -or $_.Name -eq 'EBWebView' })
+}
+if ($leftover.Count -gt 0) {
+    Write-Host "WebView2 cache NOT fully cleared (still present):" -ForegroundColor Yellow
+    $leftover | Select-Object -First 10 -ExpandProperty FullName | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+} else {
+    Write-Host "WebView2 cache cleared (no *.WebView2 / EBWebView folders remain)." -ForegroundColor Green
+}
+
 # Stage 4: launch
 Start-Process "$PSScriptRoot\bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe" -Verb RunAs

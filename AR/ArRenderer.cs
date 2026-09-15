@@ -1109,158 +1109,66 @@ namespace ETS2_Assist_GUI.AR
             DrawEllipse(pp.Value.u, pp.Value.v, rx, ry, 0f, 0f, 0f, a);
         }
 
-        // Высота отображения цели: КОПИЯ displayYFor ar_hud.js (v70/v72):
-        // Y≠0 — как есть (+0.5 groundOffset); Y=0 — от ближайшего города,
-        // <350 м плавный переход к высоте фуры, НЧ-фильтр 0.08, захват <50 м.
-        private double _dispY; private bool _hasDispY;
-        private double TargetDisplayY(ArGameState s, ArMarker t, double dist2d)
-        {
-            if (Math.Abs(t.Y) > 0.001) return t.Y + 0.5;
-            double cityY = s.CamY; double bd = double.MaxValue; bool any = false;
-            foreach (var c in s.Cities)
-            {
-                double d2 = (c.X - t.X) * (c.X - t.X) + (c.Z - t.Z) * (c.Z - t.Z);
-                if (d2 < bd) { bd = d2; cityY = c.Y; any = true; }
-            }
-            const double hCity = 350.0, hLock = 50.0;
-            double targetY;
-            if (dist2d >= hCity) targetY = cityY;
-            else
-            {
-                double k = Math.Clamp(1 - (dist2d - hLock) / (hCity - hLock), 0.0, 1.0);
-                targetY = cityY + (s.CamY - cityY) * k;
-            }
-            double y = _hasDispY ? _dispY + (targetY - _dispY) * 0.08 : targetY;
-            if (dist2d < hLock) y = _hasDispY ? _dispY + (s.CamY - _dispY) * 0.08 : targetY;
-            _hasDispY = true; _dispY = y;
-            return y;
-        }
+        // ================================================================
+        // v1.0.40.30: ВЫСОТНАЯ ЭВРИСТИКА ЦЕЛИ УДАЛЕНА.
+        // Было (копия displayYFor из ar_hud.js): точка с Y=0 «поднималась» до высоты
+        // ближайшего города, смешивалась с высотой фуры и проходила НЧ-фильтр.
+        // Это ломало геометрию: цель больше НЕ получает подменённой высоты —
+        // projectPoint получает мировую точку КАК ЕСТЬ (согласовано с AR1).
+        // ================================================================
 
         // ================================================================
-        // v86: PINHOLE-ПРОЕКЦИЯ (CabinArProjection — копилка FOV, §4/5/8/9):
-        // FOV=65° конфиг, вертикальный FOV из aspect, ProjectionCenter.
-        // Переключатель UsePinholeProjection (конфиг) — A/B-сравнение со
-        // старым путём v85 для диагностики «плавания» при повороте головы.
+        // v1.0.40.30 (ETS2_AR_CAMERA_POSE_IMPLEMENTATION): ЕДИНСТВЕННЫЙ путь
+        // world → screen — через реальный базис камеры (CameraForward/Right/Up).
+        //
+        // УДАЛЕНО ПОЛНОСТЬЮ:
+        //   - UsePinholeProjection (A/B-переключатель) и старый путь v85;
+        //   - CabinFovDegrees (статик) — FOV берётся из ArBridge.FovDegrees;
+        //   - ручное складывание yawBody+yawHead / pitchBody+pitchHead;
+        //   - eyeHeight в проекции (камера больше не на фиксированной высоте);
+        //   - зеркала/филпы и любая другая правка экранной координаты.
         // ================================================================
-        public static bool UsePinholeProjection = true;   // v86: A/B-переключатель
-        // v92: FOV берётся из dumb-приёмника ArBridge.FovDegrees (меняется
-        // приложением через Ctrl+колесо). Статик CabinFovDegrees оставлен как
-        // стартовое значение, но рендер читает ArBridge каждый кадр.
-        public static double CabinFovDegrees = 100.0;      // v40.1: временная калибровка пользователя (было 95)
         private readonly CabinArProjection _pinhole = new();
 
-        // ================================================================
-        // ПРОЕКЦИЯ (v85): ТОЧНАЯ КОПИЯ projectPoint из ar_hud.js (AR v1,
-        // подтверждена пользователем «практически идеально»):
-        //   yaw = YawBase*2π + YawHead*2π (YawHead здесь — ДОЛЯ ОБОРОТА, как в JS);
-        //   fwd = (-sin yaw, -cos yaw), right = (cos yaw, -sin yaw) — знаки миникарты;
-        //   НИКАКИХ зеркал и флипов (ArFlipHorizontal/ArFlipZ УДАЛЕНЫ) — v83-ручки
-        //   компенсировали симптом, но не причину: вертикальная метка «с ускорением»
-        //   при повороте головы. Разница v83→v85: в v83-YawHead применялся как РАДИАНЫ
-        //   (двойное умножение на 2π) и зеркала ломали знак целиком.
-        //   КОМПОЗИТНЫЙ ПИТЧ (v75 JS): 1) кузов вращает луч вокруг right,
-        //   2) голова добавляется сверху (тот же приём).
-        // v86: при UsePinholeProjection=true — маршрут через CabinArProjection
-        // (pinhole, FOV 65° конфиг, projection center); иначе — старый путь v85.
-        // ================================================================
         private (float u, float v, bool inFront, double dist, double depth)? ProjectPoint(
             double wx, double wy, double wz, ArGameState? s)
         {
-            if (s == null) return null;
-            if (UsePinholeProjection)
+            if (s == null || !s.CameraPoseValid) return null;
+
+            _pinhole.CabinFovDegrees = ArBridge.FovDegrees;   // v92: из dumb-приёмника
+
+            var r = _pinhole.Project(
+                wx, wy, wz,
+                s.CamX, s.CamY, s.CamZ,
+                s.CameraForward, s.CameraRight, s.CameraUp,
+                _width, _height);
+
+            bool inFront = r.depth > 0.5;
+
+            double dx = wx - s.CamX;
+            double dy = wy - s.CamY;
+            double dz = wz - s.CamZ;
+            double dist = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (!double.IsFinite(dist)) return null;
+
+            float outU = r.u;
+            float outV = r.v;
+
+            // v1.0.40.30: homography-warp применяется ТОЛЬКО при явной калибровке
+            // перспективы (Ctrl+Shift+END-сетка). В обычном режиме геометрия —
+            // чистый pinhole через позу камеры (§14: до подтверждения геометрии
+            // warp не должен вмешиваться).
+            if (_gridWarpActive)
             {
-                // PINHOLE-путь (v86): общая геометрия, конфиг FOV/центра.
-                var r = _pinhole.Project(wx, wy, wz,
-                    s.CamX, s.CamY, s.CamZ,
-                    s.YawBase, s.PitchBody, s.YawHead, s.PitchHead,
-                    _width, _height);
-                _pinhole.CabinFovDegrees = ArBridge.FovDegrees;   // v92: из dumb-приёмника
-                bool inFront = r.depth > 0.5;
-                double dist3 = Math.Sqrt((wx - s.CamX) * (wx - s.CamX) +
-                                         (wy - s.CamY) * (wy - s.CamY) +
-                                         (wz - s.CamZ) * (wz - s.CamZ));
-
-                float outU = r.u;
-                float outV = r.v;
-
-                if (_gridWarpActive)
+                if (_gridWarp.TryTransform(new Vector2(outU, outV), out Vector2 warped))
                 {
-                    if (_gridWarp.TryTransform(
-                            new Vector2(outU, outV),
-                            out Vector2 warped))
-                    {
-                        outU = warped.X;
-                        outV = warped.Y;
-                    }
+                    outU = warped.X;
+                    outV = warped.Y;
                 }
-
-                return (
-                    outU,
-                    outV,
-                    inFront,
-                    dist3,
-                    r.depth);
             }
-            else
-            {
-                // YawHead в ArGameState — ДОЛЯ ОБОРОТА (как head.offset в TruckTel),
-                // поэтому ×2π — как в JS (c.yawHead уже рад, тут приводим к тому же).
-                double yaw = s.YawBase * Math.PI * 2 + s.YawHead * Math.PI * 2;
-                const double eyeH = 1.5;   // v40.7: Actros — глаза 2.25 м от полотна − 0.75 (опорная точка)
-                double ex = s.CamX, ey = s.CamY + eyeH, ez = s.CamZ;
 
-                double rx = wx - ex, rz = wz - ez;
-                double ry = wy - ey;
-
-                double s1 = Math.Sin(yaw), c1 = Math.Cos(yaw);
-                double fwdX = -s1, fwdZ = -c1;
-                double rightX = c1, rightZ = -s1;
-
-                double fdot0 = rx * fwdX + rz * fwdZ;
-                double rdot = rx * rightX + rz * rightZ;
-
-                // 1) ПИТЧ КУЗОВА — поворот луча вокруг right (как в JS v75):
-                double bodyPitch = s.PitchBody * Math.PI * 2;
-                double cosB = Math.Cos(bodyPitch), sinB = Math.Sin(bodyPitch);
-                double fwd1 = fdot0 * cosB + ry * sinB;
-                double up1 = ry * cosB - fdot0 * sinB;
-
-                // 2) ПИТЧ ГОЛОВЫ — добавляется к кузову (та же ось right):
-                double headPitch = s.PitchHead * Math.PI * 2;
-                double cosH = Math.Cos(headPitch), sinH = Math.Sin(headPitch);
-                double depth = fwd1 * cosH + up1 * sinH;
-                double up = up1 * cosH - fwd1 * sinH;
-
-                if (depth <= 0.5) return (0, 0, false, 0, depth);   // за спиной/слишком близко
-
-                double fovTan = Math.Tan(75.0 * Math.PI / 180 / 2);
-                double f = _width * 0.5 / fovTan;
-                double u = _width / 2.0 + f * (rdot / depth);
-                double v = _height / 2.0 - f * (up / depth);
-                if (!double.IsFinite(u) || !double.IsFinite(v)) return (0, 0, false, 0, depth);
-                double dist = Math.Sqrt(rx * rx + ry * ry + rz * rz);
-
-                float outU = (float)u;
-                float outV = (float)v;
-
-                if (_gridWarpActive)
-                {
-                    if (_gridWarp.TryTransform(
-                            new Vector2(outU, outV),
-                            out Vector2 warped))
-                    {
-                        outU = warped.X;
-                        outV = warped.Y;
-                    }
-                }
-
-                return (
-                    outU,
-                    outV,
-                    true,
-                    dist,
-                    depth);
-            }
+            return (outU, outV, inFront, dist, r.depth);
         }
 
         // Сглаживание экранных позиций (как CFG.smooth/ar_hud.js): метка без рывков
@@ -1274,43 +1182,90 @@ namespace ETS2_Assist_GUI.AR
             => cur + (target - cur) * SmoothK;
 
         // ================================================================
-        // v95: ДИСТАНЦИЯ до земли по ПРИЦЕЛЬНОЙ точке (центр экрана).
-        // Луч взгляда: глаза (camY + eyeH), направление по yaw + композитный
-        // питч (кузов → голова). Пересечение с плоскостью Y = groundY
-        // (где «стоят колёса»). Возвращает горизонтальную(3D) дистанцию, м.
+        // v1.0.40.30: ДИСТАНЦИЯ до земли по ПРИЦЕЛЬНОЙ точке (центр экрана) —
+        // через РЕАЛЬНУЮ позу камеры (CameraForward), без eyeHeight.
+        // Луч = CameraForward из CameraPosition; пересечение с плоскостью
+        // Y = GroundY + PlaneOffsetM. Возвращает горизонтальную дистанцию, м.
         // ================================================================
         private static double ComputeGroundDistance(ArGameState? s)
         {
-            if (s == null) return double.NaN;
-            const double eyeH = 1.5;   // v40.7: Actros — глаза 2.25 м от полотна − 0.75 (опорная точка)
-            double eyeY = s.CamY + eyeH;
-            // v99: плоскость земли = GroundY + PlaneOffsetM (влияет на дистанцию
-            // под прицельной точкой — та же плоскость, куда ставится метка).
+            if (s == null || !s.CameraPoseValid) return double.NaN;
+            double eyeY = s.CamY;                       // камера — уже координата глаза
             double groundY = s.GroundY + s.PlaneOffsetM;
-            double dy = groundY - eyeY;                 // глаза → земля
-            if (dy >= 0) return double.NaN;             // камера ниже земли — нет цели
+            double dirY = s.CameraForward.Y;            // + вверх
+            if (dirY >= -1e-6) return double.NaN;       // смотрим на горизонт/выше
 
-            // Направление луча (как в projectPoint, но единичное, из центра экрана).
-            double yaw = s.YawBase * Math.PI * 2 + s.YawHead * Math.PI * 2;
-            double fwdX = -Math.Sin(yaw), fwdZ = -Math.Cos(yaw);
+            double dy = groundY - eyeY;                 // < 0 (глаза выше земли)
+            double t = dy / dirY;                       // > 0
+            if (!double.IsFinite(t) || t <= 0) return double.NaN;
 
-            // Луч из центра экрана = направление взгляда.
-            // fwd (горизонт) и up строятся через композитный питч (кузов → голова).
-            double bp = s.PitchBody * Math.PI * 2;
-            double hp = s.PitchHead * Math.PI * 2;
-            double pitchTotal = bp + hp;
-            double fwdLen = Math.Cos(pitchTotal);       // горизонтальная часть
-            double dirY = Math.Sin(pitchTotal);          // вертикальная часть (+вверх)
-            double dirX = fwdX * fwdLen;
-            double dirZ = fwdZ * fwdLen;
-            if (dirY >= -1e-6) return double.NaN;        // смотрим выше горизонта
-
-            double t = dy / dirY;                        // t>0
-            if (t <= 0) return double.NaN;
-            double gx = s.CamX + dirX * t;
-            double gz = s.CamZ + dirZ * t;
-            // Горизонтальная дистанция от грузовика до точки на земле.
+            double gx = s.CamX + s.CameraForward.X * t;
+            double gz = s.CamZ + s.CameraForward.Z * t;
             return Math.Sqrt((gx - s.CamX) * (gx - s.CamX) + (gz - s.CamZ) * (gz - s.CamZ));
+        }
+
+        // ================================================================
+        // v1.0.40.30: ЛИНИЯ МИРОВОГО ГОРИЗОНТА через РЕАЛЬНУЮ позу камеры.
+        // (Заменяет прежний ComputeHorizonLine/DrawHorizonLine со складыванием
+        //  питчей и ручным roll — та версия «не держала» реальный горизонт.)
+        //
+        // Горизонт = множество мировых лучей, ортогональных мировому Up=(0,1,0).
+        // Для экранного пикселя: rayWorld = Forward + Right*x + Up*((cy−v)/f).
+        // Условие rayWorld.Y = 0 даёт  v = cy + f*(Forward.Y + Right.Y*x)/Up.Y.
+        // ================================================================
+        private void DrawWorldHorizon(ArGameState s)
+        {
+            if (!s.CameraPoseValid || _width <= 0 || _height <= 0) return;
+
+            double fov = Math.Clamp(ArBridge.FovDegrees, 10.0, 170.0);
+            double halfTan = Math.Tan(fov * Math.PI / 180.0 * 0.5);
+            if (!double.IsFinite(halfTan) || Math.Abs(halfTan) < 1e-12) return;
+
+            double f = (_width * 0.5) / halfTan;
+            double cx = _width * 0.5;
+            double cy = _height * 0.5;
+
+            double fy = s.CameraForward.Y;
+            double ry = s.CameraRight.Y;
+            double uy = s.CameraUp.Y;
+
+            const double eps = 1e-7;
+
+            if (Math.Abs(uy) > eps)
+            {
+                double x0 = (0.0 - cx) / f;
+                double x1 = (_width - cx) / f;
+
+                double y0 = cy + f * (fy + ry * x0) / uy;
+                double y1 = cy + f * (fy + ry * x1) / uy;
+
+                if (double.IsFinite(y0) && double.IsFinite(y1))
+                {
+                    DrawLine(0f, (float)y0, (float)_width, (float)y1, 0.1f, 0.95f, 1.0f, 0.90f);
+                }
+            }
+            else if (Math.Abs(ry) > eps)
+            {
+                // Вырожденный случай: горизонт проходит вертикально через экран.
+                double x = cx - f * fy / ry;
+                if (double.IsFinite(x))
+                {
+                    DrawLine((float)x, 0f, (float)x, (float)_height, 0.1f, 0.95f, 1.0f, 0.90f);
+                }
+            }
+        }
+
+        /// <summary>СЕРЫЙ ДИАГОНАЛЬНЫЙ микрокрестик (зеркало ar_hud.js drawDiagCross):
+        /// рисуется в центре, когда микроточка прицела поднялась ВЫШЕ горизонта
+        /// и измерение дистанции невозможно (пункт 8).</summary>
+        private void DrawDiagCross(float u, float v, float size, float alpha)
+        {
+            // Тёмная подложка (читаемость на светлом фоне) + серый крест.
+            DrawLine(u - size, v - size, u + size, v + size, 0f, 0f, 0f, alpha * 0.6f);
+            DrawLine(u + size, v - size, u - size, v + size, 0f, 0f, 0f, alpha * 0.6f);
+            const float G = 0.67f;   // 170,170,170
+            DrawLine(u - size, v - size, u + size, v + size, G, G, G, alpha * 0.95f);
+            DrawLine(u + size, v - size, u - size, v + size, G, G, G, alpha * 0.95f);
         }
 
         /// <summary>История проекции цели для отрисовки.</summary>
@@ -1357,6 +1312,18 @@ namespace ETS2_Assist_GUI.AR
             // v100: полностью прозрачный clear (RGB=0, A=0) — не COLORKEY.
             ctx.ClearRenderTargetView(_rtv, new Color4(0f, 0f, 0f, 0f));
 
+            // ============================================================
+            // v1.0.40.30: ЛИНИЯ МИРОВОГО ГОРИЗОНТА — рисуется ДО маркеров/текста.
+            // Строится из РЕАЛЬНОЙ позы камеры (CameraForward/Right/Up), поэтому
+            // «держит» горизонт при любых наклонах кузова и поворотах головы.
+            // ============================================================
+            try
+            {
+                if (state != null && state.CameraPoseValid)
+                    DrawWorldHorizon(state);
+            }
+            catch { /* диагностическая линия не должна ломать AR render loop */ }
+
             try
             {
                 if (state != null && state.ShowGrid)
@@ -1386,6 +1353,12 @@ namespace ETS2_Assist_GUI.AR
             // с размытыми краями), чтобы крестик читался и на светлом фоне.
             // ============================================================
             float ccx = _width / 2f, ccy = _height / 2f;
+
+            // v1.0.40.30: линия горизонта рисуется РАНЬШЕ (сразу после clear) —
+            // см. DrawWorldHorizon(state) в начале RenderFrame. Прежний вариант
+            // (ComputeHorizonLine/DrawHorizonLine со складыванием питчей) удалён:
+            // он «не держал» реальный горизонт при движении головы.
+
             // Тень: тёмный полупрозрачный квадрат 9×9 под крестиком (смещён на 1px вниз-вправо).
             DrawBox(ccx - 4.5f + 1f, ccy - 4.5f + 1f, 9f, 9f, 0f, 0f, 0f, 0.35f);
             DrawBox(ccx - 0.5f, ccy - 0.5f, 1f, 1f, 1f, 1f, 1f, 0.9f);   // центр
@@ -1418,11 +1391,24 @@ namespace ETS2_Assist_GUI.AR
                 using var gFont = new Font("Consolas", 8.5f, FontStyle.Bold);   // v97: шрифт как у FOV (8.5f)
                 string gText = "—";
                 double gd2 = ComputeGroundDistance(state);
-                if (double.IsFinite(gd2) && gd2 > 0) gText = FmtDist(gd2);
-                EnsureText(ref _gndTxt, gText, gFont, System.Drawing.Color.White, 2f);
-                if (_gndTxt != null)
-                    // v97: текст дистанции ПОД крестиком (отступ 2px), шрифт как у FOV.
-                    DrawTextSprite(_gndTxt, _width / 2f - _gndTxt.Width / 2f, _height / 2f + 2f);
+                bool aboveHorizon = !(double.IsFinite(gd2) && gd2 > 0);
+                if (!aboveHorizon) gText = FmtDist(gd2);
+                // v1.0.40.27 (пункт 8): микроточка выше горизонта — измерение
+                // прекращено, подписи дистанции НЕТ, на точке СЕРЫЙ ДИАГОНАЛЬНЫЙ
+                // микрокрестик (зеркало ar_hud.js drawDiagCross).
+                if (aboveHorizon)
+                {
+                    _gndTxt?.Dispose();
+                    _gndTxt = null;
+                    DrawDiagCross(_width / 2f, _height / 2f, 7f, 1f);
+                }
+                else
+                {
+                    EnsureText(ref _gndTxt, gText, gFont, System.Drawing.Color.White, 2f);
+                    if (_gndTxt != null)
+                        // v97: текст дистанции ПОД крестиком (отступ 2px), шрифт как у FOV.
+                        DrawTextSprite(_gndTxt, _width / 2f - _gndTxt.Width / 2f, _height / 2f + 2f);
+                }
             }
             catch { /* не должно ломать рендер */ }
 
@@ -1467,10 +1453,8 @@ namespace ETS2_Assist_GUI.AR
             if (state?.Target != null)
             {
                 var tg = state.Target;
-                double dist2d = Math.Sqrt((tg.X - state.CamX) * (tg.X - state.CamX) +
-                                          (tg.Z - state.CamZ) * (tg.Z - state.CamZ));
-                double wy = TargetDisplayY(state, tg, dist2d);
-                var pr = ProjectPoint(tg.X, wy, tg.Z, state);
+                // v1.0.40.30: мировая точка КАК ЕСТЬ (без TargetDisplayY-подмены высоты).
+                var pr = ProjectPoint(tg.X, tg.Y, tg.Z, state);
 
                 if (pr.HasValue && pr.Value.inFront && pr.Value.depth > 0.5)
                 {

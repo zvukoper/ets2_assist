@@ -1,7 +1,169 @@
 # Текущая задача:
-# PRE-STABLE: Map Editor 2 — v1.0.40.26
-- **12.09.2026:** поле ввода интервала обновления метки грузовика (мс) рядом с кнопкой «Найти грузовик».
+# PRE-STABLE: SCS-CAMERA-POSE — v1.0.40.30
+- **15.09.2026:** внедрена реальная 6DoF-поза камеры по SCS hierarchy
+  (ETS2_AR_CAMERA_POSE_IMPLEMENTATION.md); в AR1 убран конус обзора.
 - **ПРАВИЛО СБОРКИ:** финальная сборка — ТОЛЬКО `\compile.ps1` (см. INSTRUCTIONS.md).
+
+# СЕССИЯ 15.09.2026 — v1.0.40.30-SCS-CAMERA-POSE
+## Задание
+`MemoryAI/Копилка задач/ETS2_AR_CAMERA_POSE_IMPLEMENTATION.md`: убрать из AR ВСЕ
+приближённые параметры камеры (EyeHeight, PitchCompensation, roll-хак, зеркало u,
+сглаживание, prediction, высота точки по городу) и перейти на полную 6DoF-позу:
+`truck.world.placement → cabin.position+offset → head.position+offset`.
+## Что сделано
+- **`AR/ScsCameraPose.cs` (НОВЫЙ):** `ScsEuler` (доли оборота) + `ScsCameraPose`
+  (позиция + ортонормальный Forward/Right/Up). `TryCreate` — позиция И ориентация
+  строго по официальному SCS `telemetry_position`. `Rotate` = **Roll→Pitch→Heading**
+  (Roll вокруг Z, Pitch вокруг X, Heading вокруг Y). Базовая голова смотрит по −Z.
+- **`ArGameState`:** `CamX/Y/Z` = ГЛАЗ; +`CameraForward/Right/Up`+`CameraPoseValid`;
+  углы оставлены только для диагностики.
+- **`CabinArProjection`:** `Project(world, camPos, fwd, right, up, W, H)` — проекции
+  на базис + pinhole (один f на X и Y). Удалены EyeHeightM и EnablePitchCompensation.
+- **`MainForm.ArTarget`:** поля SCS-компонентов, хелперы (`FlatArray`,
+  `TryReadVector3`, `TryReadScsPlacement`, `RebuildArCameraPose`, `Vector3Changed`,
+  `EulerChanged`); `ApplyPlacementJson` принимает placement И cabin/head раздельно;
+  `PublishArV2Snapshot` — только при валидной позе; `ar_telemetry.camera{position,
+  forward,right,up,fovDeg,valid}`; диагностика `[AR] pose …` (1/5с); тик 33→16 мс,
+  `throttle=50`→`throttle=16`.
+- **`ar_hud.js`:** проекция только через базис; **КОНУС ОБЗОРА УБРАН** (требование
+  пользователя: в AR1 он = наш POV); **МИРОВОЙ ГОРИЗОНТ** `v = cy + f*(Fwd.Y +
+  Right.Y*x)/Up.Y`; удалены ВСЕ хаки (eyeHeight, groundOffset, smooth, headPitchSign,
+  pinSmooth/pinLead, cityYCorrection, hCityDist/hLockDist, displayYFor/nearestCityY/
+  _ySmooth, _sm, зеркало `W − u`, экстраполяция exCam, старый horizonScreenLine).
+- **`ArRenderer`:** `ProjectPoint` — только через базис; удалены `UsePinholeProjection`,
+  старый путь v85, `CabinFovDegrees`, `TargetDisplayY`; новый `DrawWorldHorizon`
+  (мировой горизонт) вызывается до маркеров; `ComputeGroundDistance` — по CameraForward.
+## Проверка
+`dotnet build` — 0 ошибок; `node --check ar_hud.js` OK; `compile.ps1` →
+`Publish delivery check OK` + `WebView2 cache cleared`.
+## ПЕНДИНГ
+- Проверка геометрии AR1: горизонт держится при движении головы вверх/вниз,
+  метка НЕ инвертирована по горизонтали, конуса нет.
+- После подтверждения — фиксы из списка багов: сайдбары редактора 2 при 1440×900
+  (оба всегда видимы, область карты ограничивается).
+
+# СЕССИЯ 15.09.2026 — v1.0.40.29-CACHE-TICK-FIX
+## КОРЕНЬ №1 — кэш WebView2 оверлея НИКОГДА не вычищался
+- Профиль WebOverlay лежит РЯДОМ С ЕГО EXE: `publish\data\bin\WebOverlay.exe.WebView2\EBWebView`
+  (ДВА уровня ниже `publish`), ~34 МБ с `Cache` / `Code Cache`.
+- `compile.ps1` искал `Get-ChildItem -Filter '*.WebView2' -Directory` **без `-Recurse`** →
+  только верхний уровень `publish\` и `bin\` → профиль оверлея не трогался НИКОГДА.
+  При этом в `web_ar_hud.html` прилетал кэш — отсюда «ноль изменений» при живых
+  правках и работающей миникарте.
+- **ФИКС:** рекурсивный поиск `*.WebView2` И `EBWebView` по `publish` и `bin`; удаление
+  глубоких раньше родителей; +профиль `%APPDATA%\ETS2_Assist\EBWebView`; гасим `WebOverlay`
+  перед очисткой (держал локи, `Remove-Item -Force` мог не удалить файлы); Sleep 800 мс.
+- **ГАРАНТИИ В compile.ps1:** Stage 3b — сверка `data\` ↔ `publish\data` (MD5 веб-контента,
+  403 файла; размеры для остального) с `PUBLISH DELIVERY CHECK FAILED` при расхождении;
+  Stage 3c — повторная проверка, что папок `*.WebView2`/`EBWebView` не осталось.
+- ФАКТ (проверено): MD5 `data\js\ar_hud.js` == `publish\data\js\ar_hud.js` был равен и раньше —
+  «в publish не попадало» НЕ подтвердилось, виноват был именно профиль-кэш.
+
+## КОРЕНЬ №2 — AR-тик не выполнялся
+- В логе за сессии 19:20 и 20:54 (AR запущен) — НИ ОДНОЙ записи из `ArUpdateTick`,
+  ни одной отправки `ar_telemetry`; ранее (17:09) тик работал.
+- Причина — та же, что уже ловили в `MapEditor2Form`: `System.Windows.Forms.Timer`
+  может не тикать; лечится `System.Threading.Timer`.
+- **ФИКС:** `StartArTickTimer`/`StopArTickTimer`/`QueueArUpdateTick` (потоковый таймер +
+  `BeginInvoke` для WS/UI; `Interlocked _arTickBusy` от наложения тиков 33 мс);
+  поле `_arTimer` удалено. Ловушка закрыта: при раннем `return`/неудачном `BeginInvoke`
+  флаг `_arTickBusy` снимается в `finally` — иначе тик умер бы навсегда.
+- **ДИАГНОСТИКА:** `[AR] tick alive: …` в app_data раз в 5 с — теперь «тик мёртв» и
+  «условие отправки ложно» различимы.
+## Проверка
+`dotnet build` — 0 ошибок (4 warning MSB по UIAutomation); `compile.ps1` печатает
+`Publish delivery check OK …` и `WebView2 cache cleared …`.
+## ПЕНДИНГ
+- Нажать AR: в логе должны появиться `[AR] tick alive:` и `Command 'ar_telemetry' sent`,
+  а в AR1 — горизонт/дистанция/FOV (и не должно быть «нет телеметрии»).
+
+# СЕССИЯ 15.09.2026 — v1.0.40.28-WEB-DEBUG-CAM
+## КОРНЕВОЙ ФИКС: «в АР1 нет визуальных изменений — как будто старый код»
+Логи доказали: за сессию 19:20–19:21 **0 отправок `ar_telemetry`**. Кэш и старый код
+не при чём — данные не уходили.
+- **КОРЕНЬ:** `ApplyPlacementJson` ставит `_arTruckChanged = changed` при КАЖДОМ пакете
+  (WS + REST 1 Гц); форс-сброс в true перетирался REST-снимком ДО тика (гонка 33 мс vs 1 с).
+- **ФИКС:** залипающий `_arTelemetryForced` (приём данных его не трогает, сбрасывает
+  только тик после отправки); условие: `_arTruckChanged || _arTelemetryForced || headChanged`.
+
+## Что сделано
+- **Камера от телеметрии** (`TruckTelemetry.Snapshot` + `MainForm.ArTarget`): `cabin.position`
+  / `head.position` / `cabin.offset` / `head.offset` + `PitchBody`/`RollBody`.
+  `ar_telemetry` отдаёт `cabin`/`headPos`/`cabinOffset`/`headOffset`; `ar_hud.js
+  updateCameraWorld` считает камеру = опорная точка + локальная высота (≈2.55 м Actros);
+  горизонтальное смещение — `CFG.camForwardM`/`camRightM` (0, уточняется замером).
+- **Конус обзора = FOV** (полуугол `FOV/2`, минимум 5°): `ar_hud.js drawViewCone`,
+  `map_draw.js` (FOV из `state.fovDeg` ← команда `ar_fov` в `websocket.js`),
+  `map_editor2/index.html coneFovDeg()` ← `window.MapEditor2SetFov` ←
+  `MapEditor2Form.SendFovAsync` (при `map2-ready`). Длина — прежняя формула
+  `eyeH/|tan(питч)|` ≤1500 м. **БЫЛО:** полуугол от питча (clamp 5..45°).
+- **Вывод FOV в левом нижнем углу AR1** с чёрной обводкой: `ar_hud.js drawFovText`
+  (`CFG.fovFont/fovColor/fovMarginX/fovMarginY`).
+- **debugShow(bool) — единый метод для всего веб-контента:** новый `data/js/debug_show.js`,
+  подключён ПЕРВЫМ в `<head>` всех 13 страниц (включая `map_editor2/index.html` и
+  диагностические). Флаг + `<html data-debug-show>` + CSS `.debug-show-force !important`
+  + запоминание/восстановление инлайн-стилей + заморозка скрытия (classList `hide-ui`,
+  MutationObserver, дозатор 500 мс). Входы: `window.debugShow(bool)`, URL `?debugshow=1`,
+  WS `{command:'debug_show',enabled}`; UI — чекбокс «Отладка веб (debugShow)».
+- **Редактор карты 1 отключён:** кнопка и поле `btnMapEditor` удалены, якорь сетки —
+  `btnStart`; `MapEditorForm` остаётся legacy (его статики нужны конвейеру overrides).
+  `SHIFT+CTRL+X` больше не открывает/не фокусирует редактор и не берёт координаты
+  через `MapEditor2GameEditorBridge` — обе комбинации создают **временный маркер**
+  (AR1 + миникарта); сохранить его нельзя (решение пользователя).
+- **Точка из редактора 2 → AR1:** `MapEditor2Form` при `map2-create-point` зовёт
+  `ArPlacePinAtWorld(x,z)` + `ArSendPinMap(x,y,z)`.
+## Проверка
+`dotnet build -c Release` — 0 ошибок; `node --check` OK (ar_hud, map_draw, websocket,
+state, debug_show, inline-скрипт map_editor2). Публикация — `compile.ps1`;
+exe = txt = manifest; `publish/data` = 1708 файлов; debug_show в 13 страницах.
+## ПЕНДИНГ
+- Уточнить `CFG.camForwardM`/`CFG.camRightM` по строке камеры в debugShow (знак локальной
+  оси Z в телеметрии), проверить конус = FOV, вывод FOV, работу debugShow.
+
+# СЕССИЯ 12.09.2026 — v1.0.40.27-AR1-REVIVE (9 пунктов)
+## Что сделано
+- **Кнопка AR1 = тумблер** (`MainForm.cs`): `btnLaunchAR.Tag="Toggle"` → `ToggleArOverlay()`;
+  `SyncAr1Button()` (текст `AR (Web) — ON` / `Запустить AR`, Lime / DefaultButtonColor) из
+  `statusTimer.Tick` (2 с), после запуска и остановки; `IsAr1Running` — скан процессов
+  `WebOverlay` с `MainWindowTitle.Contains("AR HUD")`; `StopArOverlay(manual)`;
+  `StopSystem` тоже гасит AR1.
+- **Фикс «AR: нет телеметрии»**: `StartArTargetFeed` форсит `_arTruckChanged=true`,
+  `_arCitiesSent=false`, `_arLastHeadSent=null`; `head` отвязан от гейта отправки
+  (`headChanged` + `JToken.DeepEquals`); `ForceArDataResend(reason)` на каждого нового
+  WS-клиента (`TrailBehavior.SetOnClientConnected`).
+- **Ctrl+X (игра) = новая точка**: `HOTKEY_GAME_PIN=9012` (MOD_CONTROL+X) →
+  `QuestsManager.PlaceGamePinWithEditor()`: `ar_pin` (AR1) + `ar_pin_map` (миникарта) +
+  `MapEditor2Form.CreatePointFromEditor(x,y,z)` без активации окна. `SHIFT+CTRL+X` —
+  по-прежнему только редактор.
+- **FOV AR1**: `HOTKEY_AR1_FOV_UP/DOWN=9013/9014` (Ctrl+PGUP/PGDN, repeat, шаг 1°,
+  clamp 30..150) → `ArBridge.FovDegreesAr1` (отдельно от AR2) → `AppSettings.Ar1FovDeg` →
+  команда `ar_fov` → `applyArFov` (`CFG.fovDeg`); FOV пересылается новой странице при старте фида.
+- **Линия горизонта** (пункт 5): `ar_hud.js horizonScreenLine/drawHorizonLine` и зеркало
+  в `AR/ArRenderer.cs` (`ComputeHorizonLine`/`DrawHorizonLine`) — композитный питч
+  (кузов+голова) + КРЕН кузова (`Roll`) вокруг оси взгляда; 13 штрихов, центральный длиннее.
+- **Дистанция под прицелом (6) и выше горизонта (8)**: `groundDistanceFromCrosshair`
+  (`dirY=sin(pitch)`; `NaN` при `dirY ≥ -1e-6`) → подпись `fmtDist` под крестиком
+  (`CFG.groundDistDy=12`) либо СЕРЫЙ ДИАГОНАЛЬНЫЙ микрокрестик без подписи.
+  В AR2 вместо текста «—» теперь `DrawDiagCross`.
+- **Конус = дистанция до земли (7)**: единая формула `eyeH/|tan(pitch)|` (1.5 м, ≤1500 м):
+  `MapEditorForm.GroundDistanceFromPitchM` (→ `MapEditorVectorRenderer.DrawCone`),
+  `map_draw.js`, `map_editor2/index.html groundDistFromPitchM`, `ar_hud.js CFG.eyeHeightM`.
+- **Чекбоксы (9)**: `PointData.ShowInAr/ShowOnMap` (по умолчанию true) + `Fields`;
+  `MapEditorForm` (`fieldJson` showInAr/showOnMap, `ReadBoolToken`, `PointDataToJObject`,
+  тултипы); `MainForm.OverridesPipeline` сворачивает `showOnMap` в `hidden` (dumb-приёмник);
+  `MainForm.ArTarget` фильтрует по `ShowInAr`; `map_editor2/index.html` — `FIELD_DEFS`,
+  `fieldJsonKey`, `ovrFieldValue`, `ovrApplyToPoint`, `makeOverridePoint`, создание точки.
+  **Решение пользователя: строгий B+** — без галочек точка скрыта и в AR, и на миникарте.
+## Проверка
+`dotnet build -c Release` — 0 ошибок (7 предсуществующих warning);
+`node --check` OK: `ar_hud.js`, `map_draw.js`, inline-скрипт `map_editor2/index.html`.
+## Версия / сборка
+`1.0.40.26` → **`1.0.40.27-AR1-REVIVE-09.15-1902`** — финальная сборка через `compile.ps1`;
+`data/ets2_assist_build.txt` и `data/web_runtime_manifest.json` синхронизированы
+в root и publish (exe = txt = manifest MATCH); `publish/data` = 1584 файла.
+## ПЕНДИНГ
+- Проверка пользователем: FOV, горизонт, дистанция, крест выше горизонта, конус, Ctrl+X,
+  чекбоксы в редакторе-2 (точка с галочкой должна появиться в AR/миникарте после сохранения).
 
 # СЕССИЯ 12.09.2026 — v1.0.40.26: поле интервала обновления метки
 ## Что сделано

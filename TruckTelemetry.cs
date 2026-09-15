@@ -41,6 +41,18 @@ namespace ETS2_Assist_GUI
             public double HeadPitch { get; init; } // доля оборота (полуугол конуса обзора)
             public double SpeedKmh { get; init; }  // скорость из truck.speed (м/с -> км/ч)
             public bool Live { get; init; }        // данные свежее StaleMs
+
+            // v1.0.40.28: ПОЗИЦИЯ/ОРИЕНТАЦИЯ КАМЕРЫ (требование пользователя:
+            // «угол считать от координат камеры, головы» — truck.cabin.position,
+            // truck.cabin.offset, truck.head.position, truck.head.offset).
+            public double PitchBody { get; init; } // placement[4] (доля оборота)
+            public double RollBody { get; init; }  // placement[5] (доля оборота)
+            public double CabinX { get; init; }    // truck.cabin.position (локально)
+            public double CabinY { get; init; }
+            public double CabinZ { get; init; }
+            public double HeadX { get; init; }     // truck.head.position (локально)
+            public double HeadY { get; init; }
+            public double HeadZ { get; init; }
         }
 
         private static readonly object Sync = new();
@@ -56,6 +68,9 @@ namespace ETS2_Assist_GUI
         // Последний ВАЛИДНЫЙ сэмпл. При пропадании телеметрии НЕ обнуляется —
         // потребитель обязан сохранить маркер на последней позиции (заморозка).
         private static double _x, _y, _z, _heading, _headYaw, _headPitch;
+        // v1.0.40.28: камера (кабина + голова) и наклоны кузова.
+        private static double _pitchBody, _rollBody;
+        private static double _cabX, _cabY, _cabZ, _hdX, _hdY, _hdZ;
         private static double _speedKmh;
         private static bool _haveSample;
         private static DateTime _lastSeen = DateTime.MinValue;
@@ -148,6 +163,14 @@ namespace ETS2_Assist_GUI
                     HeadYaw = _headYaw,
                     HeadPitch = _headPitch,
                     SpeedKmh = _speedKmh,
+                    PitchBody = _pitchBody,
+                    RollBody = _rollBody,
+                    CabinX = _cabX,
+                    CabinY = _cabY,
+                    CabinZ = _cabZ,
+                    HeadX = _hdX,
+                    HeadY = _hdY,
+                    HeadZ = _hdZ,
                     Live = _haveSample && (DateTime.Now - _lastSeen).TotalMilliseconds <= StaleMs
                 };
                 revision = _revision;
@@ -294,9 +317,11 @@ namespace ETS2_Assist_GUI
                 return;
             }
 
-            double ty = 0, th = 0;
+            double ty = 0, th = 0, tbPitch = 0, tbRoll = 0;
             if (placement.Count >= 2 && placement[1] != null) ty = placement[1].Value<double>();
             if (placement.Count >= 4 && placement[3] != null) th = placement[3].Value<double>();
+            if (placement.Count >= 5 && placement[4] != null) tbPitch = placement[4].Value<double>();
+            if (placement.Count >= 6 && placement[5] != null) tbRoll = placement[5].Value<double>();
 
             // Поворот головы (yaw/pitch) — из truck.head.offset, не из placement.
             // Питч КУЗОВА (placement[4]) для конуса обзора не используем (как в старом редакторе).
@@ -305,6 +330,15 @@ namespace ETS2_Assist_GUI
                        ?? json.SelectToken("truck.head.offset") as JArray;
             if (head != null && head.Count >= 4 && head[3] != null) hy = head[3].Value<double>();
             if (head != null && head.Count >= 5 && head[4] != null) hpi = head[4].Value<double>();
+
+            // v1.0.40.28: ПОЗИЦИЯ КАМЕРЫ — truck.cabin.position и truck.head.position
+            // (требование пользователя: «высчитать по этим данным, где точно
+            // располагается камера»). Значения ЛОКАЛЬНЫЕ (в системе фуры, метры),
+            // поэтому переводим в мировые через yaw кузова. Читаем через Value<double>
+            // (культуро-независимо, как и placement).
+            double cabX = 0, cabY = 0, cabZ = 0, hdX = 0, hdY = 0, hdZ = 0;
+            ReadVec3(json, "truck.cabin.position", out cabX, out cabY, out cabZ);
+            ReadVec3(json, "truck.head.position", out hdX, out hdY, out hdZ);
 
             lock (Sync)
             {
@@ -324,6 +358,10 @@ namespace ETS2_Assist_GUI
                 _heading = applied;
                 _headYaw = hy;
                 _headPitch = hpi;
+                _pitchBody = tbPitch;
+                _rollBody = tbRoll;
+                _cabX = cabX; _cabY = cabY; _cabZ = cabZ;
+                _hdX = hdX; _hdY = hdY; _hdZ = hdZ;
                 _haveSample = true;
                 _lastSeen = DateTime.Now;
                 _lastData = DateTime.Now;
@@ -335,6 +373,25 @@ namespace ETS2_Assist_GUI
         }
 
         // Отчёт по приёму — не чаще 1 раза в 15 с и только при смене картины (без спама).
+        // v1.0.40.28: чтение массива [x,y,z] из телеметрии (truck.cabin.position и
+        // truck.head.position). Value<double> — культуро-независимо (урок v64: ToString()
+        // в ru-RU даёт запятую → ×1e8 мусор). Нет поля — оставляем нули (камера в
+        // опорной точке фуры, поведение как до v40.28).
+        private static void ReadVec3(JObject json, string key, out double x, out double y, out double z)
+        {
+            x = y = z = 0;
+            try
+            {
+                var arr = json[key] as JArray ?? json.SelectToken(key) as JArray;
+                if (arr == null || arr.Count < 3) return;
+                x = arr[0].Value<double>();
+                y = arr[1].Value<double>();
+                z = arr[2].Value<double>();
+                if (!double.IsFinite(x) || !double.IsFinite(y) || !double.IsFinite(z)) { x = y = z = 0; }
+            }
+            catch { x = y = z = 0; }
+        }
+
         private static void ReportDiag(bool hasPlacement)
         {
             long ws, rest, noPl, bad, applied;

@@ -41,7 +41,6 @@ namespace ETS2_Assist_GUI
         // Галочка developer mode (g_developer "2" g_console "1" в config.cfg ETS2) — справа в меню.
         private ToolStripControlHost devModeHost = null!;
         private DevModeCheckBox devModeChk = null!;
-
         // CheckBox, который ВСЕГДА рисует свой текст белым. Обычный CheckBox внутри
         // ToolStripControlHost красится чёрным: ToolStrip (профессиональный рендерер)
         // при отрисовке хост-контрола перебивает ForeColor значением из своей цветовой
@@ -89,7 +88,9 @@ namespace ETS2_Assist_GUI
         private Button btnLaunchAR = null!;
         private Button btnAr2 = null!;   // v76: AR v2.0 (D3D11)
         private CheckBox chkAr2Grid = null!;   // v99: чекбокс «Сетка» рядом с кнопкой АР2
-        private Button btnMapEditor = null!;
+        // v1.0.40.28: поле btnMapEditor УДАЛЕНО — кнопка старого редактора карты убрана
+        // (единственный редактор — Map Editor 2, кнопка в MainForm.MapEditor2.cs).
+        private CheckBox chkWebDebug = null!;   // v1.0.40.28: debugShow для веб-контента
 
         private RichTextBox logConsole = null!;
         private Panel indicatorsPanel = null!;
@@ -141,6 +142,11 @@ namespace ETS2_Assist_GUI
         private const int HOTKEY_PLANE_DOWN = 9009;  // v97: CTRL+SHIFT+PGDN — плоскость земли −0.25 м
         private const int HOTKEY_TELEPORT = 9010;    // v39.30: CTRL+T — телепорт в ИГРЕ (goto X;Y;Z;A;E)
         private const int HOTKEY_TELEPORT_EDITOR = 9011; // v39.30: CTRL+SHIFT+T — телепорт в РЕДАКТОРЕ (Find→Position)
+        // v1.0.40.27: единый набор комбинаций (требование): SHIFT+CTRL+ — РЕДАКТОР,
+        // просто CTRL+ — ИГРОВОЙ режим. CTRL+X = новая метка/точка в игровом режиме.
+        private const int HOTKEY_GAME_PIN = 9012;
+        private const int HOTKEY_AR1_FOV_UP = 9013;   // CTRL+PGUP — FOV AR1 +1°
+        private const int HOTKEY_AR1_FOV_DOWN = 9014; // CTRL+PGDN — FOV AR1 −1°
         // v1.0.40.18: камера редактора при телепорте (Ctrl+Shift+T) ставится С ЮГА от цели,
         // на 7 м дальше и на 5 м выше точки, чтобы объект оставался в поле зрения.
         internal const double EditorCamDistanceM = 7.0;   // дистанция от цели (по оси Z, юг)
@@ -245,6 +251,9 @@ namespace ETS2_Assist_GUI
             InitializeComponents();
             InitializeTray();
             InitializeLanguage();
+            // v1.0.40.27: сохранённый FOV AR1 (CTRL+PGUP/PGDN) применяем сразу при старте,
+            // чтобы страница получила его ДО первого открытия оверлея.
+            try { AR.ArBridge.FovDegreesAr1 = AppSettings.Ar1FovDeg; } catch { }
             InitializeProcessManager();
             InitializeStatusTimer();
             // v1.0.40.21: фид телеметрии держим всё время работы приложения — индикатор
@@ -262,7 +271,11 @@ namespace ETS2_Assist_GUI
                 // любой сбой = «failed to register global hotkeys»).
                 RegisterHotKeyChecked(HOTKEY_SAVE, MOD_CONTROL | MOD_SHIFT, Keys.S, "S (save+pause)");
                 RegisterHotKeyChecked(HOTKEY_START_REC, MOD_CONTROL | MOD_SHIFT, Keys.R, "R (start/rec)");
-                RegisterHotKeyChecked(HOTKEY_STOP_REC, MOD_CONTROL | MOD_SHIFT, Keys.X, "X (AR pin)");
+                RegisterHotKeyChecked(HOTKEY_STOP_REC, MOD_CONTROL | MOD_SHIFT, Keys.X, "Ctrl+Shift+X (метка точки: AR1 + миникарта)");
+                // v1.0.40.27: CTRL+X (без SHIFT) — ИГРОВОЙ режим: метка новой точки в AR1 +
+                // на миникарте. Единое правило комбинаций. v1.0.40.28: ОБЕ комбинации
+                // создают ВРЕМЕННУЮ (виртуальную) метку — редактор карты не вызывается.
+                RegisterHotKeyChecked(HOTKEY_GAME_PIN, MOD_CONTROL, Keys.X, "Ctrl+X (игра: новая метка AR/миникарта)");
                 RegisterHotKeyChecked(HOTKEY_MARKER, MOD_CONTROL | MOD_SHIFT, Keys.N, "N (marker)");
                 // v102: калибровочные хоткеи с АВТОПОВТОРОМ при удержании (repeat=true —
                 // без MOD_NOREPEAT) и шагом ÷2 (FOV 0.25°, плоскость 0.125 м).
@@ -280,11 +293,14 @@ RegisterHotKeyChecked(
     repeat: true);
                 RegisterHotKeyChecked(HOTKEY_PLANE_UP, MOD_CONTROL | MOD_SHIFT, Keys.PageUp, "Ctrl+Shift+PGUP (plane +)", repeat: true);
                 RegisterHotKeyChecked(HOTKEY_PLANE_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.PageDown, "Ctrl+Shift+PGDN (plane −)", repeat: true);
+                // v1.0.40.27: CTRL+PGUP/PGDN — FOV AR1 (шаг 1°, требование пользователя).
+                RegisterHotKeyChecked(HOTKEY_AR1_FOV_UP, MOD_CONTROL, Keys.PageUp, "Ctrl+PGUP (FOV AR1 +1°)", repeat: true);
+                RegisterHotKeyChecked(HOTKEY_AR1_FOV_DOWN, MOD_CONTROL, Keys.PageDown, "Ctrl+PGDN (FOV AR1 −1°)", repeat: true);
                 // v39.30: CTRL+T — телепорт в игре; CTRL+SHIFT+T — телепорт в редакторе (Find).
                 RegisterHotKeyChecked(HOTKEY_TELEPORT, MOD_CONTROL, Keys.T, "Ctrl+T (teleport game)");
                 RegisterHotKeyChecked(HOTKEY_TELEPORT_EDITOR, MOD_CONTROL | MOD_SHIFT, Keys.T, "Ctrl+Shift+T (teleport editor)");
                 hotKeyRegistered = true;
-                AppendLog("Hotkeys: S, R, X (AR pin), N, Ctrl+T (teleport game), Ctrl+Shift+T (teleport editor), Ctrl+Shift+HOME/END (FOV), Ctrl+Shift+PGUP/PGDN (plane)");
+                AppendLog("Hotkeys: Ctrl+X (игра: новая метка AR/миникарта), Ctrl+Shift+X (то же), S, R, N, Ctrl+T, Ctrl+Shift+T, Ctrl+PGUP/PGDN (FOV AR1), Ctrl+Shift+HOME/END (FOV AR2), Ctrl+Shift+PGUP/PGDN (plane)");
             }
             catch (Exception ex)
             {
@@ -519,29 +535,17 @@ RegisterHotKeyChecked(
                 SendCommandToMap("reset_recording_origin");
             };
 
-            btnMapEditor = new Button { Text = "Редактор карты", Location = new Point(leftX, topY + 560), Size = new Size(230, 30) };
-            btnMapEditor.Click += (s, e) => {
-                try
-                {
-                    // v71: редактор в ОДНОМ экземпляре (фидбек 31.08.2026: повторное
-                    // нажатие множило окна). Уже открыт — ЗАКРЫВАЕМ и открываем новый.
-                    // (v72: Shift+Ctrl+X — НЕ закрывает, а переиспользует окно, см. QuestsManager.)
-                    var existing = Application.OpenForms.OfType<MapEditorForm>().FirstOrDefault();
-                    if (existing != null)
-                    {
-                        existing.Close();
-                        existing.Dispose();
-                        AppendLog("[EDITOR] Предыдущий экземпляр редактора закрыт (новое окно).");
-                    }
-                    new MapEditorForm().Show();
-                }
-                catch (Exception ex) { AppendLog($"[EDITOR] Ошибка открытия редактора: {ex.Message}"); }
-            };
+            // v1.0.40.28: КНОПКА «РЕДАКТОР КАРТЫ» (старый редактор 1 = MapEditorForm) УБРАНА.
+            // Единственный редактор карты — «Редактор карты 2» (MapEditor2Form, кнопка
+            // создаётся в MainForm.MapEditor2.cs). Старый MapEditorForm остаётся в коде
+            // как legacy/справочник, но пользовательский вход в него закрыт.
 
             // AR HUD: полноэкранный оверлей web_ar_hud.html на мониторе игры
             // (перекрестье дополненной реальности на ближайшую точку 3D).
-            btnLaunchAR = new Button { Text = "Запустить AR", Location = new Point(leftX, topY + 600), Size = new Size(230, 30) };
-            btnLaunchAR.Click += (s, e) => LaunchArOverlay();
+            // v1.0.40.27: кнопка — ТОГГЛ (как у AR2): запущен → зелёная «AR (Web) — ON»,
+            // повторный клик останавливает оверлей и канал AR-целей.
+            btnLaunchAR = new Button { Text = "Запустить AR", Location = new Point(leftX, topY + 600), Size = new Size(230, 30), Tag = "Toggle" };
+            btnLaunchAR.Click += (s, e) => ToggleArOverlay();
 
             // v76: AR v2.0 — нативный D3D11-рендер (та же логика/данные, другой движок).
             // v39.24: кнопка СУЖЕНА (230→150), чекбокс «Сетка» СПРАВА вплотную (x+154).
@@ -561,6 +565,27 @@ RegisterHotKeyChecked(
             {
                 AR.ArBridge.ShowGrid = chkAr2Grid.Checked;
                 AppendLog($"[ARv2] 3D-сетка плоскости {(chkAr2Grid.Checked ? "ВКЛ" : "ВЫКЛ")} (чекбокс)");
+            };
+
+            // v1.0.40.28: ОТЛАДКА ВЕБ-КОНТЕНТА. Единый метод debugShow(bool) добавлен
+            // во все страницы data/*.html (js/debug_show.js). Чекбокс шлёт команду
+            // debug_show на все подключённые страницы: true — принудительный показ
+            // (игнорирование логики скрытия) для отладки/настройки, false — возврат.
+            chkWebDebug = new CheckBox
+            {
+                Text = "Отладка веб (debugShow)",
+                Location = new Point(leftX + 154, topY + 676),
+                Size = new Size(180, 24),
+                Checked = false,
+                ForeColor = Color.FromArgb(166, 166, 166),
+                BackColor = Color.FromArgb(30, 30, 30)
+            };
+            chkWebDebug.CheckedChanged += (s, e) =>
+            {
+                bool on = chkWebDebug.Checked;
+                AR.ArBridge.DebugShow = on;         // AR2 (нативный) — своя отметка камеры
+                SendCommandToMap("debug_show", new JObject { ["enabled"] = on });
+                AppendLog($"[WEB] debugShow {(on ? "ВКЛ (принудительный показ)" : "ВЫКЛ (логика страниц)")} — команда отправлена всем страницам.");
             };
 
             int consoleLeft = leftX + 240;
@@ -687,7 +712,7 @@ RegisterHotKeyChecked(
 
                        this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
-                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnMapEditor, btnLaunchAR, btnAr2, chkAr2Grid,
+                btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnLaunchAR, btnAr2, chkAr2Grid, chkWebDebug,
                 logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu
             });
             PositionBuildLabel();
@@ -833,7 +858,7 @@ RegisterHotKeyChecked(
         {
             statusTimer = new System.Windows.Forms.Timer();
             statusTimer.Interval = 2000;
-            statusTimer.Tick += (s, e) => UpdateIndicators();
+            statusTimer.Tick += (s, e) => { UpdateIndicators(); SyncAr1Button(); };
             statusTimer.Start();
         }
 
@@ -858,7 +883,10 @@ RegisterHotKeyChecked(
             btnCheckTargets.Text = "Проверка точек";
             btnShowMap.Text = _minimapAutoLogic ? "Показать карту ✔" : "Показать карту ✖";
             btnShowHybrid.Text = "Показать hybrid";
-            btnMapEditor.Text = "Редактор карты";
+            btnLaunchAR.Text = "Запустить AR";
+            // v1.0.40.28: подпись кнопки старого редактора убрана вместе с кнопкой
+            // (единственный редактор карты — редактор 2, подпись в MainForm.MapEditor2.cs).
+            if (chkWebDebug != null) chkWebDebug.Text = "Отладка веб (debugShow)";
             fileMenu.Text = lang.Get("ui_file") ?? "File";
             settingsMenu.Text = lang.Get("ui_settings") ?? "Settings";
             helpMenu.Text = lang.Get("ui_help") ?? "Help";
@@ -1250,9 +1278,17 @@ RegisterHotKeyChecked(
                 {
                     var command = _uiSyncCommand?.Invoke() ?? "show_ui";
                     Send(JsonConvert.SerializeObject(new { command }));
+                    // v1.0.40.27: подключился новый WS-клиент (в т.ч. страница AR1 после
+                    // рестарта оверлея) — форсируем разовую рассылку телеметрии и цели,
+                    // иначе страница висит на «нет телеметрии», пока фура не тронется.
+                    if (_onClientConnected != null)
+                        Task.Run(() => { try { _onClientConnected.Invoke(); } catch { } });
                 }
                 catch (Exception ex) { _log?.Invoke($"[WebSocket] UI sync error: {ex.Message}"); }
             }
+
+            private static Action? _onClientConnected;
+            public static void SetOnClientConnected(Action action) => _onClientConnected = action;
 
 
             protected override void OnMessage(MessageEventArgs e)
@@ -1319,6 +1355,9 @@ RegisterHotKeyChecked(
                 TrailBehavior.SetPlaySoundAction(PlaySound);
                 TrailBehavior.SetOnCommand(data => OnClientCommand(data));
                 TrailBehavior.SetUiSync(() => _lastPauseState == true ? "hide_ui" : "show_ui");
+                // v1.0.40.27: новый WS-клиент → форс-рассылка данных AR (страница AR1,
+                // подключившаяся на паузе/при неподвижной фуре, иначе ждала события).
+                TrailBehavior.SetOnClientConnected(() => ForceArDataResend("новый WS-клиент"));
 
                 _wsSaveServer = new WebSocketSharp.Server.WebSocketServer($"ws://localhost:8084");
                 _wsSaveServer.AddWebSocketService<TrailBehavior>("/");
@@ -2183,6 +2222,78 @@ RegisterHotKeyChecked(
         // Перекрестье дополненной реальности на ближайшую точку 3D
         // (учёт поворота головы + движения фуры; прижим к краю экрана).
         // ================================================================
+        // v1.0.40.27: AR1 — ТОГГЛ. Повторный клик по кнопке останавливает оверлей
+        // (процесс WebOverlay с заголовком «AR HUD») и канал AR-целей. Раньше кнопка
+        // только запускала: выключить AR1 из приложения было нечем.
+        private void ToggleArOverlay()
+        {
+            if (IsAr1Running)
+            {
+                StopArOverlay(manual: true);
+                return;
+            }
+            LaunchArOverlay();
+        }
+
+        // Признак жизни AR1: процесс WebOverlay с окном «AR HUD».
+        internal bool IsAr1Running
+        {
+            get
+            {
+                try
+                {
+                    foreach (var proc in Process.GetProcessesByName("WebOverlay"))
+                    {
+                        try { if (proc.MainWindowTitle != null && proc.MainWindowTitle.Contains("AR HUD")) return true; }
+                        catch { }
+                        finally { proc.Dispose(); }
+                    }
+                }
+                catch { }
+                return false;
+            }
+        }
+
+        // Остановка AR1: гасим оверлей и канал данных. Вызывается кнопкой-тогглом,
+        // StopSystem и закрытием приложения.
+        internal void StopArOverlay(bool manual)
+        {
+            int killed = 0;
+            try
+            {
+                foreach (var proc in Process.GetProcessesByName("WebOverlay"))
+                {
+                    try
+                    {
+                        if (proc.MainWindowTitle != null && proc.MainWindowTitle.Contains("AR HUD"))
+                        {
+                            proc.Kill();
+                            proc.WaitForExit(2000);
+                            killed++;
+                        }
+                    }
+                    catch { }
+                    finally { proc.Dispose(); }
+                }
+            }
+            catch { }
+            // AR2 может быть выключен отдельно — канал гасим только если второго AR нет.
+            if (!IsAr2Running) StopArTargetFeed();
+            SyncAr1Button();
+            AppendLog(manual
+                ? $"[AR] AR HUD остановлен кнопкой (процессов закрыто: {killed})."
+                : $"[AR] AR HUD остановлен (процессов закрыто: {killed}).");
+        }
+
+        // v1.0.40.27: тоггл-подсветка кнопки AR1 (как у AR2 — Lime при запущенном оверлее).
+        internal void SyncAr1Button()
+        {
+            if (btnLaunchAR == null || btnLaunchAR.IsDisposed) return;
+            bool on = IsAr1Running;
+            btnLaunchAR.Text = on ? "AR (Web) — ON" : "Запустить AR";
+            btnLaunchAR.BackColor = on ? Color.Lime : DefaultButtonColor();
+        }
+
         private void LaunchArOverlay()
         {
             string overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "WebOverlay.exe");
@@ -2236,6 +2347,8 @@ RegisterHotKeyChecked(
 
                 Process.Start(overlayExe, url);
                 StartArTargetFeed();
+                // v1.0.40.27: подсветка кнопки тоггла (Lime) сразу после старта.
+                SyncAr1Button();
                 AppendLog("[AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).");
             }
             catch (Exception ex)
@@ -2248,6 +2361,8 @@ RegisterHotKeyChecked(
         {
             AppendLog("Stopping system...");
             StopArTargetFeed();
+            // v1.0.40.27: AR1 (web) гасим явно — оверлей не должен переживать StopSystem.
+            StopArOverlay(manual: false);
             // v1.0.40.21: освобождаем фид телеметрии (счётчик ссылок TruckTelemetry).
             try { TruckTelemetry.Stop(); } catch { }
             procManager.Stop();
@@ -2579,41 +2694,14 @@ RegisterHotKeyChecked(
                         SendCommandToMap("start_recording");
                         break;
                     case HOTKEY_STOP_REC:
-                        // v71: Shift+Ctrl+X — «Пометить в АР» (перенос с кнопки).
-                        // v39.90: если открыт Map Editor 2 — СРАЗУ переводим фокус на него,
-                        // затем берём последние координаты из кэша (собираются каждые 250 мс),
-                        // пишем в Logs/map_editor_coords.txt и создаём точку. Иначе — AR pin.
-                        var mapEditor2 = Application.OpenForms.OfType<MapEditor2Form>().FirstOrDefault();
-                        if (mapEditor2 != null && !mapEditor2.IsDisposed)
-                        {
-                            // 1) Фокус на наш редактор карты (мгновенно).
-                            try
-                            {
-                                if (mapEditor2.WindowState == FormWindowState.Minimized)
-                                    mapEditor2.WindowState = FormWindowState.Normal;
-                                mapEditor2.Activate();
-                                mapEditor2.BringToFront();
-                            }
-                            catch { }
-
-                            // 2) Последние координаты из кэша (собираются фоном каждые 250 мс).
-                            var pos = MapEditor2GameEditorBridge.GetLastPosition();
-                            if (pos != null)
-                            {
-                                AppendLog("Hotkey (Shift+Ctrl+X): создаю точку из координат редактора.");
-                                LogEditorCoordsToFile(pos.Value.X, pos.Value.Y, pos.Value.Z);
-                                mapEditor2.CreatePointFromEditor(pos.Value.X, pos.Value.Y, pos.Value.Z);
-                            }
-                            else
-                            {
-                                AppendLog("Hotkey (Shift+Ctrl+X): координаты редактора не получены, точка не создана.");
-                            }
-                        }
-                        else
-                        {
-                            AppendLog("Hotkey AR pin (Shift+Ctrl+X)");
-                            PlacePinFromArAndOpenEditor();
-                        }
+                        // v1.0.40.28 ЕДИНОЕ ПРАВИЛО: точка — ВРЕМЕННЫЙ (виртуальный) маркер.
+                        // Редактор карты НЕ вызывается и НЕ открывается. Создаём только
+                        // метку: в AR1 (ar_pin) и на миникарте (ar_pin_map). Сохранить
+                        // такую точку нельзя — её нужно заново поставить в самом редакторе.
+                        // (старый путь с MapEditor2GameEditorBridge и CreatePointFromEditor
+                        // удалён — он фокусировал редактор и создавал постоянную точку)
+                        AppendLog("Hotkey AR pin (Shift+Ctrl+X)");
+                        PlacePinFromArAndOpenEditor();
                         break;
                     case HOTKEY_MARKER:
                         if (IsGamePaused())
@@ -2625,6 +2713,23 @@ RegisterHotKeyChecked(
                         {
                             AppendLog("Hotkey marker ignored: game is not paused.");
                         }
+                        break;
+                    case HOTKEY_GAME_PIN:
+                        // v1.0.40.27: CTRL+X (ИГРОВОЙ режим, без Shift) — новая метка точки:
+                        //   1) расчёт точки на пересечении взгляда с плоскостью земли (C#);
+                        //   2) пометка в AR1 (серый крест) + пометка на миникарте (ar_pin_map);
+                        //   3) новая точка в Map Editor 2 (если редактор открыт) — без
+                        //      переключения фокуса в игровой редактор.
+                        AppendLog("Hotkey AR pin (Ctrl+X, игровой режим)");
+                        PlaceGamePinWithEditor();
+                        break;
+                    case HOTKEY_AR1_FOV_UP:
+                        // v1.0.40.27: CTRL+PGUP — FOV AR1 +1° (страница web_ar_hud.html).
+                        SetAr1Fov(AR.ArBridge.FovDegreesAr1 + 1.0, "Ctrl+PGUP");
+                        break;
+                    case HOTKEY_AR1_FOV_DOWN:
+                        // v1.0.40.27: CTRL+PGDN — FOV AR1 −1° (шаг 1 градус, автоповтор).
+                        SetAr1Fov(AR.ArBridge.FovDegreesAr1 - 1.0, "Ctrl+PGDN");
                         break;
                     case HOTKEY_TELEPORT_EDITOR:
                         // v39.30: Ctrl+Shift+T — телепорт в РЕДАКТОРЕ (Find→Position, без heading/elev).
@@ -3715,6 +3820,10 @@ RegisterHotKeyChecked(
                 UnregisterHotKey(this.Handle, HOTKEY_PLANE_DOWN);
                 UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
                 UnregisterHotKey(this.Handle, HOTKEY_TELEPORT_EDITOR);
+                // v1.0.40.27: CTRL+X (игра) + CTRL+PGUP/PGDN (FOV AR1).
+                UnregisterHotKey(this.Handle, HOTKEY_GAME_PIN);
+                UnregisterHotKey(this.Handle, HOTKEY_AR1_FOV_UP);
+                UnregisterHotKey(this.Handle, HOTKEY_AR1_FOV_DOWN);
                 UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
             }
             catch (Exception ex)
@@ -4048,7 +4157,8 @@ RegisterHotKeyChecked(
             };
             foreach (var b in featureButtons)
                 if (b != null) b.Enabled = run;
-            // btnMapEditor остаётся всегда активным.
+            // v1.0.40.28: кнопка старого редактора карты УБРАНА (единственный редактор —
+            // редактор 2, его кнопка создаётся в MainForm.MapEditor2.cs).
         }
 
         private void UpdateIndicators()
@@ -4245,6 +4355,10 @@ RegisterHotKeyChecked(
                 UnregisterHotKey(this.Handle, HOTKEY_PLANE_DOWN);
                 UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
                 UnregisterHotKey(this.Handle, HOTKEY_TELEPORT_EDITOR);
+                // v1.0.40.27: CTRL+X (игра) + CTRL+PGUP/PGDN (FOV AR1).
+                UnregisterHotKey(this.Handle, HOTKEY_GAME_PIN);
+                UnregisterHotKey(this.Handle, HOTKEY_AR1_FOV_UP);
+                UnregisterHotKey(this.Handle, HOTKEY_AR1_FOV_DOWN);
             }
             StopTriggerServer();
             StopWebSocketSaveServer();

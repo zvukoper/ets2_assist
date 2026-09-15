@@ -9,7 +9,11 @@ namespace ETS2_Assist_GUI.AR
     // ================================================================
     // Заполняется СУЩЕСТВУЮЩИМ каналом MainForm.ArTarget (WS TruckTel + command WS
     // рассылки ar_*). Renderer читает только ссылки на immutable-снимки.
-    // Идентичность логике ar_hud.js: точки статичны, рассылка событийная.
+    //
+    // v1.0.40.30 (ETS2_AR_CAMERA_POSE_IMPLEMENTATION): камера — ПОЛНАЯ 6DoF-поза
+    // (позиция + базис Forward/Right/Up), вычисленная по SCS hierarchy:
+    //   truck.world.placement → cabin.position/offset → head.position/offset.
+    // Никаких EyeHeight/PitchCompensation/roll-хаков в проекции больше нет.
     public sealed class ArMarker
     {
         public string GameName = "";
@@ -23,15 +27,28 @@ namespace ETS2_Assist_GUI.AR
 
     public sealed class ArGameState
     {
-        // Камера (глаз) — от ar_telemetry (WS TruckTel → ApplyPlacementJson)
-        public long Sequence;                  // монотонный номер телеметрии
-        public double CamX, CamY, CamZ;
-        public double YawBase;                 // heading (доля оборота)
-        public double PitchBody;               // placement[4] (доля оборота)
-        public double Roll;
-        public double YawHead, PitchHead;      // head.offset[3]/[4] (доля оборота, +вверх)
+        // Номер позы камеры (монотонный) — растёт при каждом пересчёте позы.
+        public long Sequence;
 
-        public double GroundY;                 // высота «земли» под фурой (placement[1])
+        // ВАЖНО: CamX/Y/Z — ВСЕГДА мировое положение ГЛАЗА/КАМЕРЫ,
+        // а НЕ truck.world.placement (как было до v1.0.40.30).
+        public double CamX, CamY, CamZ;
+
+        // Полная мировая ориентация камеры (ортонормальный базис).
+        public System.Numerics.Vector3 CameraForward = new(0, 0, -1);
+        public System.Numerics.Vector3 CameraRight = new(1, 0, 0);
+        public System.Numerics.Vector3 CameraUp = new(0, 1, 0);
+        public bool CameraPoseValid;
+
+        // Оставлено для существующих диагностических экранов/совместимости.
+        // НЕ участвует в world-to-screen проекции.
+        public double YawBase;                 // heading фуры (доля оборота)
+        public double PitchBody;               // placement[4]
+        public double Roll;                    // placement[5]
+        public double YawHead, PitchHead;      // head.offset[3]/[4] (доля оборота)
+
+        // Высота reference point грузовика — НЕ камера.
+        public double GroundY;
 
         // v96: смещение плоскости земли (м) — влияет на создание новых меток
         // и на отрисовку 3D-сетки. Читается из ArBridge.PlaneOffsetM.
@@ -43,10 +60,11 @@ namespace ETS2_Assist_GUI.AR
         // Текущая цель (ar_target, разово при смене)
         public ArMarker? Target;
 
-        // Пометка «Пометить в АР» (ar_pin, разово)
+        // Пометка «Пометить в АР» / новая точка (ar_pin, разово)
         public (double X, double Y, double Z)? Pin;
 
-        // Города для компенсации высот (ar_telemetry.cities — первые N)
+        // Города — ТОЛЬКО для совместимости старого UI/диагностики.
+        // НЕ участвуют в расчёте позы камеры и в world-to-screen проекции.
         public IReadOnlyList<(double X, double Y, double Z)> Cities = Array.Empty<(double, double, double)>();
     }
 }

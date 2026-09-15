@@ -137,9 +137,14 @@ namespace ETS2_Assist_GUI
                 _lastTruckLive = snap.Live;
 
                 string s = string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                    "{{x:{0:R},y:{1:R},z:{2:R},heading:{3:R},headYaw:{4:R},headPitch:{5:R},live:{6}}}",
+                    "{{x:{0:R},y:{1:R},z:{2:R},heading:{3:R},headYaw:{4:R},headPitch:{5:R},live:{6}," +
+                    "cabinX:{7:R},cabinY:{8:R},cabinZ:{9:R},headX:{10:R},headY:{11:R},headZ:{12:R}," +
+                    "pitchBody:{13:R},rollBody:{14:R}}}",
                     snap.X, snap.Y, snap.Z, snap.Heading, snap.HeadYaw, snap.HeadPitch,
-                    snap.Live ? "true" : "false");
+                    snap.Live ? "true" : "false",
+                    snap.CabinX, snap.CabinY, snap.CabinZ,
+                    snap.HeadX, snap.HeadY, snap.HeadZ,
+                    snap.PitchBody, snap.RollBody);
 
                 _ = _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2SetTruck && window.MapEditor2SetTruck({s});");
             }
@@ -183,6 +188,8 @@ namespace ETS2_Assist_GUI
                 await SendTargetsAsync();
                 await SendOverridesToEditorAsync();
                 await SendTruckIntervalAsync();
+                // v1.0.40.28: конус обзора в редакторе 2 = угол FOV камеры (как в АР1).
+                await SendFovAsync();
                 return;
             }
             if (string.Equals(message, "map2-generate-terrain", StringComparison.Ordinal))
@@ -216,6 +223,21 @@ namespace ETS2_Assist_GUI
                         var coords = $"{x.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, {y.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, {z.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}";
                         try { MainForm.LogNewPointSelection(x, y, z); } catch { }
                         try { Clipboard.SetText(coords); } catch { }
+                        // v1.0.40.28: НОВАЯ ТОЧКА В РЕДАКТОРЕ КАРТЫ → МЕТКА В AR1
+                        // (требование пользователя: «Создание новой точки в редакторе
+                        // карты так же создаёт точку в АР1»). Ставим AR-пометку именно
+                        // в этих координатах (не по центру взгляда) и дублируем на
+                        // миникарту — AR1 и миникарта рисуют одну и ту же новую точку.
+                        try
+                        {
+                            var main = Application.OpenForms.OfType<MainForm>().FirstOrDefault();
+                            main?.ArPlacePinAtWorld(x, z);
+                            main?.ArSendPinMap(x, y, z);
+                        }
+                        catch (Exception pex)
+                        {
+                            Logger.Current?.Data("[MAP2] AR-метка новой точки не поставлена: " + pex.Message);
+                        }
                         if (_webView.CoreWebView2 != null)
                             await _webView.CoreWebView2.ExecuteScriptAsync(
                                 $"window.MapEditor2ShowNewPoint({x.ToString(System.Globalization.CultureInfo.InvariantCulture)},{y.ToString(System.Globalization.CultureInfo.InvariantCulture)},{z.ToString(System.Globalization.CultureInfo.InvariantCulture)});");
@@ -329,6 +351,23 @@ namespace ETS2_Assist_GUI
     } catch (_) { }
 })();";
             try { await _webView.CoreWebView2.ExecuteScriptAsync(script); } catch { }
+        }
+
+        // v1.0.40.28: FOV камеры для конуса обзора в редакторе (полуугол = FOV/2).
+        // Значение общее с AR1 (ArBridge.FovDegreesAr1 — хоткеи CTRL+PGUP/PGDN).
+        private async Task SendFovAsync()
+        {
+            try
+            {
+                if (_webView.IsDisposed || _webView.CoreWebView2 == null) return;
+                double fov = AR.ArBridge.FovDegreesAr1;
+                string s = fov.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+                await _webView.CoreWebView2.ExecuteScriptAsync($"window.MapEditor2SetFov && window.MapEditor2SetFov({s});");
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Data("[MAP2] FOV не отправлен: " + ex.Message);
+            }
         }
 
         private async Task SendBuildVersionAsync()

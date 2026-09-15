@@ -459,7 +459,10 @@ namespace ETS2_Assist_GUI
                     ["category"] = c.Category,
                     ["x"] = c.X, ["y"] = c.Y, ["z"] = c.Z,
                     ["color"] = c.Color,
-                    ["hidden"] = c.Hidden == 1 || !c.Enabled,
+                    // v1.0.40.27: showOnMap=false (галочка «показать на миникарте» снята
+                    // в редакторе) скрывает город так же, как hidden — миникарта читает
+                    // только флаг hidden (dumb-receiver, сам не фильтрует по showOnMap).
+                    ["hidden"] = c.Hidden == 1 || !c.Enabled || !c.ShowOnMap,
                     ["overridden"] = c.IsOverride
                 });
             }
@@ -499,7 +502,8 @@ namespace ETS2_Assist_GUI
                     ["opacity"] = opacity,
                     ["layer"] = layer,
                     ["display_on_map"] = displayOnMap,
-                    ["hidden"] = p.Hidden == 1 || !p.Enabled,
+                    // v1.0.40.27: «показать на миникарте» (см. CitiesToJArray).
+                    ["hidden"] = p.Hidden == 1 || !p.Enabled || !p.ShowOnMap,
                     ["overridden"] = p.IsOverride
                 });
             }
