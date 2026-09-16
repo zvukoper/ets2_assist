@@ -34,6 +34,8 @@ namespace ETS2_Assist_GUI
         private ContextMenuStrip trayMenu = null!;
         private MenuStrip mainMenu = null!;
         private ToolStripMenuItem fileMenu = null!;
+        private ToolStripMenuItem viewMenu = null!;   // v1.0.40.40: раздел «Вид» (отладка AR)
+        private ToolStripMenuItem arMenu = null!;     // v1.0.40.41: «Настройки АР» (рабочие параметры AR)
         private ToolStripMenuItem settingsMenu = null!;
         private ToolStripMenuItem helpMenu = null!;
         private ToolStripMenuItem checkUpdatesMenu = null!;
@@ -146,6 +148,25 @@ namespace ETS2_Assist_GUI
         // просто CTRL+ — ИГРОВОЙ режим. CTRL+X = новая метка/точка в игровом режиме.
         private const int HOTKEY_GAME_PIN = 9012;
         private const int HOTKEY_AR1_FOV_UP = 9013;   // CTRL+PGUP — FOV AR1 +1°
+        // v1.0.40.33: ВЕРТИКАЛЬНЫЙ FOV AR1 — CTRL+SHIFT+PGUP/PGDN (как просил пользователь).
+        // ALT НЕЛЬЗЯ: Windows перехватывает Alt-комбинации раньше приложения.
+        // Чтобы PGUP/PGDN освободились, legacy-подстройка плоскости
+        // (Ctrl+Shift+PGUP/PGDN → PlaneOffsetM) больше НЕ регистрируется — реальная
+        // земля теперь плоскость по колёсам, а PlaneOffsetM остался только для AR2.
+        // Сброс ручной подстройки УБРАН по требованию пользователя.
+        private const int HOTKEY_AR1_VFOV_UP = 9016;    // CTRL+SHIFT+PGUP — верт. FOV +0.2°
+        private const int HOTKEY_AR1_VFOV_DOWN = 9017;  // CTRL+SHIFT+PGDN — верт. FOV −0.2°
+        // v1.0.40.36: перебор РЕЖИМОВ крена камеры (0/1/2) — критерий выбора:
+        // голубой горизонт мира должен лечь на белый горизонт ПОЛОТНА. Остаётся
+        // полезен как диагностический инструмент.
+        private const int HOTKEY_AR1_ROLLSIGN = 9018;  // CTRL+SHIFT+Y — режим крена камеры
+        // v1.0.40.37: плоскость визуализации — по ГОРИЗОНТУ (по умолчанию) ↔ по колёсам.
+        // Нужен для сравнения в игре одной клавишей.
+        private const int HOTKEY_AR1_PLANEMODE = 9019; // CTRL+SHIFT+U — плоскость: горизонт / по колёсам
+        // v1.0.40.38: КОЭФФИЦИЕНТ КОМПЕНСАЦИИ КРЕНА КАМЕРЫ (0..1.5, шаг 0.1).
+        // Игра компенсирует наклон головы НЕ полностью, поэтому нужна частичная доля.
+        private const int HOTKEY_AR1_ROLLFACTOR_UP = 9020;   // CTRL+SHIFT+J — доля +0.1
+        private const int HOTKEY_AR1_ROLLFACTOR_DOWN = 9021; // CTRL+SHIFT+K — доля −0.1
         private const int HOTKEY_AR1_FOV_DOWN = 9014; // CTRL+PGDN — FOV AR1 −1°
         // v1.0.40.18: камера редактора при телепорте (Ctrl+Shift+T) ставится С ЮГА от цели,
         // на 7 м дальше и на 5 м выше точки, чтобы объект оставался в поле зрения.
@@ -254,6 +275,9 @@ namespace ETS2_Assist_GUI
             // v1.0.40.27: сохранённый FOV AR1 (CTRL+PGUP/PGDN) применяем сразу при старте,
             // чтобы страница получила его ДО первого открытия оверлея.
             try { AR.ArBridge.FovDegreesAr1 = AppSettings.Ar1FovDeg; } catch { }
+            // v1.0.40.34: вертикальный FOV AR1 — из настроек (НЕ выводим из
+            // горизонтального: пользователь калибрует его глазами, шаг 0.2°).
+            try { SyncAr1VerticalFov(); } catch { }
             InitializeProcessManager();
             InitializeStatusTimer();
             // v1.0.40.21: фид телеметрии держим всё время работы приложения — индикатор
@@ -291,16 +315,29 @@ RegisterHotKeyChecked(
     Keys.Delete,
     "Ctrl+Shift+DELETE (FOV −)",
     repeat: true);
-                RegisterHotKeyChecked(HOTKEY_PLANE_UP, MOD_CONTROL | MOD_SHIFT, Keys.PageUp, "Ctrl+Shift+PGUP (plane +)", repeat: true);
-                RegisterHotKeyChecked(HOTKEY_PLANE_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.PageDown, "Ctrl+Shift+PGDN (plane −)", repeat: true);
+                // v1.0.40.33: legacy-подстройка плоскости (PlaneOffsetM) БОЛЬШЕ НЕ
+                // РЕГИСТРИРУЕТСЯ. «Земля» теперь реальная плоскость по колёсам
+                // (ArGroundPlane), а PlaneOffsetM остался только для AR2-инструментов.
+                // Так освобождаются Ctrl+Shift+PGUP/PGDN для вертикального FOV AR1.
+                //RegisterHotKeyChecked(HOTKEY_PLANE_UP, MOD_CONTROL | MOD_SHIFT, Keys.PageUp, "Ctrl+Shift+PGUP (plane +)", repeat: true);
+                //RegisterHotKeyChecked(HOTKEY_PLANE_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.PageDown, "Ctrl+Shift+PGDN (plane −)", repeat: true);
                 // v1.0.40.27: CTRL+PGUP/PGDN — FOV AR1 (шаг 1°, требование пользователя).
                 RegisterHotKeyChecked(HOTKEY_AR1_FOV_UP, MOD_CONTROL, Keys.PageUp, "Ctrl+PGUP (FOV AR1 +1°)", repeat: true);
                 RegisterHotKeyChecked(HOTKEY_AR1_FOV_DOWN, MOD_CONTROL, Keys.PageDown, "Ctrl+PGDN (FOV AR1 −1°)", repeat: true);
+                // v1.0.40.33: вертикальный FOV AR1 (корень «уплывающего» горизонта).
+                // OemPlus/OemMinus — потому что PGUP/PGDN уже заняты (плоскость земли).
+                RegisterHotKeyChecked(HOTKEY_AR1_VFOV_UP, MOD_CONTROL | MOD_SHIFT, Keys.PageUp, "Ctrl+Shift+PGUP (верт. FOV AR1 +0.2°)", repeat: true);
+                RegisterHotKeyChecked(HOTKEY_AR1_VFOV_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.PageDown, "Ctrl+Shift+PGDN (верт. FOV AR1 −0.2°)", repeat: true);
+                // v1.0.40.34: ВРЕМЕННЫЙ хоткей — знак крена кузова (тест 3 положений).
+                RegisterHotKeyChecked(HOTKEY_AR1_ROLLSIGN, MOD_CONTROL | MOD_SHIFT, Keys.Y, "Ctrl+Shift+Y (режим крена камеры)");
+                RegisterHotKeyChecked(HOTKEY_AR1_PLANEMODE, MOD_CONTROL | MOD_SHIFT, Keys.U, "Ctrl+Shift+U (плоскость: горизонт / по колёсам)");
+                RegisterHotKeyChecked(HOTKEY_AR1_ROLLFACTOR_UP, MOD_CONTROL | MOD_SHIFT, Keys.J, "Ctrl+Shift+J (доля компенсации крена +0.1)");
+                RegisterHotKeyChecked(HOTKEY_AR1_ROLLFACTOR_DOWN, MOD_CONTROL | MOD_SHIFT, Keys.K, "Ctrl+Shift+K (доля компенсации крена −0.1)");
                 // v39.30: CTRL+T — телепорт в игре; CTRL+SHIFT+T — телепорт в редакторе (Find).
                 RegisterHotKeyChecked(HOTKEY_TELEPORT, MOD_CONTROL, Keys.T, "Ctrl+T (teleport game)");
                 RegisterHotKeyChecked(HOTKEY_TELEPORT_EDITOR, MOD_CONTROL | MOD_SHIFT, Keys.T, "Ctrl+Shift+T (teleport editor)");
                 hotKeyRegistered = true;
-                AppendLog("Hotkeys: Ctrl+X (игра: новая метка AR/миникарта), Ctrl+Shift+X (то же), S, R, N, Ctrl+T, Ctrl+Shift+T, Ctrl+PGUP/PGDN (FOV AR1), Ctrl+Shift+HOME/END (FOV AR2), Ctrl+Shift+PGUP/PGDN (plane)");
+                AppendLog("Hotkeys: Ctrl+X (игра: новая метка AR/миникарта), Ctrl+Shift+X (то же), S, R, N, Ctrl+T, Ctrl+Shift+T, Ctrl+PGUP/PGDN (FOV AR1 гориз.), Ctrl+Shift+PGUP/PGDN (FOV AR1 верт.), Ctrl+Shift+HOME/END (FOV AR2)");
             }
             catch (Exception ex)
             {
@@ -410,10 +447,480 @@ RegisterHotKeyChecked(
             buildVersionLabel.BringToFront();
         }
 
+        // ================================================================
+        // v1.0.40.40: РАЗДЕЛ МЕНЮ «ВИД» — ОТЛАДОЧНАЯ ВИЗУАЛИЗАЦИЯ AR.
+        //
+        // Требование пользователя: «Вынеси АР сетку, высоты и оси в настройки
+        // меню вид. Чтобы при желании можно было включить и ещё отлаживать.
+        // Убираем оси, сетку, визуализацию высот.»
+        //
+        // Поэтому:
+        //   • пункты меню управляют сеткой (AR1), осями шасси (AR1), линией
+        //     горизонта (AR1), окном высот (WebOverlay) и радиусом показа точек;
+        //   • по умолчанию все визуализации ВЫКЛЮЧЕНЫ, точки показываются
+        //     в радиусе 50 м;
+        //   • выбор СОХРАНЯЕТСЯ в AppSettings — чтобы не настраивать заново.
+        //
+        // Настройки уходят в AR1 командой `ar_view` (страница — dumb-receiver).
+        // ================================================================
+        private void BuildViewMenu()
+        {
+            viewMenu.DropDownItems.Clear();
+
+            ToolStripMenuItem Check(string text, bool value, Action<bool> onChange, string tip)
+            {
+                var item = new ToolStripMenuItem(text) { CheckOnClick = true, Checked = value };
+                if (!string.IsNullOrEmpty(tip)) item.ToolTipText = tip;
+                item.CheckedChanged += (s, e) => onChange(item.Checked);
+                return item;
+            }
+
+            viewMenu.DropDownItems.Add(Check("AR1: сетка плоскости", AppSettings.Ar1ShowGrid,
+                v => { AppSettings.Ar1ShowGrid = v; AppSettings.Save(); SendArViewToPage(); },
+                "Сетка метровой плоскости (отладка геометрии земли)"));
+
+            viewMenu.DropDownItems.Add(Check("AR1: оси шасси", AppSettings.Ar1ShowChassisAxes,
+                v => { AppSettings.Ar1ShowChassisAxes = v; AppSettings.Save(); SendArViewToPage(); },
+                "Три оси (X/Z шасси, Y кузова) — ориентация грузовика к горизонту"));
+
+            viewMenu.DropDownItems.Add(Check("AR1: линия горизонта", AppSettings.Ar1ShowHorizon,
+                v => { AppSettings.Ar1ShowHorizon = v; AppSettings.Save(); SendArViewToPage(); },
+                "Голубой горизонт мира («ГОРИЗОНТ МИРА»)"));
+
+            viewMenu.DropDownItems.Add(Check("AR1: горизонт полотна", AppSettings.Ar1ShowPlaneHorizon,
+                v => { AppSettings.Ar1ShowPlaneHorizon = v; AppSettings.Save(); SendArViewToPage(); },
+                "Белая линия горизонта реальной плоскости дороги (эталон сравнения)"));
+
+            // ВНИМАНИЕ: радиус показа точек ПЕРЕНЕСЁН в меню «Настройки АР»
+            // (v1.0.40.41) — это рабочий параметр, а не отладочная визуализация.
+
+            viewMenu.DropDownItems.Add(new ToolStripSeparator());
+
+            viewMenu.DropDownItems.Add(Check("Окно визуализации высот", AppSettings.ShowHeightsWindow,
+                v =>
+                {
+                    AppSettings.ShowHeightsWindow = v;
+                    AppSettings.Save();
+                    ApplyHeightsWindowVisibility(v);
+                },
+                "Отдельное окно-оверлей: боковая и задняя проекция, крен, оси камеры"));
+
+            viewMenu.DropDownItems.Add(new ToolStripSeparator());
+
+            var reset = new ToolStripMenuItem("Только точки (отладку выключить)");
+            reset.Click += (s, e) => SetAllArVisuals(false);
+            viewMenu.DropDownItems.Add(reset);
+        }
+
+        // ================================================================
+        // v1.0.40.41: МЕНЮ «НАСТРОЙКИ АР» — РАБОЧИЕ ПАРАМЕТРЫ AR.
+        //
+        // Требование пользователя: «Сделай меню настроек АР. Вынеси туда радиус
+        // отображения точек.»
+        //
+        // РАЗДЕЛЕНИЕ РАЗДЕЛОВ (чтобы не путать):
+        //   • «Вид»          — ЧТО ПОКАЗЫВАТЬ: отладочные визуализации
+        //                      (сетка, оси, горизонты, окно высот);
+        //   • «Настройки АР» — КАК РАБОТАЕТ AR: радиус точек, FOV (гориз. и верт.),
+        //                      режим крена камеры, доля компенсации, плоскость.
+        //
+        // Всё сохраняется в AppSettings; страница AR1 получает значения командами
+        // `ar_fov` / `ar_view` (страница — dumb-receiver, владелец настроек — C#).
+        // ================================================================
+        private void BuildArMenu()
+        {
+            arMenu.DropDownItems.Clear();
+
+            ToolStripMenuItem Check(string text, bool value, Action<bool> onChange, string tip)
+            {
+                var item = new ToolStripMenuItem(text) { CheckOnClick = true, Checked = value };
+                if (!string.IsNullOrEmpty(tip)) item.ToolTipText = tip;
+                item.CheckedChanged += (s, e) => onChange(item.Checked);
+                return item;
+            }
+
+            ToolStripMenuItem Sub(string text, string tip = "")
+            {
+                var m = new ToolStripMenuItem(text);
+                if (!string.IsNullOrEmpty(tip)) m.ToolTipText = tip;
+                return m;
+            }
+
+            // ============================ РАДИУС ТОЧЕК ============================
+            // Требование: вынести радиус отображения точек именно сюда.
+            // Готовые значения + произвольное (окно ввода).
+            var radiusMenu = Sub("Радиус отображения точек",
+                "В каком радиусе от грузовика показывать точки в AR");
+            foreach (int r in new[] { 25, 50, 100, 250, 500, 1000, 1500 })
+            {
+                int rr = r;
+                var it = new ToolStripMenuItem($"{rr} м");
+                it.Checked = Math.Abs(ArDisplayRadiusM - rr) < 0.5;
+                it.Click += (s, e) => { ArSetDisplayRadius(rr); };
+                radiusMenu.DropDownItems.Add(it);
+            }
+            radiusMenu.DropDownItems.Add(new ToolStripSeparator());
+            var custom = new ToolStripMenuItem($"Другое… (сейчас {ArDisplayRadiusM:F0} м)");
+            custom.Click += (s, e) => ArPromptDisplayRadius();
+            radiusMenu.DropDownItems.Add(custom);
+            arMenu.DropDownItems.Add(radiusMenu);
+
+            arMenu.DropDownItems.Add(new ToolStripSeparator());
+
+            // ============================ FOV ============================
+            var fovMenu = Sub("FOV AR1", "Углы обзора страницы AR1 (градусы)");
+            fovMenu.DropDownItems.Add(new ToolStripMenuItem(
+                $"Горизонтальный: {AR.ArBridge.FovDegreesAr1:F0}°  (Ctrl+PGUP/PGDN)")
+            { Enabled = false });
+            fovMenu.DropDownItems.Add(new ToolStripMenuItem(
+                $"Вертикальный: {AR.ArBridge.FovDegreesAr1Vertical:F1}°  (Ctrl+Shift+PGUP/PGDN)")
+            { Enabled = false });
+            fovMenu.DropDownItems.Add(new ToolStripSeparator());
+            var fovH = new ToolStripMenuItem("Задать горизонтальный…");
+            fovH.Click += (s, e) => ArPromptFov(vertical: false);
+            fovMenu.DropDownItems.Add(fovH);
+            var fovV = new ToolStripMenuItem("Задать вертикальный…");
+            fovV.Click += (s, e) => ArPromptFov(vertical: true);
+            fovMenu.DropDownItems.Add(fovV);
+            arMenu.DropDownItems.Add(fovMenu);
+
+            // ============================ КРЕН КАМЕРЫ ============================
+            var rollMenu = Sub("Крен камеры (диагностика)",
+                "Как крен грузовика учитывается в камере. Эталон — ось X шасси: горизонт должен стать ей параллелен");
+            for (int mode = 0; mode <= 2; mode++)
+            {
+                int m = mode;
+                string name = mode switch
+                {
+                    0 => "0 — крен камеры = 0",
+                    1 => "1 — крен с инверсией (−roll)",
+                    _ => "2 — крен как есть (+roll)"
+                };
+                var it = new ToolStripMenuItem(name);
+                it.Checked = ArCameraRollMode == m;
+                it.Click += (s, e) =>
+                {
+                    ArSetCameraRollMode(m);
+                    BuildArMenu();
+                };
+                rollMenu.DropDownItems.Add(it);
+            }
+            rollMenu.DropDownItems.Add(new ToolStripSeparator());
+            rollMenu.DropDownItems.Add(new ToolStripMenuItem(
+                $"Доля компенсации: {ArCameraRollFactor:F1}  (Ctrl+Shift+J/K)")
+            { Enabled = false });
+            var factorUp = new ToolStripMenuItem("Доля +0.1");
+            factorUp.Click += (s, e) => { NudgeArCameraRollFactor(+0.1); RebuildArCameraPose(); PublishArV2Snapshot(); BuildArMenu(); };
+            rollMenu.DropDownItems.Add(factorUp);
+            var factorDown = new ToolStripMenuItem("Доля −0.1");
+            factorDown.Click += (s, e) => { NudgeArCameraRollFactor(-0.1); RebuildArCameraPose(); PublishArV2Snapshot(); BuildArMenu(); };
+            rollMenu.DropDownItems.Add(factorDown);
+            arMenu.DropDownItems.Add(rollMenu);
+
+            // ============================ ПЛОСКОСТЬ ============================
+            arMenu.DropDownItems.Add(Check(
+                "Плоскость по горизонту (истинная земля)",
+                UseArHorizontalPlane,
+                _ =>
+                {
+                    ToggleArHorizontalPlane();
+                    RebuildArGroundPlane();
+                    PublishArV2Snapshot();
+                    BuildArMenu();
+                    AppendLog(UseArHorizontalPlane
+                        ? "[AR] Плоскость: ГОРИЗОНТАЛЬНАЯ (точка ставится на истинной земле)."
+                        : "[AR] Плоскость: ПО КОЛЁСАМ (измеренный уклон полотна).");
+                },
+                "ВКЛ — плоскость параллельна горизонту мира (для постановки точек). " +
+                "ВЫКЛ — плоскость по колёсам (показывает уклон полотна)"));
+
+            arMenu.DropDownItems.Add(new ToolStripSeparator());
+
+            // ============================ ПЛАВНОСТЬ ============================
+            // v1.0.40.44: сглаживание позы камеры (корень «точки рывками»).
+            // Телеметрия ~28–35 Гц, рендер 60+ Гц; без сглаживания точки стояли
+            // между пакетами и «прыгали» — визуально как 14 fps.
+            var smoothMenu = Sub("Плавность (сглаживание позы)",
+                "Сглаживание движения точек. ВЫКЛ — строго по последнему пакету (может дёргаться)");
+            smoothMenu.DropDownItems.Add(Check("Сглаживание включено", AppSettings.Ar1SmoothCamera,
+                v => { AppSettings.Ar1SmoothCamera = v; AppSettings.Save(); SendArViewToPage();
+                       AppendLog($"[AR] Сглаживание позы камеры {(v ? "ВКЛ" : "ВЫКЛ")}."); },
+                "Экстраполяция + сглаживание: убирает рывки при 28–35 Гц телеметрии"));
+            // Готовые значения tau (постоянная времени сглаживания).
+            var tauMenu = Sub("Сила сглаживания",
+                "Больше tau — плавнее, но чуть больше задержка (v·tau)");
+            foreach (var (tau, name) in new (double, string)[]
+            {
+                (0.020, "Слабое (20 мс) — минимум задержки"),
+                (0.035, "Обычное (35 мс) — рекомендуется"),
+                (0.050, "Среднее (50 мс)"),
+                (0.080, "Сильное (80 мс) — максимум плавности")
+            })
+            {
+                double t = tau;
+                var it = new ToolStripMenuItem($"{name}");
+                it.Checked = Math.Abs(AppSettings.Ar1SmoothTau - t) < 0.001;
+                it.Click += (s, e) =>
+                {
+                    AppSettings.Ar1SmoothTau = t;
+                    AppSettings.Save();
+                    SendArViewToPage();
+                    AppendLog($"[AR] Сглаживание: tau = {t * 1000:F0} мс.");
+                    BuildArMenu();
+                };
+                tauMenu.DropDownItems.Add(it);
+            }
+            smoothMenu.DropDownItems.Add(tauMenu);
+            arMenu.DropDownItems.Add(smoothMenu);
+
+            arMenu.DropDownItems.Add(new ToolStripSeparator());
+
+            // ============================ ЛОГ / СБРОС ============================
+            var logItem = new ToolStripMenuItem("Показать настройки в лог")
+            {
+                ToolTipText = "Записать текущие параметры AR в лог приложения"
+            };
+            logItem.Click += (s, e) => LogArSettings();
+            arMenu.DropDownItems.Add(logItem);
+
+            arMenu.DropDownItems.Add(new ToolStripSeparator());
+
+            var resetAr = new ToolStripMenuItem("Сбросить настройки АР");
+            resetAr.ToolTipText = "Радиус 50 м, FOV 105/65, крен: режим 1, доля 0.5";
+            resetAr.Click += (s, e) => ResetArSettings();
+            arMenu.DropDownItems.Add(resetAr);
+        }
+
+        /// <summary>
+        /// v1.0.40.41: задать радиус точек вводом числа (пункт «Другое…»).
+        /// </summary>
+        private void ArPromptDisplayRadius()
+        {
+            using var dlg = new ArNumberPrompt(
+                "Радиус отображения точек",
+                "Радиус в метрах (5…5000):",
+                ArDisplayRadiusM,
+                5, 5000, 1, "м");
+            if (dlg.ShowDialog(this) == DialogResult.OK) ArSetDisplayRadius((int)dlg.Value);
+        }
+
+        /// <summary>
+        /// v1.0.40.41: задать FOV AR1 вводом числа.
+        /// </summary>
+        private void ArPromptFov(bool vertical)
+        {
+            if (vertical)
+            {
+                using var dlg = new ArNumberPrompt(
+                    "Вертикальный FOV AR1",
+                    "Вертикальный угол обзора (10…150°). Шаг подстройки в игре — 0.2°:",
+                    AR.ArBridge.FovDegreesAr1Vertical,
+                    10, 150, 0.1, "°");
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                    NudgeAr1VerticalFov(dlg.Value - AR.ArBridge.FovDegreesAr1Vertical, "меню «Настройки АР»");
+            }
+            else
+            {
+                using var dlg = new ArNumberPrompt(
+                    "Горизонтальный FOV AR1",
+                    "Горизонтальный угол обзора (30…150°):",
+                    AR.ArBridge.FovDegreesAr1,
+                    30, 150, 1, "°");
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                    SetAr1Fov(dlg.Value, "меню «Настройки АР»");
+            }
+        }
+
+        /// <summary>v1.0.40.41: задать режим крена камеры числом (0/1/2).</summary>
+        private void ArSetCameraRollMode(int mode)
+        {
+            // Приводим к нужному режиму циклом (публичный API — только Cycle).
+            for (int guard = 0; guard < 3 && ArCameraRollMode != mode; guard++) CycleArCameraRollMode();
+            RebuildArCameraPose();
+            RebuildArGroundPlane();
+            PublishArV2Snapshot();
+            AppendLog($"[AR] Режим крена камеры = {mode} ({ArCameraRollModeName}).");
+        }
+
+        /// <summary>v1.0.40.41: записать текущие параметры AR в лог.</summary>
+        private void LogArSettings()
+        {
+            AppendLog(
+                $"[AR] Настройки: радиус={ArDisplayRadiusM:F0} м · " +
+                $"FOV H={AR.ArBridge.FovDegreesAr1:F0}° V={AR.ArBridge.FovDegreesAr1Vertical:F1}° · " +
+                $"крен: режим={ArCameraRollMode} ({ArCameraRollModeName}), доля={ArCameraRollFactor:F1} · " +
+                $"плоскость={(UseArHorizontalPlane ? "по горизонту" : "по колёсам")} · " +
+                $"плавность={(AppSettings.Ar1SmoothCamera ? $"ВКЛ (tau={AppSettings.Ar1SmoothTau * 1000:F0} мс)" : "ВЫКЛ")} · " +
+                $"визуализация: сетка={AppSettings.Ar1ShowGrid}, оси={AppSettings.Ar1ShowChassisAxes}, " +
+                $"горизонт={AppSettings.Ar1ShowHorizon}, полотно={AppSettings.Ar1ShowPlaneHorizon}, " +
+                $"окно высот={AppSettings.ShowHeightsWindow}.");
+        }
+
+        /// <summary>
+        /// v1.0.40.41: сброс настроек AR к значениям по умолчанию.
+        /// Радиус 50 м, FOV 105/65, режим крена 2, доля 0.5, плоскость по горизонту,
+        /// сглаживание ВКЛ с tau 35 мс.
+        /// </summary>
+        private void ResetArSettings()
+        {
+            var res = MessageBox.Show(
+                "Сбросить настройки АР к значениям по умолчанию?\n\n" +
+                "• радиус точек: 50 м\n• FOV: 105° / 65°\n" +
+                "• крен камеры: режим 2 (+roll), доля 0.5\n" +
+                "• плоскость: по горизонту\n• сглаживание: ВКЛ, 35 мс",
+                "Сброс настроек АР", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (res != DialogResult.Yes) return;
+
+            AppSettings.ArDisplayRadiusM = 50;
+            AppSettings.Ar1FovDeg = 105;
+            AppSettings.Ar1FovVerticalDeg = 65;
+            // v1.0.40.44: сброс плавности к зафиксированным значениям по умолчанию.
+            AppSettings.Ar1SmoothCamera = true;
+            AppSettings.Ar1SmoothTau = 0.035;
+            AppSettings.Save();
+
+            ArResetNearSignature();
+            SetAr1Fov(105, "сброс");
+            NudgeAr1VerticalFov(65 - AR.ArBridge.FovDegreesAr1Vertical, "сброс");
+            ArSetCameraRollMode(2);
+            NudgeArCameraRollFactor(0.5 - ArCameraRollFactor);
+            if (!UseArHorizontalPlane) ToggleArHorizontalPlane();
+
+            RebuildArCameraPose();
+            RebuildArGroundPlane();
+            PublishArV2Snapshot();
+            SendArViewToPage();
+            BuildArMenu();
+            AppendLog("[AR] Настройки АР сброшены к значениям по умолчанию.");
+        }
+
+        /// <summary>
+        /// v1.0.40.40: включить/выключить ВСЕ отладочные визуализации AR сразу.
+        /// </summary>
+        private void SetAllArVisuals(bool on)
+        {
+            AppSettings.Ar1ShowGrid = on;
+            AppSettings.Ar1ShowChassisAxes = on;
+            AppSettings.Ar1ShowHorizon = on;
+            AppSettings.Ar1ShowPlaneHorizon = on;
+            AppSettings.ShowHeightsWindow = on;
+            AppSettings.Save();
+            SendArViewToPage();
+            ApplyHeightsWindowVisibility(on);
+            BuildViewMenu();
+            AppendLog($"[VIEW] Отладочная визуализация AR {(on ? "ВКЛ" : "ВЫКЛ")} (сетка/оси/горизонты/высоты).");
+        }
+
+        /// <summary>
+        /// v1.0.40.40: настройки вида AR → странице AR1 (dumb-receiver).
+        /// </summary>
+        private void SendArViewToPage()
+        {
+            try
+            {
+                SendCommandToMap("ar_view", new JObject
+                {
+                    ["grid"] = AppSettings.Ar1ShowGrid,
+                    ["axes"] = AppSettings.Ar1ShowChassisAxes,
+                    ["horizon"] = AppSettings.Ar1ShowHorizon,
+                    ["planeHorizon"] = AppSettings.Ar1ShowPlaneHorizon,
+                    ["radiusM"] = ArDisplayRadiusM,
+                    // v1.0.40.44: плавность движения точек.
+                    ["smooth"] = AppSettings.Ar1SmoothCamera,
+                    ["smoothTau"] = AppSettings.Ar1SmoothTau
+                });
+            }
+            catch (Exception ex) { AppendLog($"[VIEW] Не удалось отправить настройки вида: {ex.Message}"); }
+        }
+
+        /// <summary>
+        /// v1.0.40.40: изменить радиус показа точек в AR (м) из меню «Вид».
+        /// Само значение живёт в AppSettings; AR-канал читает его через
+        /// ArDisplayRadiusM (объявлено в MainForm.ArTarget.cs).
+        /// </summary>
+        private void ArSetDisplayRadius(int meters)
+        {
+            AppSettings.ArDisplayRadiusM = meters;
+            AppSettings.Save();
+            // Сбросить подпись набора, чтобы новый радиус применился немедленно.
+            ArResetNearSignature();
+            SendArViewToPage();
+            AppendLog($"[VIEW] Радиус показа точек в AR = {meters} м.");
+        }
+
+        /// <summary>
+        /// v1.0.40.40: окно визуализации высот — отдельный оверлей WebOverlay.
+        /// Выключение закрывает именно это окно (остальные оверлеи не трогаем).
+        /// </summary>
+        private void ApplyHeightsWindowVisibility(bool visible)
+        {
+            try
+            {
+                if (visible) StartHeightsOverlayIfMissing();
+                else StopHeightsOverlay();
+            }
+            catch (Exception ex) { AppendLog($"[VIEW] Окно высот: {ex.Message}"); }
+        }
+
+        /// <summary>Открыть окно высот, только если его ещё нет.</summary>
+        private void StartHeightsOverlayIfMissing()
+        {
+            string overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "WebOverlay.exe");
+            if (!File.Exists(overlayExe))
+            {
+                AppendLog("[VIEW] WebOverlay.exe не найден — окно высот не запущено.");
+                return;
+            }
+            Process.Start(overlayExe, "append http://localhost:8082/web_heights.html");
+            AppendLog("[VIEW] Окно визуализации высот открыто.");
+        }
+
+        /// <summary>
+        /// Закрыть окно высот. Ищем процесс WebOverlay, чей заголовок относится к
+        /// странице высот; остальные оверлеи (миникарта/гибрид/логотип) не трогаем.
+        /// </summary>
+        private void StopHeightsOverlay()
+        {
+            int closed = 0;
+            foreach (var proc in Process.GetProcessesByName("WebOverlay"))
+            {
+                try
+                {
+                    string t = proc.MainWindowTitle ?? "";
+                    if (t.IndexOf("высот", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        t.IndexOf("heights", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        proc.Kill();
+                        closed++;
+                    }
+                }
+                catch { }
+            }
+            AppendLog(closed > 0
+                ? "[VIEW] Окно визуализации высот закрыто."
+                : "[VIEW] Окно высот не найдено (возможно, уже закрыто).");
+        }
+
         private void InitializeComponents()
         {
             mainMenu = new MenuStrip();
             fileMenu = new ToolStripMenuItem("File");
+            // ================================================================
+            // v1.0.40.40: РАЗДЕЛ «ВИД» — переключатели отладочной визуализации AR.
+            // Требование пользователя: «Вынеси АР сетку, высоты и оси в настройки
+            // меню вид. Чтобы при желании можно было включить и ещё отлаживать.»
+            // По умолчанию всё ВЫКЛЮЧЕНО (сетка/оси/высоты убраны из штатной работы).
+            // ================================================================
+            viewMenu = new ToolStripMenuItem("Вид");
+            // ================================================================
+            // v1.0.40.41: РАЗДЕЛ «НАСТРОЙКИ АР» — РАБОЧИЕ параметры (не отладка).
+            // Требование пользователя: «Сделай меню настроек АР. Вынеси туда радиус
+            // отображения точек.»
+            // Отличие от «Вид»: «Вид» — что ПОКАЗЫВАТЬ (отладочные визуализации),
+            // «Настройки АР» — КАК РАБОТАЕТ AR (радиус, FOV, крен, плоскость).
+            // Все значения сохраняются в AppSettings и транслируются странице.
+            // ================================================================
+            arMenu = new ToolStripMenuItem("Настройки АР");
             settingsMenu = new ToolStripMenuItem("Settings", null, (s, e) => OpenSettings());
             helpMenu = new ToolStripMenuItem("Help", null, (s, e) => ShowHelp());
             checkUpdatesMenu = new ToolStripMenuItem("Check Updates", null, (s, e) => CheckUpdates());
@@ -425,6 +932,12 @@ RegisterHotKeyChecked(
             fileMenu.DropDownItems.Add(new ToolStripSeparator());
             fileMenu.DropDownItems.Add(exitMenu);
             mainMenu.Items.Add(fileMenu);
+
+            BuildViewMenu();
+            mainMenu.Items.Add(viewMenu);
+
+            BuildArMenu();
+            mainMenu.Items.Add(arMenu);
 
             // Галочка developer mode — справа у правого края меню (File слева).
             // Настоящий CheckBox (чекбокс + лейбл рядом), а не пункт-«кнопка».
@@ -448,7 +961,6 @@ RegisterHotKeyChecked(
 
             int leftX = 20;
             int topY = mainMenu.Height + 20;
-
             btnStart = new Button { Text = "Start", Location = new Point(leftX, topY), Size = new Size(120, 30), Tag = "Toggle" };
             btnStart.Click += (s, e) => StartSystem();
 
@@ -963,6 +1475,11 @@ RegisterHotKeyChecked(
             await procManager.StartAsync();
 
             StartWebOverlay();
+
+            // v1.0.40.31: окно визуализации высот открыто ВСЕГДА (правый верхний угол),
+            // значит телеметрия фуры (WS + REST + тик + плоскость дороги по колёсам)
+            // должна идти НЕЗАВИСИМО от того, нажат ли «Запустить AR».
+            EnsureArTelemetryPump(alwaysOn: true);
 
             UpdateTruckTelPort();
 
@@ -2079,8 +2596,38 @@ RegisterHotKeyChecked(
         // вычисляем и создаём их для экрана, где показано окно игры.
         // Формат файла (по weboverlay/Program.cs): X, Y, zoom, Width, Height.
         // ================================================================
+        // ================================================================
+        // v1.0.40.42: КЭШ ИГРОВОГО ЭКРАНА.
+        //
+        // КОРЕНЬ «точки замирают» (вторая причина): этот метод звался из горячего
+        // пути AR (BuildHeightsPayload / LogArTiltDiagnostics — до 30 раз в секунду)
+        // и КАЖДЫЙ РАЗ делал Process.GetProcessesByName для eurotrucks2/amtrucks2.
+        // Обход процессов — дорогая системная операция: она блокировала UI-поток,
+        // из-за чего тики не обрабатывались и точки «стояли».
+        //
+        // РЕШЕНИЕ: результат кэшируем на 2 секунды (монитор игры не меняется
+        // чаще), плюс отдельный принудительный сброс. Значение — дескриптор экрана,
+        // а НЕ его Bounds, чтобы при изменении разрешения кэш просто перечитался.
+        // ================================================================
+        private Screen? _gameScreenCache;
+        private DateTime _gameScreenAt = DateTime.MinValue;
+        private const int GameScreenCacheMs = 2000;
+
+        /// <summary>Сбросить кэш игрового экрана (после смены монитора/разрешения).</summary>
+        internal void InvalidateGameScreenCache()
+        {
+            _gameScreenCache = null;
+            _gameScreenAt = DateTime.MinValue;
+        }
+
         private Screen GetGameScreen()
         {
+            // Кэш: 2 секунды (обход процессов — дорого, а экран так часто не меняется).
+            if (_gameScreenCache != null &&
+                (DateTime.Now - _gameScreenAt).TotalMilliseconds < GameScreenCacheMs)
+            {
+                return _gameScreenCache;
+            }
             try
             {
                 foreach (var name in new[] { "eurotrucks2", "amtrucks2" })
@@ -2090,13 +2637,20 @@ RegisterHotKeyChecked(
                         if (p.MainWindowHandle != IntPtr.Zero)
                         {
                             var s = Screen.FromHandle(p.MainWindowHandle);
-                            if (s != null) return s;
+                            if (s != null)
+                            {
+                                _gameScreenCache = s;
+                                _gameScreenAt = DateTime.Now;
+                                return s;
+                            }
                         }
                     }
                 }
             }
             catch { }
-            return Screen.PrimaryScreen;
+            _gameScreenCache = Screen.PrimaryScreen;
+            _gameScreenAt = DateTime.Now;
+            return _gameScreenCache;
         }
 
         private static string OverlayStateFileName(string url)
@@ -2112,6 +2666,7 @@ RegisterHotKeyChecked(
             double frac;
             string kind = url.Contains("web_pda_map") ? "map"
                         : url.Contains("web_ui_hybrid") ? "hybrid"
+                        : url.Contains("web_heights") ? "heights"
                         : url.Contains("web_pause_logo") ? "logo" : "map";
             switch (kind)
             {
@@ -2129,6 +2684,12 @@ RegisterHotKeyChecked(
                     h = (int)Math.Round(wa.Height * Math.Sqrt(frac));
                     x = wa.X + (wa.Width - w) / 2;
                     y = wa.Bottom - h + (int)(wa.Height * 0.15);
+                    break;
+                case "heights": // v1.0.40.31: визуализация высот — ПРАВЫЙ ВЕРХНИЙ УГОЛ
+                    w = (int)Math.Round(wa.Width * 0.34);
+                    h = (int)Math.Round(wa.Height * 0.30);
+                    x = wa.Right - w;
+                    y = wa.Y;
                     break;
                 default: // pause_logo: левый верхний угол, на 15% больше (~3% площади), квадрат
                     frac = 0.03;
@@ -2154,7 +2715,9 @@ RegisterHotKeyChecked(
                 {
                     "http://localhost:8082/web_pda_map.html",
                     "http://localhost:8082/web_ui_hybrid.html",
-                    "http://localhost:8082/web_pause_logo.html"
+                    "http://localhost:8082/web_pause_logo.html",
+                    // v1.0.40.31: окно визуализации высот — правый верхний угол, всегда открыто.
+                    "http://localhost:8082/web_heights.html"
                 };
                 foreach (var url in urls)
                 {
@@ -2202,6 +2765,9 @@ RegisterHotKeyChecked(
                 string urlMain = "http://localhost:8082/web_ui_hybrid.html";
                 string urlPda = "http://localhost:8082/web_pda_map.html";
                 string urlPauseLogo = "http://localhost:8082/web_pause_logo.html";
+                // v1.0.40.31: окно визуализации высот (боковая проекция) — правый верхний
+                // угол экрана игры, открыто ВСЕГДА вместе с остальными оверлеями.
+                string urlHeights = "http://localhost:8082/web_heights.html";
                 Process.Start(overlayExe, urlMain);
                 AppendLog("Main overlay started.");
                 System.Threading.Thread.Sleep(500);
@@ -2210,6 +2776,21 @@ RegisterHotKeyChecked(
                 System.Threading.Thread.Sleep(200);
                 Process.Start(overlayExe, $"append {urlPauseLogo}");
                 AppendLog("Pause logo overlay appended.");
+                System.Threading.Thread.Sleep(200);
+                // ============================================================
+                // v1.0.40.40: ОКНО ВЫСОТ БОЛЬШЕ НЕ ОТКРЫВАЕТСЯ ПО УМОЛЧАНИЮ.
+                // Требование пользователя: «Убираем оси, сетку, визуализацию высот».
+                // Окно можно включить в меню «Вид» (настройка сохраняется).
+                // ============================================================
+                if (AppSettings.ShowHeightsWindow)
+                {
+                    Process.Start(overlayExe, $"append {urlHeights}");
+                    AppendLog("Heights visualization overlay appended (включено в меню «Вид»).");
+                }
+                else
+                {
+                    AppendLog("Окно визуализации высот не открывается (выключено в меню «Вид»).");
+                }
             }
             catch (Exception ex)
             {
@@ -2360,6 +2941,9 @@ RegisterHotKeyChecked(
         private void StopSystem()
         {
             AppendLog("Stopping system...");
+            // v1.0.40.31: при остановке системы насос телеметрии гасим ВСЕГДА
+            // (в обычном режиме его сохраняет окно визуализации высот).
+            try { StopArTelemetryPumpForShutdown(); } catch { }
             StopArTargetFeed();
             // v1.0.40.27: AR1 (web) гасим явно — оверлей не должен переживать StopSystem.
             StopArOverlay(manual: false);
@@ -2730,6 +3314,50 @@ RegisterHotKeyChecked(
                     case HOTKEY_AR1_FOV_DOWN:
                         // v1.0.40.27: CTRL+PGDN — FOV AR1 −1° (шаг 1 градус, автоповтор).
                         SetAr1Fov(AR.ArBridge.FovDegreesAr1 - 1.0, "Ctrl+PGDN");
+                        break;
+                    case HOTKEY_AR1_VFOV_UP:
+                        // v1.0.40.34: CTRL+SHIFT+PGUP — вертикальный FOV AR1 +0.2° (было 0.5°).
+                        NudgeAr1VerticalFov(+0.2, "Ctrl+Shift+PGUP");
+                        break;
+                    case HOTKEY_AR1_VFOV_DOWN:
+                        // v1.0.40.34: CTRL+SHIFT+PGDN — вертикальный FOV AR1 −0.2° (было 0.5°).
+                        NudgeAr1VerticalFov(-0.2, "Ctrl+Shift+PGDN");
+                        break;
+                    case HOTKEY_AR1_ROLLSIGN:
+                        // v1.0.40.36: перебор РЕЖИМОВ крена камеры (1 → 0 → 2).
+                        // Критерий верного режима: голубой горизонт (мировой) должен
+                        // совпасть с белой линией горизонта РЕАЛЬНОГО полотна.
+                        {
+                            string mode = CycleArCameraRollMode();
+                            RebuildArCameraPose();
+                            RebuildArGroundPlane();
+                            PublishArV2Snapshot();
+                            AppendLog($"[AR] РЕЖИМ КРЕНА КАМЕРЫ: {mode} (Ctrl+Shift+Y — далее). " +
+                                "Смотрим: голубой горизонт должен лечь на белую линию горизонта полотна.");
+                        }
+                        break;
+                    case HOTKEY_AR1_PLANEMODE:
+                        // v1.0.40.37: сравнение «горизонтальная плоскость» ↔ «по колёсам».
+                        {
+                            ToggleArHorizontalPlane();
+                            RebuildArGroundPlane();
+                            PublishArV2Snapshot();
+                            AppendLog(UseArHorizontalPlane
+                                ? "[AR] ПЛОСКОСТЬ: ГОРИЗОНТАЛЬНАЯ (параллельна горизонту мира, Ctrl+Shift+U)."
+                                : "[AR] ПЛОСКОСТЬ: ПО КОЛЁСАМ (измеренный уклон полотна).");
+                        }
+                        break;
+                    case HOTKEY_AR1_ROLLFACTOR_UP:
+                    case HOTKEY_AR1_ROLLFACTOR_DOWN:
+                        // v1.0.40.38: доля крена кузова, переходящая в камеру.
+                        {
+                            double d = (id == HOTKEY_AR1_ROLLFACTOR_UP) ? +0.1 : -0.1;
+                            double f = NudgeArCameraRollFactor(d);
+                            RebuildArCameraPose();
+                            PublishArV2Snapshot();
+                            AppendLog($"[AR] Доля компенсации крена камеры = {f:F1} " +
+                                "(режим должен быть 1 или 2; в режиме 0 крен камеры всегда 0).");
+                        }
                         break;
                     case HOTKEY_TELEPORT_EDITOR:
                         // v39.30: Ctrl+Shift+T — телепорт в РЕДАКТОРЕ (Find→Position, без heading/elev).
@@ -3824,6 +4452,14 @@ RegisterHotKeyChecked(
                 UnregisterHotKey(this.Handle, HOTKEY_GAME_PIN);
                 UnregisterHotKey(this.Handle, HOTKEY_AR1_FOV_UP);
                 UnregisterHotKey(this.Handle, HOTKEY_AR1_FOV_DOWN);
+                // v1.0.40.33: ручная подстройка вертикального FOV AR1.
+                UnregisterHotKey(this.Handle, HOTKEY_AR1_VFOV_UP);
+                UnregisterHotKey(this.Handle, HOTKEY_AR1_VFOV_DOWN);
+                // v1.0.40.38: режим крена камеры, плоскость, доля компенсации крена.
+                UnregisterHotKey(this.Handle, HOTKEY_AR1_ROLLSIGN);
+                UnregisterHotKey(this.Handle, HOTKEY_AR1_PLANEMODE);
+                UnregisterHotKey(this.Handle, HOTKEY_AR1_ROLLFACTOR_UP);
+                UnregisterHotKey(this.Handle, HOTKEY_AR1_ROLLFACTOR_DOWN);
                 UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
             }
             catch (Exception ex)

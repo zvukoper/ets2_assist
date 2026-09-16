@@ -855,62 +855,67 @@ namespace ETS2_Assist_GUI.AR
         }
 
         // ================================================================
-        // v40.7: СЕТКА = КРУГ R=100 м ВОКРУГ ГРУЗОВИКА, ШАГ 1 м.
-        // ОРАНЖЕВЫЕ тонкие линии (1px) + ярко-КРАСНЫЕ точки в узлах квадратов.
-        // Точки — только в «верхних-левых»/чётных узлах (углах клеток 2×2), 2px.
+        // v1.0.40.31: СЕТКА ЖИВЁТ НА РЕАЛЬНОЙ ПЛОСКОСТИ ДОРОГИ (по колёсам).
+        // Было (v40.7): круг R=100 м на ГОРИЗОНТАЛЬНОЙ плоскости groundY+PlaneOffsetM,
+        //               шаг 1 м в мировых X/Z, шахматная заливка, warp-калибровка.
+        // Стало:        круг R=150 м ВНУТРИ плоскости: оси AxisU/AxisV, центр —
+        //               опорная точка фуры, спроецированная на плоскость.
+        //               Каждый 1 м — тонкая белая; каждый 10 м — толстая оранжевая;
+        //               каждый 50 м — красная (50 м приоритетнее 10 м); до 125 м
+        //               alpha постоянная, 125…150 м линейный fade, далее не рисуется.
+        //               Окружность R=150 м — РЕАЛЬНАЯ мировая окружность В плоскости.
+        // Никаких Math.Round(worldX/worldZ) и никакого groundY/PlaneOffsetM.
         // ================================================================
         private void DrawPlaneGrid(ArGameState? s)
         {
             if (s == null || _cvsh == null || _cpsh == null || _cil == null) return;
-            double planeY = s.GroundY + s.PlaneOffsetM;
-            const double RadiusM = 100.0;
-            const float HalfW = 0.45f;     // тонкая линия ~1px
-            const float BaseA = 0.45f;     // оранжевые линии (на 30% непрозрачнее: 0.35→0.455)
-            const float PointA = 0.9f;     // ярко-красные точки
-            const int MaxSegs = 100000;
+            var plane = s.GroundPlane;
+            if (plane == null || !plane.Valid) return;
 
-            // ============================================================
-            // PERSPECTIVE WARP: каждый кадр пересчитываем source-точки
-            // (четыре угла квадрата 10×10 м впереди) и обновляем homography.
-            // Первый кадр — Initialize, все следующие — UpdatePerspectiveSources.
-            // ============================================================
-            double yaw = s.YawBase * Math.PI * 2.0 + s.YawHead * Math.PI * 2.0;
-            double forwardX = -Math.Sin(yaw);
-            double forwardZ = -Math.Cos(yaw);
-            double centerX = s.CamX + forwardX * PerspectiveCalibrationForwardDistanceM;
-            double centerZ = s.CamZ + forwardZ * PerspectiveCalibrationForwardDistanceM;
-            const double half = PerspectiveCalibrationSquareSizeM * 0.5;
+            // ================================================================
+            // v1.0.40.33: СЕТКА — ПРОСТО ПЛОСКОСТЬ БЕЗ ОГРАНИЧЕНИЙ.
+            // УБРАНО: круг R=150 м, fade 125…150 м по радиусу, граница-окружность,
+            // расширение к камере (CameraPadM). Линии гаснут только по ЭКРАННОЙ
+            // вертикали и по РАССТОЯНИЮ ДО КАМЕРЫ (мягкое отсечение дали).
+            // Центр — точка ПОД КАМЕРОЙ (проекция камеры на плоскость): камера
+            // стоит выше и сзади опорной точки, поэтому раньше у низа экрана
+            // сетки не было вовсе.
+            // ================================================================
+            const double FarStartM = 220.0;
+            const double FarEndM = 320.0;
+            const double BehindM = 80.0;
+            const double AheadM = FarEndM + 20.0;
+            const int MaxSegs = 200000;
 
-            var warpSource = new Vector2[4];
-            var wp0 = ProjectPoint(centerX - half, planeY, centerZ - half, s);
-            var wp1 = ProjectPoint(centerX + half, planeY, centerZ - half, s);
-            var wp2 = ProjectPoint(centerX + half, planeY, centerZ + half, s);
-            var wp3 = ProjectPoint(centerX - half, planeY, centerZ + half, s);
+            // Центр сетки: проекция КАМЕРЫ на плоскость, в координатах (u,v).
+            plane.SnapToPlane(s.CamX, s.CamZ, out double cxw, out double cyw, out double czw);
+            plane.ProjectToGridCoordinates(cxw, cyw, czw, out double u0, out double v0);
 
-            if (wp0.HasValue && wp1.HasValue && wp2.HasValue && wp3.HasValue &&
-                wp0.Value.inFront && wp1.Value.inFront && wp2.Value.inFront && wp3.Value.inFront)
+            // Округление до целых метров — линии сетки совпадают с мировыми узлами.
+            u0 = Math.Round(u0);
+            v0 = Math.Round(v0);
+            long uMin = (long)Math.Floor(u0 - BehindM);
+            long uMax = (long)Math.Ceiling(u0 + AheadM);
+            long vMin = (long)Math.Floor(v0 - BehindM);
+            long vMax = (long)Math.Ceiling(v0 + AheadM);
+
+            // Проекция узла (u,v) плоскости в экран.
+            (float u, float v, bool ok) ProjUV(double u, double v, double yLift)
             {
-                warpSource[0] = new Vector2(wp0.Value.u, wp0.Value.v);
-                warpSource[1] = new Vector2(wp1.Value.u, wp1.Value.v);
-                warpSource[2] = new Vector2(wp2.Value.u, wp2.Value.v);
-                warpSource[3] = new Vector2(wp3.Value.u, wp3.Value.v);
-
-                if (!ArBridge.PerspectiveWarpInitialized)
-                {
-                    ArBridge.InitializePerspectiveWarp(warpSource);
-                }
-                else
-                {
-                    ArBridge.UpdatePerspectiveSources(warpSource);
-                }
+                plane.FromGrid(u, v, out double wx, out double wy, out double wz);
+                var p = ProjectPoint(wx, wy + yLift, wz, s);
+                if (!p.HasValue || !p.Value.inFront) return (0, 0, false);
+                if (!float.IsFinite(p.Value.u) || !float.IsFinite(p.Value.v)) return (0, 0, false);
+                return (p.Value.u, p.Value.v, true);
             }
 
-            // Активируем warp для отрисовки сетки (только здесь).
-            _gridWarp = ArBridge.GetPerspectiveWarp();
-            _gridWarpActive = true;
-
-            float[] vb = new float[MaxSegs * 6 * 8];
-            int o = 0;
+            // Гашение по РАССТОЯНИЮ ОТ КАМЕРЫ (не по радиусу вокруг точки!).
+            float FadeAt(double dist)
+            {
+                if (dist >= FarEndM) return 0f;
+                if (dist <= FarStartM) return 1f;
+                return (float)((FarEndM - dist) / (FarEndM - FarStartM));
+            }
 
             float VertAlpha(float vPx)
             {
@@ -921,20 +926,17 @@ namespace ETS2_Assist_GUI.AR
                 return Math.Clamp(1f - t, 0f, 1f);
             }
 
-            float DistFade(double wx, double wz)
-            {
-                double dx = wx - s.CamX, dz = wz - s.CamZ;
-                double d = Math.Sqrt(dx * dx + dz * dz);
-                return (float)Math.Clamp(1.0 - d / RadiusM, 0.0, 1.0);
-            }
+            var vb = new float[MaxSegs * 6 * 8];
+            int o = 0;
 
-            void EmitSeg(float u1, float v1, float u2, float v2, float a1, float a2, float r, float g, float b)
+            void EmitSeg(float u1, float v1, float u2, float v2, float a1, float a2,
+                         float width, float r, float g, float b)
             {
                 if (o + 6 * 8 > vb.Length) return;
                 float dx = u2 - u1, dy = v2 - v1;
                 float len = MathF.Sqrt(dx * dx + dy * dy);
                 if (len < 1e-3f) return;
-                float px = -dy / len * HalfW, py = dx / len * HalfW;
+                float px = -dy / len * width, py = dx / len * width;
                 void Emit(float x, float y, float a)
                 {
                     vb[o++] = 2f * (x / _width) - 1f;
@@ -943,97 +945,84 @@ namespace ETS2_Assist_GUI.AR
                     vb[o++] = r * a; vb[o++] = g * a; vb[o++] = b * a; vb[o++] = a;
                 }
                 float ax = u1 + px, ay = v1 + py, bx = u1 - px, by = v1 - py;
-                float cx = u2 - px, cy = v2 - py, dx2 = u2 + px, dy2 = v2 + py;
-                Emit(ax, ay, a1); Emit(bx, by, a1); Emit(cx, cy, a2);
-                Emit(ax, ay, a1); Emit(cx, cy, a2); Emit(dx2, dy2, a2);
+                float cx2 = u2 - px, cy2 = v2 - py, dx2 = u2 + px, dy2 = v2 + py;
+                Emit(ax, ay, a1); Emit(bx, by, a1); Emit(cx2, cy2, a2);
+                Emit(ax, ay, a1); Emit(cx2, cy2, a2); Emit(dx2, dy2, a2);
             }
 
-            // Заливка клетки (2 треугольника) заданным цветом/альфой.
-            void EmitQuad(float u0, float v0, float u1, float v1, float u2, float v2, float u3, float v3, float a, float r, float g, float b)
+            // Класс линии: 50 м (красная, приоритет) > 10 м (толстая оранжевая) > 1 м.
+            void LineStyle(long idxCoord, out float r, out float g, out float b, out float width, out float alphaScale)
             {
-                if (o + 6 * 8 > vb.Length) return;
-                void Emit(float x, float y)
-                {
-                    vb[o++] = 2f * (x / _width) - 1f;
-                    vb[o++] = 1f - 2f * (y / _height);
-                    vb[o++] = 0; vb[o++] = 1f;
-                    vb[o++] = r * a; vb[o++] = g * a; vb[o++] = b * a; vb[o++] = a;
-                }
-                Emit(u0, v0); Emit(u1, v1); Emit(u2, v2);
-                Emit(u0, v0); Emit(u2, v2); Emit(u3, v3);
+                if (idxCoord % 50 == 0) { r = 1.0f; g = 0.15f; b = 0.15f; width = 1.6f; alphaScale = 0.95f; }
+                else if (idxCoord % 10 == 0) { r = 1.0f; g = 0.55f; b = 0.0f; width = 1.1f; alphaScale = 0.85f; }
+                else { r = 1.0f; g = 1.0f; b = 1.0f; width = 0.35f; alphaScale = 0.42f; }
             }
 
-            long camXi = (long)Math.Round(s.CamX);
-            long camZi = (long)Math.Round(s.CamZ);
+            long iu0 = (long)u0, iv0 = (long)v0;
 
-            // 0. ШАХМАТНАЯ заливка (белый, 60% прозрачнее = альфа 0.4).
-            // Заливаем клетки 1×1 м, где (x+z) чётное.
-            for (long x = camXi - 100; x < camXi + 100; x++)
+            // Расстояние от КАМЕРЫ до середины отрезка в метрах (для fade).
+            double CamDistAt(double u, double v)
             {
-                for (long z = camZi - 100; z < camZi + 100; z++)
-                {
-                    if (((x + z) & 1) != 0) continue;   // шахматный порядок
-                    var p00 = ProjectPoint(x, planeY, z, s);
-                    var p10 = ProjectPoint(x + 1, planeY, z, s);
-                    var p11 = ProjectPoint(x + 1, planeY, z + 1, s);
-                    var p01 = ProjectPoint(x, planeY, z + 1, s);
-                    if (p00 == null || p10 == null || p11 == null || p01 == null) continue;
-                    if (!p00.Value.inFront || !p10.Value.inFront || !p11.Value.inFront || !p01.Value.inFront) continue;
-                    float a = 0.4f * DistFade(x + 0.5, z + 0.5) * VertAlpha((p00.Value.v + p11.Value.v) * 0.5f);
-                    if (a < 0.015f) continue;
-                    EmitQuad(p00.Value.u, p00.Value.v, p10.Value.u, p10.Value.v,
-                             p11.Value.u, p11.Value.v, p01.Value.u, p01.Value.v, a, 1f, 1f, 1f);
-                }
+                plane.FromGrid(u, v, out double wx, out double wy, out double wz);
+                double dx = wx - s.CamX, dy = wy - s.CamY, dz = wz - s.CamZ;
+                return Math.Sqrt(dx * dx + dy * dy + dz * dz);
             }
 
-            // 1. ОРАНЖЕВАЯ сетка 1 м (все линии, чёткие и тонкие).
-            for (long k = camXi - 100; k <= camXi + 100; k++)
+            // ---- ЛИНИИ ПОСТОЯННОГО u (вдоль оси V) ----
+            for (long iu = uMin; iu <= uMax; iu++)
             {
-                double dk = Math.Abs(k - s.CamX);
-                if (dk >= RadiusM) continue;
-                double halfLen = Math.Sqrt(RadiusM * RadiusM - dk * dk);
-                for (double z = camZi - halfLen; z < camZi + halfLen - 1e-6; z += 1.0)
+                LineStyle(iu, out float r, out float g, out float b, out float w, out float asc);
+
+                // Линия уходит от −BehindM до +AheadM в координатах плоскости.
+                // Режем на куски для корректного fade по расстоянию.
+                const int Pieces = 10;
+                double total = BehindM + AheadM;
+                double stepLen = total / Pieces;
+                double dvPrev = -BehindM;
+                for (int k = 1; k <= Pieces; k++)
                 {
-                    double z0 = z, z1 = Math.Min(z + 1.0, camZi + halfLen);
-                    var p1 = ProjectPoint(k, planeY, z0, s);
-                    var p2 = ProjectPoint(k, planeY, z1, s);
-                    if (p1 == null || p2 == null || !p1.Value.inFront || !p2.Value.inFront) continue;
-                    float f1 = BaseA * DistFade(k, z0) * VertAlpha(p1.Value.v);
-                    float f2 = BaseA * DistFade(k, z1) * VertAlpha(p2.Value.v);
-                    if (f1 < 0.015f && f2 < 0.015f) continue;
-                    EmitSeg(p1.Value.u, p1.Value.v, p2.Value.u, p2.Value.v, f1, f2, 1.0f, 0.62f, 0.0f);
-                }
-            }
-            for (long k = camZi - 100; k <= camZi + 100; k++)
-            {
-                double dk = Math.Abs(k - s.CamZ);
-                if (dk >= RadiusM) continue;
-                double halfLen = Math.Sqrt(RadiusM * RadiusM - dk * dk);
-                for (double x = camXi - halfLen; x < camXi + halfLen - 1e-6; x += 1.0)
-                {
-                    double x0 = x, x1 = Math.Min(x + 1.0, camXi + halfLen);
-                    var p1 = ProjectPoint(x0, planeY, k, s);
-                    var p2 = ProjectPoint(x1, planeY, k, s);
-                    if (p1 == null || p2 == null || !p1.Value.inFront || !p2.Value.inFront) continue;
-                    float f1 = BaseA * DistFade(x0, k) * VertAlpha(p1.Value.v);
-                    float f2 = BaseA * DistFade(x1, k) * VertAlpha(p2.Value.v);
-                    if (f1 < 0.015f && f2 < 0.015f) continue;
-                    EmitSeg(p1.Value.u, p1.Value.v, p2.Value.u, p2.Value.v, f1, f2, 1.0f, 0.62f, 0.0f);
+                    double dvCur = -BehindM + stepLen * k;
+                    double midV = (dvPrev + dvCur) * 0.5;
+                    float fade = FadeAt(CamDistAt(iu, v0 + midV));
+                    if (fade <= 0.01f) { dvPrev = dvCur; continue; }
+
+                    var p1 = ProjUV(iu, v0 + dvPrev, 0.0);
+                    var p2 = ProjUV(iu, v0 + dvCur, 0.0);
+                    dvPrev = dvCur;
+                    if (!p1.ok || !p2.ok) continue;
+
+                    float a1 = asc * fade * VertAlpha(p1.v);
+                    float a2 = asc * fade * VertAlpha(p2.v);
+                    if (a1 < 0.01f && a2 < 0.01f) continue;
+                    EmitSeg(p1.u, p1.v, p2.u, p2.v, a1, a2, w, r, g, b);
                 }
             }
 
-            // 2. ЯРКО-КРАСНЫЕ точки 4px В КАЖДОМ пересечении линий (каждый целый X и Z).
-            for (long x = camXi - 60; x <= camXi + 60; x++)
+            // ---- ЛИНИИ ПОСТОЯННОГО v (вдоль оси U) ----
+            for (long iv = vMin; iv <= vMax; iv++)
             {
-                for (long z = camZi - 60; z <= camZi + 60; z++)
+                LineStyle(iv, out float r, out float g, out float b, out float w, out float asc);
+
+                const int Pieces = 10;
+                double total = BehindM + AheadM;
+                double stepLen = total / Pieces;
+                double duPrev = -BehindM;
+                for (int k = 1; k <= Pieces; k++)
                 {
-                    var p = ProjectPoint(x, planeY, z, s);
-                    if (p == null || !p.Value.inFront) continue;
-                    float a = PointA * DistFade(x, z) * VertAlpha(p.Value.v);
-                    if (a < 0.015f) continue;
-                    float u = p.Value.u, v = p.Value.v;
-                    EmitSeg(u - 2, v, u + 2, v, a, a, 1f, 0f, 0f);
-                    EmitSeg(u, v - 2, u, v + 2, a, a, 1f, 0f, 0f);
+                    double duCur = -BehindM + stepLen * k;
+                    double midU = (duPrev + duCur) * 0.5;
+                    float fade = FadeAt(CamDistAt(u0 + midU, iv));
+                    if (fade <= 0.01f) { duPrev = duCur; continue; }
+
+                    var p1 = ProjUV(u0 + duPrev, iv, 0.0);
+                    var p2 = ProjUV(u0 + duCur, iv, 0.0);
+                    duPrev = duCur;
+                    if (!p1.ok || !p2.ok) continue;
+
+                    float a1 = asc * fade * VertAlpha(p1.v);
+                    float a2 = asc * fade * VertAlpha(p2.v);
+                    if (a1 < 0.01f && a2 < 0.01f) continue;
+                    EmitSeg(p1.u, p1.v, p2.u, p2.v, a1, a2, w, r, g, b);
                 }
             }
 
@@ -1136,6 +1125,10 @@ namespace ETS2_Assist_GUI.AR
             if (s == null || !s.CameraPoseValid) return null;
 
             _pinhole.CabinFovDegrees = ArBridge.FovDegrees;   // v92: из dumb-приёмника
+            // v1.0.40.32: ВЕРТИКАЛЬНЫЙ focal length — отдельный (см. CabinArProjection
+            // и ArBridge.FovDegreesAr1Vertical). Без этого горизонт/метки уплывают
+            // пропорционально tan(наклона головы).
+            _pinhole.CabinFovDegreesVertical = ArBridge.FovDegreesAr1Vertical;
 
             var r = _pinhole.Project(
                 wx, wy, wz,
@@ -1182,25 +1175,26 @@ namespace ETS2_Assist_GUI.AR
             => cur + (target - cur) * SmoothK;
 
         // ================================================================
-        // v1.0.40.30: ДИСТАНЦИЯ до земли по ПРИЦЕЛЬНОЙ точке (центр экрана) —
-        // через РЕАЛЬНУЮ позу камеры (CameraForward), без eyeHeight.
-        // Луч = CameraForward из CameraPosition; пересечение с плоскостью
-        // Y = GroundY + PlaneOffsetM. Возвращает горизонтальную дистанцию, м.
+        // v1.0.40.31: ДИСТАНЦИЯ до земли по ПРИЦЕЛЬНОЙ точке (центр экрана)
+        // через ЛУЧ × РЕАЛЬНУЮ ПЛОСКОСТЬ ДОРОГИ (по колёсам).
+        // Было: горизонтальная плоскость Y = GroundY + PlaneOffsetM (эвристика).
+        // Стало: ArGroundPlane.IntersectRay — учитывает продольный/поперечный уклон.
+        // Возвращает ГОРИЗОНТАЛЬНУЮ дистанцию, м (совместимо с AR1).
         // ================================================================
         private static double ComputeGroundDistance(ArGameState? s)
         {
             if (s == null || !s.CameraPoseValid) return double.NaN;
-            double eyeY = s.CamY;                       // камера — уже координата глаза
-            double groundY = s.GroundY + s.PlaneOffsetM;
-            double dirY = s.CameraForward.Y;            // + вверх
-            if (dirY >= -1e-6) return double.NaN;       // смотрим на горизонт/выше
 
-            double dy = groundY - eyeY;                 // < 0 (глаза выше земли)
-            double t = dy / dirY;                       // > 0
-            if (!double.IsFinite(t) || t <= 0) return double.NaN;
+            var plane = s.GroundPlane;
+            if (plane == null || !plane.Valid) return double.NaN;
 
-            double gx = s.CamX + s.CameraForward.X * t;
-            double gz = s.CamZ + s.CameraForward.Z * t;
+            if (!plane.IntersectRay(s.CamX, s.CamY, s.CamZ,
+                    s.CameraForward.X, s.CameraForward.Y, s.CameraForward.Z,
+                    out double t, out double gx, out _, out double gz))
+            {
+                return double.NaN;
+            }
+
             return Math.Sqrt((gx - s.CamX) * (gx - s.CamX) + (gz - s.CamZ) * (gz - s.CamZ));
         }
 
@@ -1224,7 +1218,6 @@ namespace ETS2_Assist_GUI.AR
             double f = (_width * 0.5) / halfTan;
             double cx = _width * 0.5;
             double cy = _height * 0.5;
-
             double fy = s.CameraForward.Y;
             double ry = s.CameraRight.Y;
             double uy = s.CameraUp.Y;

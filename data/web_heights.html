@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ETS2 Assist — визуализация высот</title>
+<!-- v1.0.40.31: ЕДИНЫЙ debugShow(bool) — как на всех страницах оверлея. -->
+<script src="js/debug_show.js"></script>
+<link rel="icon" href="ets2_assist.ico">
+<style>
+  html, body {
+    margin: 0; width: 100%; height: 100%; overflow: hidden;
+    /* v1.0.40.33: чёрный фон, НЕПРОЗРАЧНОСТЬ 75% (прозрачность 25%). */
+    background: rgba(0, 0, 0, 0.75);
+    pointer-events: none;
+  }
+  #hCanvas { display: block; width: 100%; height: 100%; }
+  #hStatus {
+    position: fixed; left: 8px; bottom: 6px;
+    font: 600 11px/1.3 Consolas, monospace; color: #fff;
+    text-shadow: 0 1px 3px #000, 0 0 2px #000;
+  }
+  #hStatus.warn { color: #ffd166; }
+  #hStatus.err  { color: #ff7b7b; }
+</style>
+</head>
+<body>
+<canvas id="hCanvas"></canvas>
+<div id="hStatus">высоты: ожидание телеметрии…</div>
+<script>
+// ================================================================
+// ETS2 ASSIST — ВИЗУАЛИЗАЦИЯ ВЫСОТ (v1.0.40.31)
+// ================================================================
+// Окно боковой проекции грузовика. САМ ГРУЗОВИК НЕ РИСУЕТСЯ — рисуется только
+// геометрия высот:
+//   1) горизонтальная БЕЛАЯ линия — плоскость «земли» по расчётной плоскости
+//      дороги (Ground Plane по колёсам, ArGroundPlane);
+//   2) две КРАСНЫЕ окружности — два колеса вид сбоку; их НИЖНИЕ точки лежат
+//      ровно на этой плоскости (именно той, что построена по колёсам);
+//   3) полупрозрачный ОРАНЖЕВЫЙ конус — ВЕРТИКАЛЬНЫЙ угол обзора камеры:
+//      вершина в позиции головы-камеры, угол = реальный вертикальный FOV,
+//      вычисленный приложением из горизонтального по пропорции экрана (16:9);
+//   4) тонкая БЕЛАЯ прицельная линия из вершины через центр конуса до плоскости,
+//      где рисуется прицельная метка; длина полосы (дистанция камера→земля)
+//      печатается НАД меткой.
+//
+// МАСШТАБ (задание): 1 м позади заднего колеса; расстояние между колёсами —
+// по телеметрии; от камеры до КРАЯ визуализации 40 м.
+//
+// ДАННЫЕ: всё считает приложение и отдаёт готовым в ar_telemetry.heights
+// (в метрах системы фуры). Страница НЕ собирает геометрию из углов.
+// ================================================================
+(function () {
+  'use strict';
+
+  var canvas = document.getElementById('hCanvas');
+  var ctx = canvas.getContext('2d');
+  var statusEl = document.getElementById('hStatus');
+
+  var W = 0, H = 0, dpr = 1;
+  var ws = null;
+
+  // Состояние визуализации (заполняется из ar_telemetry.heights).
+  var V = {
+    valid: false,
+    wheels: [],
+    rearLongitudinalM: -1.64,
+    rearRadiusM: 0.506,
+    frontLongitudinalM: 2.094,
+    frontRadiusM: 0.506,
+    cameraLongitudinalM: 0,
+    cameraHeightM: 2.25,
+    vFovDeg: 45,
+    hFovDeg: 80,
+    screenAspect: 16 / 9,
+    rayAngleDeg: 0,
+    aimsDown: false,
+    hitLongitudinalM: NaN,
+    hitDistanceM: NaN,
+    rearMarginM: 1.0,
+    cameraToEdgeM: 40.0,
+    // v1.0.40.33: НАКЛОН ПЛОСКОСТИ (продольный) и РОЛЛ (поперечный).
+    // Требование: если грузовик питчит вверх (едет в гору) — плоскость с грузовиком
+    // наклоняется ПРОТИВ часовой (угол растёт), при спуске — ПО часовой.
+    // rollDeg: 0 — линия не видна; влево — линия вверх от камеры, вправо — вниз.
+    pitchDeg: 0,
+    rollDeg: 0,
+    // ============================================================
+    // v1.0.40.38: ЗАДНЯЯ ПРОЕКЦИЯ (вид СЗАДИ).
+    // halfTrackM   — полуколея (расстояние от центра до колеса), м;
+    // wheelDiameterM — диаметр колеса (высота прямоугольника), м;
+    // cameraLateralM — поперечное смещение камеры от центра колеи, м;
+    // cameraHeightAboveGroundM — высота камеры над плоскостью земли, м;
+    // camAxisForward/camAxisUp — оси камеры, спроектированные в [поперечная, вертикаль];
+    // cameraRollDeg — реальный крен камеры из базиса.
+    // ============================================================
+    halfTrackM: 0.65,
+    wheelDiameterM: 1.0,
+    cameraLateralM: 0,
+    cameraHeightAboveGroundM: 2.5,
+    cameraRollDeg: 0,
+    camAxisForward: [0, 0],
+    camAxisUp: [0, 1],
+    lastAt: 0
+  };
+
+  var DEBUG = { show: false };
+  window.debugShow = function (on) {
+    DEBUG.show = (on === true);
+    try { document.documentElement.dataset.debugShow = DEBUG.show ? '1' : '0'; } catch (e) {}
+    if (statusEl) statusEl.style.display = '';
+    updStatus();
+    return DEBUG.show;
+  };
+
+  // ---------- ЦВЕТА/РАЗМЕРЫ (единый стиль с AR HUD) ----------
+  var CFG = {
+    groundColor: 'rgba(255,255,255,0.95)',   // белая линия плоскости «земли»
+    groundWidth: 2.0,
+    groundDash: [],                          // сплошная
+    wheelColor: 'rgba(255,60,60,0.95)',      // красные колёса
+    wheelWidth: 2.5,
+    wheelFill: 'rgba(255,60,60,0.12)',
+    wheelHubColor: 'rgba(255,140,140,0.85)',
+    coneFill: 'rgba(255,150,40,0.22)',       // полупрозрачный оранжевый конус
+    coneEdge: 'rgba(255,170,60,0.85)',
+    coneWidth: 1.5,
+    aimColor: 'rgba(255,255,255,0.95)',      // белая прицельная линия
+    aimWidth: 1.6,
+    aimDotColor: 'rgba(255,255,255,1)',
+    aimDotRadius: 3.5,
+    textFont: '600 12px Consolas, monospace',
+    textColor: 'rgba(255,255,255,0.95)',
+    dimColor: 'rgba(190,190,190,0.85)',
+    tickColor: 'rgba(255,255,255,0.30)',
+    tickMajorColor: 'rgba(255,255,255,0.55)',
+    camMarkColor: 'rgba(120,220,255,0.95)',  // отметка вершины конуса (камера)
+    // v1.0.40.33: индикатор РОЛЛА — вертикальная жёлтая линия.
+    rollColor: 'rgba(255,235,60,0.95)',
+    rollWidth: 2.5,
+
+    // ================================================================
+    // v1.0.40.38: ЗАДНЯЯ ПРОЕКЦИЯ (вид на грузовик СЗАДИ).
+    // Показывает то, чего НЕ видно в боковом виде: крен земли/колёс, крен камеры
+    // и ГОРИЗОНТ, который при крене НЕ двигается.
+    // ================================================================
+    showRearView: true,
+    rearBgColor: 'rgba(0,0,0,0.78)',         // фон панели (непрозрачнее сцены)
+    rearFrameColor: 'rgba(255,255,255,0.22)',
+    rearGroundColor: 'rgba(255,255,255,0.90)', // линия земли (наклоняется при крене)
+    rearWheelFill: 'rgba(255,60,60,0.85)',     // колёса — красные прямоугольники
+    rearWheelStroke: 'rgba(255,140,140,0.95)',
+    rearCamColor: 'rgba(120,220,255,1)',       // точка камеры
+    rearCamFwdColor: 'rgba(255,255,255,0.95)', // ось F камеры
+    rearCamUpColor: 'rgba(180,140,255,0.95)',  // ось U камеры
+    rearHorizonColor: 'rgba(120,220,255,0.95)',// ГОЛУБОЙ горизонт (не двигается)
+    rearHorizonHeightM: 0.35                   // насколько горизонт выше плоскости земли, м
+  };
+
+  // ---------- МАСШТАБ: метры → пиксели ----------
+  // Продольный диапазон вида (м, система фуры, + вперёд):
+  //   слева  = заднее колесо − 1 м;
+  //   справа = камера + 40 м.
+  // v1.0.40.33: ПЛОСКОСТЬ ЗЕМЛИ НАКЛОНЕНА на продольный угол машины (pitch).
+  // Требование: питч вверх (гора) — плоскость против часовой; питч вниз — по часовой.
+  var view = { longMin: 0, longMax: 40, pxPerM: 1, groundY: 0, pitchRad: 0 };
+
+  function computeView() {
+    var leftM = V.rearLongitudinalM - V.rearMarginM;             // 1 м за задним колесом
+    var rightM = Math.max(V.cameraLongitudinalM + V.cameraToEdgeM,
+                          V.frontLongitudinalM + 2.0);
+    if (!(rightM > leftM + 5)) rightM = leftM + 45;
+
+    view.longMin = leftM;
+    view.longMax = rightM;
+
+    var spanM = rightM - leftM;
+    var marginL = 14, marginR = 14, marginT = 30, marginB = 46;
+    var usableW = Math.max(40, W - marginL - marginR);
+    view.pxPerM = usableW / spanM;
+    view.marginL = marginL;
+    view.marginR = marginR;
+    view.marginT = marginT;
+    view.marginB = marginB;
+
+    // Наклон плоскости. Знак: питч вверх (в гору) → против часовой стрелки,
+    // т.е. ПРАВЫЙ край (вперёд) поднимается вверх по экрану.
+    // В экранных координатах «вверх» = −y, поэтому наклон даёт −tan(pitch)·dx.
+    view.pitchRad = (Number(V.pitchDeg) || 0) * Math.PI / 180;
+
+    // Базовая линия плоскости: у левого края вида (под задним колесом).
+    view.groundY = H - marginB - 12;
+  }
+
+  function xOf(longM) {
+    return view.marginL + (longM - view.longMin) * view.pxPerM;
+  }
+
+  // v1.0.40.33: высота ПЛОСКОСТИ в точке longM (с учётом наклона).
+  // Пивот — точка под камерой, чтобы камера оставалась на месте при наклоне.
+  function planeYAt(longM) {
+    var dLong = longM - V.cameraLongitudinalM;
+    return view.groundY - Math.tan(view.pitchRad) * dLong * view.pxPerM;
+  }
+
+  // Высота НАД плоскостью → экранная y (в точке longM).
+  function yOf(heightM, longM) {
+    var base = planeYAt(longM === undefined ? V.cameraLongitudinalM : longM);
+    return base - heightM * view.pxPerM;
+  }
+
+  function updStatus() {
+    if (!statusEl) return;
+    if (!V.valid) {
+      statusEl.className = 'err';
+      statusEl.textContent = 'высоты: плоскость дороги не построена (нет данных колёс)';
+      return;
+    }
+    var ageS = (performance.now() - V.lastAt) / 1000;
+    if (ageS > 5) {
+      statusEl.className = 'warn';
+      statusEl.textContent = 'высоты: нет телеметрии ' + Math.round(ageS) + 'с';
+      return;
+    }
+    statusEl.className = '';
+    statusEl.textContent = 'высоты: vFOV ' + V.vFovDeg.toFixed(1) + '° (hFOV ' +
+      V.hFovDeg.toFixed(0) + '° · ' + V.screenAspect.toFixed(2) + ') · камера h=' +
+      V.cameraHeightM.toFixed(2) + ' м · луч ' + V.rayAngleDeg.toFixed(1) + '° · ' +
+      (isFinite(V.hitDistanceM) ? V.hitDistanceM.toFixed(1) + ' м' : 'выше горизонта') +
+      (DEBUG.show ? ' · DEBUG' : '');
+  }
+
+  // ---------- ПРИЁМ ДАННЫХ ----------
+  function applyHeights(data) {
+    if (!data || typeof data !== 'object') return;
+    if (data.valid !== true) { V.valid = false; updStatus(); return; }
+
+    V.valid = true;
+    V.wheels = Array.isArray(data.wheels) ? data.wheels : [];
+    V.rearLongitudinalM = num(data.rearLongitudinalM, V.rearLongitudinalM);
+    V.rearRadiusM = num(data.rearRadiusM, V.rearRadiusM);
+    V.frontLongitudinalM = num(data.frontLongitudinalM, V.frontLongitudinalM);
+    V.frontRadiusM = num(data.frontRadiusM, V.frontRadiusM);
+    V.cameraLongitudinalM = num(data.cameraLongitudinalM, V.cameraLongitudinalM);
+    V.cameraHeightM = num(data.cameraHeightM, V.cameraHeightM);
+    V.vFovDeg = num(data.vFovDeg, V.vFovDeg);
+    V.hFovDeg = num(data.hFovDeg, V.hFovDeg);
+    V.screenAspect = num(data.screenAspect, V.screenAspect);
+    V.rayAngleDeg = num(data.rayAngleDeg, V.rayAngleDeg);
+    V.aimsDown = data.aimsDown === true;
+    V.hitLongitudinalM = num(data.hitLongitudinalM, NaN);
+    V.hitDistanceM = num(data.hitDistanceM, NaN);
+    V.rearMarginM = num(data.rearMarginM, 1.0);
+    V.cameraToEdgeM = num(data.cameraToEdgeM, 40.0);
+    // v1.0.40.33: наклон плоскости (продольный) и ролл (поперечный).
+    V.pitchDeg = num(data.pitchDeg, 0);
+    V.rollDeg = num(data.rollDeg, 0);
+    // ============================================================
+    // v1.0.40.38: ЗАДНЯЯ ПРОЕКЦИЯ.
+    // ============================================================
+    V.halfTrackM = num(data.halfTrackM, V.halfTrackM);
+    V.wheelDiameterM = num(data.wheelDiameterM, V.wheelDiameterM);
+    V.cameraLateralM = num(data.cameraLateralM, V.cameraLateralM);
+    V.cameraHeightAboveGroundM = num(data.cameraHeightAboveGroundM, V.cameraHeightAboveGroundM);
+    V.cameraRollDeg = num(data.cameraRollDeg, V.cameraRollDeg);
+    V.camAxisForward = readPair(data.camAxisForward, V.camAxisForward);
+    V.camAxisUp = readPair(data.camAxisUp, V.camAxisUp);
+    V.lastAt = performance.now();
+    updStatus();
+  }
+
+  // Пара [поперечная, вертикальная] для заднего вида.
+  function readPair(v, fallback) {
+    if (Array.isArray(v) && v.length >= 2) {
+      var a = Number(v[0]), b = Number(v[1]);
+      if (Number.isFinite(a) && Number.isFinite(b)) return [a, b];
+    }
+    return fallback;
+  }
+
+  function num(v, fallback) {
+    var n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function connect() {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+    try {
+      ws = new WebSocket('ws://localhost:8084/');
+      ws.onmessage = function (ev) {
+        var d = null;
+        try { d = JSON.parse(ev.data); } catch (e) { return; }
+        if (!d || !d.command) return;
+        if (d.command === 'ar_telemetry') applyHeights(d.heights);
+        else if (d.command === 'debug_show') debugShow(d.enabled === true);
+      };
+      ws.onclose = function () { ws = null; setTimeout(connect, 2000); };
+      ws.onerror = function () { try { ws.close(); } catch (e) {} };
+    } catch (e) { setTimeout(connect, 2000); }
+  }
+
+  // ---------- ОТРИСОВКА ----------
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.max(1, Math.round(W * dpr));
+    canvas.height = Math.max(1, Math.round(H * dpr));
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+
+  function outlined(text, x, y, align, font, color, alpha) {
+    var a = (typeof alpha === 'number') ? Math.max(0, Math.min(1, alpha)) : 1;
+    ctx.save();
+    ctx.font = font || CFG.textFont;
+    ctx.textAlign = align || 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,' + (0.9 * a).toFixed(3) + ')';
+    ctx.lineJoin = 'round';
+    ctx.strokeText(text, x, y);
+    ctx.lineWidth = 1.4;
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = color || CFG.textColor;
+    ctx.globalAlpha = a;
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  // 1. БЕЛАЯ ЛИНИЯ — ПЛОСКОСТЬ «ЗЕМЛИ» (НАКЛОНЁННАЯ по питчу грузовика).
+  function drawGround() {
+    var x0 = view.marginL - 6;
+    var x1 = W - view.marginR + 6;
+    var y0 = planeYAt(view.longMin);
+    var y1 = planeYAt(view.longMax);
+
+    ctx.save();
+    ctx.strokeStyle = CFG.groundColor;
+    ctx.lineWidth = CFG.groundWidth;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+    ctx.restore();
+
+    // Подпись у левого края (рядом с линией, не мешает колёсам).
+    outlined('плоскость земли', x0 + 2, y0 - 7, 'left',
+      '600 11px Consolas, monospace', CFG.dimColor, 0.9);
+
+    // Угол наклона — у правого края.
+    var deg = Number(V.pitchDeg) || 0;
+    if (Math.abs(deg) >= 0.05) {
+      outlined((deg > 0 ? 'подъём ' : 'спуск ') + Math.abs(deg).toFixed(1) + '°',
+        x1 - 4, y1 - 7, 'right', '600 11px Consolas, monospace',
+        deg > 0 ? 'rgba(140,255,160,0.95)' : 'rgba(255,180,140,0.95)', 0.95);
+    }
+  }
+
+  // v1.0.40.33: ВЕРТИКАЛЬНАЯ ЖЁЛТАЯ ЛИНИЯ — ИНДИКАТОР РОЛЛА.
+  // При нулевом ролле линия НЕ видна; ролл влево — линия вверх от точки камеры,
+  // ролл вправо — вниз. Угол подписывается на конце линии, кроме ±1 и 0.
+  function drawRollIndicator() {
+    var deg = Number(V.rollDeg) || 0;
+    if (Math.abs(deg) < 0.05) return;          // нулевой ролл — линии нет
+
+    var camX = xOf(V.cameraLongitudinalM);
+    var camY = yOf(V.cameraHeightM, V.cameraLongitudinalM);
+
+    // Длина пропорциональна углу: 20° ≈ половина высоты окна, с разумным максимумом.
+    var lenPx = Math.min(H * 0.45, Math.abs(deg) * view.pxPerM * 1.2 + 18);
+    // v1.0.40.35: знак ПРОВЕРЕН численно (модель плоскости по колёсам):
+    //   rollDeg = asin(dot(rightTruck, planeNormal)); «правая сторона выше» даёт
+    //   rollDeg > 0, а это крен ВЛЕВО. По требованию: влево → линия ВВЕРХ,
+    //   вправо → ВНИЗ. Значит deg > 0 → вверх → экранная y убывает → dir = −1.
+    var dir = (deg > 0) ? -1 : 1;
+    var endY = camY + dir * lenPx;
+
+    ctx.save();
+    ctx.strokeStyle = CFG.rollColor;
+    ctx.lineWidth = CFG.rollWidth;
+    ctx.beginPath();
+    ctx.moveTo(camX, camY);
+    ctx.lineTo(camX, endY);
+    ctx.stroke();
+
+    // Небольшой засеч на конце, чтобы направление читалось однозначно.
+    ctx.beginPath();
+    ctx.moveTo(camX - 5, endY);
+    ctx.lineTo(camX + 5, endY);
+    ctx.stroke();
+    ctx.restore();
+
+    // Подпись угла на конце линии. По требованию НЕ подписываем 0 и ±1.
+    var rounded = Math.round(deg);
+    var label = deg.toFixed(1) + '°';
+    if (Math.abs(rounded) > 1 || Math.abs(deg - rounded) > 0.05) {
+      outlined(label, camX + 8, endY + (dir < 0 ? -4 : 12), 'left',
+        '700 12px Consolas, monospace', CFG.rollColor, 0.95);
+    } else {
+      // Ровно ±1° — линия есть, подписи нет (требование пользователя).
+      outlined('\u00B1' + Math.abs(rounded) + '°', camX + 8, endY + (dir < 0 ? -4 : 12), 'left',
+        '700 11px Consolas, monospace', CFG.rollColor, 0.55);
+    }
+  }
+
+  // МЕТРОВАЯ ЛИНЕЙКА (для читаемости масштаба) — вдоль НАКЛОНЁННОЙ плоскости.
+  function drawRuler() {
+    var spanM = view.longMax - view.longMin;
+    var steps = [1, 2, 5, 10, 20, 50];
+    var step = steps[steps.length - 1];
+    for (var i = 0; i < steps.length; i++) {
+      if (spanM / steps[i] <= 22) { step = steps[i]; break; }
+    }
+    var start = Math.ceil(view.longMin / step) * step;
+    ctx.save();
+    for (var m = start; m <= view.longMax; m += step) {
+      var x = xOf(m);
+      var y = planeYAt(m);
+      var major = (m % (step * 2) === 0);
+      ctx.strokeStyle = major ? CFG.tickMajorColor : CFG.tickColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + (major ? 9 : 5));
+      ctx.stroke();
+      if (major) {
+        outlined(String(m), x, y + 22, 'center',
+          '11px Consolas, monospace', CFG.dimColor, 0.8);
+      }
+    }
+    ctx.restore();
+    outlined('м (0 = опорная точка фуры)', W - view.marginR, planeYAt(view.longMax) + 22,
+      'right', '11px Consolas, monospace', CFG.dimColor, 0.7);
+  }
+
+  // 2. ДВА КРАСНЫХ КОЛЕСА ВИД СБОКУ. НИЖНИЕ ТОЧКИ ЛЕЖАТ НА ПЛОСКОСТИ.
+  // v1.0.40.33: подписи колёс вынесены ВЛЕВО от колеса (раньше были над ним
+  // по центру и перекрывали линию плоскости и друг друга).
+  function drawWheel(longM, radiusM, label, liftM) {
+    var cx = xOf(longM);
+    var lift = Number.isFinite(liftM) ? liftM : 0;
+    // Нижняя точка окружности — на плоскости (или выше, если колесо поднято).
+    var cy = yOf(radiusM + lift, longM);
+    var r = Math.max(3, radiusM * view.pxPerM);
+
+    ctx.save();
+    ctx.strokeStyle = CFG.wheelColor;
+    ctx.fillStyle = CFG.wheelFill;
+    ctx.lineWidth = CFG.wheelWidth;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Ступица.
+    ctx.beginPath();
+    ctx.arc(cx, cy, Math.max(1.5, r * 0.16), 0, Math.PI * 2);
+    ctx.fillStyle = CFG.wheelHubColor;
+    ctx.fill();
+
+    // Отметка точки контакта на плоскости — маленький крестик.
+    ctx.strokeStyle = CFG.wheelColor;
+    ctx.lineWidth = 1.4;
+    var cyd = planeYAt(longM) - lift * view.pxPerM;
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, cyd); ctx.lineTo(cx + 5, cyd);
+    ctx.moveTo(cx, cyd - 5); ctx.lineTo(cx, cyd + 5);
+    ctx.stroke();
+    ctx.restore();
+
+    // v1.0.40.33: подпись СЛЕВА от колеса (right-align по x = cx − r − 6),
+    // чтобы не перекрывать линию плоскости и второе колесо.
+    outlined(label, cx - r - 6, cy - 4, 'right',
+      '600 11px Consolas, monospace', CFG.textColor, 0.92);
+    outlined('R=' + radiusM.toFixed(2) + ' м', cx - r - 6, cy + 9, 'right',
+      '11px Consolas, monospace', CFG.dimColor, 0.85);
+  }
+
+  function drawWheels() {
+    // Заднее колесо (по телеметрии).
+    var rearLift = liftForLongitudinal(V.rearLongitudinalM);
+    drawWheel(V.rearLongitudinalM, V.rearRadiusM, 'заднее', rearLift);
+
+    // Переднее колесо.
+    var frontLift = liftForLongitudinal(V.frontLongitudinalM);
+    drawWheel(V.frontLongitudinalM, V.frontRadiusM, 'переднее', frontLift);
+
+    // База — под наклонённой плоскостью, между колёсами.
+    var d = Math.abs(V.frontLongitudinalM - V.rearLongitudinalM);
+    if (d > 0.2) {
+      var x1 = xOf(V.rearLongitudinalM), x2 = xOf(V.frontLongitudinalM);
+      var y1 = planeYAt(V.rearLongitudinalM) + 16;
+      var y2 = planeYAt(V.frontLongitudinalM) + 16;
+      ctx.save();
+      ctx.strokeStyle = CFG.dimColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+      ctx.moveTo(x1, y1 - 5); ctx.lineTo(x1, y1 + 5);
+      ctx.moveTo(x2, y2 - 5); ctx.lineTo(x2, y2 + 5);
+      ctx.stroke();
+      ctx.restore();
+      outlined('база ' + d.toFixed(2) + ' м', (x1 + x2) / 2, (y1 + y2) / 2 + 14, 'center',
+        '600 11px Consolas, monospace', CFG.dimColor, 0.9);
+    }
+  }
+
+  function liftForLongitudinal(longM) {
+    var best = 0, bestD = Infinity;
+    for (var i = 0; i < V.wheels.length; i++) {
+      var w = V.wheels[i];
+      if (w.onGround === false) continue;
+      var d = Math.abs(Number(w.longitudinalM) - longM);
+      if (d < bestD) { bestD = d; best = Number(w.liftM) || 0; }
+    }
+    return best;
+  }
+
+  // 3. КОНУС ВЕРТИКАЛЬНОГО УГЛА ОБЗОРА (полупрозрачный оранжевый).
+  //    Вершина — камера (голова), ось конуса — прицельная линия.
+  function drawCone() {
+    var apexX = xOf(V.cameraLongitudinalM);
+    var apexY = yOf(V.cameraHeightM, V.cameraLongitudinalM);
+
+    // Прицельная линия: угол к плоскости (по модулю) + направление (вниз/вверх).
+    var halfV = V.vFovDeg * Math.PI / 360;     // половина ВЕРТИКАЛЬНОГО угла
+    var rayScene = (V.aimsDown ? -1 : 1) * (V.rayAngleDeg * Math.PI / 180);  // + = вверх
+
+    // Верхняя и нижняя границы конуса — относительно ОСИ (прицельной линии).
+    var angTop = rayScene + halfV;
+    var angBot = rayScene - halfV;
+
+    // Длина конуса = до края визуализации по горизонтали (или на всю ширину).
+    var reachM = Math.max(4, view.longMax - V.cameraLongitudinalM);
+    var maxLenPx = reachM * view.pxPerM;
+
+    function endpoint(angle) {
+      // angle > 0 — вверх (в сцене), экранный y инвертирован.
+      var dx = Math.cos(angle) * maxLenPx;
+      var dy = -Math.sin(angle) * maxLenPx;
+      return { x: apexX + dx, y: apexY + dy };
+    }
+
+    var pTop = endpoint(angTop);
+    var pBot = endpoint(angBot);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(apexX, apexY);
+    ctx.lineTo(pTop.x, pTop.y);
+    ctx.lineTo(pBot.x, pBot.y);
+    ctx.closePath();
+    ctx.fillStyle = CFG.coneFill;
+    ctx.fill();
+    ctx.strokeStyle = CFG.coneEdge;
+    ctx.lineWidth = CFG.coneWidth;
+    ctx.stroke();
+    ctx.restore();
+
+    // Подписи границ вертикального FOV.
+    outlined('вертикальный FOV ' + V.vFovDeg.toFixed(1) + '°',
+      apexX + 8, apexY - maxLenPx * Math.sin(halfV) - 8, 'left',
+      '600 11px Consolas, monospace', CFG.coneEdge, 0.9);
+    // Отметка вершины конуса — камера (голова).
+    ctx.save();
+    ctx.fillStyle = CFG.camMarkColor;
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(apexX, apexY, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    outlined('камера (голова) h=' + V.cameraHeightM.toFixed(2) + ' м',
+      apexX + 10, apexY - 6, 'left', '600 11px Consolas, monospace', CFG.camMarkColor, 0.95);
+  }
+
+  // 4. БЕЛАЯ ПРИЦЕЛЬНАЯ ЛИНИЯ + МЕТКА + ДЛИНА НАД МЕТКОЙ.
+  function drawAim() {
+    var apexX = xOf(V.cameraLongitudinalM);
+    var apexY = yOf(V.cameraHeightM, V.cameraLongitudinalM);
+
+    // Угол луча к плоскости: >0 — вверх, <0 — вниз (координаты СЦЕНЫ, +Y вверх).
+    var rayScene = (V.aimsDown ? -1 : 1) * (V.rayAngleDeg * Math.PI / 180);
+
+    // Конец линии: пересечение с плоскостью (приложение прислало продольную
+    // координату метки). Если пересечения нет (выше горизонта) — линия уходит
+    // к правому краю визуализации.
+    var hitX, hitY;
+    if (Number.isFinite(V.hitLongitudinalM)) {
+      hitX = xOf(V.hitLongitudinalM);
+      hitY = planeYAt(V.hitLongitudinalM);   // v1.0.40.33: точка на НАКЛОНЁННОЙ плоскости
+    } else {
+      var maxLenPx = Math.max(20, (view.longMax - V.cameraLongitudinalM) * view.pxPerM);
+      hitX = apexX + Math.cos(rayScene) * maxLenPx;
+      hitY = apexY - Math.sin(rayScene) * maxLenPx;   // экранный y инвертирован
+    }
+
+    // Прицельная линия (сплошная белая).
+    ctx.save();
+    ctx.strokeStyle = CFG.aimColor;
+    ctx.lineWidth = CFG.aimWidth;
+    ctx.beginPath();
+    ctx.moveTo(apexX, apexY);
+    ctx.lineTo(hitX, hitY);
+    ctx.stroke();
+    ctx.restore();
+
+    // Ось конуса (пунктиром — для наглядности совпадения оси и прицельной линии).
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,190,120,0.55)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(apexX, apexY);
+    ctx.lineTo(hitX, hitY);
+    ctx.stroke();
+    ctx.restore();
+
+    // Прицельная метка на плоскости.
+    ctx.save();
+    ctx.fillStyle = CFG.aimDotColor;
+    ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+    // Прицельная метка на плоскости (с учётом наклона).
+    var hitPlaneY = Number.isFinite(V.hitLongitudinalM)
+      ? planeYAt(V.hitLongitudinalM) : hitY;
+    ctx.save();
+    ctx.fillStyle = CFG.aimDotColor;
+    ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(hitX, hitPlaneY, CFG.aimDotRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(hitX - 11, hitPlaneY); ctx.lineTo(hitX + 11, hitPlaneY);
+    ctx.moveTo(hitX, hitPlaneY - 11); ctx.lineTo(hitX, hitPlaneY + 11);
+    ctx.stroke();
+    ctx.restore();
+
+    // ДЛИНА (дистанция камера → земля) — НАД меткой.
+    var lenText = Number.isFinite(V.hitDistanceM)
+      ? V.hitDistanceM.toFixed(1) + ' м'
+      : 'выше горизонта';
+    outlined(lenText, hitX, hitPlaneY - 18, 'center',
+      '700 14px Consolas, monospace', CFG.textColor, 1);
+
+    // Продольная координата метки — ниже линейки.
+    if (Number.isFinite(V.hitLongitudinalM)) {
+      outlined('L=' + V.hitLongitudinalM.toFixed(1) + ' м', hitX, hitPlaneY + 38, 'center',
+        '11px Consolas, monospace', CFG.dimColor, 0.85);
+    }
+  }
+
+  // ================================================================
+  // v1.0.40.38: ЗАДНЯЯ ПРОЕКЦИЯ (вид на грузовик СЗАДИ).
+  //
+  // Требование пользователя: «смотрим на грузовик сзади, показываем два колеса
+  // красными прямоугольниками высотой с диаметр колеса, на расстоянии друг от
+  // друга по координатам, указываем точку камеры относительно колёс и ориентацию
+  // камеры двумя осями от этой точки. Рисуем голубой горизонт сразу над
+  // плоскостью земли. При крене креним и землю, колёса на ней, но горизонт
+  // остаётся на месте.»
+  //
+  // Зачем: боковая проекция НЕ показывает крен, а именно крен — источник главной
+  // проблемы (камера компенсируется не полностью, и голубой горизонт повторяет
+  // крен грузовика вместо реального). Здесь видно сразу три вещи: наклон ЗЕМЛИ
+  // (и колёс на ней), наклон ОСЕЙ КАМЕРЫ и ГОРИЗОНТ, который не двигается.
+  //
+  // Система координат панели: X — поперечная ось шасси (вправо = +),
+  // Y — мировая вертикаль (вверх). Начало — середина колеи на плоскости земли.
+  // ================================================================
+  function drawRearProjection() {
+    if (!CFG.showRearView) return;
+    if (!V.valid || !V.halfTrackM || !Number.isFinite(V.cameraHeightAboveGroundM)) return;
+
+    var panelH = Math.min(H * 0.46, 210);
+    var panelW = W;
+    var panelTop = H - panelH;
+    var panelBottom = H;
+
+    // Область: немного шире колеи, чтобы камера/колеса влезали.
+    var spanM = Math.max(V.halfTrackM * 2 + 3.0, 4.0);
+    var padPx = 26;
+    var pxPerM = Math.min((panelW - padPx * 2) / spanM, (panelH - padPx * 2) / 3.2);
+    if (!(pxPerM > 0)) return;
+
+    var originX = W * 0.5;
+    // Земля — чуть выше нижнего края панели.
+    var groundY = panelBottom - padPx * 0.6;
+
+    function sx(latM) { return originX + latM * pxPerM; }      // поперечная → экран X
+    function sy(heightM) { return groundY - heightM * pxPerM; } // высота → экран Y
+
+    // ---- Фон панели ----
+    ctx.save();
+    ctx.fillStyle = CFG.rearBgColor;
+    ctx.fillRect(0, panelTop, panelW, panelH);
+    ctx.strokeStyle = CFG.rearFrameColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, panelTop);
+    ctx.lineTo(panelW, panelTop);
+    ctx.stroke();
+    ctx.restore();
+
+    var rollRad = (Number(V.rollDeg) || 0) * Math.PI / 180;
+
+    // ---- ЗЕМЛЯ (наклоняется при крене; горизонт — НЕТ) ----
+    // Линия земли в заднем виде идёт вдоль поперечной оси; её наклон = крен полотна.
+    ctx.save();
+    ctx.strokeStyle = CFG.rearGroundColor;
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    var halfSpan = (panelW * 0.5) / pxPerM;
+    var g1 = [sx(-halfSpan), groundY - Math.tan(rollRad) * (-halfSpan) * pxPerM];
+    var g2 = [sx(+halfSpan), groundY - Math.tan(rollRad) * (+halfSpan) * pxPerM];
+    // Начало координат — центр колеи, поэтому смещаем линию так, чтобы она
+    // проходила через точку (0,0) системы «середина колеи на земле».
+    var yShift = Math.tan(rollRad) * 0 * pxPerM;
+    ctx.moveTo(g1[0], g1[1] + yShift);
+    ctx.lineTo(g2[0], g2[1] + yShift);
+    ctx.stroke();
+    ctx.restore();
+
+    // ---- Функция: точка на земле с учётом крена ----
+    function groundPt(latM) { return groundY - Math.tan(rollRad) * latM * pxPerM; }
+
+    // ---- КОЛЁСА: красные прямоугольники высотой с диаметр колеса ----
+    var d = V.wheelDiameterM || 1.0;
+    var halfW = Math.max(4, 0.16 * pxPerM);       // полушИрина прямоугольника
+    [-V.halfTrackM, +V.halfTrackM].forEach(function (lat) {
+      var cx = sx(lat);
+      var yBottom = groundPt(lat);
+      var yTop = yBottom - d * pxPerM;
+
+      ctx.save();
+      ctx.fillStyle = CFG.rearWheelFill;
+      ctx.strokeStyle = CFG.rearWheelStroke;
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(cx - halfW, yTop, halfW * 2, d * pxPerM);
+      ctx.strokeRect(cx - halfW, yTop, halfW * 2, d * pxPerM);
+      ctx.restore();
+      // Метка колеи.
+      outlined(lat.toFixed(2) + ' м', cx, yBottom + 12, 'center',
+        '10px Consolas, monospace', CFG.dimColor, 0.75);
+    });
+
+    // ---- ТОЧКА КАМЕРЫ относительно колёс ----
+    var camX = sx(V.cameraLateralM || 0);
+    var camY = sy(V.cameraHeightAboveGroundM || 0);
+    ctx.save();
+    ctx.fillStyle = CFG.rearCamColor;
+    ctx.beginPath();
+    ctx.arc(camX, camY, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // ---- ОРИЕНТАЦИЯ КАМЕРЫ: ДВЕ ОСИ от точки камеры ----
+    // Векторы уже спроецированы в плоскость «поперечная × вертикаль»
+    // (поле camAxisForward/camAxisUp: [поперечная, вертикальная]).
+    var axisLen = Math.min(panelH * 0.42, 2.2 * pxPerM);
+    function drawCamAxis(v, color, label) {
+      if (!v || !isFinite(v[0]) || !isFinite(v[1])) return;
+      var len = Math.hypot(v[0], v[1]);
+      if (!(len > 1e-6)) return;
+      var ux = v[0] / len, uy = -v[1] / len;   // экранный Y вниз
+      var ex = camX + ux * axisLen, ey = camY + uy * axisLen;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(camX, camY);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.restore();
+      outlined(label, ex + 5, ey, 'left', '700 11px Consolas, monospace', color, 0.95);
+    }
+    drawCamAxis(V.camAxisForward, CFG.rearCamFwdColor, 'F камеры');
+    drawCamAxis(V.camAxisUp, CFG.rearCamUpColor, 'U камеры');
+
+    // ---- ГОЛУБОЙ ГОРИЗОНТ: НЕ двигается, рисуется над плоскостью земли ----
+    var horY = groundY - (Number(CFG.rearHorizonHeightM) || 0.35) * pxPerM;
+    ctx.save();
+    ctx.strokeStyle = CFG.rearHorizonColor;
+    ctx.lineWidth = 2.0;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(0, horY);
+    ctx.lineTo(panelW, horY);
+    ctx.stroke();
+    ctx.restore();
+    outlined('ГОРИЗОНТ (не двигается)', panelW - 8, horY - 9, 'right',
+      '700 11px Consolas, monospace', CFG.rearHorizonColor, 0.95);
+
+    // ---- Подписи панели ----
+    outlined('ЗАДНЯЯ ПРОЕКЦИЯ: крен полотна ' + (Number(V.rollDeg) || 0).toFixed(1) +
+      '°, крен камеры ' + (Number(V.cameraRollDeg) || 0).toFixed(1) + '°',
+      10, panelTop + 14, 'left', '700 11px Consolas, monospace', CFG.textColor, 0.95);
+    outlined('колёса ' + (-V.halfTrackM).toFixed(2) + ' / +' + V.halfTrackM.toFixed(2) +
+      ' м · Ø' + d.toFixed(2) + ' м · камера h=' +
+      (V.cameraHeightAboveGroundM || 0).toFixed(2) + ' м, бок=' +
+      (V.cameraLateralM || 0).toFixed(2) + ' м',
+      10, panelBottom - 8, 'left', '10px Consolas, monospace', CFG.dimColor, 0.8);
+  }
+
+  function render() {
+    requestAnimationFrame(render);
+    if (W !== window.innerWidth || H !== window.innerHeight) resize();
+    ctx.clearRect(0, 0, W, H);
+
+    computeView();
+
+    if (!V.valid) {
+      // Геометрии нет — рисуем пустую рамку и подсказку (видно, что окно живо).
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 6]);
+      ctx.strokeRect(8, 8, Math.max(0, W - 16), Math.max(0, H - 16));
+      ctx.restore();
+      outlined('визуализация высот: нет плоскости дороги', W / 2, H / 2, 'center',
+        '600 13px Consolas, monospace', 'rgba(255,209,102,0.95)', 1);
+      return;
+    }
+
+    drawGround();
+    drawRuler();
+    drawWheels();
+    drawCone();
+    drawAim();
+    // v1.0.40.33: вертикальная жёлтая линия — индикатор ролла (рисуется поверх,
+    // чтобы не перекрывалась конусом/колёсами).
+    drawRollIndicator();
+    // v1.0.40.38: задняя проекция — в нижней части окна (поверх боковой сцены).
+    drawRearProjection();
+
+    // Диагностика под debugShow.
+    if (DEBUG.show) {
+      var lines = [
+        'scale: ' + view.pxPerM.toFixed(2) + ' px/м · span ' +
+          (view.longMax - view.longMin).toFixed(1) + ' м (от ' +
+          view.longMin.toFixed(1) + ' до ' + view.longMax.toFixed(1) + ')',
+        'wheels: ' + V.wheels.length + ' · rear L=' + V.rearLongitudinalM.toFixed(2) +
+          ' R=' + V.rearRadiusM.toFixed(2) + ' · front L=' + V.frontLongitudinalM.toFixed(2) +
+          ' R=' + V.frontRadiusM.toFixed(2),
+        'camera: L=' + V.cameraLongitudinalM.toFixed(2) + ' h=' + V.cameraHeightM.toFixed(2) +
+          ' · vFOV=' + V.vFovDeg.toFixed(2) + '° (hFOV=' + V.hFovDeg.toFixed(1) + '°, aspect=' +
+          (V.screenAspect || 0).toFixed(3) + ')',
+        'ray: ' + V.rayAngleDeg.toFixed(2) + '° к плоскости, ' +
+          (V.aimsDown ? 'вниз' : 'вверх') + ' · hit L=' +
+          (Number.isFinite(V.hitLongitudinalM) ? V.hitLongitudinalM.toFixed(2) : '—') +
+          ' d=' + (Number.isFinite(V.hitDistanceM) ? V.hitDistanceM.toFixed(2) : '—'),
+        'plane tilt: pitch=' + (Number(V.pitchDeg) || 0).toFixed(2) + '° (rad ' +
+          view.pitchRad.toFixed(4) + ') · roll=' + (Number(V.rollDeg) || 0).toFixed(2) + '°'
+      ];
+      for (var i = 0; i < lines.length; i++) {
+        outlined(lines[i], 10, 18 + i * 15, 'left',
+          '11px Consolas, monospace', 'rgba(255,209,102,0.95)', 0.95);
+      }
+    }
+  }
+
+  resize();
+  connect();
+  updStatus();
+  setInterval(updStatus, 1000);
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>

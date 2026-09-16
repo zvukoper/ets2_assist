@@ -20,6 +20,22 @@ namespace ETS2_Assist_GUI.AR
         /// <summary>FOV кабины в градусах (ГОРИЗОНТАЛЬНЫЙ, конфигурируемый).</summary>
         public double CabinFovDegrees { get; set; } = 100.0;
 
+        // ================================================================
+        // v1.0.40.32: ВЕРТИКАЛЬНЫЙ FOCAL LENGTH — ОТДЕЛЬНЫЙ ОТ ГОРИЗОНТАЛЬНОГО.
+        //
+        // КОРЕНЬ бага «горизонт/метка уплывают тем сильнее, чем дальше прицел от
+        // горизонта»: раньше по Y применялся ТОТ ЖЕ focal length, что и по X
+        // (f = (W/2)/tan(hFov/2)). Это подразумевает вертикальный FOV ≈ 2·atan(
+        // tan(hFov/2)/aspect), а в ETS2 вертикаль и горизонталь масштабируются
+        // НЕЗАВИСИМО (в config.cfg есть отдельные r_multimon_fov_vertical и
+        // r_multimon_fov_horizontal). Ошибка Δf даёт Δv ≈ Δf·tan(pitch): ноль на
+        // горизонте и рост с наклоном головы — ровно то, что наблюдалось.
+        //
+        // Поэтому вертикальный FOV задаётся независимо. Если он не задан (<= 0),
+        // поведение прежнее (геометрический вывод из горизонтали) — обратная совместимость.
+        // ================================================================
+        public double CabinFovDegreesVertical { get; set; } = 0.0;
+
         /// <summary>Центр проекции в долях экрана (0.5 = геометрический центр viewport).</summary>
         public double ProjectionCenterX { get; set; } = 0.5;
         public double ProjectionCenterY { get; set; } = 0.5;
@@ -67,20 +83,32 @@ namespace ETS2_Assist_GUI.AR
             if (depth <= 0.5)
                 return (0, 0, depth);
 
-            double fov = Math.Clamp(CabinFovDegrees, 10.0, 170.0);
-            double halfTan = Math.Tan(fov * Math.PI / 180.0 * 0.5);
-            if (!double.IsFinite(halfTan) || halfTan <= 1e-12)
+            double fovH = Math.Clamp(CabinFovDegrees, 10.0, 170.0);
+            double halfTanH = Math.Tan(fovH * Math.PI / 180.0 * 0.5);
+            if (!double.IsFinite(halfTanH) || halfTanH <= 1e-12)
                 return (0, 0, depth);
 
-            // Горизонтальный FOV задаёт focal length в px; по Y применяется тот же f
-            // (квадратные пиксели) — вертикальный FOV выводится из aspect ratio.
-            double focalPx = (screenWidth * 0.5) / halfTan;
+            double focalPxX = (screenWidth * 0.5) / halfTanH;
+
+            // Вертикальный focal: из отдельного FOV, если он задан; иначе — прежняя
+            // геометрия (тот же f, т.е. вертикальный FOV выводится из aspect).
+            double focalPxY;
+            if (CabinFovDegreesVertical > 1.0)
+            {
+                double fovV = Math.Clamp(CabinFovDegreesVertical, 10.0, 170.0);
+                double halfTanV = Math.Tan(fovV * Math.PI / 180.0 * 0.5);
+                focalPxY = (halfTanV > 1e-12) ? (screenHeight * 0.5) / halfTanV : focalPxX;
+            }
+            else
+            {
+                focalPxY = focalPxX;
+            }
 
             double cx = screenWidth * ProjectionCenterX;
             double cy = screenHeight * ProjectionCenterY;
 
-            double u = cx + focalPx * (right / depth);
-            double v = cy - focalPx * (up / depth);
+            double u = cx + focalPxX * (right / depth);
+            double v = cy - focalPxY * (up / depth);
 
             if (!double.IsFinite(u) || !double.IsFinite(v))
                 return (0, 0, depth);

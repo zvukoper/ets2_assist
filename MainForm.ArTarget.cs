@@ -47,6 +47,111 @@ namespace ETS2_Assist_GUI
         // только сам тик после успешной отправки.
         private bool _arTelemetryForced;
         private double _arHeading;                        // heading фуры (доля оборота)
+        // ================================================================
+        // v1.0.40.34: ЗНАК КРЕНА КУЗОВА.
+        // truck.world.placement[5] в телеметрии имеет ЗНАК, ОБРАТНЫЙ официальному
+        // примеру SCS `telemetry_position`. ДОКАЗАНО ФИТОМ ПЛОСКОСТИ (v1.0.40.37):
+        // при крене кузова на ровной земле верный знак обязан дать ВЕРТИКАЛЬНУЮ
+        // нормаль. Проверка на живом кадре (кузов roll=9.187°, лог дал наклон
+        // нормали 9.03°):
+        //   sign=+1 → наклон нормали 0.00°  <== ВЕРНО
+        //   sign=−1 → наклон нормали 18.37° <== НЕВЕРНО (удвоенный наклон)
+        // Это независимая проверка: значение 9.03° в логе = |9.187 − 9.187/…|,
+        // т.е. знак вычитался вместо сложения. Было −1 — ИСПРАВЛЕНО на +1.
+        // ================================================================
+        private static double _arTruckRollSign = 1.0;
+
+        // ================================================================
+        // v1.0.40.36: РЕЖИМ КРЕНА КАМЕРЫ — вместо угадывания знака.
+        //
+        // ЧТО НЕ СХОДИТСЯ (живые данные, лог app_workflow):
+        //   14:33  кузов roll=-6.81° → крен КАМЕРЫ +9.93°   (крен «перевернулся»)
+        //   16:24  кузов roll=-8.05° → крен КАМЕРЫ +0.62°   (крен почти исчез)
+        // Второй кадр — это РОВНО режим «крен камеры = 0» (я его включил в v40.35),
+        // и пользователь на нём видит, что линия горизонта стала СТРОГО перпендикулярна
+        // краю экрана («горизонт в принципе не компенсируется по крену») — то есть
+        // ЭТОТ режим неверен. А в первом кадре знак крена был ОБРАТНЫМ настоящему
+        // (кузов вниз-вправо ⇒ камера наклоняется вниз-влево, и линия должна уходить
+        // низ-СЛЕВА/верх-справа, а не наоборот).
+        //
+        // ВЫВОД: правильный режим — крен ПЕРЕДАЁТСЯ, но с ИНВЕРСИЕЙ знака
+        // (уравнение горизонта выполняется тождественно при roll_cam = −roll_truck).
+        // Режим 0 оставлен как «стабилизировано игрой» для быстрой проверки:
+        // если игрок действительно стабилизирует крен, пользователь это увидит.
+        // ВЫВОД ИЗ НАБЛЮДЕНИЯ ПОЛЬЗОВАТЕЛЯ: на скриншоте горизонт «скренился больше
+        // вправо и менее параллелен реальному» при крене кузова ВЛЕВО — это ровно
+        // режим 1 (горизонт уходит низ-СПРАВА). Реальный горизонт при кренe остаётся
+        // практически горизонтальным ⇒ верный режим — 0.
+        // Переключение режимов: Ctrl+Shift+Y (по кругу 0 → 1 → 2 → 0).
+        // ================================================================
+        private static int _arCameraRollMode = 2;   // 0 = крен 0, 1 = крен с инверсией, 2 = крен как есть
+
+        internal static int ArCameraRollMode => Volatile.Read(ref _arCameraRollMode);
+
+        private static readonly string[] ArCameraRollModeNames =
+        {
+            "крен камеры = 0 (стабилизация игрой)",
+            "крен кузова с ИНВЕРСИЕЙ знака (−roll)",
+            "крен кузова как есть (+roll)"
+        };
+
+        internal static string ArCameraRollModeName =>
+            ArCameraRollModeNames[Math.Clamp(ArCameraRollMode, 0, 2)];
+
+        /// <summary>
+        /// Крен, применяемый к базису КАМЕРЫ, по текущему режиму.
+        /// </summary>
+        private static double ArCameraRollTurn(double truckRollTurn) =>
+            ArCameraRollMode switch
+            {
+                0 => 0.0,
+                1 => -truckRollTurn * _arCameraRollFactor,
+                _ => truckRollTurn * _arCameraRollFactor
+            };
+
+        // ================================================================
+        // v1.0.40.38: КОЭФФИЦИЕНТ КОМПЕНСАЦИИ КРЕНА (0..1.5).
+        //
+        // Пользователь: «Игра НЕ приклеивает камеру строго параллельно плоскости
+        // шасси или кабине. Голова компенсируется и стоит ровнее, чем кабина.
+        // Поэтому ПОЛНАЯ компенсация питча и ролла грузовика будет некорректной.»
+        //
+        // НАЙДЕНО ЧИСЛЕННО (живой кадр: кузов roll=+9.56°, pitch=−2.04°):
+        // пользователь заметил, что реальный горизонт ПАРАЛЛЕЛЕН оси X шасси, а его
+        // экранный наклон = −5.99°. Перебором по кадрам получено:
+        //   режим 1 (−roll) + коэффициент 0.7 → наклон горизонта −6.04° (ошибка 0.06°)
+        //   0.6 → −5.18° (0.81°), 0.8 → −6.91° (0.92°), 1.0 → −8.64° (2.66°)
+        //
+        // ⚠️ НО на НЕСКОЛЬКИХ кадрах единого коэффициента НЕ существует (см. WORKLOG
+        // v1.0.40.38: 9.19°→0.78, 9.56°→1.20, 16°→0.00, −12°→0.00 с остатками 3…12°),
+        // поэтому 0.7 НЕ является вычисленной константой. Значения ниже зафиксированы
+        // ПО ПОДБОРУ ПОЛЬЗОВАТЕЛЯ (лучшая видимая картина): режим 2 (+roll), доля 0.5.
+        //
+        // Подстройка: Ctrl+Shift+J (больше) / Ctrl+Shift+K (меньше), шаг 0.1.
+        // Ориентир для точной подгонки — ось X шасси в AR1: горизонт должен стать
+        // ей ПАРАЛЛЕЛЕН (и параллелен реальному горизонту на экране).
+        // ================================================================
+        private static double _arCameraRollFactor = 0.5;
+
+        internal static double ArCameraRollFactor => Volatile.Read(ref _arCameraRollFactor);
+
+        internal static double NudgeArCameraRollFactor(double delta)
+        {
+            double v = Math.Clamp(ArCameraRollFactor + delta, 0.0, 1.5);
+            Volatile.Write(ref _arCameraRollFactor, v);
+            return v;
+        }
+
+        /// <summary>
+        /// v1.0.40.36: переключение РЕЖИМА крена камеры по кругу 1 → 0 → 2 → 1.
+        /// Возвращает название нового режима.
+        /// </summary>
+        internal static string CycleArCameraRollMode()
+        {
+            int next = ArCameraRollMode switch { 0 => 1, 1 => 2, _ => 0 };
+            Volatile.Write(ref _arCameraRollMode, next);
+            return ArCameraRollModeName;
+        }
         private double _arPitch, _arRoll;                 // тангаж/крен фуры
         private JArray? _arLastHead;                      // truck.head.offset (6 элементов)
         // v1.0.40.27: последний ОТПРАВЛЕННЫЙ на страницу head — чтобы досылать телеметрию
@@ -74,6 +179,62 @@ namespace ETS2_Assist_GUI
         private bool _arCameraPoseValid;
         private AR.ScsCameraPose _arCameraPose;
         private long _arPoseSequence;
+
+        // ================================================================
+        // v1.0.40.31 (Ground Plane по колёсам): РЕАЛЬНАЯ ПЛОСКОСТЬ ДОРОГИ.
+        // Источник — truck.wheel.position/radius/on_ground/suspension.deflection.
+        // Плоскость строится ОДИН раз на приём телеметрии (ArGroundPlane.TryBuild)
+        // и далее используется ВСЕЙ геометрией: сетка AR1, создание новой точки
+        // (луч × плоскость + snap в узел сетки), дистанция до земли, визуализация
+        // высот. Горизонтальная эвристика «truckY + PlaneOffsetM» УБРАНА.
+        // ================================================================
+        private readonly List<System.Numerics.Vector3> _arWheelPositions = new();
+        private readonly List<double> _arWheelRadii = new();
+        private readonly List<bool> _arWheelOnGround = new();
+        private readonly List<double> _arWheelSuspensionDeflection = new();
+        private AR.ArGroundPlane? _arGroundPlane;
+
+        // v1.0.40.37: измеренная (наклонная) плоскость — для оценки уклона/крена.
+        /// <summary>v1.0.40.42: интервал фоновой пересборки модели точек (мс).</summary>
+        /// <remarks>
+        /// Модель — СТАТИКА (меняется только заменой файлов точек), поэтому частый
+        /// опрос не нужен. При этом сам SDO уже кэширован (SdoLoader), так что даже
+        /// при пересборке повторного парсинга 1.76 МБ не будет.
+        /// </remarks>
+        private const int ModelRefreshIntervalMs = 15000;
+
+        /// <summary>
+        /// v1.0.40.42: ПЕРВИЧНАЯ сборка модели (синхронно, при старте канала) +
+        /// дальнейшие пересборки — в фоне. Вызывается один раз при запуске насоса.
+        /// </summary>
+        private void RefreshArModel()
+        {
+            try
+            {
+                var fresh = BuildArModel();
+                lock (_arPointsLock) _arPoints = fresh;
+                _arModelAt = DateTime.Now;
+            }
+            catch (Exception ex) { AppendLog($"[AR] Ошибка первичной сборки модели точек: {ex.Message}"); }
+        }
+
+        private AR.ArGroundPlane? _arMeasuredGroundPlane;
+
+        // v1.0.40.37: рисовать ЛИ ГОРИЗОНТАЛЬНУЮ плоскость (требование пользователя:
+        // плоскость земли всегда параллельна горизонту мира). Ctrl+Shift+U — сравнение.
+        private static int _arUseHorizontalPlane = 1;
+        internal static bool UseArHorizontalPlane => Volatile.Read(ref _arUseHorizontalPlane) != 0;
+
+        /// <summary>
+        /// v1.0.40.37: переключение «плоскость по горизонту» ↔ «плоскость по колёсам».
+        /// По умолчанию — ПО ГОРИЗОНТУ (требование пользователя: точка должна ставиться
+        /// на плоскости земли при любом положении грузовика).
+        /// </summary>
+        internal static void ToggleArHorizontalPlane()
+            => Volatile.Write(ref _arUseHorizontalPlane, UseArHorizontalPlane ? 0 : 1);
+
+        private bool _arGroundPlaneLogged;
+        private DateTime _arGroundPlaneLogAt = DateTime.MinValue;
         // ================================================================
         // v1.0.40.30 (ETS2_AR_CAMERA_POSE_IMPLEMENTATION): ПОЛНАЯ 6DoF-ПОЗА КАМЕРЫ.
         // Источник — штатная SCS hierarchy из телеметрии:
@@ -101,12 +262,68 @@ namespace ETS2_Assist_GUI
             string kind, bool isTarget, string category, string color);
         private List<ArPoint> _arPoints = new();
         private DateTime _arModelAt = DateTime.MinValue;
+
+        // ================================================================
+        // v1.0.40.42: ПЕРЕСБОРКА МОДЕЛИ ТОЧЕК — В ФОНОВОМ ПОТОКЕ.
+        //
+        // КОРЕНЬ «точки замирают на 2 секунды каждые 7-8 секунд»:
+        // RefreshArModel вызывался из ArUpdateTick (UI-поток) и читал/парсил
+        // ~1.9 МБ JSON (города + Overlays + 80 файлов SDO). UI-поток был занят,
+        // тики не обрабатывались, точки стояли на месте. Замерено: интервал
+        // «tick alive» 5010 мс → 5903 / 6483 / 6558 мс (провал ~1.5 с).
+        //
+        // Модель НЕ зависит от UI: собираем её в пуле потоков, затем АТОМАРНО
+        // подменяем ссылку `_arPoints`. Доступ к списку — только через
+        // ArPointsSnapshot() (под lock), чтобы не читать список во время подмены.
+        // ================================================================
+        private readonly object _arPointsLock = new();
+        private int _arModelRebuilding;   // 0/1: не запускать вторую сборку параллельно
+
+        /// <summary>Актуальный снимок модели точек (потокобезопасно).</summary>
+        private List<ArPoint> ArPointsSnapshot()
+        {
+            lock (_arPointsLock) return _arPoints;
+        }
+
+        /// <summary>
+        /// v1.0.40.42: запустить пересборку модели в фоновом потоке (если ещё не идёт).
+        /// </summary>
+        private void QueueArModelRebuild()
+        {
+            if (Interlocked.CompareExchange(ref _arModelRebuilding, 1, 0) != 0) return;
+            Task.Run(() =>
+            {
+                try
+                {
+                    var fresh = BuildArModel();          // тяжёлое чтение JSON — НЕ на UI
+                    lock (_arPointsLock) _arPoints = fresh;
+                    _arModelAt = DateTime.Now;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Current?.Data($"[AR] Ошибка фоновой пересборки модели точек: {ex.Message}");
+                    _arModelAt = DateTime.Now;           // не крутить попытки каждые 16 мс
+                }
+                finally
+                {
+                    Volatile.Write(ref _arModelRebuilding, 0);
+                }
+            });
+        }
         // Подпись последней модели (имя+координаты) — для «слать только при изменении».
         private string? _arModelSig;
         // v74: cities отдаём в ПЕРВОЙ телеметрии (список у страницы дальше уже есть).
         private bool _arCitiesSent;
-        // v74: компенсация высоты городов, м (приложение шлёт города УЖЕ скомпенсированными).
-        internal const double ArCityHeightCorrectionM = -44.0;
+        // ================================================================
+        // v1.0.40.40: КОМПЕНСАЦИЯ ВЫСОТЫ ГОРОДОВ УБРАНА.
+        // Здесь была константа −44 м: приложение отправляло города «уже
+        // скомпенсированными», из-за чего компании/города с ТЕМИ ЖЕ координатами
+        // висели НИЖЕ метки новой точки на эти 44 м. Причина компенсации
+        // (согласование с прежним AR1/миникартой) больше не существует: сейчас
+        // высота точки — это её РЕАЛЬНАЯ мировая Y, и она сравнивается напрямую.
+        // ⛔ НЕ возвращать никакие поправки высоты по типу точки: все точки всех
+        // типов должны отображаться на своей настоящей высоте.
+        // ================================================================
 
         // РАЗОВАЯ рассылка ar_target (фидбек 31.08.2026: точки статичны, слать
         // постоянно бессмысленно). Отправляем ТОЛЬКО при СМЕНЕ выбранной цели
@@ -114,6 +331,25 @@ namespace ETS2_Assist_GUI
         private string? _arLastSentGameName;
         private bool _arTargetMustClear; // прошлый tick: цели не было (нужно разово сказать null)
         private DateTime _arLastTargetSentAt = DateTime.MinValue;   // v93: дебаунс спама ar_target
+
+        // ================================================================
+        // v1.0.40.40: РАДИУС ПОКАЗА ТОЧЕК В АР.
+        // Требование пользователя: «Отображаем в АР все точки в радиусе 50 м».
+        // Заменяет прежний выбор ОДНОЙ ближайшей точки в радиусе 1.5 км.
+        // Значение живёт в AppSettings (меняется в меню «Вид»).
+        // ================================================================
+        internal static double ArDisplayRadiusM => AppSettings.ArDisplayRadiusM;
+
+        /// <summary>
+        /// v1.0.40.40: сбросить подпись последнего набора точек — чтобы новый
+        /// радиус/состав применился немедленно, а не на следующем изменении.
+        /// </summary>
+        internal static void ArResetNearSignature() => _arResetNearSig = true;
+        private static volatile bool _arResetNearSig;
+
+        // Подпись последнего отправленного НАБОРА точек (gameName через ';') —
+        // чтобы не слать相同的 список каждый тик (событийная модель).
+        private string? _arLastNearSig;
 
         // Частота AR-тика. v1.0.40.30: 33 → 16 мс (ETS2_AR_CAMERA_POSE §9) — поза
         // камеры обновляется чаще, чтобы уменьшить временну́ю задержку до оверлея.
@@ -128,6 +364,19 @@ namespace ETS2_Assist_GUI
             // Статическая модель точек: собираем один раз, обновляем по таймеру 1/с
             // (файл overrides редок меняется, статика вообще не меняется).
             RefreshArModel();
+            // v1.0.40.31: НАСОС ТЕЛЕМЕТРИИ (WS + REST + тик + плоскость дороги)
+            // запускается идемпотентно и НЕ зависит от AR1: окно визуализации высот
+            // открыто всегда, значит телеметрия нужна и без нажатия «Запустить AR».
+            EnsureArTelemetryPump(alwaysOn: false);
+            // v1.0.40.32: вертикальный FOV — авто-вывод из горизонтального (если
+            // пользователь не задал вручную). Держать в синхроне с FOV обязательно:
+            // рассинхрон как раз и давал «уплывающий» горизонт.
+            SyncAr1VerticalFov();
+            // v1.0.40.34: диагностика наклона — сразу после старта канала и далее
+            // раз в 5 с (см. ArUpdateTick). Нужна для разбора расхождения
+            // нарисованного горизонта с реальным: сравнение углов КУЗОВА, КАБИНЫ,
+            // ГОЛОВЫ и реальной позы КАМЕРЫ. Без этих цифр причина недоказуема.
+            LogArTiltDiagnostics("start");
             // v1.0.40.27 КОРЕНЬ БАГА «AR1 пишет: нет телеметрии от приложения»:
             // рассылка ar_telemetry событийная (_arTruckChanged), а при старте AR1
             // флаг НЕ сбрасывался. Если фура стоит/на паузе (координаты не меняются),
@@ -145,15 +394,6 @@ namespace ETS2_Assist_GUI
             _arTargetMustClear = false;
             try { EnsureTestTargetsFile(); } catch { }
 
-            // v1.0.40.29 КОРЕНЬ «в AR1 вообще ничего не меняется» (второй дефект):
-            // System.Windows.Forms.Timer для AR-тика НЕ тикал (в логе за сессии 19:20 и
-            // 20:54 — НИ ОДНОЙ записи тика; работал только прямой RefreshArModel при
-            // старте канала). Тот же баг уже ловили в MapEditor2Form («Timer, созданный
-            // внутри async-метода, может НЕ тикать») и лечили сменой на
-            // System.Threading.Timer. Здесь делаем так же: потоковый таймер не зависит
-            // от очереди сообщений WinForms, а работа с UI/отправкой — через BeginInvoke.
-            StartArTickTimer();
-
             if (_arReconnectTimer == null)
             {
                 _arReconnectTimer = new System.Windows.Forms.Timer { Interval = 2000 };
@@ -163,16 +403,71 @@ namespace ETS2_Assist_GUI
             _ = ArConnectTelemetryAsync();
             // v1.0.40.27: страница получает актуальный FOV AR1 сразу (CTRL+PGUP/PGDN его меняет).
             SendAr1FovToPage();
+            // v1.0.40.40: и актуальные настройки вида (сетка/оси/горизонты/радиус).
+            SendArViewToPage();
 
-            // REST-снимок: TruckTel /api/rest/flat/truck ОТДАЁТ truck.world.placement —
-            //Confirmed 31.08.2026 (Invoke-RestMethod): placement в метрах карты, работает и на паузе.
-            // WS-дельта на паузе truck.* НЕ шлёт, поэтому REST — основной источник на паузе,
-            // WS — «горячий» поток в движении. Эмпирика (сессия 39) про «REST без placement» оказалась ошибочной.
-            _arRestCts = new CancellationTokenSource();
-            _arRestTask = ArRestLoopAsync(_arRestCts.Token);
+            // v1.0.40.31: разовая самопроверка расчёта плоскости дороги
+            // (7 сценариев из задания) — результат в app_data.log.
+            EnsureArGroundPlaneSelfTest();
 
             AppendLog("[AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).");
         }
+
+        // ================================================================
+        // v1.0.40.31: НАСОС ТЕЛЕМЕТРИИ AR (идемпотентный).
+        // Запускает тик, WS-дельту и REST-снимок ОДИН раз, независимо от того,
+        // кто первым попросил данные: канал AR1 или окно визуализации высот
+        // (оно открыто ВСЕГДА — значит телеметрия нужна и без нажатия кнопки AR).
+        // ================================================================
+        private bool _arPumpRunning;
+        // v1.0.40.31: насос поднят на ПОСТОЯННОЙ основе (окно визуализации высот
+        // открыто всегда) — тогда остановка AR1 не имеет права гасить телеметрию.
+        private bool _arPumpAlwaysOn;
+
+        internal void EnsureArTelemetryPump(bool alwaysOn = true)
+        {
+            if (_arPumpRunning)
+            {
+                if (alwaysOn) _arPumpAlwaysOn = true;
+                return;
+            }
+            _arPumpRunning = true;
+            if (alwaysOn) _arPumpAlwaysOn = true;
+
+            // v1.0.40.29 КОРЕНЬ «в AR1 вообще ничего не меняется» (второй дефект):
+            // System.Windows.Forms.Timer для AR-тика НЕ тикал (в логе за сессии 19:20 и
+            // 20:54 — НИ ОДНОЙ записи тика). Тот же баг уже ловили в MapEditor2Form и
+            // лечили сменой на System.Threading.Timer. Делаем так же: потоковый таймер
+            // не зависит от очереди сообщений WinForms, работа с UI — через BeginInvoke.
+            StartArTickTimer();
+
+            if (_arReconnectTimer == null)
+            {
+                _arReconnectTimer = new System.Windows.Forms.Timer { Interval = 2000 };
+                _arReconnectTimer.Tick += (_, _) => { _arReconnectTimer!.Stop(); _ = ArConnectTelemetryAsync(); };
+            }
+            _arReconnectTimer.Start();
+            _ = ArConnectTelemetryAsync();
+
+            // v1.0.40.31: разовая самопроверка расчёта плоскости дороги
+            // (7 сценариев из задания) — результат в app_data.log. Живёт здесь,
+            // а не в StartArTargetFeed, чтобы выполняться при ЛЮБОМ старте насоса
+            // (окно визуализации высот открыто всегда, без нажатия кнопки AR).
+            EnsureArGroundPlaneSelfTest();
+
+            // REST-снимок: TruckTel /api/rest/flat/truck ОТДАЁТ truck.world.placement —
+            // подтверждено 31.08.2026 (в метрах карты, работает и на паузе).
+            // WS-дельта на паузе truck.* НЕ шлёт, поэтому REST — основной источник
+            // на паузе, WS — «горячий» поток в движении.
+            if (_arRestTask == null)
+            {
+                _arRestCts = new CancellationTokenSource();
+                _arRestTask = ArRestLoopAsync(_arRestCts.Token);
+            }
+
+            Logger.Current?.Data("[AR] Насос телеметрии запущен (тик + WS-дельта + REST-снимок).");
+        }
+
 
         // ================================================================
         // v1.0.40.29: AR-ТИК — ПОТОКОВЫЙ ТАЙМЕР (не System.Windows.Forms.Timer).
@@ -236,14 +531,49 @@ namespace ETS2_Assist_GUI
             }
         }
 
-        internal void StopArTargetFeed()
+        internal void StopArTelemetryPumpForShutdown()
         {
+            _arPumpAlwaysOn = false;   // снимаем защиту окна высот
+            if (!_arPumpRunning) return;
             StopArTickTimer();
             _arReconnectTimer?.Stop();
             try { _arCts?.Cancel(); } catch { }
             try { _arRestCts?.Cancel(); } catch { }
             try { _arWs?.Dispose(); } catch { }
             _arWs = null;
+            _arRestTask = null;
+            _arPumpRunning = false;
+        }
+
+        internal void StopArTargetFeed()
+        {
+            // v1.0.40.31: окно визуализации высот открыто ВСЕГДА и живёт на телеметрии
+            // (плоскость дороги по колёсам). Если оно уже открыто (насос поднят при
+            // старте системы), остановка AR1 НЕ должна его обесточивать — иначе окно
+            // высот навсегда пишет «нет плоскости дороги».
+            if (_arPumpAlwaysOn)
+            {
+                _arTruckChanged = false;
+                _arTelemetryForced = false;
+                SendCommandToMap("ar_target", new JObject
+                {
+                    ["hasTarget"] = false,
+                    ["reason"] = "AR остановлен (телеметрия высот продолжает работать)"
+                });
+                _arLastSentGameName = null;
+                _arTargetMustClear = false;
+                AppendLog("[AR] Оверлей AR остановлен, канал телеметрии оставлен для окна высот.");
+                return;
+            }
+
+            StopArTickTimer();
+            _arReconnectTimer?.Stop();
+            try { _arCts?.Cancel(); } catch { }
+            try { _arRestCts?.Cancel(); } catch { }
+            try { _arWs?.Dispose(); } catch { }
+            _arWs = null;
+            _arRestTask = null;
+            _arPumpRunning = false;      // v1.0.40.31: насос можно запустить заново
             StopArV2Overlay();
             AppendLog("[AR] Канал AR-целей остановлен.");
         }
@@ -259,16 +589,138 @@ namespace ETS2_Assist_GUI
             double clamped = Math.Clamp(degrees, 30.0, 150.0);
             AR.ArBridge.FovDegreesAr1 = clamped;
             try { AppSettings.Ar1FovDeg = clamped; AppSettings.Save(); } catch { }
-            SendCommandToMap("ar_fov", new JObject { ["fov"] = clamped });
+            SyncAr1VerticalFov();
+            SendAr1FovToPage();
             // Смена FOV не должна спамить workflow при автоповторе — подробности в app_data.
-            Logger.Current?.Data($"[AR] FOV AR1 = {clamped:F1}° ({source})");
+            Logger.Current?.Data($"[AR] FOV AR1 = {clamped:F1}° горизонтальный, " +
+                $"вертикальный = {AR.ArBridge.FovDegreesAr1Vertical:F1}° ({source})");
         }
 
-        // Отправка текущего FOV странице AR1 (при старте канала/страницы).
+        // ================================================================
+        // v1.0.40.32: ВЕРТИКАЛЬНЫЙ FOV AR1 — КОРЕНЬ «ГОРИЗОНТ/МЕТКА УПЛЫВАЮТ».
+        //
+        // Геометрия ошибки: проекция считала ОДИН focal length по X и Y. Это верно
+        // ТОЛЬКО если вертикальный FOV строго выводится из горизонтального через
+        // aspect. В ETS2 вертикаль и горизонталь масштабируются НЕЗАВИСИМО
+        // (в config.cfg есть отдельные r_multimon_fov_vertical / _horizontal),
+        // поэтому реальная вертикаль уже ≈ на 10…15°. Ошибка Δf даёт смещение
+        // Δv ≈ Δf·tan(наклона головы): ноль на горизонте и рост с наклоном —
+        // ровно то, что наблюдал пользователь.
+        //
+        // Вертикальный FOV выводится из горизонтального с типичным для ETS2
+        // сжатием по вертикали, пока не задан вручную (Ar1VerticalFovManual).
+        // ================================================================
+        internal void SyncAr1VerticalFov()
+        {
+            // v1.0.40.34: ВЕРТИКАЛЬНЫЙ FOV — НЕЗАВИСИМАЯ настройка, а НЕ производная
+            // от горизонтального. Пользователь подбирает его глазами по совпадению
+            // линии горизонта (Ctrl+Shift+PGUP/PGDN, шаг 0.2°) — значение живёт в
+            // AppSettings.Ar1FovVerticalDeg. Вывод из горизонтали через aspect убран:
+            // он давал ≈59.6° при hFov 91°, и при смене горизонтального FOV вертикаль
+            // тайно переезжала, сбрасывая калибровку.
+            // Метод остался точкой привязки: при старте канала/страницы значение
+            // применяется из настроек.
+            double v = AppSettings.Ar1FovVerticalDeg;
+            // v1.0.40.41: fallback приведён к 65 (значение по умолчанию), было 64.5 —
+            // расхождение с AppSettings.Ar1FovVerticalDeg и меню «Настройки АР».
+            if (!(v >= 10.0 && v <= 150.0)) v = 65.0;
+            AR.ArBridge.FovDegreesAr1Vertical = v;
+            AR.ArBridge.Ar1VerticalFovManual = true;
+        }
+
+        // Ручная подстройка вертикального FOV (шаг 0.2°, Ctrl+Shift+PGUP/PGDN).
+        // v1.0.40.33: SHIFT+CTRL вместо CTRL+ALT — Alt-комбинации перехватывает
+        // Windows (системное меню / Alt+Tab), поэтому RegisterHotKey для них не срабатывает.
+        // v1.0.40.34: ШАГ 0.2° (было 0.5°) — требование пользователя для точной
+        // подгонки горизонта. Значение СОХРАНЯЕТСЯ в настройках (раньше терялось
+        // при перезапуске — калибровку приходилось делать заново).
+        internal void NudgeAr1VerticalFov(double deltaDeg, string source)
+        {
+            double v = Math.Clamp(AR.ArBridge.FovDegreesAr1Vertical + deltaDeg, 10.0, 150.0);
+            AR.ArBridge.FovDegreesAr1Vertical = v;
+            AR.ArBridge.Ar1VerticalFovManual = true;
+            try { AppSettings.Ar1FovVerticalDeg = v; AppSettings.Save(); } catch { }
+            SendAr1FovToPage();
+            AppendLog($"[AR] Вертикальный FOV AR1 = {v:F1}° ({source}); горизонт={AR.ArBridge.FovDegreesAr1:F0}°");
+        }
+
+        // ================================================================
+        // v1.0.40.34: ДИАГНОСТИКА НАКЛОНА — какие углы РЕАЛЬНО даёт телеметрия.
+        // Нужна, чтобы не гадать о причине расхождения нарисованного горизонта
+        // с реальным: сравниваем три независимых источника:
+        //   1) кузов: truck.world.placement[4]/[5]  (pitch/roll кузова, ×360°)
+        //   2) камера: CameraForward.Y / CameraRight.Y (реальный наклон взгляда и крена)
+        //   3) кабина: truck.cabin.offset[4]/[5]   (п.); если кабина ВРАЩАЕТСЯ при
+        //      крене кузова (маятник), то рисовать горизонт от кузова НЕЛЬЗЯ.
+        // ================================================================
+        internal void LogArTiltDiagnostics(string source)
+        {
+            try
+            {
+                double truckPitchDeg = _arPitch * 360.0;
+                double truckRollDeg = _arRoll * 360.0;
+                double headPitchDeg = _arHeadOffsetOrientation.Pitch * 360.0;
+                double headRollDeg = _arHeadOffsetOrientation.Roll * 360.0;
+                double cabinPitchDeg = _arCabinOffsetOrientation.Pitch * 360.0;
+                double cabinRollDeg = _arCabinOffsetOrientation.Roll * 360.0;
+
+                double camNoseDownDeg = Math.Asin(Math.Clamp(-_arCameraPose.Forward.Y, -1.0, 1.0)) * 180.0 / Math.PI;
+                double camRollDeg = Math.Asin(Math.Clamp(Math.Abs(_arCameraPose.Forward.Y) < 0.9999
+                    ? -_arCameraPose.Right.Y / Math.Sqrt(Math.Max(1e-9, 1.0 - _arCameraPose.Forward.Y * _arCameraPose.Forward.Y))
+                    : 0.0, -1.0, 1.0)) * 180.0 / Math.PI;
+
+                double truckPitchFromFwdDeg = Math.Asin(Math.Clamp(-_arCameraPose.Forward.Y, -1.0, 1.0)) * 180.0 / Math.PI;
+
+                // ---- ГЕОМЕТРИЯ ЛИНИИ ГОРИЗОНТА, которую РИСУЕТ страница ----
+                // Та же формула, что и в ar_hud.js drawWorldHorizon:
+                //   y = cy + fv·(Forward.Y + Right.Y·x)/Up.Y,  x = (px − cx)/fh
+                // Печатаем предсказанную высоту линии у левого/правого края и её
+                // наклон — чтобы сравнить с тем, что видно на экране.
+                double hFov = AR.ArBridge.FovDegreesAr1;
+                double vFov = AR.ArBridge.FovDegreesAr1Vertical;
+                int sw = 1920, sh = 1080;
+                try
+                {
+                    var scr = GetGameScreen();
+                    if (scr != null && scr.Bounds.Width > 0) { sw = scr.Bounds.Width; sh = scr.Bounds.Height; }
+                }
+                catch { }
+                double fh = (sw * 0.5) / Math.Tan(hFov * Math.PI / 180.0 * 0.5);
+                double fv = (sh * 0.5) / Math.Tan(vFov * Math.PI / 180.0 * 0.5);
+                double cx = sw * 0.5, cy = sh * 0.5;
+                double fy2 = _arCameraPose.Forward.Y, ry2 = _arCameraPose.Right.Y, uy2 = _arCameraPose.Up.Y;
+                double hy0 = double.NaN, hy1 = double.NaN, horizonTiltDeg = double.NaN, hyCentre = double.NaN;
+                if (Math.Abs(uy2) > 1e-7)
+                {
+                    hy0 = cy + fv * (fy2 + ry2 * ((0 - cx) / fh)) / uy2;
+                    hy1 = cy + fv * (fy2 + ry2 * ((sw - cx) / fh)) / uy2;
+                    hyCentre = cy + fv * fy2 / uy2;
+                    horizonTiltDeg = Math.Atan2(hy1 - hy0, sw) * 180.0 / Math.PI;
+                }
+
+                AppendLog(
+                    $"[AR] TILT ({source}): кузов pitch={truckPitchDeg:F2}° roll={truckRollDeg:F2}° | " +
+                    $"голова pitch={headPitchDeg:F2}° roll={headRollDeg:F2}° | " +
+                    $"кабина pitch={cabinPitchDeg:F2}° roll={cabinRollDeg:F2}° | " +
+                    $"КАМЕРА наклон={camNoseDownDeg:F2}° крен={camRollDeg:F2}° | " +
+                    $"fwd.Y={_arCameraPose.Forward.Y:F4} right.Y={_arCameraPose.Right.Y:F4} up.Y={_arCameraPose.Up.Y:F4}");
+
+                AppendLog(
+                    $"[AR] HORIZON-GEOM: {sw}x{sh} hFov={hFov:F1}° vFov={vFov:F1}° fh={fh:F0} fv={fv:F0} " +
+                    $"→ y(лево)={hy0:F0} y(центр)={hyCentre:F0} y(право)={hy1:F0} " +
+                    $"наклон линии={horizonTiltDeg:F2}° (центр экрана cy={cy:F0})");
+            }
+            catch { }
+        }
+
+        // Отправка текущих FOV странице AR1 (при старте канала/страницы).
         private void SendAr1FovToPage()
         {
-            double fov = AR.ArBridge.FovDegreesAr1;
-            SendCommandToMap("ar_fov", new JObject { ["fov"] = fov });
+            SendCommandToMap("ar_fov", new JObject
+            {
+                ["fov"] = AR.ArBridge.FovDegreesAr1,
+                ["fovVertical"] = AR.ArBridge.FovDegreesAr1Vertical
+            });
         }
 
         // ================================================================
@@ -437,9 +889,13 @@ namespace ETS2_Assist_GUI
                 return;
             }
 
+            // v1.0.40.36: крен камеры — по РЕЖИМУ (Ctrl+Shift+Y переключает).
+            // Мировой горизонт (эта линия) строится из базиса; горизонт РЕАЛЬНОЙ
+            // ПЛОСКОСТИ полотна страница рисует отдельно по groundPlane — их совпадение
+            // и есть критерий правильности режима.
             if (!AR.ScsCameraPose.TryCreate(
                     _arTruckX, _arTruckY, _arTruckZ,
-                    new AR.ScsEuler(_arHeading, _arPitch, _arRoll),
+                    new AR.ScsEuler(_arHeading, _arPitch, ArCameraRollTurn(_arRoll)),
                     _arCabinPosition,
                     _arCabinOffsetOrientation,
                     _arCabinOffsetPosition,
@@ -459,11 +915,219 @@ namespace ETS2_Assist_GUI
 
         private static bool Vector3Changed(System.Numerics.Vector3 a, System.Numerics.Vector3 b)
             => System.Numerics.Vector3.DistanceSquared(a, b) > 1e-8f;
-
         private static bool EulerChanged(AR.ScsEuler a, AR.ScsEuler b)
             => Math.Abs(a.Heading - b.Heading) > 0.000001 ||
                Math.Abs(a.Pitch - b.Pitch) > 0.000001 ||
                Math.Abs(a.Roll - b.Roll) > 0.000001;
+
+        // ================================================================
+        // v1.0.40.31: ЧТЕНИЕ ДАННЫХ КОЛЁС (Ground Plane по колёсам).
+        // TruckTel отдаёт (проверено на живом REST-кадре):
+        //   truck.wheels.count                 = 4
+        //   truck.wheel.position               = [[x,y,z],[x,y,z],…]
+        //   truck.wheel.radius                 = [r,…]
+        //   truck.wheel.on_ground              = [true,…]
+        //   truck.wheel.suspension.deflection  = [d,…]
+        // Дополнительно поддерживаем «indexed» форму WS-дельты
+        // (truck.wheel.position.0 / .1 / …), которая встречается в delta-пакетах.
+        // Все числа — через Value<double>() (культуро-независимо, урок v64).
+        // ================================================================
+        private bool TryReadWheelTelemetry(JObject json)
+        {
+            var posArr = FlatArray(json, "truck.wheel.position");
+            if (posArr == null || posArr.Count == 0) return false;
+
+            int count = json["truck.wheels.count"]?.Value<int>() ?? posArr.Count;
+            if (count <= 0 || count > 32) count = posArr.Count;
+
+            var pos = new List<System.Numerics.Vector3>(count);
+            for (int i = 0; i < count; i++)
+            {
+                System.Numerics.Vector3 v;
+
+                // Форма A: позиция — вложенный массив [[x,y,z],…].
+                if (i < posArr.Count && posArr[i] is JArray inner && inner.Count >= 3)
+                {
+                    if (!TryReadVec3Array(inner, out v)) return false;
+                }
+                // Форма B: indexed-ключи truck.wheel.position.N (WS-дельта).
+                else if (FlatArray(json, $"truck.wheel.position.{i}") is JArray indexed && indexed.Count >= 3)
+                {
+                    if (!TryReadVec3Array(indexed, out v)) return false;
+                }
+                else
+                {
+                    break;
+                }
+
+                pos.Add(v);
+            }
+
+            if (pos.Count < 3) return false;
+
+            var radii = new List<double>(pos.Count);
+            var ground = new List<bool>(pos.Count);
+            var susp = new List<double>(pos.Count);
+
+            var radArr = FlatArray(json, "truck.wheel.radius");
+            var grArr = FlatArray(json, "truck.wheel.on_ground");
+            var supArr = FlatArray(json, "truck.wheel.suspension.deflection");
+
+            for (int i = 0; i < pos.Count; i++)
+            {
+                double r = 0.506;
+                if (radArr != null && i < radArr.Count)
+                {
+                    try { double v = radArr[i].Value<double>(); if (double.IsFinite(v) && v > 0.05 && v < 2.0) r = v; }
+                    catch { }
+                }
+                radii.Add(r);
+
+                bool g = true;
+                if (grArr != null && i < grArr.Count)
+                {
+                    try { g = grArr[i].Value<bool>(); }
+                    catch { try { g = grArr[i].Value<int>() != 0; } catch { } }
+                }
+                ground.Add(g);
+
+                double d = 0.0;
+                if (supArr != null && i < supArr.Count)
+                {
+                    try { double v = supArr[i].Value<double>(); if (double.IsFinite(v) && Math.Abs(v) < 2.0) d = v; }
+                    catch { }
+                }
+                susp.Add(d);
+            }
+
+            bool changed = pos.Count != _arWheelPositions.Count;
+            if (!changed)
+            {
+                for (int i = 0; i < pos.Count; i++)
+                {
+                    if (Vector3Changed(pos[i], _arWheelPositions[i]) ||
+                        Math.Abs(radii[i] - _arWheelRadii[i]) > 0.0005 ||
+                        ground[i] != _arWheelOnGround[i] ||
+                        Math.Abs(susp[i] - _arWheelSuspensionDeflection[i]) > 0.0005)
+                    {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            _arWheelPositions.Clear(); _arWheelPositions.AddRange(pos);
+            _arWheelRadii.Clear(); _arWheelRadii.AddRange(radii);
+            _arWheelOnGround.Clear(); _arWheelOnGround.AddRange(ground);
+            _arWheelSuspensionDeflection.Clear(); _arWheelSuspensionDeflection.AddRange(susp);
+
+            return changed;
+        }
+
+        private static bool TryReadVec3Array(JArray a, out System.Numerics.Vector3 value)
+        {
+            value = System.Numerics.Vector3.Zero;
+            if (a == null || a.Count < 3) return false;
+            try
+            {
+                double x = a[0].Value<double>();
+                double y = a[1].Value<double>();
+                double z = a[2].Value<double>();
+                if (!double.IsFinite(x) || !double.IsFinite(y) || !double.IsFinite(z)) return false;
+                value = new System.Numerics.Vector3((float)x, (float)y, (float)z);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        // Пересчёт плоскости дороги по последним данным колёс.
+        // Вызывается ТОЛЬКО когда есть и placement, и колёса (ориентация кузова нужна
+        // для перевода колёс в мировую систему).
+        private void RebuildArGroundPlane()
+        {
+            if (!_arTruckKnown || _arWheelPositions.Count < AR.ArGroundPlane.MinWheelsOnGround)
+            {
+                _arGroundPlane = null;
+                return;
+            }
+
+            // ВНИМАНИЕ: в отличие от КАМЕРЫ, здесь крен кузова ПРИМЕНЯЕТСЯ —
+            // колёса жёстко связаны с кузовом, их пятна контакта наклоняются
+            // вместе с ним, значит и плоскость дороги тоже (это разные величины,
+            // а не одна на два места).
+            // v1.0.40.37: знак крена кузова ПРОВЕРЕН ФИТОМ ПЛОСКОСТИ (см. выше;
+            // верный = +1: при крене на ровной земле нормаль должна быть вертикальной).
+            if (!AR.ArGroundPlane.TryBuild(
+                    _arTruckX, _arTruckY, _arTruckZ,
+                    new AR.ScsEuler(_arHeading, _arPitch, _arRoll * _arTruckRollSign),
+                    _arWheelPositions,
+                    _arWheelRadii,
+                    _arWheelOnGround,
+                    _arWheelSuspensionDeflection,
+                    out var groundPlane))
+            {
+                _arGroundPlane = null;
+                if ((DateTime.Now - _arGroundPlaneLogAt).TotalMilliseconds > 5000)
+                {
+                    _arGroundPlaneLogAt = DateTime.Now;
+                    Logger.Current?.Data($"[AR] ground plane: НЕ построена " +
+                        $"(колёс={_arWheelPositions.Count}, на земле={_arWheelOnGround.Count(g => g)}).");
+                }
+                return;
+            }
+
+            // v1.0.40.37: оси шасси (локальные XZ кузова) — для отрисовки ориентации
+            // грузовика отдельно от горизонта/плоскости.
+            RebuildChassisAxes();
+
+            // ================================================================
+            // v1.0.40.37: ДЛЯ ВИЗУАЛИЗАЦИИ БЕРЁМ ГОРИЗОНТАЛЬНУЮ ПЛОСКОСТЬ.
+            // Требование пользователя: сетка и плоскость ВСЕГДА параллельны
+            // горизонту мира, чтобы точку можно было поставить строго на
+            // плоскости земли при ЛЮБОМ положении грузовика (с креном на
+            // обочине, носом вниз). Ориентация грузовика показывается отдельно —
+            // осями шасси (локальные XZ).
+            // Измеренная (наклонная) плоскость сохраняется в _arMeasuredGroundPlane
+            // для оценки уклона; в _arGroundPlane лежит горизонтальная.
+            // ================================================================
+            _arMeasuredGroundPlane = groundPlane;
+
+            if (UseArHorizontalPlane)
+            {
+                _arGroundPlane = AR.ArGroundPlane.CreateHorizontal(groundPlane);
+            }
+            else
+            {
+                _arGroundPlane = groundPlane;
+            }
+            var effective = _arGroundPlane;
+            if (!_arGroundPlaneLogged || (DateTime.Now - _arGroundPlaneLogAt).TotalMilliseconds > 5000)
+            {
+                _arGroundPlaneLogged = true;
+                _arGroundPlaneLogAt = DateTime.Now;
+                Logger.Current?.Data($"[AR] ground plane: {effective.Summary()}" +
+                    $" | режим={(UseArHorizontalPlane ? "ГОРИЗОНТ (виз.)" : "по колёсам")}" +
+                    $" | измеренный уклон={groundPlane.MaxResidual * 1000:F0} мм");
+            }
+        }
+
+        // Разовая самопроверка расчёта плоскости (требование задания: тесты на
+        // горизонтальную/продольную/поперечную/диагональную плоскость, поворот
+        // фуры, поднятое колесо и snap по наклонной плоскости).
+        private static int _arGroundPlaneSelfTested;
+
+        internal static void EnsureArGroundPlaneSelfTest()
+        {
+            if (Interlocked.Exchange(ref _arGroundPlaneSelfTested, 1) != 0) return;
+            try
+            {
+                AR.ArGroundPlane.RunSelfTests(msg => Logger.Current?.Data(msg));
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Data($"[AR] ground plane self-test error: {ex.Message}");
+            }
+        }
 
         // Единый парсер placement из любого источника (REST-снимок или WS-дельта).
         // КООРДИНАТЫ TruckTel приходит УЖЕ В МЕТРАХ КАРТЫ (эмпирика 31.08.2026:
@@ -555,6 +1219,17 @@ namespace ETS2_Assist_GUI
                     anyData = true;
                 }
 
+                // ------------------------------------------------------------
+                // v1.0.40.31: ДАННЫЕ КОЛЁС → РЕАЛЬНАЯ ПЛОСКОСТЬ ДОРОГИ
+                // (Ground Plane по колёсам). Ключи: truck.wheel.position/radius/
+                // on_ground/suspension.deflection (+ truck.wheels.count).
+                // ------------------------------------------------------------
+                if (TryReadWheelTelemetry(json))
+                {
+                    changed = true;
+                    anyData = true;
+                }
+
                 if (!anyData)
                 {
                     // Нет применимых полей (пауза/странный кадр) — 1 строка/5с.
@@ -567,6 +1242,7 @@ namespace ETS2_Assist_GUI
                 }
 
                 RebuildArCameraPose();
+                RebuildArGroundPlane();
 
                 // Любое изменение положения/ориентации/головы/кабины = новая поза.
                 if (_arCameraPoseValid) changed = true;
@@ -584,7 +1260,16 @@ namespace ETS2_Assist_GUI
                         $"[AR] pose '{source}': truck={_arTruckX:F2},{_arTruckY:F2},{_arTruckZ:F2} " +
                         $"camera={_arCameraPose.X:F2},{_arCameraPose.Y:F2},{_arCameraPose.Z:F2} " +
                         $"fwd={_arCameraPose.Forward.X:F3},{_arCameraPose.Forward.Y:F3},{_arCameraPose.Forward.Z:F3} " +
-                        $"up={_arCameraPose.Up.X:F3},{_arCameraPose.Up.Y:F3},{_arCameraPose.Up.Z:F3}.");
+                        $"up={_arCameraPose.Up.X:F3},{_arCameraPose.Up.Y:F3},{_arCameraPose.Up.Z:F3} " +
+                        $"ground={(Math.Abs(_arGroundPlane?.Normal.Y ?? 0f) > 0 ? _arGroundPlane!.ReferenceHeight.ToString("F2") : "нет")}.");
+                }
+
+                // v1.0.40.34: ДИАГНОСТИКА НАКЛОНА — 1 строка/5 с. Нужна для разбора
+                // расхождения нарисованного горизонта с реальным.
+                if (_arCameraPoseValid && (DateTime.Now - _arTiltLogAt).TotalMilliseconds > 5000)
+                {
+                    _arTiltLogAt = DateTime.Now;
+                    LogArTiltDiagnostics(source);
                 }
             }
             catch (Exception ex)
@@ -627,10 +1312,14 @@ namespace ETS2_Assist_GUI
                     YawHead = _arHeadOffsetOrientation.Heading,
                     PitchHead = _arHeadOffsetOrientation.Pitch,
 
-                    // Высота reference point грузовика — НЕ камера.
+                    // Высота reference point грузовика — НЕ камера. Оставлено для
+                    // обратной совместимости; реальная земля — GroundPlane.
                     GroundY = _arTruckY,
                     PlaneOffsetM = AR.ArBridge.PlaneOffsetM,
-                    ShowGrid = AR.ArBridge.ShowGrid
+                    ShowGrid = AR.ArBridge.ShowGrid,
+
+                    // v1.0.40.31: реальная плоскость дороги по колёсам.
+                    GroundPlane = _arGroundPlane
                 };
 
                 if (_arPin.HasValue)
@@ -644,15 +1333,17 @@ namespace ETS2_Assist_GUI
 
                 // Города — только совместимость старого UI/диагностики;
                 // в world-to-screen проекции НЕ участвуют.
-                if (_arPoints.Count > 0)
+                var ptsForCities = ArPointsSnapshot();
+                if (ptsForCities.Count > 0)
                 {
                     var cities = new List<(double, double, double)>();
-                    foreach (var it in _arPoints)
+                    foreach (var it in ptsForCities)
                     {
                         if (it.kind != "city" || Math.Abs(it.y) < 0.001) continue;
                         double d2 = (it.x - _arTruckX) * (it.x - _arTruckX) + (it.z - _arTruckZ) * (it.z - _arTruckZ);
                         if (d2 > 5000.0 * 5000.0) continue;
-                        cities.Add((it.x, it.y + ArCityHeightCorrectionM, it.z));
+                        // v1.0.40.40: БЕЗ компенсации — реальная высота точки.
+                        cities.Add((it.x, it.y, it.z));
                     }
                     s.Cities = cities;
                 }
@@ -668,8 +1359,338 @@ namespace ETS2_Assist_GUI
         // Последняя отправленная цель (для снимка v2.0).
         private AR.ArMarker? _arV2Target;
 
+        // ================================================================
+        // v1.0.40.31: ПЛОСКОСТЬ ДОРОГИ В PAYLOAD `ar_telemetry`.
+        // Формат (по заданию «Ground Plane по колёсам»):
+        //   { valid, origin:[x,y,z], normal:[nx,ny,nz], axisU:[…], axisV:[…],
+        //     averageWheelHeight, referenceHeight, maxResidual, wheels:[…] }
+        // Массив wheels НЕ удаляем — он нужен для диагностики и построения
+        // реальной геометрии (в т.ч. новым окном визуализации высот).
+        // ================================================================
+        private JObject BuildGroundPlanePayload()
+        {
+            var gp = _arGroundPlane;
+            if (gp == null || !gp.Valid)
+                return new JObject { ["valid"] = false };
+
+            var wheels = new JArray();
+            foreach (var w in gp.Wheels)
+            {
+                wheels.Add(new JObject
+                {
+                    ["index"] = w.Index,
+                    ["onGround"] = w.OnGround,
+                    ["radius"] = w.Radius,
+                    ["suspensionDeflection"] = w.SuspensionDeflection,
+                    ["localPosition"] = new JArray(w.LocalPosition.X, w.LocalPosition.Y, w.LocalPosition.Z),
+                    ["worldCenter"] = new JArray(w.WorldCenter.X, w.WorldCenter.Y, w.WorldCenter.Z),
+                    ["contact"] = new JArray(w.Contact.X, w.Contact.Y, w.Contact.Z),
+                    ["residual"] = w.Residual,
+                    ["longitudinalM"] = w.LongitudinalM
+                });
+            }
+
+            return new JObject
+            {
+                ["valid"] = true,
+                ["origin"] = new JArray(gp.OriginX, gp.OriginY, gp.OriginZ),
+                ["normal"] = new JArray(gp.Normal.X, gp.Normal.Y, gp.Normal.Z),
+                ["axisU"] = new JArray(gp.AxisU.X, gp.AxisU.Y, gp.AxisU.Z),
+                ["axisV"] = new JArray(gp.AxisV.X, gp.AxisV.Y, gp.AxisV.Z),
+                ["averageWheelHeight"] = gp.AverageWheelHeight,
+                ["referenceHeight"] = gp.ReferenceHeight,
+                ["maxResidual"] = gp.MaxResidual,
+                ["usedWheelCount"] = gp.UsedWheelCount,
+                ["isHorizontal"] = gp.IsHorizontal,
+                // ============================================================
+                // v1.0.40.37: ОСИ ШАССИ ГРУЗОВИКА (локальные X/Z кузова в мире).
+                // Требование пользователя: ориентацию грузовика относительно земли и
+                // горизонта показывать ОТДЕЛЬНО — двумя линиями в центре экрана
+                // (вертикальной и горизонтальной), которые НЕ параллельны краям
+                // экрана, а параллельны осям шасси (локальным XZ плоскости шасси).
+                // Считаются от ОРИЕНТАЦИИ КУЗОВА (не камеры!), поэтому крен/питч
+                // грузовика виден даже когда камера компенсирована.
+                // ============================================================
+                ["chassisForward"] = new JArray(ChassisForwardX, ChassisForwardY, ChassisForwardZ),
+                ["chassisRight"] = new JArray(ChassisRightX, ChassisRightY, ChassisRightZ),
+                ["chassisUp"] = new JArray(ChassisUpX, ChassisUpY, ChassisUpZ),
+                ["truckPitchDeg"] = _arPitch * 360.0,
+                ["truckRollDeg"] = _arRoll * 360.0,
+                ["wheels"] = wheels
+            };
+        }
+
+        // ================================================================
+        // v1.0.40.37: ОСИ ШАССИ В МИРЕ (локальные X/Z кузова).
+        // Считаются напрямую из углов КУЗОВА через ту же SCS-композицию, что и
+        // поза камеры: forward = (0,0,−1), right = (1,0,0), up = (0,1,0),
+        // повёрнутые на heading/pitch/roll КУЗОВА.
+        // ================================================================
+        private double ChassisForwardX, ChassisForwardY, ChassisForwardZ;
+        private double ChassisRightX, ChassisRightY, ChassisRightZ;
+        private double ChassisUpX, ChassisUpY, ChassisUpZ;
+
+        private void RebuildChassisAxes()
+        {
+            var o = new AR.ScsEuler(_arHeading, _arPitch, _arRoll * _arTruckRollSign);
+            var f = AR.ScsCameraPose.Rotate(new System.Numerics.Vector3(0f, 0f, -1f), o);
+            var r = AR.ScsCameraPose.Rotate(new System.Numerics.Vector3(1f, 0f, 0f), o);
+            var u = AR.ScsCameraPose.Rotate(new System.Numerics.Vector3(0f, 1f, 0f), o);
+
+            ChassisForwardX = f.X; ChassisForwardY = f.Y; ChassisForwardZ = f.Z;
+            ChassisRightX = r.X; ChassisRightY = r.Y; ChassisRightZ = r.Z;
+            ChassisUpX = u.X; ChassisUpY = u.Y; ChassisUpZ = u.Z;
+        }
+
+        // ================================================================
+        // v1.0.40.31: PAYLOAD ДЛЯ ОКНА ВИЗУАЛИЗАЦИИ ВЫСОТ (`heights`).
+        //
+        // Окно рисует БОКОВУЮ проекцию (вид сбоку, грузовик условен):
+        //   • горизонтальная белая линия  — плоскость «земли» по БЛИЖАЙШЕЙ
+        //     известной высоте (высота плоскости под опорной точкой фуры);
+        //   • две красные окружности      — два колеса сбоку; их НИЖНИЕ точки
+        //     лежат на этой плоскости (именно той, что даёт ArGroundPlane);
+        //   • полупрозрачный оранжевый конус — ВЕРТИКАЛЬНЫЙ угол обзора камеры,
+        //     вершина — в позиции головы-камеры, угол = вертикальный FOV
+        //     (вычисляется из ГОРИЗОНТАЛЬНОГО по пропорции экрана 16:9);
+        //   • белая прицельная линия из вершины через центр конуса, упирается в
+        //     плоскость; длина (дистанция камера→земля) печатается над меткой.
+        //
+        // Масштаб визуализации (задание): 1 м за задним колесом, расстояние между
+        // колёсами — по телеметрии (продольные координаты), от камеры до КРАЯ
+        // визуализации 40 м. Все величины — в МЕТРАХ системы фуры.
+        // ================================================================
+        private JObject BuildHeightsPayload()
+        {
+            var res = new JObject { ["valid"] = false };
+
+            var gp = _arGroundPlane;
+            if (gp == null || !gp.Valid || !_arCameraPoseValid) return res;
+
+            // ---- Колёса: продольная координата + радиус, разделение перед/зад ----
+            var wheelArr = new JArray();
+            double frontLong = double.NaN, rearLong = double.NaN;
+            double frontRadius = 0.506, rearRadius = 0.506;
+
+            foreach (var w in gp.Wheels)
+            {
+                double lon = w.LongitudinalM;      // + вперёд
+                // Высота колеса относительно плоскости под ним.
+                double groundUnder = gp.HeightAt(w.Contact.X, w.Contact.Z);
+                double lift = w.Contact.Y - groundUnder;
+
+                wheelArr.Add(new JObject
+                {
+                    ["index"] = w.Index,
+                    ["onGround"] = w.OnGround,
+                    ["longitudinalM"] = lon,
+                    ["radius"] = w.Radius,
+                    ["liftM"] = lift,                  // отрыв от плоскости (поднятое колесо)
+                    ["suspensionDeflection"] = w.SuspensionDeflection
+                });
+
+                if (!w.OnGround) continue;
+                if (double.IsNaN(rearLong) || lon < rearLong)
+                {
+                    // Самое заднее колесо (наименьшая продольная координата).
+                    rearLong = lon; rearRadius = w.Radius;
+                }
+                if (double.IsNaN(frontLong) || lon > frontLong)
+                {
+                    frontLong = lon; frontRadius = w.Radius;
+                }
+            }
+
+            if (double.IsNaN(rearLong)) rearLong = -1.64;
+            if (double.IsNaN(frontLong)) frontLong = 2.094;
+
+            // ---- ВЕРТИКАЛЬНЫЙ FOV ----
+            // v1.0.40.32: берём ИЗМЕРЕННЫЙ вертикальный FOV (ArBridge.FovDegreesAr1Vertical),
+            // а не выводим из горизонтального: «один focal по X и Y» давал ≈50.5°
+            // вместо реальных ≈30.7° и «уплывающий» горизонт. Геометрический вывод
+            // оставлен только как fallback, если вертикальный не задан.
+            double hFovDeg = AR.ArBridge.FovDegreesAr1;
+            double aspect = 16.0 / 9.0;
+            var screen = GetGameScreen();
+            try
+            {
+                if (screen != null && screen.Bounds.Height > 0)
+                    aspect = (double)screen.Bounds.Width / screen.Bounds.Height;
+            }
+            catch { }
+            if (!double.IsFinite(aspect) || aspect < 0.2 || aspect > 8.0) aspect = 16.0 / 9.0;
+
+            double vFovDeg = AR.ArBridge.FovDegreesAr1Vertical;
+            if (!(vFovDeg > 1.0))
+            {
+                double hHalfTan = Math.Tan(hFovDeg * Math.PI / 180.0 * 0.5);
+                double vHalfTan = hHalfTan / aspect;
+                vFovDeg = 2.0 * Math.Atan(vHalfTan) * 180.0 / Math.PI;
+            }
+
+            // ---- Камера в СИСТЕМЕ ФУРЫ: продольная координата и высота над полотном ----
+            // Продольная координата камеры = проекция (camera − truck) на продольную ось
+            // фуры (мировой forward кузова). Высота — расстояние до плоскости.
+            double truckForwardX = -Math.Sin(_arHeading * Math.PI * 2.0);
+            double truckForwardZ = -Math.Cos(_arHeading * Math.PI * 2.0);
+            double camDx = _arCameraPose.X - _arTruckX;
+            double camDz = _arCameraPose.Z - _arTruckZ;
+            double camLong = camDx * truckForwardX + camDz * truckForwardZ;
+            double camHeight = gp.SignedDistance(_arCameraPose.X, _arCameraPose.Y, _arCameraPose.Z);
+
+            // ============================================================
+            // v1.0.40.37: НАКЛОН/КРЕН ПОЛОТНА СЧИТАЕМ ОТ ИЗМЕРЕННОЙ ПЛОСКОСТИ.
+            // Визуализация теперь использует ГОРИЗОНТАЛЬНУЮ плоскость, у которой
+            // нормаль = (0,1,0) по построению, поэтому углы от неё ВСЕГДА были бы
+            // нулевыми. Индикатор наклона/крена должен показывать РЕАЛЬНЫЙ уклон
+            // полотна — берём его из измеренной (наклонной) плоскости.
+            // ============================================================
+            var gpTilt = _arMeasuredGroundPlane ?? gp;
+
+            // ---- Угол прицельной линии (луча камеры) к плоскости полотна ----
+            // sin(угол к плоскости) = |dot(Forward, Normal)| — устойчиво на уклонах.
+            double dot = _arCameraPose.Forward.X * gp.Normal.X +
+                         _arCameraPose.Forward.Y * gp.Normal.Y +
+                         _arCameraPose.Forward.Z * gp.Normal.Z;
+            double rayAngleDeg = Math.Asin(Math.Clamp(Math.Abs(dot), 0.0, 1.0)) * 180.0 / Math.PI;
+            bool aimsDown = dot < 0;
+
+            // ---- Прицельная метка: луч × плоскость ----
+            double hitLong = double.NaN, hitDist = double.NaN;
+            if (gp.IntersectRay(_arCameraPose.X, _arCameraPose.Y, _arCameraPose.Z,
+                    _arCameraPose.Forward.X, _arCameraPose.Forward.Y, _arCameraPose.Forward.Z,
+                    out double t, out double hx, out double hy, out double hz))
+            {
+                hitLong = (hx - _arTruckX) * truckForwardX + (hz - _arTruckZ) * truckForwardZ;
+                hitDist = Math.Sqrt((hx - _arCameraPose.X) * (hx - _arCameraPose.X) +
+                                    (hy - _arCameraPose.Y) * (hy - _arCameraPose.Y) +
+                                    (hz - _arCameraPose.Z) * (hz - _arCameraPose.Z));
+            }
+
+            res["valid"] = true;
+            res["groundY"] = 0.0;                      // плоскость = «нулевая» линия визуализации
+            res["averageWheelHeight"] = gp.AverageWheelHeight;
+            res["referenceHeight"] = gp.ReferenceHeight;
+            res["maxResidual"] = gp.MaxResidual;
+            // ============================================================
+            // v1.0.40.33: НАКЛОН ПЛОСКОСТИ И РОЛЛ ДЛЯ ВИЗУАЛИЗАЦИИ.
+            // pitchDeg — продольный наклон полотна (положительный = подъём/в гору),
+            // rollDeg  — поперечный крен (положительный = вправо).
+            // Считаем ОТ ГЕОМЕТРИИ ПЛОСКОСТИ (normal), а не от углов кузова:
+            // так индикатор показывает реальный наклон ПОЛОТНА.
+            //   продольный наклон = наклон плоскости вдоль продольной оси фуры:
+            //     sin(pitch) = dot(ForwardTruck, Normal)
+            //   поперечный крен = то же вдоль поперечной оси фуры.
+            // ============================================================
+            double fwdX = truckForwardX, fwdZ = truckForwardZ;
+            // Поперечная ось фуры (вправо) = forward, повёрнутый на 90° по часовой.
+            double rightX = -fwdZ, rightZ = fwdX;
+
+            double alongForward = fwdX * gpTilt.Normal.X + fwdZ * gpTilt.Normal.Z;
+            double alongRight = rightX * gpTilt.Normal.X + rightZ * gpTilt.Normal.Z;
+
+            // Наклон вдоль оси: положительный, если полотно ПОДНИМАЕТСЯ вперёд.
+            // Нормаль отклонена НАЗАД от вертикали при подъёме вперёд, поэтому знак
+            // берём с минусом относительно компоненты нормали по forward.
+            double pitchDeg = -Math.Asin(Math.Clamp(alongForward, -1.0, 1.0)) * 180.0 / Math.PI;
+            double rollDeg = Math.Asin(Math.Clamp(alongRight, -1.0, 1.0)) * 180.0 / Math.PI;
+
+            res["pitchDeg"] = pitchDeg;
+            res["rollDeg"] = rollDeg;
+            res["planeNormalY"] = gp.Normal.Y;
+            res["wheels"] = wheelArr;
+            res["rearLongitudinalM"] = rearLong;
+            res["rearRadiusM"] = rearRadius;
+            res["frontLongitudinalM"] = frontLong;
+            res["frontRadiusM"] = frontRadius;
+            res["cameraLongitudinalM"] = camLong;
+            res["cameraHeightM"] = camHeight;
+            res["hFovDeg"] = hFovDeg;
+            res["vFovDeg"] = vFovDeg;
+            res["screenAspect"] = aspect;
+            res["rayAngleDeg"] = rayAngleDeg;
+            res["aimsDown"] = aimsDown;
+            res["hitLongitudinalM"] = hitLong;
+            res["hitDistanceM"] = hitDist;
+            // ============================================================
+            // v1.0.40.38: ДАННЫЕ ДЛЯ ЗАДНЕЙ ПРОЕКЦИИ (вид на грузовик СЗАДИ).
+            //
+            // Требование пользователя: «сделать в визуализации высоты ещё и заднюю
+            // проекцию — смотрим на грузовик сзади, два колеса красными
+            // прямоугольниками высотой с диаметр колеса, на расстоянии друг от
+            // друга по координатам, указываем точку камеры относительно колёс и
+            // ориентацию камеры двумя осями от этой точки. Рисуем голубой горизонт
+            // сразу над плоскостью земли. При крене креним и землю, колёса на ней,
+            // но горизонт остаётся на месте.»
+            //
+            // Задний вид = проекция на плоскость (поперечная ось фуры × мировая
+            // вертикаль). Поперечная координата = проекция на правую ось шасси,
+            // вертикальная = высота относительно плоскости земли.
+            // ============================================================
+            double latRightX = rightX, latRightZ = rightZ;
+            double rearBaseY = gp.AverageWheelHeight;   // «плоскость земли» для заднего вида
+
+            // Разнос колёс по поперечной оси (из реальных контактов).
+            double halfTrackM = 0.65;                    // fallback
+            {
+                double minLat = double.NaN, maxLat = double.NaN;
+                foreach (var w in gp.Wheels)
+                {
+                    if (!w.OnGround) continue;
+                    double lat = (w.Contact.X - _arTruckX) * latRightX +
+                                 (w.Contact.Z - _arTruckZ) * latRightZ;
+                    if (double.IsNaN(minLat) || lat < minLat) minLat = lat;
+                    if (double.IsNaN(maxLat) || lat > maxLat) maxLat = lat;
+                }
+                if (!double.IsNaN(minLat) && !double.IsNaN(maxLat) && maxLat - minLat > 0.2)
+                    halfTrackM = (maxLat - minLat) * 0.5;
+            }
+
+            // Камера: поперечное смещение и высота над землёй.
+            double camLateralM = (_arCameraPose.X - _arTruckX) * latRightX +
+                                 (_arCameraPose.Z - _arTruckZ) * latRightZ;
+            double camHeightM = _arCameraPose.Y - rearBaseY;
+
+            // Ориентация КАМЕРЫ двумя осями (задний вид проецирует их на плоскость
+            // «поперечная × вертикаль»): Forward — куда смотрит, Up — где верх кадра.
+            JArray ProjectAxis(double ax, double ay, double az)
+                => new JArray(
+                    ax * latRightX + az * latRightZ,   // поперечная составляющая
+                    ay);                               // вертикальная составляющая
+
+            res["rearBaseY"] = rearBaseY;
+            res["halfTrackM"] = halfTrackM;
+            res["wheelDiameterM"] = 2.0 * rearRadius;
+            res["cameraLateralM"] = camLateralM;
+            res["cameraHeightAboveGroundM"] = camHeightM;
+            res["camAxisForward"] = ProjectAxis(_arCameraPose.Forward.X, _arCameraPose.Forward.Y, _arCameraPose.Forward.Z);
+            res["camAxisUp"] = ProjectAxis(_arCameraPose.Up.X, _arCameraPose.Up.Y, _arCameraPose.Up.Z);
+            // Реальный крен КАМЕРЫ (из базиса) — сколько камера завалена к горизонту.
+            {
+                double fy = _arCameraPose.Forward.Y;
+                double camRoll = 0.0;
+                if (Math.Abs(fy) < 0.9999)
+                {
+                    double v = -_arCameraPose.Right.Y / Math.Sqrt(Math.Max(1e-9, 1.0 - fy * fy));
+                    camRoll = Math.Asin(Math.Clamp(v, -1.0, 1.0)) * 180.0 / Math.PI;
+                }
+                res["cameraRollDeg"] = camRoll;
+            }
+            // Оси ШАССИ в заднем виде (крен кузова виден как наклон поперечной оси).
+            res["chassisRightRear"] = ProjectAxis(ChassisRightX, ChassisRightY, ChassisRightZ);
+            res["chassisUpRear"] = ProjectAxis(ChassisUpX, ChassisUpY, ChassisUpZ);
+            res["cameraRollFactor"] = ArCameraRollFactor;
+            // Масштаб визуализации по заданию: 1 м за задним колесом, 40 м от камеры
+            // до края — страница использует эти два числа как границы вида.
+            res["rearMarginM"] = 1.0;
+            res["cameraToEdgeM"] = 40.0;
+            return res;
+        }
+
         private DateTime _arSrcLogAt = DateTime.MinValue;
         private DateTime _arSrcOkLogAt = DateTime.MinValue;
+        // v1.0.40.34: троттлинг диагностики наклона (1 строка / 5 с).
+        private DateTime _arTiltLogAt = DateTime.MinValue;
 
         // ================================================================
         // ТЕЛЕМЕТРИЯ ФУРЫ (WS-дельта, порт из web_data.json)
@@ -746,22 +1767,43 @@ namespace ETS2_Assist_GUI
         // ================================================================
         // МОДЕЛЬ ТОЧЕК (копия модели конвейера overrides — без рассылки)
         // ================================================================
-        private void RefreshArModel()
+        // v1.0.40.42: метод переименован в BuildArModel и стал ЧИСТОЙ ФУНКЦИЕЙ
+        // (только строит список). Никакого UI/логов из UI — он вызывается в ФОНОВОМ
+        // потоке (см. QueueArModelRebuild). Это устраняет «замирание точек»: раньше
+        // чтение ~1.9 МБ JSON шло на UI-потоке и блокировало тики.
+        private List<ArPoint> BuildArModel()
         {
             var list = new List<ArPoint>();
             try
             {
-                // Города (статика по gameName) — жёлтые как в редакторе
+                // Города (статика по gameName).
+                // v1.0.40.42: ЦВЕТ передаём как на МИНИКАРТЕ (c.Color). Раньше здесь
+                // стояла пустая строка, и JS подставлял голубой KIND_FALLBACK.poi —
+                // отсюда «у точек всегда голубой цвет».
                 var cities = LoadStaticCities();
                 foreach (var c in cities.Values)
                     if (c.Enabled && c.Hidden != 1 && c.ShowInAr)
-                        list.Add(new ArPoint(c.GameName, c.RealName, c.X, c.Y, c.Z, "city", false, "Город", ""));
+                        list.Add(new ArPoint(c.GameName, c.RealName, c.X, c.Y, c.Z, "city", false, "Город", c.Color));
 
-                // POI (статика + merged) — без hidden; category = категория оверлея
+                // POI (статика + merged) — без hidden; category = категория оверлея.
+                // v1.0.40.40: РЕАЛЬНАЯ ВЫСОТА (было жёстко 0!). Именно из-за этого
+                // компании висели НИЖЕ метки новой точки с теми же координатами:
+                // метка берёт реальную y, а POI шли с нулём. Высоту даёт SDO-слой
+                // (`editor_static_data\*.json`, поле y), который накладывается поверх
+                // Overlays.json в `LoadStaticPois` (в Overlays.json поля y НЕТ).
                 var pois = LoadStaticPois();
+                // v1.0.40.40: ПОДГРУЖАЕМ SDO — ВОТ ГДЕ РЕАЛЬНАЯ ВЫСОТА.
+                // В Overlays.json поля y нет вообще, а в `editor_static_data\*.json`
+                // (SDO) оно есть (напр. overlay_company.json: 231 компания с y≈113 м).
+                // Без этого слоя AR-модель не знала высот и все POI шли с нулём.
+                // Порядок как в конвейере карты: SDO ПОВЕРХ Overlays (uid совпадают
+                // у 231 компании, «последний побеждает»).
+                LoadSdoPointsInto(pois);
+                // v1.0.40.42: ЦВЕТ берём из PointData (SDO кладёт SdoMeta.ColorHexOf) —
+                // тот же цвет, что на миникарте и в сайдбаре, а не пустая строка.
                 foreach (var p in pois.Values)
                     if (p.Enabled && p.Hidden != 1 && p.ShowInAr)
-                        list.Add(new ArPoint(p.GameName, p.RealName, p.X, 0, p.Z, "poi", false, p.Category, ""));
+                        list.Add(new ArPoint(p.GameName, p.RealName, p.X, p.Y, p.Z, "poi", false, p.Category, p.Color));
 
                 // Накладываем overrides (те же правила, что в конвейере) поверх копии:
                 foreach (var (file, entry) in ReadOverridesInLoadOrder())
@@ -796,20 +1838,25 @@ namespace ETS2_Assist_GUI
                     // Целевая запись (isRandom/questType) или user-точка
                     bool isTarget = (entry["isRandom"]?.Value<bool>() ?? false) ||
                                     !string.IsNullOrEmpty(entry["questType"]?.Value<string>());
-                    double ex = 0, ez = 0;
+                    double ex = 0, ey = 0, ez = 0;
                     var coords = (string?)entry["coords"];
                     if (!string.IsNullOrEmpty(coords))
                     {
+                        // v1.0.40.40: ЧИТАЕМ И ВЫСОТУ (parts[1]) — раньше она терялась,
+                        // и точки целей/пользователя получали Y=0 при реальной высоте
+                        // в файле («coords = x,y,z»).
                         var parts = coords.Split(new[] { ',', ' ', ';' }, StringSplitOptions.RemoveEmptyEntries);
                         if (parts.Length >= 3)
                         {
                             double.TryParse(parts[0], NumberStyles.Any, CultureInfo.InvariantCulture, out ex);
+                            double.TryParse(parts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out ey);
                             double.TryParse(parts[2], NumberStyles.Any, CultureInfo.InvariantCulture, out ez);
                         }
                     }
                     else
                     {
                         ex = entry["x"]?.Value<double>() ?? 0;
+                        ey = entry["y"]?.Value<double>() ?? 0;
                         ez = entry["z"]?.Value<double>() ?? 0;
                     }
                     if (Math.Abs(ex) < 0.001 && Math.Abs(ez) < 0.001) continue; // заглушка (0,0)
@@ -830,29 +1877,28 @@ namespace ETS2_Assist_GUI
                     {
                         // Скрытые цели не показываем (статус/кулдаун/галочка AR).
                         if (status == "inactive" || onCooldown || !showInAr) continue;
-                        list.Add(new ArPoint(key!, nm, ex, 0, ez, "target", true, string.IsNullOrEmpty(ovrCat) ? "Цель" : ovrCat, ovrColor));
+                        list.Add(new ArPoint(key!, nm, ex, ey, ez, "target", true, string.IsNullOrEmpty(ovrCat) ? "Цель" : ovrCat, ovrColor));
                     }
                     else
                     {
                         if (((int?)entry["hidden"] ?? 0) == 1) continue;
                         if (!showInAr) continue;
-                        list.Add(new ArPoint(key!, nm, ex, 0, ez, "poi", false, string.IsNullOrEmpty(ovrCat) ? "custom" : ovrCat, ovrColor)); // user-точка как poi
+                        list.Add(new ArPoint(key!, nm, ex, ey, ez, "poi", false, string.IsNullOrEmpty(ovrCat) ? "custom" : ovrCat, ovrColor)); // user-точка как poi
                     }
                 }
 
                 // Модель изменилась? Сравниваем подпись (имя+координаты) со старой —
-                // пересборка раз в секунду НЕ должна переотправлять ar_target (фидбек
-                // 31.08.2026: слать только при обновлении точек, не регулярно).
+                // пересборка НЕ должна переотправлять ar_target (фидбек 31.08.2026:
+                // слать только при обновлении точек, не регулярно).
                 string sig = string.Concat(list.OrderBy(p => p.gameName, StringComparer.Ordinal)
                     .Select(p => p.gameName + "|" + p.x.ToString("F1") + "," + p.y.ToString("F0") + "," + p.z.ToString("F1") + ";"));
                 bool changed = sig != _arModelSig;
                 if (changed) _arModelSig = sig;
-                _arPoints = list;
-                _arModelAt = DateTime.Now;
                 // Цель переотправляем ТОЛЬКО при реальном изменении модели.
+                // (подмена _arPoints — в QueueArModelRebuild, под lock)
                 if (changed) _arLastSentGameName = null;
-                // Строка «Модель точек обновлена» — ПОТОКОВАЯ (1/с) → в app_data.
-                // В workflow пишем только при реальном изменении (замен файла точек).
+                // Логи: методы потокобезопасны (AppendLog сам маршалит в UI-поток).
+                // В workflow — только реальное изменение; иначе в app_data.
                 if (changed)
                     AppendLog($"[AR] Модель точек обновлена: {list.Count} (цели: {list.Count(i => i.isTarget)}).");
                 else
@@ -860,8 +1906,9 @@ namespace ETS2_Assist_GUI
             }
             catch (Exception ex)
             {
-                AppendLog($"[AR] Ошибка обновления модели точек: {ex.Message}");
+                Logger.Current?.Data($"[AR] Ошибка обновления модели точек: {ex.Message}");
             }
+            return list;
         }
 
         // ================================================================
@@ -887,7 +1934,7 @@ namespace ETS2_Assist_GUI
                 {
                     _arTickLogAt = DateTime.Now;
                     Logger.Current?.Data($"[AR] tick alive: known={_arTruckKnown} changed={_arTruckChanged} " +
-                        $"forced={_arTelemetryForced} head={( _arLastHead != null)} pts={_arPoints.Count} " +
+                        $"forced={_arTelemetryForced} head={( _arLastHead != null)} pts={ArPointsSnapshot().Count} " +
                         $"x={_arTruckX:F1} z={_arTruckZ:F1}");
                 }
 
@@ -914,7 +1961,21 @@ namespace ETS2_Assist_GUI
                 // Собираем модель точек РЕДКО (она меняется только по событиям файлов,
                 // но файлы мы не мониторим — поэтому 5с как «дешёвый» фоновый refresh без
                 // рассылок: рассылка всё равно только по факту смены ближайшей точки).
-                if ((DateTime.Now - _arModelAt).TotalMilliseconds > 5000) RefreshArModel();
+                //
+                // v1.0.40.42 — КОРЕНЬ «ТОЧКИ ЗАМИРАЮТ НА 2 СЕКУНДЫ».
+                // RefreshArModel выполнялся ЗДЕСЬ, то есть НА UI-ПОТОКЕ (ArUpdateTick
+                // вызывается через BeginInvoke). Внутри — LoadStaticCities +
+                // LoadStaticPois + SdoLoader.LoadAll (чтение и парсинг ~1.9 МБ JSON).
+                // Пока это считалось, UI-поток был занят: тики (16 мс) не обрабатывались,
+                // телеметрия не отправлялась, и точки «стояли» на месте.
+                // ЗАМЕРЕНО в логе: интервал «tick alive» 5010 мс → 5903 / 6483 / 6558 мс,
+                // то есть провал ~1.5 с ровно в момент пересборки модели.
+                //
+                // ФИКС: пересборка — в ФОНОВОМ потоке (модель не зависит от UI);
+                // в _arPoints результат подменяется АТОМАРНО (ссылка, синхронизация lock).
+                // UI-поток при этом свободен и продолжает рассылать телеметрию.
+                if ((DateTime.Now - _arModelAt).TotalMilliseconds > ModelRefreshIntervalMs)
+                    QueueArModelRebuild();
 
                 // Телеметрии нет полностью → тишина (страница сама покажет статус).
                 if (!_arTruckKnown) return;
@@ -952,29 +2013,50 @@ namespace ETS2_Assist_GUI
                             ["up"] = new JArray(
                                 _arCameraPose.Up.X, _arCameraPose.Up.Y, _arCameraPose.Up.Z),
                             ["fovDeg"] = AR.ArBridge.FovDegreesAr1,
+                            // v1.0.40.32: ВЕРТИКАЛЬНЫЙ FOV — ОТДЕЛЬНО (корень
+                            // «горизонт/метка уплывают тем сильнее, чем дальше
+                            // прицел от горизонта»). Один focal по X и Y давал
+                            // смещение Δv ≈ Δf·tan(наклона головы).
+                            ["fovDegVertical"] = AR.ArBridge.FovDegreesAr1Vertical,
                             ["valid"] = _arCameraPoseValid
                         }
                     };
                     // Legacy-поля оставляем для диагностики (проекция их не использует).
                     if (_arLastHead != null) tel["head"] = new JArray(_arLastHead);
+                    // ============================================================
+                    // v1.0.40.31: РЕАЛЬНАЯ ПЛОСКОСТЬ ДОРОГИ (Ground Plane по колёсам).
+                    // Отдаём готовую плоскость: origin/normal/axisU/axisV/высоты и
+                    // диагностический массив колёс. Страница AR1 и визуализация высот
+                    // живут НА этой плоскости — никаких groundY/PlaneOffsetM.
+                    // ============================================================
+                    tel["groundPlane"] = BuildGroundPlanePayload();
+                    // ============================================================
+                    // v1.0.40.31: ДАННЫЕ ДЛЯ ОКНА ВИЗУАЛИЗАЦИИ ВЫСОТ (боковая проекция).
+                    // Отдаём УЖЕ В СИСТЕМЕ ФУРЫ: продольные координаты колёс, положение
+                    // камеры, угол луча прицела к полотну и ВЕРТИКАЛЬНЫЙ FOV, вычисленный
+                    // из горизонтального по пропорции экрана (16:9 по умолчанию).
+                    // Страница визуализации ничего не пересчитывает из углов.
+                    // ============================================================
+                    tel["heights"] = BuildHeightsPayload();
                     if (_arPin.HasValue)
                     {
                         tel["pin"] = new JObject { ["x"] = _arPin.Value.x, ["y"] = _arPin.Value.y, ["z"] = _arPin.Value.z };
                     }
                     // Первый пакет (или смена модели городов): города уходят один раз —
                     // без них страница не компенсирует высоту точек с Y=0.
-                    if (!_arCitiesSent && _arPoints.Count > 0)
+                    if (!_arCitiesSent && ArPointsSnapshot().Count > 0)
                     {
                         var cityArr = new JArray();
-                        foreach (var it in _arPoints)
+                        foreach (var it in ArPointsSnapshot())
                         {
                             if (it.kind != "city") continue;
                             double d2 = (it.x - _arTruckX) * (it.x - _arTruckX) + (it.z - _arTruckZ) * (it.z - _arTruckZ);
                             if (d2 > 5000.0 * 5000.0) continue;
                             if (Math.Abs(it.y) < 0.001) continue;
-                            // v74: город в payload УЖЕ СКОМПЕНСИРОВАН (−44 м) — «приложение
-                            // передаёт в АР уже скомпенсированную высоту точки города».
-                            cityArr.Add(new JObject { ["x"] = it.x, ["y"] = it.y + ArCityHeightCorrectionM, ["z"] = it.z });
+                            // v1.0.40.40: БЕЗ компенсации (−44 м УБРАНА) — города и
+                            // компании идут с РЕАЛЬНОЙ мировой высотой, иначе они
+                            // висели ниже метки новой точки при тех же координатах.
+                            cityArr.Add(new JObject { ["x"] = it.x, ["y"] = it.y, ["z"] = it.z });
                         }
                         tel["cities"] = cityArr;
                         _arCitiesSent = true;
@@ -1008,35 +2090,47 @@ namespace ETS2_Assist_GUI
                     return;
                 }
 
-                // Выбор: ближайшая ЦЕЛЬ (приоритет), затем ближайшая ГОРОД/POI.
-                // Угловой приоритет (перед фурой — выгоднее).
-                ArPoint? best = null;
-                double bestScore = double.MaxValue;
-                // heading: 0 = север(-Z), растёт против часовой → fwd = (-sin h, -cos h)
-                double s = Math.Sin(_arHeading), c = Math.Cos(_arHeading);
-                double fwdX = -s, fwdZ = -c;
-
-                foreach (var it in _arPoints)
+                // ============================================================
+                // v1.0.40.40: ПОКАЗЫВАЕМ ВСЕ ТОЧКИ В РАДИУСЕ 50 м.
+                //
+                // Требование пользователя: «Убираем оси, сетку, визуализацию высот.
+                // Отображаем в АР все точки в радиусе 50 м.»
+                //
+                // Раньше приложение выбирало ОДНУ лучшую точку (score с угловым
+                // приоритетом) в радиусе 1.5 км и слало `ar_target` разово при смене.
+                // Теперь шлём СПИСОК точек в радиусе ArDisplayRadiusM: страница
+                // рисует все сразу. Порог 50 м — требование пользователя.
+                // ============================================================
+                var near = new List<ArPoint>();
+                foreach (var it in ArPointsSnapshot())
                 {
                     double dx = it.x - _arTruckX;
                     double dz = it.z - _arTruckZ;
                     double d2 = dx * dx + dz * dz;
-                    // v73: ЕДИНЫЙ радиус 1500 м (фидбек: «дистанция почти 2 км, а крестик
-                    // всё ещё отображается» + плашка «нет точек в радиусе 1.5 км»). Цели
-                    // приоритетны по score, но тоже в пределах 1.5 км.
-                    if (d2 > 1500.0 * 1500.0) continue;
+                    if (d2 > ArDisplayRadiusM * ArDisplayRadiusM) continue;
                     if (d2 < 0.01) continue;
-                    double dist = Math.Sqrt(d2);
-                    double fdot = dx * fwdX + dz * fwdZ;
-                    double score = dist * (fdot > 0 ? 1.0 : 2.5) + (it.isTarget ? 0 : 1000);
-                    if (score < bestScore) { bestScore = score; best = it; }
+                    near.Add(it);
                 }
 
-                // РАЗОВАЯ РАССЫЛКА (фидбек 31.08.2026): ar_target шлём ТОЛЬКО при смене
-                // выбранной цели (или если предыдущий раз сообщали hasTarget=false).
-                // Постоянные пакеты не нужны — все точки статичны, проекцию оверлей
-                // выполняет сам по телеметрии (~60 FPS).
-                if (best == null)
+                // Сортируем: цели первыми, затем по дистанции — стабильный порядок
+                // отрисовки без скачков между кадрами (иначе точки «мигают» порядком).
+                near.Sort((a, b) =>
+                {
+                    if (a.isTarget != b.isTarget) return a.isTarget ? -1 : 1;
+                    double da = (a.x - _arTruckX) * (a.x - _arTruckX) + (a.z - _arTruckZ) * (a.z - _arTruckZ);
+                    double db = (b.x - _arTruckX) * (b.x - _arTruckX) + (b.z - _arTruckZ) * (b.z - _arTruckZ);
+                    int cmp = da.CompareTo(db);
+                    return cmp != 0 ? cmp : string.CompareOrdinal(a.gameName, b.gameName);
+                });
+
+                // Подпись набора — чтобы НЕ спамить одинаковыми списками каждый тик.
+                string nearSig = string.Join(";", near.Select(p => p.gameName));
+                bool forceSend = _arResetNearSig;
+                if (forceSend) _arResetNearSig = false;
+                if (!forceSend && nearSig == _arLastNearSig) return;   // набор не изменился — не шлём
+                _arLastNearSig = nearSig;
+
+                if (near.Count == 0)
                 {
                     if (!_arTargetMustClear)
                     {
@@ -1045,42 +2139,56 @@ namespace ETS2_Assist_GUI
                         SendCommandToMap("ar_target", new JObject
                         {
                             ["hasTarget"] = false,
-                            ["reason"] = "нет точек в радиусе 1.5 км"
+                            ["reason"] = $"нет точек в радиусе {ArDisplayRadiusM:F0} м"
                         });
-                        // v81: сброс цели и в v2-канале (маркер не должен оставаться
-                        // висеть, когда точка вышла из радиуса).
                         _arV2Target = null;
                         PublishArV2Snapshot();
-                        // ПОДРОБНОСТИ — в app_data (не спамим workflow): фура + число точек + near.
-                        ArLogPickDetail(hasTarget: false, reason: "нет точек в радиусе 1.5 км");
+                        ArLogPickDetail(hasTarget: false, reason: $"нет точек в радиусе {ArDisplayRadiusM:F0} м");
                     }
                     return;
                 }
 
-                var b = best!;
-                if (b.gameName == _arLastSentGameName)
+                // Список точек для отрисовки всех сразу.
+                var pointsArr = new JArray();
+                foreach (var it in near)
                 {
-                    // Цель не сменилась — НЕ шлём (разово, точки статичны).
-                    // (v81: в v2-канал она всё равно попала при первой рассылке —
-                    //  см. PublishArV2Target ниже; повторять не нужно.)
-                    return;
+                    double distM = Math.Sqrt((it.x - _arTruckX) * (it.x - _arTruckX) +
+                                             (it.z - _arTruckZ) * (it.z - _arTruckZ));
+                    pointsArr.Add(new JObject
+                    {
+                        ["gameName"] = it.gameName,
+                        ["realName"] = it.realName,
+                        // v1.0.40.40: РЕАЛЬНАЯ высота точки (было бы 0 у POI —
+                        // именно это заставляло компании висеть ниже метки).
+                        ["x"] = it.x,
+                        ["y"] = it.y,
+                        ["z"] = it.z,
+                        ["dist"] = distM,
+                        ["kind"] = it.kind,
+                        ["category"] = it.category,
+                        ["color"] = it.color,
+                        ["isTarget"] = it.isTarget
+                    });
                 }
-                // v93 ДЕБАУНС: при равных score цель может скакать между двумя
-                // точками каждый тик (fdot меняет знак при повороте) → спам
-                // ar_target в лог. Не шлём чаще 1 раза в 500мс.
-                if ((DateTime.Now - _arLastTargetSentAt).TotalMilliseconds < 500)
-                    return;
 
-                double distM = Math.Sqrt((b.x - _arTruckX) * (b.x - _arTruckX) + (b.z - _arTruckZ) * (b.z - _arTruckZ));
+                // Ближайшая — для обратной совместимости (статус-строка, v2-канал).
+                var b = near.FirstOrDefault(p => p.isTarget) ?? near[0];
+                double bDistM = Math.Sqrt((b.x - _arTruckX) * (b.x - _arTruckX) +
+                                          (b.z - _arTruckZ) * (b.z - _arTruckZ));
+
                 SendCommandToMap("ar_target", new JObject
                 {
                     ["hasTarget"] = true,
+                    ["count"] = near.Count,
+                    ["radiusM"] = ArDisplayRadiusM,
+                    ["points"] = pointsArr,
+                    // Поля ближайшей — для старого кода страницы (совместимость).
                     ["gameName"] = b.gameName,
                     ["realName"] = b.realName,
                     ["x"] = b.x,
                     ["y"] = b.y,
                     ["z"] = b.z,
-                    ["dist"] = distM,
+                    ["dist"] = bDistM,
                     ["kind"] = b.kind,
                     ["category"] = b.category,
                     ["color"] = b.color,
@@ -1088,22 +2196,20 @@ namespace ETS2_Assist_GUI
                 });
                 _arLastSentGameName = b.gameName;
                 _arTargetMustClear = false;
-                _arLastTargetSentAt = DateTime.Now;   // v93: дебаунс
-                // v81 КОРЕНЬ БАГА v80: _arV2Target нигде не присваивался → в v2-snapshot
-                // Target всегда null → рендеру нечего было рисовать (1193 точки, цели 0
-                // в логе; рассылка ar_target шла только на WS-страницу, не в ArBridge).
+                _arLastTargetSentAt = DateTime.Now;
                 _arV2Target = new AR.ArMarker
                 {
                     GameName = b.gameName,
                     RealName = b.realName,
                     X = b.x, Y = b.y, Z = b.z,
-                    Dist = distM,
+                    Dist = bDistM,
                     Kind = b.kind,
                     Category = b.category,
                     Color = b.color
                 };
-                PublishArV2Snapshot();   // цель сразу в latest-буфер рендера
-                ArLogPickDetail(hasTarget: true, reason: $"{b.gameName} kind={b.kind} cat={b.category} dist={distM:F0}м");
+                PublishArV2Snapshot();
+                ArLogPickDetail(hasTarget: true,
+                    reason: $"радиус {ArDisplayRadiusM:F0} м: {near.Count} точек, ближайшая {b.gameName} d={bDistM:F0}м");
             }
             catch (Exception ex)
             {
@@ -1119,27 +2225,32 @@ namespace ETS2_Assist_GUI
             _arPickLogAt = DateTime.Now;
             try
             {
-                int near3k = 0; int total = _arPoints.Count;
-                foreach (var it in _arPoints)
+                int near3k = 0; int total = ArPointsSnapshot().Count;
+                foreach (var it in ArPointsSnapshot())
                 {
                     double ddx = it.x - _arTruckX, ddz = it.z - _arTruckZ;
                     if (ddx * ddx + ddz * ddz <= 1500.0 * 1500.0) near3k++;
                 }
                 Logger.Current?.Data($"[AR] tick: truck=({_arTruckX:F1},{_arTruckY:F1},{_arTruckZ:F1}) h={_arHeading:F3}" +
-                    $" known={_arTruckKnown} points={_arPoints.Count} near3km={near3k} hasTarget={hasTarget} ({reason})");
+                    $" known={_arTruckKnown} points={total} near3km={near3k} hasTarget={hasTarget} ({reason})");
             }
             catch { }
         }
 
         // ================================================================
-        // ПОМЕТКА В АР (v70→v74): точка пересечения ЦЕНТРАЛЬНОГО ЛУЧА ВЗГЛЯДА
-        // ГОЛОВЫ с ГОРИЗОНТАЛЬНОЙ ПЛОСКОСТЬЮ на высоте грузовика. «Пометить в АР».
-        // v74 ФИКС ИНВЕРСИИ ВЕРТИКАЛИ (фидбек: «смотрю на землю — точка на макс.
-        // дистанции; выше горизонта — на земле; чем выше голова, тем ближе»):
-        //   head.offset[4] > 0 = взгляд ВВЕРХ (v72-эмпирика), < 0 = ВНИЗ.
-        //   Компонент луча по Y: dirY = +sin(pitchRad) — при взгляде ВНИЗ (pitch<0)
-        //   dirY<0, t = dyPlane/dirY = (−1.9)/(<0) > 0 → корректное пересечение.
-        //   Питч КУЗОВА (placement[4]) не учитываем (как и в отрисовке AR v74).
+        // ПОМЕТКА В АР (v70 → v1.0.40.31): точка на пересечении ЛУЧА ВЗГЛЯДА
+        // КАМЕРЫ с РЕАЛЬНОЙ ПЛОСКОСТЬЮ ДОРОГИ (по колёсам), затем snap в узел
+        // метровой сетки. «Пометить в АР» / CTRL+X.
+        //
+        // v1.0.40.31 ИСПРАВЛЯЕТ КОРЕНЬ «точка создаётся не по лучу»:
+        //   было  — самодельные углы (heading + head[3], head[4]), EyeHeightM=1.5,
+        //           горизонтальная плоскость truckY+PlaneOffsetM, Math.Round(px/pz);
+        //   стало — ГОТОВЫЙ базис камеры (CameraForward из SCS-позы) × реальная
+        //           плоскость дороги → (u,v) плоскости → округление до метров →
+        //           обратно в мир. Точка всегда лежит на полотне и в узле сетки.
+        //
+        // Взгляд выше горизонта — пересечения с плоскостью НЕТ (или точка позади):
+        // пометка не создаётся, в лог уходит причина (не ставим точку «за спиной»).
         // ================================================================
         internal void ArPlacePinFromViewCenter()
         {
@@ -1148,69 +2259,53 @@ namespace ETS2_Assist_GUI
                 AppendLog("[AR] Пометка невозможна: нет телеметрии фуры.");
                 return;
             }
-            // Ориентация камеры — согласована с pinhole-проекцией (v90):
-            // проекция теперь ТОЧНЫЙ ПОРТ ar_hud.js (эталон, подтверждён
-            // пользователем) — БЕЗ инверсий. Поэтому и луч pin НЕ инвертируем
-            // (v89-инверсия была следствием v87-инверсии проекции; обе убраны).
-            // yaw = (heading + headYaw)*2π, «вперёд» = (-sin,-cos).
-            double yaw = _arHeading * Math.PI * 2;
-            var head = _arLastHead;
-            if (head != null && head.Count >= 4)
+            if (!_arCameraPoseValid)
             {
-                double hy = head[3].Value<double>();
-                if (double.IsFinite(hy)) yaw += hy * Math.PI * 2;
+                AppendLog("[AR] Пометка невозможна: поза камеры не построена.");
+                return;
             }
-            double fx = -Math.Sin(yaw), fz = -Math.Cos(yaw);
-            // pitch ТОЛЬКО ГОЛОВЫ (head.offset[4], доля оборота).
-            // v94 ФИКС ВЕРТИКАЛИ: знак pitch БЕЗ инверсии (как в JS-эталоне,
-            // headPitchSign=1). v91-инверсия (pitch=-hp*2π) давала инверсию:
-            //   голова вверх (hp>0) → pitch<0 → dirY<0 → t близко (симптом).
-            //   С pitch = +hp*2π:
-            //   голова вверх (hp>0) → pitch>0 → dirY>0 → t=макс (ДАЛЬШЕ) ✓
-            //   голова вниз (hp<0) → pitch<0 → dirY<0 → t ближе ✓
-            double pitch = 0;
-            if (head != null && head.Count >= 5)
+            var plane = _arGroundPlane;
+            if (plane == null || !plane.Valid)
             {
-                double hp = head[4].Value<double>();
-                if (double.IsFinite(hp)) pitch = hp * Math.PI * 2;
+                AppendLog("[AR] Пометка невозможна: плоскость дороги не построена (нет данных колёс).");
+                return;
             }
-            // Луч к плоскости Y = truckY + planeOffset (высота грузовика + смещение).
-            // v96: смещение плоскости земли (Ctrl+Shift+PGUP/PGDN) влияет на
-            // создание новых меток точек — плоскость, куда ставится метка.
-            const double PinMaxDistM = 1500.0;
-            const double EyeHeightM = 1.5;   // v40.7: Actros — глаза 2.25 м от полотна − 0.75 (опорная точка)
-            double planeY = _arTruckY + AR.ArBridge.PlaneOffsetM;
-            double dirY = Math.Sin(pitch);        // взгляд вниз (pitch<0) => dirY<0 (вниз)
-            double dirXZ = Math.Cos(pitch);       // |компонента в горизонтали|
-            double eyeY = _arTruckY + EyeHeightM;
-            double dyPlane = planeY - eyeY;       // до плоскости (≈ −1.9 м + смещение)
-            double t;
-            if (dirY > -1e-4 || dyPlane / dirY <= 0)
+
+            var origin = new System.Numerics.Vector3(
+                (float)_arCameraPose.X, (float)_arCameraPose.Y, (float)_arCameraPose.Z);
+            var dir = _arCameraPose.Forward;
+
+            const double MaxDistM = 1500.0;
+
+            // Пересечение луча с плоскостью: t из уравнения плоскости.
+            if (!plane.IntersectRay(origin.X, origin.Y, origin.Z,
+                    dir.X, dir.Y, dir.Z,
+                    out double t, out double hx, out double hy, out double hz))
             {
-                // Взгляд ВЫШЕ горизонта (или ровно на него) → точка на МАКС. дистанции.
-                t = PinMaxDistM;
+                AppendLog("[AR] Пометка не создана: взгляд выше горизонта (нет пересечения с дорогой).");
+                return;
             }
-            else
+            if (t > MaxDistM)
             {
-                t = dyPlane / dirY;               // чем сильнее вниз смотрим — тем ближе
-                if (t > PinMaxDistM) t = PinMaxDistM;
+                AppendLog($"[AR] Пометка не создана: пересечение слишком далеко ({t:F0} м > {MaxDistM:F0} м).");
+                return;
             }
-            if (t < 1) t = 1;
-            double px = _arTruckX + fx * dirXZ * t;
-            double pz = _arTruckZ + fz * dirXZ * t;
-            // v40.6 СНЭП К СЕТКЕ: точка может создаваться ТОЛЬКО в перекрестьях
-            // метровой сетки (Math.Round → ближайшее целое).
-            px = Math.Round(px);
-            pz = Math.Round(pz);
-            double py = planeY;                   // высота = плоскость земли (со смещением)
+
+            // (u,v) внутри плоскости → округление до метров → обратно в мир.
+            plane.ProjectToGridCoordinates(hx, hy, hz, out double u, out double v);
+            u = Math.Round(u, MidpointRounding.AwayFromZero);
+            v = Math.Round(v, MidpointRounding.AwayFromZero);
+            plane.FromGrid(u, v, out double px, out double py, out double pz);
+
             _arPin = (px, py, pz);
             SendCommandToMap("ar_pin", new JObject
             {
                 ["active"] = true,
                 ["x"] = px, ["y"] = py, ["z"] = pz
             });
-            Logger.Current?.Data($"[AR] pin placed: x={px:F1} y={py:F1} z={pz:F1} (t={t:F1}м, pitch={pitch:F3})");
-            AppendLog($"[AR] Пометка установлена: ({px:F0}, {pz:F0}) на {t:F0}м.");
+            Logger.Current?.Data($"[AR] pin placed: x={px:F2} y={py:F2} z={pz:F2} " +
+                $"(луч × плоскость: t={t:F2} м, узел сетки u={u:F0} v={v:F0}).");
+            AppendLog($"[AR] Пометка установлена: ({px:F0}, {pz:F0}) на {t:F0} м (плоскость дороги, узел сетки).");
         }
 
         // Снять пометку (кнопка «отменить» в редакторе / закрытие формы).
@@ -1226,16 +2321,36 @@ namespace ETS2_Assist_GUI
         internal (double x, double y, double z)? GetArPin() => _arPin;
 
         // Пометка по явным координатам (создание точки кликом по карте в редакторе):
-        // высота = плоскость земли АР (truckY + смещение, v96).
+        // v1.0.40.31 — существующий X/Z проецируется на РЕАЛЬНУЮ плоскость дороги,
+        // затем snap в узел метровой сетки и обратно в мир. Плоскости нет → работаем
+        // как раньше (опорная точка фуры), чтобы функция не пропадала.
         internal void ArPlacePinAtWorld(double x, double z)
         {
             if (!_arTruckKnown) return;            // нет телеметрии — пометку не рисуем
-            double py = _arTruckY + AR.ArBridge.PlaneOffsetM;
-            _arPin = (x, py, z);
+
+            var plane = _arGroundPlane;
+            if (plane != null && plane.Valid)
+            {
+                plane.SnapToPlane(x, z, out double sx, out double sy, out double sz);
+                plane.ProjectToGridCoordinates(sx, sy, sz, out double u, out double v);
+                u = Math.Round(u, MidpointRounding.AwayFromZero);
+                v = Math.Round(v, MidpointRounding.AwayFromZero);
+                plane.FromGrid(u, v, out double px, out double py, out double pz);
+                _arPin = (px, py, pz);
+                SendCommandToMap("ar_pin", new JObject
+                {
+                    ["active"] = true,
+                    ["x"] = px, ["y"] = py, ["z"] = pz
+                });
+                return;
+            }
+
+            double pyFallback = _arTruckY;
+            _arPin = (x, pyFallback, z);
             SendCommandToMap("ar_pin", new JObject
             {
                 ["active"] = true,
-                ["x"] = x, ["y"] = py, ["z"] = z
+                ["x"] = x, ["y"] = pyFallback, ["z"] = z
             });
         }
 

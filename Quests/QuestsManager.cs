@@ -295,6 +295,11 @@ namespace ETS2_Assist_GUI
 
             switch (command)
             {
+                case "ar_view_request":
+                    // v1.0.40.40: страница AR1 запрашивает настройки вида (сетка/оси/
+                    // горизонты/радиус) при подключении — приложение их владелец.
+                    SendArViewToPage();
+                    break;
                 case "target_reached":
                     // УСТАРЕЛО: миникарта больше не шлёт target_reached (теперь
                     // target_zone_enter / target_zone_leave). Оставлено для совместимости.

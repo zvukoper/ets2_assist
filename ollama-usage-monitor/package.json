@@ -2,7 +2,7 @@
   "name": "ollama-usage-monitor",
   "displayName": "Ollama Usage Monitor",
   "description": "Compact Status Bar indicator for Ollama Cloud session/weekly usage.",
-  "version": "0.2.1",
+  "version": "0.5.0",
   "publisher": "ets2assist",
   "engines": {
     "vscode": "^1.85.0"
@@ -27,6 +27,10 @@
       {
         "command": "ollamaUsage.logout",
         "title": "Ollama Usage: Switch Account (Logout/Login)"
+      },
+      {
+        "command": "ollamaUsage.reset",
+        "title": "Ollama Usage: Reset (clean up and retry)"
       }
     ],
     "configuration": {

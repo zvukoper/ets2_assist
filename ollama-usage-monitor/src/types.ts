@@ -26,4 +26,7 @@ export type StatusState =
   | { kind: 'no-key' }
   | { kind: 'login' }
   | { kind: 'locked' }
-  | { kind: 'error'; message: string };
+  /** v0.5: выполняется сброс внутренних механизмов. */
+  | { kind: 'resetting' }
+  /** v0.5: hintReset — показать в tooltip совет выполнить «Reset». */
+  | { kind: 'error'; message: string; hintReset?: boolean };

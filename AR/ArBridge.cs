@@ -52,11 +52,79 @@ namespace ETS2_Assist_GUI.AR
         // на страницу командой ar_fov (CFG.fovDeg в ar_hud.js) и хранится в AppSettings.
         // ================================================================
 
-        private static double _fovDegreesAr1 = 75.0;
+        private static double _fovDegreesAr1 = 105.0;
         public static double FovDegreesAr1
         {
             get => Volatile.Read(ref _fovDegreesAr1);
             set => Volatile.Write(ref _fovDegreesAr1, value);
+        }
+
+        // ================================================================
+        // v1.0.40.32 КОРЕНЬ «горизонт и метка уплывают тем сильнее, чем дальше
+        // прицел от горизонта»: ВЕРТИКАЛЬНЫЙ FOV — НЕ ПРОИЗВОДНАЯ ОТ ГОРИЗОНТАЛЬНОГО.
+        //
+        // Геометрия ошибки (доказана измерениями по скриншотам):
+        //   проекция считала ОДИН focal length f = (W/2)/tan(hFov/2) и по X, и по Y.
+        //   Это соответствует вертикальному FOV ≈ 2·atan(tan(hFov/2)/aspect).
+        //   Реальный вертикальный FOV игры меньше ≈ на 10…15° (в ETS2 вертикаль и
+        //   горизонталь масштабируются независимо; в config.cfg есть отдельные
+        //   r_multimon_fov_vertical / r_multimon_fov_horizontal). Ошибка Δf даёт
+        //   смещение Δv ≈ Δf·tan(pitch) — ровно ноль на горизонте и рост с углом
+        //   наклона головы. Это и наблюдалось: на 0° приклеено, на ±10° — уплывает.
+        //
+        // Поэтому вертикальный focal length задаётся ОТДЕЛЬНОЙ величиной
+        // (_fovDegreesAr1Vertical). Пока пользователь не подстроил её вручную
+        // (Ar1VerticalFovManual), значение ВЫВОДИТСЯ из горизонтального с типичным
+        // для ETS2 сжатием по вертикали — см. VerticalFromHorizontalFactor.
+        // ================================================================
+
+        /// <summary>
+        /// Отношение tan(vFov/2) к «геометрическому» (16:9-выведенному) значению
+        /// в ETS2. 1.0 = строго геометрическое; меньше 1.0 = игра «сжимает» вертикаль.
+        ///
+        /// ИЗМЕРЕНО по трём скриншотам (1920x1080, hFov=80°, центральный столбец):
+        ///   h=−10.8° → горизонт 110 px;  h=0° → 400 px;  h=+10.8° → 860 px.
+        /// МНК-подбор (базовый наклон b + вертикальный focal fv, переопределённая
+        /// система — три уравнения на две неизвестные):
+        ///   fv = 1965 px → vFov ≈ 30.7°, базовый наклон камеры b ≈ −2.35°,
+        ///   RMS = 41 px. Результат устойчив к ±20 px ошибки измерений.
+        ///   Для сравнения «один focal» (fv = fh = 1144 px) даёт vFov = 50.5°,
+        ///   RMS = 158 px — то есть старая модель НЕ объясняет данные.
+        ///   factor = tan(30.7°/2)/tan(50.5°/2) ≈ 0.58.
+        ///
+        /// Δfv ≈ 820 px даёт смещение Δy = Δf·tan(pitch): ровно 0 на горизонте и
+        /// 157 px на 10.8° — наблюдавшийся «уплывающий» горизонт и метка.
+        /// </summary>
+        public const double Ar1VerticalFromHorizontalFactor = 0.58;
+
+        private static double _fovDegreesAr1Vertical = 65.0;
+        public static double FovDegreesAr1Vertical
+        {
+            get => Volatile.Read(ref _fovDegreesAr1Vertical);
+            set => Volatile.Write(ref _fovDegreesAr1Vertical, value);
+        }
+
+        private static int _ar1VerticalFovManual;
+        /// <summary>true — вертикальный FOV задан вручную и не выводится из горизонтального.</summary>
+        public static bool Ar1VerticalFovManual
+        {
+            get => Volatile.Read(ref _ar1VerticalFovManual) != 0;
+            set => Volatile.Write(ref _ar1VerticalFovManual, value ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Пересчёт вертикального FOV из горизонтального (когда ручная подстройка не задана).
+        /// aspect = W/H, factor — Ar1VerticalFromHorizontalFactor.
+        /// </summary>
+        public static double DeriveAr1VerticalFov(double horizontalDeg, double aspect, double factor)
+        {
+            if (!double.IsFinite(horizontalDeg) || horizontalDeg <= 1.0) return 30.7;
+            if (!double.IsFinite(aspect) || aspect <= 0.05) aspect = 16.0 / 9.0;
+            if (!double.IsFinite(factor) || factor <= 0.05) factor = 1.0;
+            double halfTanH = Math.Tan(horizontalDeg * Math.PI / 180.0 * 0.5);
+            double halfTanGeom = halfTanH / aspect;
+            double halfTanV = halfTanGeom * factor;
+            return Math.Clamp(2.0 * Math.Atan(halfTanV) * 180.0 / Math.PI, 10.0, 170.0);
         }
 
         // ================================================================

@@ -46,12 +46,26 @@ export class StatusBar {
       this.item.backgroundColor = undefined;
     } else if (state.kind === 'locked') {
       this.item.text = this.showEmoji() ? '🦙 🔒' : '🔒';
-      this.item.tooltip = 'Ollama Cloud Usage\n\nПрофиль занят видимым Edge (смена аккаунта). Закройте окно Edge и нажмите Refresh.';
+      this.item.tooltip =
+        'Ollama Cloud Usage\n\nПрофиль Edge занят — headless-запрос не получил страницу.\n\n' +
+        'Причины: открыто окно Edge с профилем расширения (кнопка Switch Account)\n' +
+        'или остался «висячий» процесс Edge после закрытия.\n\n' +
+        'Что делать: выполните "Ollama Usage: Reset" — закроет только процессы Edge\n' +
+        'с профилем расширения и повторит запрос.';
       this.item.color = new vscode.ThemeColor('statusBarItem.warningForeground');
+      this.item.backgroundColor = undefined;
+    } else if (state.kind === 'resetting') {
+      this.item.text = this.showEmoji() ? '🦙 ⏳' : '⏳';
+      this.item.tooltip = 'Ollama Cloud Usage\n\nСброс внутренних механизмов и повторный запрос…';
+      this.item.color = undefined;
       this.item.backgroundColor = undefined;
     } else {
       this.item.text = this.showEmoji() ? '🦙 ?' : '?';
-      this.item.tooltip = `Ollama Cloud Usage\n\nError: ${state.message}`;
+      const hint = state.hintReset
+        ? '\n\nПохоже на проблему с профилем Edge (пустой DOM).\n' +
+          'Выполните "Ollama Usage: Reset" — очистка и повторный запрос.'
+        : '';
+      this.item.tooltip = `Ollama Cloud Usage\n\nError: ${state.message}${hint}`;
       this.item.color = new vscode.ThemeColor('statusBarItem.errorForeground');
       this.item.backgroundColor = undefined;
     }

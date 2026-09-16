@@ -19,7 +19,7 @@ namespace ETS2_Assist_GUI
                         return attr.InformationalVersion;
                 }
                 catch { }
-                return "1.0.40.30-SCS-CAMERA-POSE";
+                return "1.0.40.44-SMOOTH-CAM";
             }
         }
     }

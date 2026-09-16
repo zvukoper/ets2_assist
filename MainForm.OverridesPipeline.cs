@@ -183,12 +183,21 @@ namespace ETS2_Assist_GUI
                             if (double.IsNaN(x) || double.IsInfinity(x) || double.IsInfinity(z)) continue;
                             if (Math.Abs(x) > 1_000_000 && Math.Abs(z) > 1_000_000) { x /= 100; z /= 100; }
                             var nm = (string?)item["realName"] ?? (string?)item["name"] ?? (string?)item["gameName"];
+                            // v1.0.40.40: ЧИТАЕМ ВЫСОТУ, если она есть в файле. В самом
+                            // Overlays.json поля y нет (высота приходит слоем SDO ниже,
+                            // `LoadSdoPointsInto`), но если появится — берём её, а не 0.
+                            double y = 0;
+                            if (item["y"] != null)
+                            {
+                                try { y = item["y"].Value<double>(); } catch { y = 0; }
+                                if (double.IsNaN(y) || double.IsInfinity(y)) y = 0;
+                            }
                             pois[uid] = new PointData
                             {
                                 GameName = uid,
                                 RealName = string.IsNullOrEmpty(nm) ? prop.Name : nm,
                                 Category = prop.Name,
-                                X = x, Z = z,
+                                X = x, Y = y, Z = z,
                                 IsPoi = true
                             };
                         }

@@ -57,6 +57,10 @@
     // ---------- НАСТРАИВАЕМЫЕ ПОРОГИ (отдельные переменные — по требованию) ----------
     const CFG = {
         fovDeg: 75,             // горизонтальный FOV (калибруется по фидбеку)
+        // v1.0.40.32: ВЕРТИКАЛЬНЫЙ FOV — ОТДЕЛЬНЫЙ от горизонтального (измерено
+        // ≈30.7° при горизонтали 80°; «один focal по X и Y» давал 50.5° и
+        // «уплывающий» горизонт). Приложение присылает готовое значение.
+        fovDegVertical: 30.7,
         edgeMargin: 70,         // отступ от края экрана, px
         labelDy: 46,            // подпись под перекрестьем, px
         wsUrl: 'ws://localhost:8084/',
@@ -76,15 +80,75 @@
         // Камера приходит ГОТОВОЙ 6DoF-позой (position + forward/right/up).
 
         // ЛИНИЯ МИРОВОГО ГОРИЗОНТА (строится из базиса камеры) + ДИСТАНЦИЯ ДО ЗЕМЛИ.
-        showHorizon: true,
+        // v1.0.40.40: ПО УМОЛЧАНИЮ ВЫКЛЮЧЕНО — включается из меню «Вид» в приложении
+        // (команда ar_view). Приложение остаётся единственным владельцем настройки.
+        showHorizon: false,
         horizonColor: 'rgba(120,220,255,0.75)',
         horizonPixels: 1.5,     // толщина линии, px
+        // v1.0.40.32: ПОДПИСЬ горизонта (требование: «не понятно, какая из линий
+        // горизонт»). Рисуется у левого края на самой линии.
+        showHorizonLabel: true,
+        horizonLabelX: 14,      // отступ подписи от левого края, px
+        horizonLabelFont: '700 12px "Segoe UI", Arial',
+        horizonLabelFontSize: 12,
+        // ================================================================
+        // v1.0.40.36: ЛИНИЯ ГОРИЗОНТА РЕАЛЬНОГО ПОЛОТНА (критерий сравнения).
+        //
+        // Зачем: голубой горизонт строится из БАЗИСА КАМЕРЫ, а белый — из РЕАЛЬНОЙ
+        // плоскости дороги (по колёсам). Если режим крена/питча камеры верен, эти
+        // две линии ОБЯЗАНЫ сойтись. Это единственная проверка, которая не требует
+        // догадок: оба источника независимы, и видно невооружённым глазом.
+        // ================================================================
+        showPlaneHorizon: false,
+        planeHorizonColor: 'rgba(255,255,255,0.95)',
+        planeHorizonPixels: 2.0,
+        planeHorizonLabel: 'горизонт полотна',
+        // ================================================================
+        // v1.0.40.37: ОСИ ШАССИ — ОРИЕНТАЦИЯ ГРУЗОВИКА.
+        //
+        // Требование пользователя: ориентацию грузовика относительно земли и
+        // горизонта показывать ОТДЕЛЬНО — двумя линиями в центре экрана
+        // (вертикальной и горизонтальной), параллельными осям ШАССИ (локальные
+        // X/Z кузова), а НЕ краям экрана. При компенсированной камере крен/питч
+        // грузовика виден именно по этим линиям.
+        //   • ось шасси X (поперечная) — красноватая;
+        //   • ось шасси Z (продольная) — зеленоватая;
+        //   • ось шасси Y (вертикаль кузова) — синеватая (показывает крен кузова).
+        // ================================================================
+        showChassisAxes: false,
+        chassisAxisLenPx: 130,        // полудлина каждой оси, px
+        chassisAxisXColor: 'rgba(255,120,120,0.90)',
+        chassisAxisZColor: 'rgba(140,255,140,0.90)',
+        chassisAxisYColor: 'rgba(140,180,255,0.90)',
+        chassisAxisWidth: 2.0,
+        chassisAxisLabel: true,
         diagCrossColor: 'rgba(170,170,170,0.95)',
         diagCrossSize: 7,       // полуразмер СЕРЫЙ ДИАГОНАЛЬНЫЙ микрокрестик, px
         showGroundDistText: true,
         groundDistFont: '600 12px Consolas, monospace',
         groundDistColor: 'rgba(255,255,255,0.95)',
         groundDistDy: 12,       // отступ текста дистанции от центра экрана, px
+
+        // ================================================================
+        // v1.0.40.33: СЕТКА — ПРОСТО ПЛОСКОСТЬ БЕЗ ОГРАНИЧЕНИЙ.
+        // УБРАНО по требованию: круг R=150 м, fade 125…150 м, граница-окружность,
+        // «шахматные» эффекты и расширение к камере (CameraPadM) — всё это
+        // оказалось лишним. Сетка строится как бесконечная плоскость; гаснет
+        // только по экранной вертикали и по расстоянию до КАМЕРЫ (мягкое
+        // отсечение невидимой дали, чтобы не считать километры линий).
+        // Оси — из GroundPlane.AxisU/AxisV (плоскость наклонная).
+        // ================================================================
+        showGroundGrid: false,
+        gridFarStartM: 220,      // до этого расстояния от камеры alpha полная
+        gridFarEndM: 320,        // дальше — линия не рисуется
+        gridBehindCameraM: 80,   // запас сетки ЗА камерой (м), чтобы не было «дыры» у низа экрана
+        verticalFromHorizontalFactor: 0.58,
+        gridColor1M: 'rgba(255,255,255,0.42)',    // каждая 1 м — тонкая белая
+        gridColor10M: 'rgba(255,140,0,0.85)',     // каждая 10 м — толстая оранжевая
+        gridColor50M: 'rgba(255,38,38,0.95)',     // каждая 50 м — красная (приоритет)
+        gridWidth1M: 0.7,
+        gridWidth10M: 2.2,
+        gridWidth50M: 3.2,
 
         // ВЫВОД ТЕКУЩЕГО FOV в ЛЕВОМ НИЖНЕМ УГЛУ (требование пользователя).
         showFovText: true,
@@ -143,16 +207,322 @@
         haveTruck: false,
         haveHead: false,
         haveHeadPitch: false,
-        fovDeg: 100,                  // FOV приходит в позе камеры (camera.fovDeg)
+        fovDeg: 100,                  // ГОРИЗОНТАЛЬНЫЙ FOV (camera.fovDeg)
+        // ================================================================
+        // v1.0.40.32: ВЕРТИКАЛЬНЫЙ FOV — ОТДЕЛЬНЫЙ от горизонтального.
+        // КОРЕНЬ «горизонт/метка уплывают тем сильнее, чем дальше прицел от
+        // горизонта»: по Y применялся тот же focal length, что и по X. Это даёт
+        // смещение Δv ≈ Δf·tan(наклона) — ровно ноль на горизонте и рост с углом.
+        // ================================================================
+        fovDegVertical: 30.7,
         projectionCenterX: 0.5,
         projectionCenterY: 0.5,
         lastTelemetryAt: 0,
-        target: null,                 // последняя ar_target {…, groundY}
+        // v1.0.40.44: момент приёма последнего ПАКЕТА (performance.now()).
+        // Разница с текущим временем = «возраст» данных, на который
+        // экстраполируется поза камеры при рендере (плавность точек).
+        telemetryAtMs: 0,
+        target: null,                 // БЛИЖАЙШАЯ точка (статус-строка, совместимость)
+        points: [],                   // v1.0.40.40: ВСЕ точки в радиусе (рисуем все)
+        displayRadiusM: 50,           // v1.0.40.40: радиус показа точек, м
         pin: null,                    // пометка / новая точка {x,y,z} (крестик)
         cities: [],                   // [{x,y,z}] — ТОЛЬКО совместимость/диагностика
+
+        // ================================================================
+        // v1.0.40.31: РЕАЛЬНАЯ ПЛОСКОСТЬ ДОРОГИ (по колёсам, Ground Plane).
+        // Единственный источник геометрии земли: сетка, дистанция до земли,
+        // создание точки. Поля — из ar_telemetry.groundPlane.
+        // ================================================================
+        groundPlane: null,
+
         sel: null                     // текущая экранная позиция перекрестья
     };
     window.__arHud = ar;
+
+    // ================================================================
+    // v1.0.40.31: РАБОТА С ПЛОСКОСТЬЮ ДОРОГИ (зеркало AR/ArGroundPlane.cs).
+    // Все геометрические запросы идут ТОЛЬКО сюда — никаких groundY/PlaneOffsetM.
+    // ================================================================
+    const GroundPlane = {
+        valid(gp) { return !!gp && gp.valid === true; },
+
+        // Высота плоскости в мировой точке (X,Z).
+        heightAt(gp, x, z) {
+            if (!this.valid(gp)) return NaN;
+            // Плоскость задана нормалью и точкой origin; решаем по нормали.
+            const n = gp.normal, o = gp.origin;
+            if (Math.abs(n[1]) < 1e-9) return NaN;
+            return o[1] - (n[0] * (x - o[0]) + n[2] * (z - o[2])) / n[1];
+        },
+
+        // Пересечение луча с плоскостью. Возвращает {t,x,y,z} или null.
+        intersectRay(gp, ox, oy, oz, dx, dy, dz) {
+            if (!this.valid(gp)) return null;
+            const n = gp.normal, o = gp.origin;
+            const denom = dx * n[0] + dy * n[1] + dz * n[2];
+            if (!Number.isFinite(denom) || Math.abs(denom) < 1e-9) return null;
+            const numer = (o[0] - ox) * n[0] + (o[1] - oy) * n[1] + (o[2] - oz) * n[2];
+            const t = numer / denom;
+            if (!Number.isFinite(t) || t <= 0) return null;
+            return { t, x: ox + dx * t, y: oy + dy * t, z: oz + dz * t };
+        },
+
+        // Мировая точка → координаты сетки (u,v) внутри плоскости.
+        projectToGrid(gp, x, y, z) {
+            if (!this.valid(gp)) return null;
+            const o = gp.origin, U = gp.axisU, V = gp.axisV;
+            const dx = x - o[0], dy = y - o[1], dz = z - o[2];
+            return {
+                u: dx * U[0] + dy * U[1] + dz * U[2],
+                v: dx * V[0] + dy * V[1] + dz * V[2]
+            };
+        },
+
+        // Координаты сетки (u,v) → мировая точка (ЛЕЖИТ на плоскости).
+        fromGrid(gp, u, v) {
+            if (!this.valid(gp)) return null;
+            const o = gp.origin, U = gp.axisU, V = gp.axisV;
+            return {
+                x: o[0] + U[0] * u + V[0] * v,
+                y: o[1] + U[1] * u + V[1] * v,
+                z: o[2] + U[2] * u + V[2] * v
+            };
+        },
+
+        // Проекция мировой X/Z на плоскость (высота подбирается по плоскости).
+        snapToPlane(gp, x, z) {
+            const y = this.heightAt(gp, x, z);
+            if (!Number.isFinite(y)) return null;
+            return { x, y, z };
+        }
+    };
+
+    // ================================================================
+    // v1.0.40.44: СГЛАЖИВАНИЕ ПОЗЫ КАМЕРЫ — КОРЕНЬ «ТОЧКИ ДВИЖУТСЯ РЫВКАМИ».
+    //
+    // ДИАГНОЗ. Телеметрия приходит 28–35 раз в секунду (замерено: интервал
+    // ~36 мс, вход `throttle=16`). Рендер идёт через requestAnimationFrame
+    // (60 Гц). Но поза камеры применялась РОВНО в момент прихода пакета, а между
+    // пакетами не менялась: 2 кадра рисовали одну точку, потом был скачок.
+    // Это и есть «14 fps» на глаз, хотя счётчик кадров показывает 60–100.
+    // В v1.0.40.30 экстраполяция камеры была УДАЛЕНА (тогда боролись с
+    // «уплывающим» горизонтом), и точки стали дёргаться.
+    //
+    // РЕШЕНИЕ. Экспоненциальное сглаживание положения/базиса камеры в рендере:
+    //   cam = cam + (target − cam) * k,   k = 1 − exp(−dt / tau)
+    // Формула через dt (а не фиксированный коэффициент «на кадр») даёт ОДИНАКОВОЕ
+    // поведение при любой частоте кадров — при 60 и при 144 Гц сглаживание
+    // одинаковое по времени, а не «в 2 раза быстрее».
+    //
+    // ВАЖНО ПРО БАЗИС (forward/right/up): их НЕЛЬЗЯ сглаживать покомпонентно
+    // (векторы перестанут быть ортонормальными → «плывущий» горизонт, который
+    // чинили в v40.32). Для наклона используем СФЕРИЧЕСКУЮ интерполяцию:
+    // нормализуем после лерпа. Это сохраняет единичную длину и не даёт
+    // геометрических артефактов.
+    //
+    // ОГОВОРКА: сглаживание ЗАДЕРЖИВАЕТ картинку на tau (≈40 мс). Это плата за
+    // плавность и она на порядок меньше, чем рывок в 36 мс; для AR-метки
+    // задержка незаметна, а рывки раздражают.
+    // ================================================================
+    const SMOOTH = {
+        enabled: true,
+        // v1.0.40.44 (оптимизировано численно): СНАЧАЛА экстраполируем ЦЕЛЬ по
+        // скорости до текущего момента, ЗАТЕМ сглаживаем. Сравнение подходов
+        // (скорость 20 м/с, пакеты 36 мс, рендер 60 Гц):
+        //   без обработки             — джиттер 358.7 мм, макс. рывок 720 мм
+        //   сглаживание позиции       — джиттер  85.2 мм, рывок 425 мм
+        //   экстраполяция цели + сглаж. — джиттер  42.7 мм, рывок 333 мм
+        // То есть экстраполяция цели убирает дрожание ещё в 2 раза и вдвое
+        // уменьшает максимальный рывок. tau подобран 0.035: даёт минимум
+        // дрожания при умеренной задержке (lag = v·tau ≈ 0.7 м при 20 м/с).
+        posTau: 0.035,     // постоянная времени позиции, с
+        rotTau: 0.040,     // ориентация — чуть мягче
+        snapDistM: 25.0,   // телепорт/загрузка: скачок больше — без сглаживания
+        // Предел экстраполяции: если пакетов долго нет, НЕ улетаем вперёд
+        // (защита от «поехавшей» скорости после паузы/телепорта).
+        maxExtrapS: 0.15
+    };
+
+    // Сглаженное состояние (то, что реально используется в проекции).
+    const camSmooth = {
+        x: 0, y: 0, z: 0,
+        fx: 0, fy: 0, fz: 0,
+        rx: 0, ry: 0, rz: 0,
+        ux: 0, uy: 0, uz: 0,
+        // Скорость камеры (м/с), оценённая по последним двум пакетам.
+        vx: 0, vy: 0, vz: 0,
+        valid: false,
+        lastAt: 0
+    };
+
+    /**
+     * Пересчитать сглаженную позу к моменту now. Вызывается КАЖДЫЙ кадр.
+     * Возвращает объект для проекции (или исходный `ar`, если сглаживание выкл.).
+     */
+    function smoothCamera(nowMs) {
+        if (!SMOOTH.enabled || !ar.cameraValid) return ar;
+
+        if (!camSmooth.valid) {
+            // Первый пакет — принимаем как есть (без «доезда» от нуля).
+            camSmooth.x = ar.camX; camSmooth.y = ar.camY; camSmooth.z = ar.camZ;
+            camSmooth.fx = ar.cameraForward.x; camSmooth.fy = ar.cameraForward.y; camSmooth.fz = ar.cameraForward.z;
+            camSmooth.rx = ar.cameraRight.x; camSmooth.ry = ar.cameraRight.y; camSmooth.rz = ar.cameraRight.z;
+            camSmooth.ux = ar.cameraUp.x; camSmooth.uy = ar.cameraUp.y; camSmooth.uz = ar.cameraUp.z;
+            camSmooth.vx = camSmooth.vy = camSmooth.vz = 0;
+            camSmooth.valid = true;
+            camSmooth.lastAt = nowMs;
+            return applySmooth();
+        }
+
+        // dt ограничиваем: после паузы/фонового таба не «догоняем» рывком.
+        let dt = (nowMs - camSmooth.lastAt) / 1000;
+        if (!Number.isFinite(dt) || dt <= 0) dt = 1 / 60;
+        if (dt > 0.25) dt = 0.25;
+        camSmooth.lastAt = nowMs;
+
+        // Телепорт/перезагрузка — принимаем позу как есть (иначе «доезд»).
+        const jump = Math.hypot(ar.camX - camSmooth.x, ar.camY - camSmooth.y, ar.camZ - camSmooth.z);
+        if (jump > SMOOTH.snapDistM) {
+            camSmooth.x = ar.camX; camSmooth.y = ar.camY; camSmooth.z = ar.camZ;
+            camSmooth.fx = ar.cameraForward.x; camSmooth.fy = ar.cameraForward.y; camSmooth.fz = ar.cameraForward.z;
+            camSmooth.rx = ar.cameraRight.x; camSmooth.ry = ar.cameraRight.y; camSmooth.rz = ar.cameraRight.z;
+            camSmooth.ux = ar.cameraUp.x; camSmooth.uy = ar.cameraUp.y; camSmooth.uz = ar.cameraUp.z;
+            camSmooth.vx = camSmooth.vy = camSmooth.vz = 0;
+            return applySmooth();
+        }
+
+        // Коэффициенты сглаживания, НЕ зависящие от частоты кадров
+        // (k = 1 − exp(−dt/tau): поведение одинаково при 60 и 144 Гц).
+        const kPos = 1 - Math.exp(-dt / SMOOTH.posTau);
+        const kRot = 1 - Math.exp(-dt / SMOOTH.rotTau);
+
+        // ---- ЦЕЛЬ: позиция пакета + экстраполяция по скорости ----
+        // Возраст данных (сколько прошло с момента последнего принятого пакета).
+        const ageS = Math.min(
+            (nowMs - (ar.telemetryAtMs || nowMs)) / 1000,
+            SMOOTH.maxExtrapS);
+        const ageClamped = Math.max(0, ageS);
+        const tx = ar.camX + camSmooth.vx * ageClamped;
+        const ty = ar.camY + camSmooth.vy * ageClamped;
+        const tz = ar.camZ + camSmooth.vz * ageClamped;
+
+        camSmooth.x += (tx - camSmooth.x) * kPos;
+        camSmooth.y += (ty - camSmooth.y) * kPos;
+        camSmooth.z += (tz - camSmooth.z) * kPos;
+
+        // Сферическая интерполяция базиса: лерп + нормализация (сохраняет
+        // единичную длину; покомпонентный лерп ломал бы ортонормальность).
+        const f = lerpNormalized(camSmooth.fx, camSmooth.fy, camSmooth.fz,
+            ar.cameraForward.x, ar.cameraForward.y, ar.cameraForward.z, kRot);
+        camSmooth.fx = f[0]; camSmooth.fy = f[1]; camSmooth.fz = f[2];
+
+        const r = lerpNormalized(camSmooth.rx, camSmooth.ry, camSmooth.rz,
+            ar.cameraRight.x, ar.cameraRight.y, ar.cameraRight.z, kRot);
+        camSmooth.rx = r[0]; camSmooth.ry = r[1]; camSmooth.rz = r[2];
+
+        const u = lerpNormalized(camSmooth.ux, camSmooth.uy, camSmooth.uz,
+            ar.cameraUp.x, ar.cameraUp.y, ar.cameraUp.z, kRot);
+        camSmooth.ux = u[0]; camSmooth.uy = u[1]; camSmooth.uz = u[2];
+
+        return applySmooth();
+    }
+
+    /**
+     * Оценить скорость камеры по двум последним пакетам телеметрии.
+     * Вызывается ИЗ ОБРАБОТЧИКА ПАКЕТА (не из рендера!) — только там известны
+     * точные интервалы между выборками.
+     */
+    function updateCameraVelocity() {
+        const now = performance.now();
+        if (camPrev.valid) {
+            const dt = (now - camPrev.atMs) / 1000;
+            if (dt > 0.005 && dt < 0.5) {
+                // Скачок (телепорт) не должен давать «скорость» — фильтруем.
+                const dxp = ar.camX - camPrev.x, dyp = ar.camY - camPrev.y, dzp = ar.camZ - camPrev.z;
+                const dist = Math.hypot(dxp, dyp, dzp);
+                if (dist < SMOOTH.snapDistM) {
+                    // Мягко: новая оценка смешивается со старой (сглаживание скорости),
+                    // иначе дрожание интервалов пакетов давало бы дрожание скорости.
+                    const nvx = dxp / dt, nvy = dyp / dt, nvz = dzp / dt;
+                    const a = 0.35;
+                    camSmooth.vx += (nvx - camSmooth.vx) * a;
+                    camSmooth.vy += (nvy - camSmooth.vy) * a;
+                    camSmooth.vz += (nvz - camSmooth.vz) * a;
+                } else {
+                    camSmooth.vx = camSmooth.vy = camSmooth.vz = 0;
+                }
+            }
+        }
+        camPrev.x = ar.camX; camPrev.y = ar.camY; camPrev.z = ar.camZ;
+        camPrev.atMs = now;
+        camPrev.valid = true;
+        ar.telemetryAtMs = now;   // возраст данных для экстраполяции
+    }
+
+    // Предыдущий пакет камеры (для оценки скорости).
+    const camPrev = { x: 0, y: 0, z: 0, atMs: 0, valid: false };
+
+    /** Лерп двух векторов с нормализацией результата (сферическая интерполяция). */
+    function lerpNormalized(ax, ay, az, bx, by, bz, k) {
+        // Пишем в модульный буфер — без аллокации массива каждый кадр.
+        _lerpOut[0] = ax + (bx - ax) * k;
+        _lerpOut[1] = ay + (by - ay) * k;
+        _lerpOut[2] = az + (bz - az) * k;
+        const len = Math.hypot(_lerpOut[0], _lerpOut[1], _lerpOut[2]);
+        if (!Number.isFinite(len) || len < 1e-9) {
+            _lerpOut[0] = bx; _lerpOut[1] = by; _lerpOut[2] = bz;
+            return _lerpOut;
+        }
+        _lerpOut[0] /= len; _lerpOut[1] /= len; _lerpOut[2] /= len;
+        return _lerpOut;
+    }
+    const _lerpOut = [0, 0, 0];
+
+    /** Собрать объект позы для проекции из сглаженного состояния. */
+    function applySmooth() {
+        // Один переиспользуемый объект — ноль аллокаций в кадре
+        // (поля объектов меняем на месте, НЕ пересоздаём их).
+        camSmoothView.camX = camSmooth.x;
+        camSmoothView.camY = camSmooth.y;
+        camSmoothView.camZ = camSmooth.z;
+        const f = camSmoothView.cameraForward;
+        f.x = camSmooth.fx; f.y = camSmooth.fy; f.z = camSmooth.fz;
+        const r = camSmoothView.cameraRight;
+        r.x = camSmooth.rx; r.y = camSmooth.ry; r.z = camSmooth.rz;
+        const u = camSmoothView.cameraUp;
+        u.x = camSmooth.ux; u.y = camSmooth.uy; u.z = camSmooth.uz;
+        // Остальные поля берём напрямую (FOV/центр/плоскость не сглаживаем).
+        camSmoothView.cameraValid = true;
+        camSmoothView.fovDeg = ar.fovDeg;
+        camSmoothView.fovDegVertical = ar.fovDegVertical;
+        camSmoothView.projectionCenterX = ar.projectionCenterX;
+        camSmoothView.projectionCenterY = ar.projectionCenterY;
+        camSmoothView.groundPlane = ar.groundPlane;
+        return camSmoothView;
+    }
+
+    // Переиспользуемый «вид» сглаженной камеры (аллокаций в кадре нет).
+    const camSmoothView = {
+        camX: 0, camY: 0, camZ: 0,
+        cameraForward: { x: 0, y: 0, z: -1 },
+        cameraRight: { x: 1, y: 0, z: 0 },
+        cameraUp: { x: 0, y: 1, z: 0 },
+        cameraValid: false,
+        fovDeg: 105,
+        fovDegVertical: 65,
+        projectionCenterX: 0.5,
+        projectionCenterY: 0.5,
+        groundPlane: null
+    };
+
+    /**
+     * Сбросить сглаживание (новая поза/перезапуск) — следующий кадр примет позу как есть.
+     */
+    function resetCameraSmoothing() {
+        camSmooth.valid = false;
+        camSmooth.vx = camSmooth.vy = camSmooth.vz = 0;
+        camPrev.valid = false;
+    }
 
     // ================================================================
     // СТАТУС-СТРОКА
@@ -216,7 +586,11 @@
         if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
         try {
             ws = new WebSocket(CFG.wsUrl);
-            ws.onopen = function () { setStatus('ok', 'AR: подключено к приложению'); };
+            ws.onopen = function () {
+                setStatus('ok', 'AR: подключено к приложению');
+                // v1.0.40.40: при подключении применяем актуальные настройки вида.
+                requestArView();
+            };
             ws.onmessage = function (ev) {
                 let data = null;
                 try { data = JSON.parse(ev.data); } catch (e) { return; }
@@ -225,6 +599,7 @@
                 else if (data.command === 'ar_telemetry') applyArTelemetry(data);
                 else if (data.command === 'ar_pin') applyArPin(data);
                 else if (data.command === 'ar_fov') applyArFov(data);
+                else if (data.command === 'ar_view') applyArView(data);
                 else if (data.command === 'debug_show') debugShow(data.enabled === true);
             };
             ws.onclose = function () { ws = null; setTimeout(connect, 2000); };
@@ -234,26 +609,78 @@
         }
     }
 
-    // ---- Приём: цель (приложение шлёт РАЗОВО при смене выбранной точки) ----
+    // ---- Приём: точки (приложение шлёт РАЗОВО при смене НАБОРА) ----
+    // v1.0.40.40: приходит СПИСОК точек в радиусе 50 м (`points[]`) — рисуем ВСЕ.
+    // Поля `gameName/x/y/z/...` на верхнем уровне сохранены для обратной
+    // совместимости: это БЛИЖАЙШАЯ точка (её использует статус-строка и старый код).
     function applyArTarget(data) {
         if (data.hasTarget === true) {
-            const ty = Number(data.y) || 0;
-            ar.target = {
-                gameName: String(data.gameName || 'target'),
-                realName: String(data.realName || ''),
-                x: Number(data.x) || 0,
-                // v1.0.40.30: высота точки — КАК ЕСТЬ (никаких groundY-якорей и
-                // «подъёма» через ближайший город: это ломало геометрию).
-                y: ty,
-                z: Number(data.z) || 0,
-                dist: Number(data.dist) || 0,
-                kind: String(data.kind || 'poi'),
-                category: data.category ? String(data.category) : '',
-                color: data.color ? String(data.color) : ''
-            };
+            function toPoint(p) {
+                return {
+                    gameName: String(p.gameName || 'target'),
+                    realName: String(p.realName || ''),
+                    x: Number(p.x) || 0,
+                    // v1.0.40.30: высота точки — КАК ЕСТЬ (никаких groundY-якорей
+                    // и «подъёма» через ближайший город: это ломало геометрию).
+                    y: Number(p.y) || 0,
+                    z: Number(p.z) || 0,
+                    dist: Number(p.dist) || 0,
+                    kind: String(p.kind || 'poi'),
+                    category: p.category ? String(p.category) : '',
+                    color: p.color ? String(p.color) : '',
+                    isTarget: p.isTarget === true
+                };
+            }
+
+            if (Array.isArray(data.points) && data.points.length > 0) {
+                ar.points = data.points.map(toPoint);
+            } else {
+                // Совместимость со старым форматом (одна точка в корне).
+                ar.points = [toPoint(data)];
+            }
+            ar.target = ar.points[0] || null;   // ближайшая — для статус-строки
+            if (data.radiusM) ar.displayRadiusM = Number(data.radiusM) || ar.displayRadiusM;
             ar.targetAt = performance.now();
         } else {
+            ar.points = [];
             ar.target = null; // приложение сказало: точек в радиусе нет / нет телеметрии
+        }
+        statusFromState();
+    }
+
+    // Запрос настроек вида у приложения (страница — dumb-receiver).
+    function requestArView() {
+        try {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ command: 'ar_view_request' }));
+            }
+        } catch (e) { /* не критично — придут при следующем изменении */ }
+    }
+
+    // ---- Приём: настройки ВИДА (v1.0.40.40, меню «Вид» в приложении) ----    // Приложение — единственный владелец настроек; страница их только применяет.
+    // По умолчанию сетка/оси/горизонты ВЫКЛЮЧЕНЫ (требование пользователя:
+    // «Убираем оси, сетку, визуализацию высот»), поэтому стартовые значения CFG —
+    // false, а приложение присылает актуальные при старте/изменении.
+    function applyArView(data) {
+        if (data.grid !== undefined)          CFG.showGroundGrid = data.grid === true;
+        if (data.axes !== undefined)          CFG.showChassisAxes = data.axes === true;
+        if (data.horizon !== undefined)       CFG.showHorizon = data.horizon === true;
+        if (data.planeHorizon !== undefined)  CFG.showPlaneHorizon = data.planeHorizon === true;
+        if (data.radiusM !== undefined) {
+            const r = Number(data.radiusM);
+            if (Number.isFinite(r) && r > 0) ar.displayRadiusM = r;
+        }
+        // v1.0.40.44: ПЛАВНОСТЬ — приложение владелец настройки.
+        if (data.smooth !== undefined) {
+            SMOOTH.enabled = data.smooth === true;
+            if (!SMOOTH.enabled) resetCameraSmoothing();
+        }
+        if (data.smoothTau !== undefined) {
+            const t = Number(data.smoothTau);
+            if (Number.isFinite(t) && t >= 0.005 && t <= 0.5) {
+                SMOOTH.posTau = t;
+                SMOOTH.rotTau = t * 1.15;   // ориентация чуть мягче позиции
+            }
         }
         statusFromState();
     }
@@ -283,9 +710,33 @@
 
                 const fov = Number(camera.fovDeg);
                 if (Number.isFinite(fov)) ar.fovDeg = Math.max(10, Math.min(170, fov));
+                // v1.0.40.34: ДЕРЖИМ CFG.fovDeg В СИНХРОНЕ с телеметрией. Раньше
+                // CFG.fovDeg обновлялся ТОЛЬКО командой ar_fov (разово при подключении),
+                // и при любой потере этой команды сетка/горизонт считались fh от
+                // СТАРОГО значения по умолчанию (75°) вместо реальных (91°) — то есть
+                // по горизонтали всё «уезжало». Телеметрия приходит постоянно, поэтому
+                // синхронизация здесь надёжнее.
+                if (Number.isFinite(ar.fovDeg)) CFG.fovDeg = ar.fovDeg;
+
+                // v1.0.40.32: ВЕРТИКАЛЬНЫЙ FOV приходит ОТДЕЛЬНО (корень «уплывающего»
+                // горизонта). Если приложение его не прислало — выводим из горизонтали
+                // по тому же правилу (сжатие по вертикали), чтобы не откатываться к
+                // старой ошибочной геометрии «тот же focal по X и Y».
+                const fovV = Number(camera.fovDegVertical);
+                if (Number.isFinite(fovV) && fovV > 1.0) {
+                    ar.fovDegVertical = Math.max(10, Math.min(170, fovV));
+                } else {
+                    const aspect = (W > 0 && H > 0) ? (W / H) : (16 / 9);
+                    ar.fovDegVertical = Math.max(10, Math.min(170,
+                        2 * Math.atan(Math.tan(ar.fovDeg * Math.PI / 360) / aspect *
+                            (CFG.verticalFromHorizontalFactor || 1)) * 180 / Math.PI));
+                }
 
                 ar.haveTruck = true;
                 ar.lastTelemetryAt = performance.now();
+                // v1.0.40.44: оценить скорость камеры по двум последним пакетам —
+                // нужна для экстраполяции позы между пакетами (плавность точек).
+                updateCameraVelocity();
             }
         }
 
@@ -320,6 +771,46 @@
                 z: Number(c.z) || 0
             }));
         }
+
+        // ============================================================
+        // v1.0.40.31: РЕАЛЬНАЯ ПЛОСКОСТЬ ДОРОГИ (Ground Plane по колёсам).
+        // Приложение отдаёт готовую плоскость: origin/normal/axisU/axisV,
+        // высоты и диагностический массив колёс. Страница НЕ строит плоскость
+        // сама — она только использует её для сетки/дистанции/создания точки.
+        // groundY / PlaneOffsetM / Math.Round(worldX/worldZ) больше НЕ нужны.
+        // ============================================================
+        const gp = data.groundPlane;
+        if (gp && typeof gp === 'object' && gp.valid === true) {
+            const origin = readVec3(gp.origin, null);
+            const normal = readVec3(gp.normal, null);
+            const axisU = readVec3(gp.axisU, null);
+            const axisV = readVec3(gp.axisV, null);
+
+            if (origin && normal && axisU && axisV) {
+                ar.groundPlane = {
+                    valid: true,
+                    origin: [origin.x, origin.y, origin.z],
+                    normal: [normal.x, normal.y, normal.z],
+                    axisU: [axisU.x, axisU.y, axisU.z],
+                    axisV: [axisV.x, axisV.y, axisV.z],
+                    averageWheelHeight: Number(gp.averageWheelHeight) || 0,
+                    referenceHeight: Number(gp.referenceHeight) || 0,
+                    maxResidual: Number(gp.maxResidual) || 0,
+                    usedWheelCount: Number(gp.usedWheelCount) || 0,
+                    // v1.0.40.37: горизонтальная ли плоскость (для диагностики)
+                    isHorizontal: gp.isHorizontal === true,
+                    // v1.0.40.37: ОСИ ШАССИ — ориентация ГРУЗОВИКА (от кузова, не от камеры).
+                    chassisForward: readVec3(gp.chassisForward, null),
+                    chassisRight: readVec3(gp.chassisRight, null),
+                    chassisUp: readVec3(gp.chassisUp, null),
+                    truckPitchDeg: Number(gp.truckPitchDeg) || 0,
+                    truckRollDeg: Number(gp.truckRollDeg) || 0,
+                    wheels: Array.isArray(gp.wheels) ? gp.wheels : []
+                };
+            }
+        } else if (gp && gp.valid === false) {
+            ar.groundPlane = null;   // плоскость не построена (нет данных колёс)
+        }
     }
 
     // ---- Приём: пометка «Пометить в АР» (серый крестик + точка в редакторе) ----
@@ -345,8 +836,15 @@
         if (Number.isFinite(f) && f >= 30 && f <= 150) {
             CFG.fovDeg = f;
             ar.fovDeg = f;
-            statusFromState();
         }
+        // v1.0.40.32: вертикальный FOV приходит ОТДЕЛЬНЫМ полем — можно подстраивать
+        // на лету (Ctrl+Alt+PGUP/PGDN) и проверять «приклеивание» горизонта.
+        const fv = Number(data.fovVertical);
+        if (Number.isFinite(fv) && fv >= 10 && fv <= 170) {
+            CFG.fovDegVertical = fv;
+            ar.fovDegVertical = fv;
+        }
+        statusFromState();
     }
 
     connect();
@@ -392,8 +890,10 @@
             return { dist, u: 0, v: 0, inFront: false, depth };
         }
 
-        const halfTan = Math.tan((CFG.fovDeg * Math.PI / 180) / 2);
-        const f = (W * 0.5) / halfTan;
+        // v1.0.40.32: РАЗНЫЕ focal length по X и Y. Общий f давал ошибку Δf по
+        // вертикали → горизонт/метки «уплывали» пропорционально tan(наклона).
+        const fh = (W * 0.5) / Math.tan((CFG.fovDeg * Math.PI / 180) / 2);
+        const fv = (H * 0.5) / Math.tan((Math.max(1, Number(c.fovDegVertical) || CFG.fovDegVertical) * Math.PI / 180) / 2);
 
         const cx = W * (c.projectionCenterX || 0.5);
         const cy = H * (c.projectionCenterY || 0.5);
@@ -411,8 +911,8 @@
 
         return {
             dist,
-            u: cx + f * (rdot / depth),
-            v: cy - f * (udot / depth),
+            u: cx + fh * (rdot / depth),
+            v: cy - fv * (udot / depth),
             inFront: true,
             depth
         };
@@ -497,11 +997,14 @@
         const c = cam || ar;
         if (!CFG.showHorizon || !c.cameraValid) return;
 
-        const fov = Math.max(10, Math.min(170, Number(c.fovDeg) || 100));
-        const halfTan = Math.tan((fov * Math.PI / 180) / 2);
-        if (!Number.isFinite(halfTan) || Math.abs(halfTan) < 1e-12) return;
+        const fovV = Math.max(10, Math.min(170, Number(c.fovDegVertical) || CFG.fovDegVertical));
+        const halfTanV = Math.tan((fovV * Math.PI / 180) / 2);
+        if (!Number.isFinite(halfTanV) || Math.abs(halfTanV) < 1e-12) return;
 
-        const f = (W * 0.5) / halfTan;
+        // v1.0.40.32: горизонт строится по ВЕРТИКАЛЬНОМУ focal length (он же
+        // используется проекцией) — иначе линия «уплывала» при наклоне головы.
+        const fv = (H * 0.5) / halfTanV;
+        const fh = (W * 0.5) / Math.tan((Math.max(10, Math.min(170, Number(c.fovDeg) || CFG.fovDeg)) * Math.PI / 180) / 2);
         const cx = W * (c.projectionCenterX || 0.5);
         const cy = H * (c.projectionCenterY || 0.5);
 
@@ -517,11 +1020,11 @@
         ctx.beginPath();
 
         if (Math.abs(uy) > eps) {
-            const x0 = (0 - cx) / f;
-            const x1 = (W - cx) / f;
+            const x0 = (0 - cx) / fh;
+            const x1 = (W - cx) / fh;
 
-            const y0 = cy + f * (fy + ry * x0) / uy;
-            const y1 = cy + f * (fy + ry * x1) / uy;
+            const y0 = cy + fv * (fy + ry * x0) / uy;
+            const y1 = cy + fv * (fy + ry * x1) / uy;
 
             if (Number.isFinite(y0) && Number.isFinite(y1)) {
                 ctx.moveTo(0, y0);
@@ -529,7 +1032,7 @@
             }
         } else if (Math.abs(ry) > eps) {
             // Вырожденный случай: горизонт вертикально через экран.
-            const x = cx - f * fy / ry;
+            const x = cx - fh * fy / ry;
             if (Number.isFinite(x)) {
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, H);
@@ -541,28 +1044,425 @@
     }
 
     // ================================================================
+    // v1.0.40.32: ПОДПИСЬ ЛИНИИ ГОРИЗОНТА.
+    // Требование пользователя: «вижу голубые линии и не понятно, какая из них
+    // горизонт» — линия горизонта подписывается явно, у левого края.
+    // ================================================================
+    function drawHorizonLabel(cam) {
+        const c = cam || ar;
+        if (!CFG.showHorizon || !CFG.showHorizonLabel || !c.cameraValid) return;
+
+        const fovV = Math.max(10, Math.min(170, Number(c.fovDegVertical) || CFG.fovDegVertical));
+        const halfTanV = Math.tan((fovV * Math.PI / 180) / 2);
+        if (!Number.isFinite(halfTanV) || Math.abs(halfTanV) < 1e-12) return;
+
+        const fv = (H * 0.5) / halfTanV;
+        const fh = (W * 0.5) / Math.tan((Math.max(10, Math.min(170, Number(c.fovDeg) || CFG.fovDeg)) * Math.PI / 180) / 2);
+        const cx = W * (c.projectionCenterX || 0.5);
+        const cy = H * (c.projectionCenterY || 0.5);
+
+        const fy = c.cameraForward.y;
+        const ry = c.cameraRight.y;
+        const uy = c.cameraUp.y;
+        if (Math.abs(uy) < 1e-7) return;                 // вертикальный горизонт — не подписываем
+
+        // Высота линии у левого края.
+        const xAt = (CFG.horizonLabelX - cx) / fh;
+        const y = cy + fv * (fy + ry * xAt) / uy;
+        if (!Number.isFinite(y) || y < -60 || y > H + 60) return;
+
+        const txt = 'ГОРИЗОНТ МИРА';
+        ctx.save();
+        ctx.font = CFG.horizonLabelFont;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+
+        // Фон-плашка, чтобы подпись не сливалась с травой/небом.
+        const tw = ctx.measureText(txt).width;
+        const padX = 5, padY = 3;
+        const bx = CFG.horizonLabelX - padX;
+        const by = y - CFG.horizonLabelFontSize / 2 - padY;
+        const bw = tw + padX * 2;
+        const bh = CFG.horizonLabelFontSize + padY * 2;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(bx, by, bw, bh);
+
+        // Тонкая чёрная обводка текста (читаемость на светлом фоне).
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+        ctx.lineJoin = 'round';
+        ctx.strokeText(txt, CFG.horizonLabelX, y);
+        ctx.fillStyle = CFG.horizonColor;
+        ctx.fillText(txt, CFG.horizonLabelX, y);
+        ctx.restore();
+    }
+
+    // ================================================================
+    // v1.0.40.36: ГОРИЗОНТ РЕАЛЬНОГО ПОЛОТНА — белая линия.
+    //
+    // Отличие от голубой линии горизонта: голубая — это горизонт МИРА (лучи
+    // перпендикулярны мировой вертикали), а белая — линия, где РЕАЛЬНАЯ плоскость
+    // дороги уходит в бесконечность. На ровной дороге они совпадают (пользователь
+    // это подтвердил), а на уклоне/крене расходятся ровно настолько, насколько
+    // неверна компенсация наклона. Поэтому белая линия — эталон.
+    //
+    // Геометрия: точка плоскости P = Origin + u·AxisU + v·AxisV уходит на
+    // бесконечность при t → ∞ вдоль направления D (t·AxisU + AxisV или AxisU − t·AxisV).
+    // Экранная позиция = предел проекции, направление = проекция D (не точка!).
+    // ================================================================
+    function drawPlaneHorizon(cam) {
+        const c = cam || ar;
+        const gp = c.groundPlane;
+        if (!CFG.showPlaneHorizon || !gp || !gp.valid || !c.cameraValid) return;
+
+        const fovH = Math.max(10, Math.min(170, Number(c.fovDeg) || CFG.fovDeg));
+        const fovV = Math.max(10, Math.min(170, Number(c.fovDegVertical) || CFG.fovDegVertical));
+        const fh = (W * 0.5) / Math.tan((fovH * Math.PI / 180) / 2);
+        const fv = (H * 0.5) / Math.tan((fovV * Math.PI / 180) / 2);
+        const cx = W * (c.projectionCenterX || 0.5);
+        const cy = H * (c.projectionCenterY || 0.5);
+
+        const F = c.cameraForward, Rg = c.cameraRight, U = c.cameraUp;
+
+        // Проекция world-точки: null, если точка за камерой.
+        function proj(p) {
+            const dx = p[0] - c.camX, dy = p[1] - c.camY, dz = p[2] - c.camZ;
+            const zc = dx * F.x + dy * F.y + dz * F.z;
+            if (zc <= 1e-6) return null;
+            return {
+                u: cx + fh * ((dx * Rg.x + dy * Rg.y + dz * Rg.z) / zc),
+                v: cy - fv * ((dx * U.x + dy * U.y + dz * U.z) / zc),
+                z: zc
+            };
+        }
+
+        // Направление в бесконечность: экранная позиция = предел (проектируем как
+        // точку «далеко впереди», направление сохраняется).
+        function dirScreen(d) {
+            const zc = d[0] * F.x + d[1] * F.y + d[2] * F.z;
+            if (Math.abs(zc) < 1e-9) return null;
+            return {
+                u: cx + fh * ((d[0] * Rg.x + d[1] * Rg.y + d[2] * Rg.z) / zc),
+                v: cy - fv * ((d[0] * U.x + d[1] * U.y + d[2] * U.z) / zc),
+                z: zc
+            };
+        }
+
+        const O = [gp.origin.x, gp.origin.y, gp.origin.z];
+        const AU = [gp.axisU.x, gp.axisU.y, gp.axisU.z];
+        const AV = [gp.axisV.x, gp.axisV.y, gp.axisV.z];
+        const s = 1e6;   // «бесконечность»: линия в плоскости уходит ровно по её направлению
+
+        // Две точки далеко впереди вдоль плоскости (в ОБЕ стороны) — их проекции
+        // дают направление линии горизонта полотна на экране.
+        const P1 = [O[0] + AU[0] * s + AV[0] * s, O[1] + AU[1] * s + AV[1] * s, O[2] + AU[2] * s + AV[2] * s];
+        const P2 = [O[0] - AU[0] * s + AV[0] * s, O[1] - AU[1] * s + AV[1] * s, O[2] - AU[2] * s + AV[2] * s];
+
+        const d1 = dirScreen([P1[0] - c.camX, P1[1] - c.camY, P1[2] - c.camZ]);
+        const d2 = dirScreen([P2[0] - c.camX, P2[1] - c.camY, P2[2] - c.camZ]);
+        if (!d1 || !d2) return;
+
+        // Линия через две точки; проводим её по всей ширине экрана.
+        const dxs = d1.u - d2.u, dys = d1.v - d2.v;
+        if (Math.abs(dxs) < 1e-9 && Math.abs(dys) < 1e-9) return;
+
+        let yL, yR;
+        if (Math.abs(dxs) >= Math.abs(dys)) {
+            const k = dys / dxs;
+            yL = d1.v + k * (0 - d1.u);
+            yR = d1.v + k * (W - d1.u);
+        } else {
+            // Почти вертикальная — рисуем вертикаль через x первой точки.
+            yL = yR = d1.v;
+        }
+        if (!Number.isFinite(yL) || !Number.isFinite(yR)) return;
+
+        ctx.save();
+        ctx.strokeStyle = CFG.planeHorizonColor;
+        ctx.lineWidth = CFG.planeHorizonPixels;
+        ctx.beginPath();
+        ctx.moveTo(0, yL);
+        ctx.lineTo(W, yR);
+        ctx.stroke();
+
+        // Подпись у правого края — чтобы не путать с подписью голубого горизонта.
+        const txt = CFG.planeHorizonLabel;
+        ctx.font = CFG.horizonLabelFont;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        const tw = ctx.measureText(txt).width;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(W - 14 - tw - 5, yR - CFG.horizonLabelFontSize / 2 - 3, tw + 10, CFG.horizonLabelFontSize + 6);
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+        ctx.lineJoin = 'round';
+        ctx.strokeText(txt, W - 14, yR);
+        ctx.fillStyle = CFG.planeHorizonColor;
+        ctx.fillText(txt, W - 14, yR);
+        ctx.restore();
+    }
+
+    // ================================================================
+    // v1.0.40.37: ОСИ ШАССИ — ОРИЕНТАЦИЯ ГРУЗОВИКА ОТНОСИТЕЛЬНО ГОРИЗОНТА.
+    //
+    // Камера ETS2 компенсирует наклон (голова выравнивается), поэтому по камере
+    // крен/питч ГРУЗОВИКА не виден. Оси шасси приходят отдельно (chassisForward/
+    // chassisRight/chassisUp ОТ КУЗОВА, не от камеры) и рисуются через центр
+    // экрана: их наклон к краям экрана = реальный наклон кузова к горизонту.
+    // ================================================================
+    function drawChassisAxes(cam) {
+        const c = cam || ar;
+        const gp = c.groundPlane;
+        if (!CFG.showChassisAxes || !c.cameraValid || !gp) return;
+        if (!gp.chassisForward || !gp.chassisRight || !gp.chassisUp) return;
+
+        const fovH = Math.max(10, Math.min(170, Number(c.fovDeg) || CFG.fovDeg));
+        const fovV = Math.max(10, Math.min(170, Number(c.fovDegVertical) || CFG.fovDegVertical));
+        const fh = (W * 0.5) / Math.tan((fovH * Math.PI / 180) / 2);
+        const fv = (H * 0.5) / Math.tan((fovV * Math.PI / 180) / 2);
+        const cx = W * (c.projectionCenterX || 0.5);
+        const cy = H * (c.projectionCenterY || 0.5);
+        const F = c.cameraForward, Rg = c.cameraRight, U = c.cameraUp;
+
+        // Проекция НАПРАВЛЕНИЯ в экранный вектор (как смещение от центра).
+        function dir(d) {
+            const zc = d.x * F.x + d.y * F.y + d.z * F.z;
+            if (Math.abs(zc) < 1e-6) return null;
+            return {
+                x: fh * ((d.x * Rg.x + d.y * Rg.y + d.z * Rg.z) / zc),
+                y: -fv * ((d.x * U.x + d.y * U.y + d.z * U.z) / zc)
+            };
+        }
+
+        function axis(d, color, label) {
+            const v = dir(d);
+            if (!v) return;
+            const len = Math.hypot(v.x, v.y);
+            if (!(len > 1e-6)) return;
+            const k = CFG.chassisAxisLenPx / len;
+            const ex = cx + v.x * k, ey = cy + v.y * k;
+            const sx = cx - v.x * k, sy = cy - v.y * k;
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = CFG.chassisAxisWidth;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+
+            if (CFG.chassisAxisLabel) {
+                ctx.font = '700 11px Consolas, monospace';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+                ctx.lineJoin = 'round';
+                ctx.strokeText(label, ex + 6, ey);
+                ctx.fillStyle = color;
+                ctx.fillText(label, ex + 6, ey);
+            }
+            ctx.restore();
+        }
+
+        ctx.save();
+        // Центр — точка, вокруг которой строятся оси.
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        axis(gp.chassisRight, CFG.chassisAxisXColor, 'X шасси');
+        axis(gp.chassisForward, CFG.chassisAxisZColor, 'Z шасси');
+        axis(gp.chassisUp, CFG.chassisAxisYColor, 'Y кузова');
+    }
+
+    // ================================================================
     // ДИСТАНЦИЯ ДО ЗЕМЛИ ПОД МИКРОТОЧКОЙ ПРИЦЕЛА
     // ================================================================
-    // v1.0.40.30: луч — РЕАЛЬНЫЙ CameraForward (без складывания питчей и без
-    // eyeHeightM: камера уже на своей высоте). Пересечение с плоскостью земли
-    // Y = camY − (camY − groundY)… — землёй считаем горизонтальную плоскость на
-    // высоте опорной точки фуры (truckY). Выше горизонта — NaN (нет измерения).
+    // v1.0.40.31: луч — РЕАЛЬНЫЙ CameraForward, земля — РЕАЛЬНАЯ ПЛОСКОСТЬ
+    // ДОРОГИ (по колёсам). Прежний вариант использовал горизонтальную плоскость
+    // на высоте опорной точки фуры (truckY) и на уклонах давал ошибку.
+    // Возвращает ГОРИЗОНТАЛЬНУЮ дистанцию (м) до точки пересечения.
     function groundDistanceFromCrosshair(cam) {
         const c = cam || ar;
         if (!c.cameraValid) return NaN;
 
-        const dirY = c.cameraForward.y;          // + вверх
-        if (!(dirY < -1e-6)) return NaN;         // взгляд на горизонт/выше — нет измерения
+        const gp = c.groundPlane;
+        if (!GroundPlane.valid(gp)) return NaN;
 
-        const eyeY = c.camY;                     // камера (глаз) — из позы
-        const groundY = c.truckY;                // земля под колёсами (опорная точка)
-        const dy = groundY - eyeY;               // < 0 (глаза выше земли)
-        const t = dy / dirY;                     // > 0
-        if (!Number.isFinite(t) || t <= 0) return NaN;
+        const f = c.cameraForward;
+        const hit = GroundPlane.intersectRay(gp, c.camX, c.camY, c.camZ, f.x, f.y, f.z);
+        if (!hit) return NaN;                     // взгляд выше горизонта / позади
 
-        const gx = c.camX + c.cameraForward.x * t;
-        const gz = c.camZ + c.cameraForward.z * t;
-        return Math.hypot(gx - c.camX, gz - c.camZ);
+        return Math.hypot(hit.x - c.camX, hit.z - c.camZ);
+    }
+
+    // ================================================================
+    // v1.0.40.33: СЕТКА — ПРОСТО ПЛОСКОСТЬ БЕЗ ОГРАНИЧЕНИЙ.
+    //
+    // УБРАНО по требованию пользователя: круг R=150 м, fade 125…150 м по радиусу,
+    // граница-окружность, «шахматные» эффекты, расширение к камере (CameraPadM).
+    // Теперь это обычная плоская сетка:
+    //   • каждая 1 м   — тонкая белая;
+    //   • каждая 10 м  — толстая оранжевая;
+    //   • каждая 50 м  — красная (приоритет над 10 м);
+    //   • линии гаснут по ЭКРАННОЙ вертикали и по РАССТОЯНИЮ ДО КАМЕРЫ
+    //     (gridFarStartM…gridFarEndM) — это мягкое отсечение дали, а не граница.
+    // Оси — из GroundPlane.AxisU/AxisV; центр — точка под камерой (камера
+    // проецируется на плоскость). Так сетка всегда покрывает низ экрана.
+    // ================================================================
+    function drawGroundGrid(cam) {
+        const c = cam || ar;
+        if (!CFG.showGroundGrid || !c.cameraValid) return;
+
+        const gp = c.groundPlane;
+        if (!GroundPlane.valid(gp)) return;
+
+        const farStart = Number(CFG.gridFarStartM) || 220;
+        const farEnd = Number(CFG.gridFarEndM) || 320;
+
+        // Центр сетки — точка ПОД КАМЕРОЙ (проекция камеры на плоскость) → в (u,v).
+        // Раньше центром была опорная точка фуры; камера стоит выше и сзади, поэтому
+        // у низа экрана сетки не было. Привязка к камере это устраняет без «кругов».
+        const center = GroundPlane.snapToPlane(gp, c.camX, c.camZ);
+        if (!center) return;
+        const uv0 = GroundPlane.projectToGrid(gp, center.x, center.y, center.z);
+        if (!uv0 || !Number.isFinite(uv0.u) || !Number.isFinite(uv0.v)) return;
+
+        const u0 = Math.round(uv0.u);
+        const v0 = Math.round(uv0.v);
+
+        // Запас сетки ЗА камерой (м) — чтобы низ экрана был покрыт без «дыры».
+        const behind = Number(CFG.gridBehindCameraM) || 80;
+        // Насколько далеко вперёд тянуть линии: от центра до farEnd + небольшой запас.
+        const ahead = farEnd + 20;
+
+        // ---- ПРОЕКЦИЯ УЗЛА (u,v) ПЛОСКОСТИ В ЭКРАН — БЕЗ АЛЛОКАЦИЙ ----
+        // Прямая линия В ПЛОСКОСТИ остаётся прямой на экране (pinhole), поэтому
+        // для отрезка достаточно ДВУХ проекций — это и есть основа скорости.
+        const gpO = gp.origin, gpU = gp.axisU, gpV = gp.axisV;
+        const camF = c.cameraForward, camR = c.cameraRight, camUp = c.cameraUp;
+        const focalH = (W * 0.5) / Math.tan((Number(c.fovDeg || CFG.fovDeg) * Math.PI / 180) / 2);
+        const focalV = (H * 0.5) / Math.tan((Math.max(1, Number(c.fovDegVertical) || CFG.fovDegVertical) * Math.PI / 180) / 2);
+        const scx = W * (c.projectionCenterX || 0.5);
+        const scy = H * (c.projectionCenterY || 0.5);
+        const camX = c.camX, camY = c.camY, camZ = c.camZ;
+        const out = [0, 0];
+        const world = [0, 0, 0];
+        function worldOf(u, v) {
+            world[0] = gpO[0] + gpU[0] * u + gpV[0] * v;
+            world[1] = gpO[1] + gpU[1] * u + gpV[1] * v;
+            world[2] = gpO[2] + gpU[2] * u + gpV[2] * v;
+        }
+        function projUV(u, v) {
+            worldOf(u, v);
+            const dx = world[0] - camX, dy = world[1] - camY, dz = world[2] - camZ;
+            const depth = dx * camF.x + dy * camF.y + dz * camF.z;
+            if (!(depth > 0.5)) return false;
+            const rdot = dx * camR.x + dy * camR.y + dz * camR.z;
+            const udot = dx * camUp.x + dy * camUp.y + dz * camUp.z;
+            out[0] = scx + focalH * (rdot / depth);
+            out[1] = scy - focalV * (udot / depth);
+            return Number.isFinite(out[0]) && Number.isFinite(out[1]);
+        }
+
+        // Гашение по расстоянию ОТ КАМЕРЫ (не по радиусу вокруг точки!).
+        function farFade(dist) {
+            if (dist >= farEnd) return 0;
+            if (dist <= farStart) return 1;
+            return (farEnd - dist) / (farEnd - farStart);
+        }
+
+        // Вертикальное затухание: близко к низу экрана ярче, к горизонту гаснет.
+        function vertAlpha(vPx) {
+            const centerPx = H / 2;
+            const below25 = centerPx + H * 0.25;
+            if (vPx <= below25) return 1;
+            return Math.max(0, Math.min(1, 1 - (vPx - below25) / Math.max(1, H - below25)));
+        }
+
+        function styleFor(idx) {
+            if (((idx % 50) + 50) % 50 === 0) return { color: CFG.gridColor50M, width: CFG.gridWidth50M, alpha: 0.95 };
+            if (((idx % 10) + 10) % 10 === 0) return { color: CFG.gridColor10M, width: CFG.gridWidth10M, alpha: 0.85 };
+            return { color: CFG.gridColor1M, width: CFG.gridWidth1M, alpha: 0.42 };
+        }
+
+        // Отрезок линии: 2 проекции + обводка. alphaScale передаётся вызывающим
+        // (он знает расстояние от камеры до середины).
+        function seg(uA, vA, uB, vB, style, farScale) {
+            if (farScale <= 0.01) return;
+            if (!projUV(uA, vA)) return;
+            const x1 = out[0], y1 = out[1];
+            if (!projUV(uB, vB)) return;
+            const x2 = out[0], y2 = out[1];
+            // Клип: отрезок целиком за пределами экрана не рисуем.
+            if ((y1 < -8 && y2 < -8) || (y1 > H + 8 && y2 > H + 8)) return;
+            if ((x1 < -8 && x2 < -8) || (x1 > W + 8 && x2 > W + 8)) return;
+            const va = vertAlpha((y1 + y2) * 0.5);
+            const a = style.alpha * farScale * va;
+            if (a <= 0.012) return;
+            ctx.globalAlpha = a;
+            ctx.strokeStyle = style.color;
+            ctx.lineWidth = style.width;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+
+        // Расстояние от камеры до середины отрезка (в мировых метрах).
+        function midDist(uA, vA, uB, vB) {
+            const mu = (uA + uB) * 0.5, mv = (vA + vB) * 0.5;
+            worldOf(mu, mv);
+            const dx = world[0] - camX, dy = world[1] - camY, dz = world[2] - camZ;
+            return Math.sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
+        // ---- ЛИНИЯ ВДОЛЬ ОСИ V (постоянное u) ----
+        // Линия уходит от −behind до +ahead в обе стороны экрана. Чтобы получить
+        // корректное затухание по расстоянию, режем её на несколько отрезков.
+        function lineConstantU(iu) {
+            const style = styleFor(iu);
+            const total = behind + ahead;
+            const pieces = 10;                  // ~равные куски по длине
+            const stepLen = total / pieces;
+            let prevV = -behind;
+            for (let k = 1; k <= pieces; k++) {
+                const curV = -behind + stepLen * k;
+                const d = midDist(iu, prevV, iu, curV);
+                seg(iu, prevV, iu, curV, style, farFade(d));
+                prevV = curV;
+            }
+        }
+
+        // ---- ЛИНИЯ ВДОЛЬ ОСИ U (постоянное v) ----
+        function lineConstantV(iv) {
+            const style = styleFor(iv);
+            const total = behind + ahead;
+            const pieces = 10;
+            const stepLen = total / pieces;
+            let prevU = -behind;
+            for (let k = 1; k <= pieces; k++) {
+                const curU = -behind + stepLen * k;
+                const d = midDist(prevU, iv, curU, iv);
+                seg(prevU, iv, curU, iv, style, farFade(d));
+                prevU = curU;
+            }
+        }
+
+        // Диапазон индексов: покрываем экран с запасом, но БЕЗ бесконечных циклов.
+        // Полоса ahead покрывает даль вперёд, behind — низ экрана под камерой.
+        const uFrom = -Math.ceil(behind), uTo = Math.ceil(ahead);
+        const vFrom = -Math.ceil(behind), vTo = Math.ceil(ahead);
+
+        ctx.save();
+        ctx.lineCap = 'butt';
+        for (let iu = u0 + uFrom; iu <= u0 + uTo; iu++) lineConstantU(iu);
+        for (let iv = v0 + vFrom; iv <= v0 + vTo; iv++) lineConstantV(iv);
+        ctx.restore();
     }
 
     // СЕРЫЙ ДИАГОНАЛЬНЫЙ микрокрестик (пункт 8): рисуется в центре, когда
@@ -690,7 +1590,8 @@
 
     // ТЕКУЩИЙ FOV — ЛЕВЫЙ НИЖНИЙ УГОЛ, ЧЁРНАЯ ОБВОДКА (требование пользователя).
     function drawFovText() {
-        const txt = Number(ar.fovDeg || CFG.fovDeg).toFixed(0) + '°';
+        const txt = Number(ar.fovDeg || CFG.fovDeg).toFixed(0) + '° / ' +
+            Number(ar.fovDegVertical || CFG.fovDegVertical).toFixed(0) + '°';
         const x = CFG.fovMarginX, y = H - CFG.fovMarginY;
         ctx.save();
         ctx.font = CFG.fovFont;
@@ -726,11 +1627,20 @@
 
         const f = c.cameraForward, u2 = c.cameraUp;
         const fmt = v => Number(v).toFixed(3);
+        const gp = c.groundPlane;
+        const planeLine = GroundPlane.valid(gp)
+            ? 'PLANE ok N=' + gp.normal.map(fmt).join(',') + ' refH=' + gp.referenceHeight.toFixed(2) +
+              ' maxRes=' + gp.maxResidual.toFixed(4)
+            : 'PLANE: нет (колёса не приняты)';
         const lines = [
             'CAM: ' + c.camX.toFixed(2) + ' ' + c.camY.toFixed(2) + ' ' + c.camZ.toFixed(2),
             'FWD: ' + fmt(f.x) + ' ' + fmt(f.y) + ' ' + fmt(f.z),
             'UP:  ' + fmt(u2.x) + ' ' + fmt(u2.y) + ' ' + fmt(u2.z),
-            'FOV: ' + Number(c.fovDeg).toFixed(1)
+            // v1.0.40.32: печатаем ОБА FOV — по разнице между ними и ловился
+            // «уплывающий» горизонт (один focal по X и Y давал vFov ≈ 50.5°
+            // вместо измеренных ≈ 30.7°).
+            'FOV: H ' + Number(c.fovDeg).toFixed(1) + '°  V ' + Number(c.fovDegVertical).toFixed(1) + '°',
+            planeLine
         ];
         ctx.font = '600 11px Consolas, monospace';
         ctx.textAlign = 'center';
@@ -802,10 +1712,28 @@
         // ДО ЗЕМЛИ ПОД ПРИЦЕЛОМ. Экстраполяция камеры УБРАНА: геометрия должна
         // соответствовать последнему SCS-сэмплу (temporal sync — отдельный этап).
         // ============================================================
+        // ============================================================
+        // v1.0.40.44: СГЛАЖЕННАЯ ПОЗА КАМЕРЫ (корень «точки рывками»).
+        // Телеметрия приходит ~28–35 Гц, рендер идёт 60+ Гц. Раньше поза
+        // применялась ТОЛЬКО в момент пакета → между пакетами точки стояли,
+        // затем скачок («как на 14 fps» при счётчике 60–100).
+        // Теперь каждый кадр считаем сглаженную позу `view` и используем ЕЁ
+        // в проекции. Базис интерполируется с нормализацией (ортонормальность
+        // сохраняется — иначе «плыл» бы горизонт).
+        // ============================================================
+        const view = smoothCamera(fNow);
+        const camUsable = !!(view && view.cameraValid);
+
         let groundDist = NaN;
-        if (ar.cameraValid) {
-            drawWorldHorizon(ar);
-            groundDist = groundDistanceFromCrosshair(ar);
+        if (camUsable) {
+            // v1.0.40.31: сетка на РЕАЛЬНОЙ плоскости дороги — рисуется ПЕРВОЙ
+            // (под горизонтом, дистанцией, метками). Живёт на groundPlane.
+            drawGroundGrid(view);
+            drawWorldHorizon(view);
+            drawPlaneHorizon(view);
+            drawChassisAxes(view);
+            drawHorizonLabel(view);
+            groundDist = groundDistanceFromCrosshair(view);
             if (!Number.isFinite(groundDist)) {
                 // Микроточка выше горизонта — измерение прекращено, подписи
                 // дистанции нет, на точке СЕРЫЙ ДИАГОНАЛЬНЫЙ микрокрестик.
@@ -821,16 +1749,15 @@
 
         // DEBUG-режим (debugShow) — принудительный показ и отметки позы камеры.
         if (DEBUG.show) {
-            if (CFG.showDebugDot && ar.cameraValid) drawCameraDebugDot(ar);
+            if (CFG.showDebugDot && camUsable) drawCameraDebugDot(view);
             drawClipFrame();
         }
 
         // ============================================================
-        // ПОМЕТКА / НОВАЯ ТОЧКА (pin) — БЕЗ зеркалирования и БЕЗ сглаживания:
-        // позиция берётся из свежей геометрической проекции каждый кадр.
+        // ПОМЕТКА / НОВАЯ ТОЧКА (pin) — проекция на СГЛАЖЕННОЙ позе (плавно).
         // ============================================================
-        if (ar.cameraValid && ar.pin) {
-            const pPr = projectPoint({ x: ar.pin.x, y: ar.pin.y, z: ar.pin.z }, ar);
+        if (camUsable && ar.pin) {
+            const pPr = projectPoint({ x: ar.pin.x, y: ar.pin.y, z: ar.pin.z }, view);
             if (pPr.inFront) {
                 let pu = Number.isFinite(pPr.u) ? pPr.u
                     : (pPr.u > 0 ? CFG.edgeMargin : W - CFG.edgeMargin);
@@ -857,73 +1784,91 @@
                     pu, pv + 18, '600 13px "Segoe UI", Arial',
                     'rgba(220,220,220,0.95)', 0.95);
                 // Диагностика: поза камеры (по ней калибруется геометрия).
-                const f = ar.cameraForward;
+                const f = view.cameraForward;
                 drawOutlinedText(
-                    'cam ' + ar.camX.toFixed(1) + ' ' + ar.camY.toFixed(1) + ' ' + ar.camZ.toFixed(1) +
+                    'cam ' + view.camX.toFixed(1) + ' ' + view.camY.toFixed(1) + ' ' + view.camZ.toFixed(1) +
                     ' · fwd ' + f.x.toFixed(2) + ' ' + f.y.toFixed(2) + ' ' + f.z.toFixed(2),
                     pu, pv + 36, '11px Consolas, monospace',
                     'rgba(255,220,120,0.9)', 0.9);
             }
         }
 
-        if (!ar.cameraValid || !ar.target) return;   // цель нет — дальше рисовать нечего
+        if (!camUsable || !ar.points || ar.points.length === 0) return;
 
-        const pr = projectPoint(ar.target, ar);
-        // Infinity — точка ровно сзади/сбоку: фиксируем направление к крайним значениям.
-        if (!Number.isFinite(pr.u)) pr.u = pr.u > 0 ? (W - CFG.edgeMargin) : CFG.edgeMargin;
-        if (!Number.isFinite(pr.v)) pr.v = pr.v > 0 ? (H - CFG.edgeMargin) : CFG.edgeMargin;
-        const cl = clampToScreen(pr.u, pr.v, !pr.inFront);
+        // ============================================================
+        // v1.0.40.40: РИСУЕМ ВСЕ ТОЧКИ В РАДИУСЕ (требование пользователя).
+        // Список отсортирован приложением: цели первыми, затем по дистанции —
+        // порядок стабильный, без «мигания» при перерисовке.
+        // Для каждой точки: маркер/перекрестье, подпись и указатель за экраном.
+        // Ближайшая (первая) дополнительно даёт ar.sel — точку для отслеживания.
+        // ============================================================
+        ar.sel = null;
+        const drawn = [];
+        for (let i = 0; i < ar.points.length; i++) {
+            const pt = ar.points[i];
+            if (!pt) continue;
 
-        // v1.0.40.30: экранная позиция — БЕЗ сглаживания (_sm удалён) и БЕЗ
-        // подмены высоты через displayYFor. Сглаживание допустимо только для
-        // размера/прозрачности, но НЕ для геометрической позиции.
-        ar.sel = { u: cl.u, v: cl.v, clamped: cl.clamped, inFront: pr.inFront };
-        const drawU = cl.u;
-        const drawV = cl.v;
+            const pr = projectPoint(pt, view);
+            // Infinity — точка ровно сзади/сбоку: фиксируем направление к краям.
+            if (!Number.isFinite(pr.u)) pr.u = pr.u > 0 ? (W - CFG.edgeMargin) : CFG.edgeMargin;
+            if (!Number.isFinite(pr.v)) pr.v = pr.v > 0 ? (H - CFG.edgeMargin) : CFG.edgeMargin;
+            const cl = clampToScreen(pr.u, pr.v, !pr.inFront);
 
-        // Цвет как в редакторе (category/color/kind), размер/альфа по дистанции.
-        const color = colorFor(ar.target.kind, ar.target.color, ar.target.category);
-        const sa = sizeAlphaFor(pr.dist);
-        const txtAlpha = Math.max(0, Math.min(1, sa.alpha));
-
-        // v73: ЗАТУХАНИЕ КРИСТИКА/СТРЕЛКИ — globalAlpha всей отрисовки точки/указателя
-        // по дистанции (требование: прозрачность действует и на стрелку за экраном).
-        // При alpha ≤ 0.03 ничего не рисуем (дистанция ~fadeDist).
-        if (txtAlpha <= 0.03) return;
-        ctx.save();
-        ctx.globalAlpha = txtAlpha;
-
-        // ПОДПИСИ (v70): верхний текст = ОТОБРАЖАЕМОЕ имя (realName),
-        // нижний мелкий = системное имя (gameName). Текст рисуется и когда цель
-        // вне экрана (рядом со стрелкой), и когда внутри — под точкой.
-        const distText = fmtDist(pr.dist);
-        if (cl.clamped) {
-            // ЦЕЛЬ ВНЕ ЭКРАНА: точку и перекрестье НЕ рисуем — только указатель+текст.
-            const lu = drawU, lv = cl.bottom ? (drawV - 58) : (drawV + CFG.labelDy);
-            drawOutlinedText((ar.target.realName || ar.target.gameName) + '  \u00B7  ' + distText,
-                lu, lv, '600 14px "Segoe UI", Arial',
-                'rgba(255,255,255,' + txtAlpha.toFixed(2) + ')', txtAlpha);
-            if (ar.target.gameName && ar.target.gameName !== (ar.target.realName || ar.target.gameName)) {
-                drawOutlinedText(ar.target.gameName,
-                    lu, lv + 19, '12px "Segoe UI", Arial',
-                    'rgba(255,255,255,' + (0.85 * txtAlpha).toFixed(2) + ')', txtAlpha);
+            if (i === 0) {
+                ar.sel = { u: cl.u, v: cl.v, clamped: cl.clamped, inFront: pr.inFront };
             }
-            drawEdgeArrow(drawU, drawV, color, cl.bottom === true);
-        } else {
-            drawMarkerToward(drawU, drawV, color, sa.size, txtAlpha);
-            drawOutlinedText((ar.target.realName || ar.target.gameName) + '  \u00B7  ' + distText,
-                drawU, drawV + CFG.labelDy, '600 14px "Segoe UI", Arial',
-                'rgba(255,255,255,' + txtAlpha.toFixed(2) + ')', txtAlpha);
-            if (ar.target.gameName !== (ar.target.realName || ar.target.gameName)) {
-                drawOutlinedText(ar.target.gameName,
-                    drawU, drawV + CFG.labelDy + 19, '12px "Segoe UI", Arial',
-                    'rgba(255,255,255,' + (0.85 * txtAlpha).toFixed(2) + ')', txtAlpha);
+
+            const color = colorFor(pt.kind, pt.color, pt.category);
+            // Размер/прозрачность по дистанции ДО ЭТОЙ точки (не до ближайшей).
+            const sa = sizeAlphaFor(pr.dist);
+            const txtAlpha = Math.max(0, Math.min(1, sa.alpha));
+            if (txtAlpha <= 0.03) continue;      // слишком далеко — не рисуем
+
+            const distText = fmtDist(pr.dist);
+            const name = (pt.realName || pt.gameName);
+
+            // Подписи рисуем НЕ ВСЕМ точкам (иначе при плотной застройке экран
+            // превращается в текст): полные подписи — только цели и точки,
+            // близкие/крупные; остальным — короткая подпись имени.
+            const fullLabel = pt.isTarget || pr.dist <= 25;
+
+            ctx.save();
+            ctx.globalAlpha = txtAlpha;
+
+            if (cl.clamped) {
+                // ВНЕ ЭКРАНА: точку/перекрестье НЕ рисуем — указатель + подпись.
+                const lu = cl.u, lv = cl.bottom ? (cl.v - 58) : (cl.v + CFG.labelDy);
+                drawOutlinedText(name + '  \u00B7  ' + distText,
+                    lu, lv, '600 14px "Segoe UI", Arial',
+                    'rgba(255,255,255,' + txtAlpha.toFixed(2) + ')', txtAlpha);
+                if (fullLabel && pt.gameName && pt.gameName !== name) {
+                    drawOutlinedText(pt.gameName, lu, lv + 19,
+                        '12px "Segoe UI", Arial',
+                        'rgba(255,255,255,' + (0.85 * txtAlpha).toFixed(2) + ')', txtAlpha);
+                }
+                drawEdgeArrow(cl.u, cl.v, color, cl.bottom === true);
+            } else {
+                drawMarkerToward(cl.u, cl.v, color, sa.size, txtAlpha);
+                if (fullLabel) {
+                    drawOutlinedText(name + '  \u00B7  ' + distText,
+                        cl.u, cl.v + CFG.labelDy, '600 14px "Segoe UI", Arial',
+                        'rgba(255,255,255,' + txtAlpha.toFixed(2) + ')', txtAlpha);
+                    if (pt.gameName && pt.gameName !== name) {
+                        drawOutlinedText(pt.gameName, cl.u, cl.v + CFG.labelDy + 19,
+                            '12px "Segoe UI", Arial',
+                            'rgba(255,255,255,' + (0.85 * txtAlpha).toFixed(2) + ')', txtAlpha);
+                    }
+                } else {
+                    // Компактная подпись: только имя под маркером.
+                    drawOutlinedText(name, cl.u, cl.v + CFG.labelDy,
+                        '600 12px "Segoe UI", Arial',
+                        'rgba(255,255,255,' + txtAlpha.toFixed(2) + ')', txtAlpha);
+                }
+                drawCrosshair(cl.u, cl.v, color, (sa.size / 33) * CFG.crosshairScale);
             }
-            drawCrosshair(drawU, drawV, color, (sa.size / 33) * CFG.crosshairScale);
+            ctx.restore();
+            drawn.push(pt.gameName);
         }
-        ctx.restore();   // конец блока globalAlpha=txtAlpha (для метки/стрелки/крестика)
-        // (v74: pin и прицельный курсор перенесены ВЫШЕ — рисуются ДО цели и
-        //  не зависят от наличия ar.target.)
     }
     requestAnimationFrame(render);
 })();

@@ -3,6 +3,7 @@ import { OllamaUsageClient } from './ollamaUsageClient';
 import { StatusBar } from './statusBar';
 import { findParsedUsageFile, writeParsedUsageFile } from './usageFileWriter';
 import { UsageInfo } from './types';
+import { resetInternals } from './resetInternals';
 
 /**
  * Точка входа extension.
@@ -12,8 +13,11 @@ import { UsageInfo } from './types';
  *   https://ollama.com/settings (как ollama_usage.ps1).
  * - Если в текущем проекте есть MemoryAI/ollama_parsed_usage.txt — туда пишутся
  *   процент (строка 1) и время ресета (строка 2).
- * - Лог запуска (один раз): пользователь + статус файла ollama_parsed_usage.txt.
- * - Команды: refresh, openSettings, logout (смена аккаунта).
+ * - Команды: refresh, openSettings, logout, reset (очистка внутренних механизмов).
+ *
+ * v0.5: «пустой DOM» — корень в том, что Edge НЕ допускает второй экземпляр на
+ * одном --user-data-dir (exit 21 + пустой stdout). Сериализация через
+ * межпроцессный замок + повторные попытки + команда Reset.
  */
 export function activate(context: vscode.ExtensionContext): void {
   console.log('[ollama] 01 activate:start');
@@ -76,7 +80,11 @@ export function activate(context: vscode.ExtensionContext): void {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.log('refresh:error ' + msg);
-      statusBar.update({ kind: 'error', message: msg });
+      // v0.5: подсказываем Reset при «пустом DOM» / занятом профиле —
+      // это самые частые причины, и они лечатся командой Reset.
+      const hintReset =
+        msg.includes('EMPTY_DOM') || msg.includes('PROFILE_BUSY') || msg.includes('TIMEOUT');
+      statusBar.update({ kind: 'error', message: msg, hintReset });
       // При ошибке тоже один раз сообщаем в лог о запуске (без данных).
       logStartupOnce(null);
     } finally {
@@ -91,6 +99,32 @@ export function activate(context: vscode.ExtensionContext): void {
     timer = setInterval(() => {
       if (!disposed && getConfig().get<boolean>('enabled', true)) void refresh();
     }, interval * 1000);
+  };
+
+  /**
+   * v0.5: ПОЛНЫЙ СБРОС внутренних механизмов (запрос пользователя:
+   * «Может добавить какую-то команду очистки и перезагрузки внутренних
+   * механизмов?»).
+   *
+   * Гасит ТОЛЬКО процессы Edge с профилем расширения (обычный Edge не тронет),
+   * снимает межпроцессный замок и остаточные Singleton-замки, чистит temp —
+   * затем сразу опрашивает заново. Лечит «пустой DOM» после закрытия Edge,
+   * падения и разрывов VPN.
+   */
+  const reset = async (): Promise<void> => {
+    statusBar.update({ kind: 'resetting' });
+    const report = resetInternals();
+    console.log(
+      `[ollama] reset: killed=${report.killedProcesses} lock=${report.lockRemoved} ` +
+      `singleton=${report.singletonLocksRemoved} temp=${report.tempFilesRemoved}`
+    );
+    void vscode.window.showInformationMessage(
+      `Ollama Usage: сброс выполнен. Закрыто процессов Edge: ${report.killedProcesses}; ` +
+      `замок: ${report.lockRemoved ? 'снят' : 'не было'}; ` +
+      `Singleton-замков: ${report.singletonLocksRemoved}; temp-файлов: ${report.tempFilesRemoved}. ` +
+      'Повторный запрос…'
+    );
+    await refresh();
   };
 
   const openSettings = (): void => {
@@ -116,6 +150,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('ollamaUsage.refresh', () => void refresh()),
     vscode.commands.registerCommand('ollamaUsage.openSettings', () => openSettings()),
     vscode.commands.registerCommand('ollamaUsage.logout', () => void logout()),
+    vscode.commands.registerCommand('ollamaUsage.reset', () => void reset()),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('ollamaUsage')) {
         schedule();

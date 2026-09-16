@@ -218,9 +218,71 @@ namespace ETS2_Assist_GUI
 
         public static string SdoDirectory => SdoMeta.SdoDirectory;
 
+        // ================================================================
+        // v1.0.40.42: КЭШ ЗАГРУЗКИ SDO (корень «точки замирают на 2 секунды»).
+        //
+        // ПРОБЛЕМА: LoadAll() читает и парсит ~80 файлов (1.76 МБ JSON) при
+        // КАЖДОМ вызове. AR-канал звал его из RefreshArModel каждые 5 секунд
+        // НА UI-ПОТОКЕ — это блокировало обработку тиков, и точки «замирали»
+        // (замерено: парсинг ≈960 мс + чтение, провалы интервала 5010→6480 мс).
+        //
+        // РЕШЕНИЕ: SDO-файлы — СТАТИКА (меняются только выгрузкой из редактора),
+        // поэтому кэшируем результат и перечитываем только если реально изменились
+        // (по времени последней записи самого нового файла + числу файлов).
+        // Кэш потокобезопасен (lock) — LoadAll зовётся и из фонового потока.
+        // ================================================================
+        private static List<SdoPoint>? _cache;
+        private static DateTime _cacheStamp = DateTime.MinValue;
+        private static int _cacheFileCount = -1;
+        private static readonly object _cacheLock = new();
+
+        /// <summary>Отпечаток каталога SDO: время последней записи + число файлов.</summary>
+        private static DateTime DirectoryStamp(out int fileCount)
+        {
+            fileCount = 0;
+            DateTime newest = DateTime.MinValue;
+            try
+            {
+                if (!Directory.Exists(SdoDirectory)) return newest;
+                foreach (var f in Directory.EnumerateFiles(SdoDirectory, "*.json"))
+                {
+                    fileCount++;
+                    var t = File.GetLastWriteTimeUtc(f);
+                    if (t > newest) newest = t;
+                }
+            }
+            catch { /* нет доступа — считаем как есть */ }
+            return newest;
+        }
+
+        /// <summary>Сбросить кэш SDO (после выгрузки новых данных из редактора).</summary>
+        public static void InvalidateCache()
+        {
+            lock (_cacheLock) { _cache = null; _cacheStamp = DateTime.MinValue; _cacheFileCount = -1; }
+        }
+
         // Читает все *.json (кроме meta.json) и возвращает точки.
         // Формат файла: { category, source, easter, count, objects: [ { uid, sector, x, y, z, name? } ] }.
         public static List<SdoPoint> LoadAll()
+        {
+            var stamp = DirectoryStamp(out int fileCount);
+            lock (_cacheLock)
+            {
+                if (_cache != null && stamp == _cacheStamp && fileCount == _cacheFileCount)
+                    return _cache;                      // статика не менялась — возвращаем кэш
+            }
+
+            var fresh = LoadAllUncached();
+            lock (_cacheLock)
+            {
+                _cache = fresh;
+                _cacheStamp = stamp;
+                _cacheFileCount = fileCount;
+            }
+            return fresh;
+        }
+
+        private static List<SdoPoint> LoadAllUncached()
         {
             var list = new List<SdoPoint>();
             try
