@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -547,7 +547,7 @@ namespace ETS2_Assist_GUI.Quests
         {
             return Task.CompletedTask;
         }
-        private void EnforceArPointDebugMode(){try{bool debug=_store.Settings.DebugShowAllPoints;int radius=(int)Math.Clamp(_store.Settings.DebugRadiusM,5,5000);if(_lastDebugShow.HasValue&&_lastDebugShow.Value==debug&&_lastDebugRadius==radius)return;_lastDebugShow=debug;_lastDebugRadius=radius;AppSettings.ArDisplayRadiusM=debug?radius:0;if(_host.IsHandleCreated)_host.BeginInvoke(new Action(ForceArRebuild));}catch{}}
+        private void EnforceArPointDebugMode(){try{bool debug=_store.Settings.DebugShowAllPoints;int radius=(int)Math.Clamp(_store.Settings.DebugRadiusM,5,5000);if(_lastDebugShow.HasValue&&_lastDebugShow.Value==debug&&_lastDebugRadius==radius)return;_lastDebugShow=debug;_lastDebugRadius=radius;if(debug){AppSettings.ArDisplayRadiusM=radius;}else if(AppSettings.ArDisplayRadiusM<5){AppSettings.ArDisplayRadiusM=50;}if(_host.IsHandleCreated)_host.BeginInvoke(new Action(ForceArRebuild));}catch{}}
         private void ForceArRebuild(){try{typeof(MainForm).GetMethod("RefreshArModel",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)?.Invoke(_host,null);_host.ForceArDataResend("quest-state-change");_resolver.ClearCaches();}catch{}}
         internal IReadOnlyList<QuestPointSnapshot> GetQuestPointsForEditor(){var result=new List<QuestPointSnapshot>();foreach(QuestDefinition def in _store.Definitions.Values)foreach(QuestInteractionDefinition interaction in def.Interactions)if(TryBuildEditorInteraction(def,interaction,out QuestPointSnapshot point))result.Add(point);return result;}
         private void ProcessInstantActivations(){if(!_store.Settings.Enabled)return;foreach(QuestDefinition def in _store.Definitions.Values){if(!def.InstantActivation)continue;QuestProgress p=GetProgress(def.Id);if(p.Status!=QuestStatus.Available||(def.ActivationsPerPlayer>0&&ActivationCount(def.Id)>=def.ActivationsPerPlayer)||!IsQuestAvailable(def))continue;string firstStep=def.Steps.Keys.FirstOrDefault(k=>!k.Equals("available",StringComparison.OrdinalIgnoreCase))??"active";ApplyEffects(def,new[]{new QuestEffect{SetQuestStatus="Active",SetStep=firstStep}});}}
@@ -582,7 +582,7 @@ namespace ETS2_Assist_GUI.Quests
         private static void AddAmount(Dictionary<string,int> dict,string id,int delta){int value=Amount(dict,id)+delta;if(value<=0)dict.Remove(id);else dict[id]=value;}
         private static double DistanceSquared(double x,double y,double z,double tx,double ty,double tz){double dx=x-tx,dy=y-ty,dz=z-tz;return dx*dx+dy*dy+dz*dz;}
         private void BeginInvokeUi(Action action){try{if(_host.IsDisposed)return;if(_host.InvokeRequired)_host.BeginInvoke(action);else action();}catch{}}
-        public void Dispose(){if(_disposed)return;_disposed=true;try{_tickTimer?.Dispose();}catch{}try{_server?.Stop();}catch{} _server=null;HideOverlay();try{if(_overlayProcess!=null&&!_overlayProcess.HasExited)_overlayProcess.CloseMainWindow();}catch{}try{_overlayProcess?.Dispose();}catch{}_overlayProcess=null;try{TruckTelemetry.Stop();}catch{}}
+        public void Dispose(){if(_disposed)return;_disposed=true;try{_tickTimer?.Dispose();}catch{}try{_server?.Stop();}catch{} _server=null;try{TruckTelemetry.Stop();}catch{}}
         [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
         [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool BringWindowToTop(IntPtr hWnd);
         [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd,int nCmdShow);

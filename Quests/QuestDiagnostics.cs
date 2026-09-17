@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
@@ -76,7 +76,8 @@ namespace ETS2_Assist_GUI.Quests
                 bool inside = double.IsFinite(distance) && double.IsFinite(trigger) && distance <= trigger;
 
                 var overrides = store.State.EditorPointOverrides;
-                bool hasOverride = overrides != null && overrides.TryGetValue(QuestId + ":" + InteractionId, out var edit) && edit != null;
+                QuestEditorPointOverride? edit = null;
+                bool hasOverride = overrides != null && overrides.TryGetValue(QuestId + ":" + InteractionId, out edit) && edit != null;
                 string overrideText = hasOverride
                     ? $"override[x={edit!.X?.ToString("F1") ?? "-"},y={edit.Y?.ToString("F1") ?? "-"},z={edit.Z?.ToString("F1") ?? "-"},map={edit.MinimapVisible?.ToString() ?? "-"},ar={edit.ArVisible?.ToString() ?? "-"}]"
                     : "override=none";
