@@ -2,7 +2,7 @@
     'use strict';
     var ws=null, questState=null;
     var canvas=null, ctx=null;
-    var cam={valid:false,x:0,y:0,z:0,fwd:{x:0,y:0,z:-1},right:{x:1,y:0,z:0},up:{x:0,y:1,z:0},fov:75,vfov:65};
+    var cam={valid:false,x:0,y:0,z:0,fwd:{x:0,y:0,z:-1},right:{x:1,y:0,z:0},up:{x:0,y:1,z:0},fov:75,vfov:65,groundPlane:null};
 
     function ensureCanvas(){
         if(canvas) return;
@@ -37,9 +37,35 @@
     }
     function dot(a,b){return a.x*b.x+a.y*b.y+a.z*b.z;}
     function len3(v){return Math.sqrt(v.x*v.x+v.y*v.y+v.z*v.z)||1;}
-    function project(p){
+
+    // Возвращает текущую высоту камеры над землёй в мировой системе ETS2.
+    // Источник земли — тот же groundPlane, который приложение строит по колёсам
+    // и передаёт вместе с ar_telemetry. Для текущей модели плоскость горизонтальна,
+    // но формула ниже работает и для наклонной плоскости.
+    function eyeHeightAboveGround(){
+        if(!cam.valid || !cam.groundPlane) return 0;
+        var gp=cam.groundPlane;
+        if(gp.valid===false) return 0;
+
+        var groundY=Number(gp.referenceHeight);
+        var n=gp.normal, o=gp.origin;
+        if(Array.isArray(n) && n.length>=3 && Array.isArray(o) && o.length>=3){
+            var nx=Number(n[0]), ny=Number(n[1]), nz=Number(n[2]);
+            var ox=Number(o[0]), oy=Number(o[1]), oz=Number(o[2]);
+            if([nx,ny,nz,ox,oy,oz].every(Number.isFinite) && Math.abs(ny)>1e-7){
+                groundY=oy-(nx*(cam.x-ox)+nz*(cam.z-oz))/ny;
+            }
+        }
+
+        if(!Number.isFinite(groundY)) return 0;
+        var h=cam.y-groundY;
+        return Number.isFinite(h) && h>0 ? h : 0;
+    }
+
+    function project(p,yOverride){
         if(!cam.valid) return null;
-        var rel={x:readNumber(p.X,0)-cam.x,y:readNumber(p.Y,0)-cam.y,z:readNumber(p.Z,0)-cam.z};
+        var py=(typeof yOverride==='number' && Number.isFinite(yOverride)) ? yOverride : readNumber(p.Y,0);
+        var rel={x:readNumber(p.X,0)-cam.x,y:py-cam.y,z:readNumber(p.Z,0)-cam.z};
         var depth=dot(rel,cam.fwd);
         if(depth<=0.05) return null;
         var sx=dot(rel,cam.right), sy=dot(rel,cam.up);
@@ -78,10 +104,11 @@
         ctx.strokeText(ch,screen.x,screen.y);ctx.fillText(ch,screen.x,screen.y);
         ctx.restore();
     }
-    function drawOffscreen(p,dist){
+    function drawOffscreen(p,dist,yOverride){
         if(!p.ArOffscreenPointer) return;
-        var sp=project(p); if(sp && sp.x>=0 && sp.x<=innerWidth && sp.y>=0 && sp.y<=innerHeight) return;
-        var rel={x:readNumber(p.X,0)-cam.x,y:readNumber(p.Y,0)-cam.y,z:readNumber(p.Z,0)-cam.z};
+        var sp=project(p,yOverride); if(sp && sp.x>=0 && sp.x<=innerWidth && sp.y>=0 && sp.y<=innerHeight) return;
+        var py=(typeof yOverride==='number' && Number.isFinite(yOverride)) ? yOverride : readNumber(p.Y,0);
+        var rel={x:readNumber(p.X,0)-cam.x,y:py-cam.y,z:readNumber(p.Z,0)-cam.z};
         var sx=dot(rel,cam.right), sy=dot(rel,cam.up);
         var dx=sx,dy=-sy;
         if(Math.abs(dx)+Math.abs(dy)<0.001){dx=0;dy=1;}
@@ -107,14 +134,21 @@
         ensureCanvas();
         ctx.clearRect(0,0,innerWidth,innerHeight);
         var pts=questState&&Array.isArray(questState.points)?questState.points:[];
+        var eyeH=eyeHeightAboveGround();
         if(cam.valid){
             pts.forEach(function(p){
                 if(!p || !p.ArVisible || !p.Marker || p.Marker==='none') return;
-                var rel={x:readNumber(p.X,0)-cam.x,y:readNumber(p.Y,0)-cam.y,z:readNumber(p.Z,0)-cam.z};
+
+                // Квестовая метка должна быть не на поверхности земли, а на высоте
+                // глаз игрока. Высота берётся из ФАКТИЧЕСКОЙ 6DoF-позы камеры:
+                // camera Y − Y земли под камерой. Поэтому фура, легковая машина,
+                // автобус и т.п. автоматически дают свою высоту метки.
+                var markerY=readNumber(p.Y,0)+eyeH;
+                var rel={x:readNumber(p.X,0)-cam.x,y:markerY-cam.y,z:readNumber(p.Z,0)-cam.z};
                 var dist=len3(rel);
-                var sp=project(p);
+                var sp=project(p,markerY);
                 if(sp && sp.x>-90 && sp.x<innerWidth+90 && sp.y>-90 && sp.y<innerHeight+90) drawMarker(p,sp,dist);
-                if(p.ArOffscreenPointer) drawOffscreen(p,dist);
+                if(p.ArOffscreenPointer) drawOffscreen(p,dist,markerY);
             });
         }
         requestAnimationFrame(draw);
@@ -151,6 +185,7 @@
                     cam.x=p.x;cam.y=p.y;cam.z=p.z;
                     cam.fwd=f;cam.right=r;cam.up=u;
                     cam.fov=readNumber(c.fovDeg,75);cam.vfov=readNumber(c.fovDegVertical,65);
+                    cam.groundPlane=c.groundPlane||null;
                     cam.valid=c.valid===undefined?true:!!c.valid;
                 }catch(e){}
             };
