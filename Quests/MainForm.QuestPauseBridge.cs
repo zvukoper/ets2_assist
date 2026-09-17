@@ -1,8 +1,10 @@
 using System;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Newtonsoft.Json.Linq;
 
 namespace ETS2_Assist_GUI
 {
@@ -28,17 +30,48 @@ namespace ETS2_Assist_GUI
             return timer;
         }
 
+        private async Task<bool> ReadQuestPauseStateAsync()
+        {
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromMilliseconds(700) };
+                int currentPort = TruckTelemetry.Port;
+                int[] ports = currentPort == 8080 ? new[] { 8080, 8081 } : new[] { currentPort, 8080 };
+                foreach (int port in ports)
+                {
+                    try
+                    {
+                        string text = (await client.GetStringAsync($"http://localhost:{port}/api/rest/single/frame/paused").ConfigureAwait(true)).Trim();
+                        if (bool.TryParse(text, out bool value))
+                            return value;
+
+                        var token = JToken.Parse(text);
+                        if (token.Type == JTokenType.Boolean)
+                            return token.Value<bool>();
+                        if (token["paused"]?.Type == JTokenType.Boolean)
+                            return token["paused"]!.Value<bool>();
+                        if (token["value"]?.Type == JTokenType.Boolean)
+                            return token["value"]!.Value<bool>();
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            return _pausedIntent;
+        }
+
         private async Task SyncQuestPauseStateAsync()
         {
             if (Interlocked.Exchange(ref _questPauseBridgeBusy, 1) != 0) return;
             try
             {
-                bool paused = await IsGamePausedAsync().ConfigureAwait(true);
+                bool paused = await ReadQuestPauseStateAsync().ConfigureAwait(true);
                 if (_questPauseBridgeLast.HasValue && _questPauseBridgeLast.Value == paused) return;
 
                 bool? previous = _questPauseBridgeLast;
                 _questPauseBridgeLast = paused;
-                Logger.Current?.Workflow($"[QUEST][PAUSE_BRIDGE] state={(paused ? "PAUSED" : "RUNNING")} previous={(previous.HasValue ? (previous.Value ? "PAUSED" : "RUNNING") : "UNKNOWN")} intent={_pausedIntent}");
+                Logger.Current?.Workflow($"[QUEST][PAUSE_BRIDGE] state={(paused ? "PAUSED" : "RUNNING")} previous={(previous.HasValue ? (previous.Value ? "PAUSED" : "RUNNING") : "UNKNOWN")} intent={_pausedIntent} port={TruckTelemetry.Port}");
 
                 var runtime = Quests.QuestRuntime.Current;
                 if (runtime == null)
