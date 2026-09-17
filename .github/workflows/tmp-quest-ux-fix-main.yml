@@ -1,0 +1,151 @@
+name: One-time quest UX repair (main)
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, 'AUTO-FIX QUEST UX') && !contains(github.event.head_commit.message, 'Remove temporary quest UX repair workflow') }}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: false
+
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore ETS2_Assist_GUI.csproj
+
+      - name: Patch quest UX and pause handling
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          function Replace-Between([string]$Text, [string]$StartMarker, [string]$EndMarker, [string]$Replacement, [string]$Name) {
+              $start = $Text.IndexOf($StartMarker, [StringComparison]::Ordinal)
+              if ($start -lt 0) { throw "Start marker not found: $Name" }
+              $end = $Text.IndexOf($EndMarker, $start + $StartMarker.Length, [StringComparison]::Ordinal)
+              if ($end -lt 0) { throw "End marker not found: $Name" }
+              return $Text.Substring(0, $start) + $Replacement + $Text.Substring($end)
+          }
+
+          $path = 'UI/WebUIManager.cs'
+          $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
+          $newMethod = @'
+        private async Task<bool> IsGamePausedAsync()
+        {
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromMilliseconds(700);
+                    int currentPort = TruckTelemetry.Port;
+                    int[] ports = currentPort == 8080 ? new[] { 8080, 8081 } : new[] { currentPort, 8080 };
+                    foreach (int port in ports.Distinct())
+                    {
+                        try
+                        {
+                            var response = await client.GetAsync($"http://localhost:{port}/api/rest/single/frame/paused");
+                            if (!response.IsSuccessStatusCode) continue;
+                            var json = (await response.Content.ReadAsStringAsync()).Trim();
+                            var parsed = ParsePausedResponse(json);
+                            if (parsed.HasValue) return parsed.Value;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+            return _pausedIntent;
+        }
+'@
+          $text = Replace-Between $text '        private async Task<bool> IsGamePausedAsync()' '    }\n}' ($newMethod + '    }\n}') 'WebUIManager pause reader'
+          [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($true))
+
+          $path = 'Quests/QuestRuntime.cs'
+          $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
+          $newMethod = @'
+        private async Task<bool> ReadPauseAsync()
+        {
+            try
+            {
+                int currentPort = TruckTelemetry.Port;
+                int[] ports = currentPort == 8080 ? new[] { 8080, 8081 } : new[] { currentPort, 8080 };
+                foreach (int port in ports.Distinct())
+                {
+                    try
+                    {
+                        string text = (await _http.GetStringAsync($"http://localhost:{port}/api/rest/single/frame/paused").ConfigureAwait(true)).Trim();
+                        if (bool.TryParse(text, out bool b)) return b;
+                        var token = JToken.Parse(text);
+                        if (token.Type == JTokenType.Boolean) return token.Value<bool>();
+                        var paused = token["paused"]?.Value<bool>();
+                        if (paused.HasValue) return paused.Value;
+                        var value = token["value"]?.Value<bool>();
+                        if (value.HasValue) return value.Value;
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return _paused;
+        }
+'@
+          $text = Replace-Between $text '        private async Task<bool> ReadPauseAsync()' '        private List<QuestPointSnapshot> GetAvailableInteractions' ($newMethod + "`r`n        private List<QuestPointSnapshot> GetAvailableInteractions") 'QuestRuntime pause reader'
+          [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($true))
+
+          $path = 'data/js/ar_quests.js'
+          $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
+          $old = '    function connectQuest(){'
+          $insert = @'
+    function applyPauseFade(paused){
+        var value=paused?'0':'1';
+        try{
+            document.documentElement.style.setProperty('transition','opacity 150ms linear','important');
+            document.body.style.setProperty('transition','opacity 150ms linear','important');
+            document.documentElement.style.setProperty('opacity',value,'important');
+            document.body.style.setProperty('opacity',value,'important');
+        }catch(e){}
+    }
+    function connectQuest(){
+'@
+          if (-not $text.Contains($old)) { throw 'ar_quests connectQuest marker not found' }
+          $text = $text.Replace($old, $insert)
+          $oldHandler = "            ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state')questState=d;}catch(e){}};"
+          $newHandler = "            ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state'){questState=d;applyPauseFade(d.paused===true);}}catch(e){}};"
+          if (-not $text.Contains($oldHandler)) { throw 'ar_quests state handler marker not found' }
+          $text = $text.Replace($oldHandler, $newHandler)
+          [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($true))
+
+          $path = 'data/web_notifications.html'
+          $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
+          if (-not $text.Contains('#top{top:28px;')) { throw 'notification top marker not found' }
+          $text = $text.Replace('#top{top:28px;', '#top{top:25%;')
+          [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($true))
+
+          git diff --check
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build ETS2_Assist_GUI.csproj --configuration Release --no-restore
+
+      - name: Commit and remove workflow
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add UI/WebUIManager.cs Quests/QuestRuntime.cs data/js/ar_quests.js data/web_notifications.html
+          git commit -m 'AUTO-FIX QUEST UX: pause detection fade and notification position'
+          git rm .github/workflows/tmp-quest-ux-fix-main.yml
+          git commit -m 'Remove temporary quest UX repair workflow'
+          git push
