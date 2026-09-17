@@ -6,15 +6,15 @@ using System.Windows.Forms;
 
 namespace ETS2_Assist_GUI
 {
-    internal sealed partial class MainForm
+    public partial class MainForm
     {
-        private readonly Timer _questPauseBridgeTimer = CreateQuestPauseBridgeTimer();
+        private readonly System.Windows.Forms.Timer _questPauseBridgeTimer = CreateQuestPauseBridgeTimer();
         private int _questPauseBridgeBusy;
         private bool? _questPauseBridgeLast;
 
-        private Timer CreateQuestPauseBridgeTimer()
+        private System.Windows.Forms.Timer CreateQuestPauseBridgeTimer()
         {
-            var timer = new Timer { Interval = 300 };
+            var timer = new System.Windows.Forms.Timer { Interval = 300 };
             timer.Tick += async (_, _) => await SyncQuestPauseStateAsync();
             timer.Start();
             return timer;
