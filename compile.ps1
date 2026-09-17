@@ -58,6 +58,33 @@ foreach ($root in @($publishRoot, $binRoot)) {
     }
 }
 # Stage 2: build
+# WebOverlay is maintained in the sibling repository f:\repo\weboverlay in the
+# standard development layout. Build it first so data\bin\WebOverlay.exe used by
+# ETS2 Assist always contains the current window-state/default-position fixes.
+$webOverlayProject = Join-Path $PSScriptRoot '..\weboverlay\WebOverlay.csproj'
+$webOverlayPublish = Join-Path $PSScriptRoot 'obj\WebOverlayPublish'
+$webOverlayExe = Join-Path $webOverlayPublish 'WebOverlay.exe'
+if (Test-Path $webOverlayProject) {
+    Write-Host "Building sibling WebOverlay: $webOverlayProject"
+    if (Test-Path $webOverlayPublish) {
+        Remove-Item -LiteralPath $webOverlayPublish -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    & dotnet publish $webOverlayProject -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -o $webOverlayPublish
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "WebOverlay publish failed with exit code $LASTEXITCODE." -ForegroundColor Red
+        exit $LASTEXITCODE
+    }
+    $webOverlayTarget = Join-Path $PSScriptRoot 'data\bin\WebOverlay.exe'
+    if (-not (Test-Path $webOverlayExe)) {
+        Write-Host "WebOverlay publish completed but WebOverlay.exe was not produced: $webOverlayExe" -ForegroundColor Red
+        exit 1
+    }
+    Copy-Item -LiteralPath $webOverlayExe -Destination $webOverlayTarget -Force
+    Write-Host "Updated ETS2 Assist data\bin\WebOverlay.exe from sibling WebOverlay build." -ForegroundColor Green
+} else {
+    Write-Host "Sibling WebOverlay repository not found at $webOverlayProject; keeping existing data\bin\WebOverlay.exe." -ForegroundColor Yellow
+}
+
 dotnet clean
 dotnet restore
 dotnet publish -c Release
