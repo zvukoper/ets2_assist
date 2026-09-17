@@ -169,17 +169,20 @@ namespace ETS2_Assist_GUI
             {
                 using (var client = new HttpClient())
                 {
-                    client.Timeout = TimeSpan.FromSeconds(1);
-                    var response = await client.GetAsync("http://localhost:8080/api/rest/single/frame/paused");
-                    if (response.IsSuccessStatusCode)
+                    client.Timeout = TimeSpan.FromMilliseconds(700);
+                    int currentPort = TruckTelemetry.Port;
+                    int[] ports = currentPort == 8080 ? new[] { 8080, 8081 } : new[] { currentPort, 8080 };
+                    foreach (int port in ports.Distinct())
                     {
-                        var json = (await response.Content.ReadAsStringAsync()).Trim();
-                        // TruckTel может вернуть булево в разных видах ("true", true,
-                        // {"paused":true}...). ParsePausedResponse разбирает всё; при
-                        // неудаче разбора доверяем намерению приложения (_pausedIntent).
-                        var parsed = ParsePausedResponse(json);
-                        if (parsed.HasValue) return parsed.Value;
-                        return _pausedIntent;
+                        try
+                        {
+                            var response = await client.GetAsync($"http://localhost:{port}/api/rest/single/frame/paused");
+                            if (!response.IsSuccessStatusCode) continue;
+                            var json = (await response.Content.ReadAsStringAsync()).Trim();
+                            var parsed = ParsePausedResponse(json);
+                            if (parsed.HasValue) return parsed.Value;
+                        }
+                        catch { }
                     }
                 }
             }
