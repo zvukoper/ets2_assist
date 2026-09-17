@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ETS2 Assist — Уведомления</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:'Segoe UI',Arial,sans-serif;pointer-events:none}
+#notifications{position:fixed;inset:0;pointer-events:none}
+.slot{position:absolute;display:flex;flex-direction:column;gap:10px;width:min(620px,38vw);pointer-events:none}
+#top{top:28px;left:50%;transform:translateX(-50%);align-items:center}
+#left{left:28px;top:50%;transform:translateY(-50%);align-items:flex-start}
+#right{right:28px;top:50%;transform:translateY(-50%);align-items:flex-end}
+.note{box-sizing:border-box;min-width:280px;max-width:100%;padding:14px 18px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(17,22,29,.92);box-shadow:0 10px 35px rgba(0,0,0,.45);color:#e8edf4;opacity:0;transform:translateY(-8px) scale(.98);transition:opacity .22s ease,transform .22s ease;pointer-events:none}
+.note.show{opacity:1;transform:translateY(0) scale(1)}
+.noteTitle{font-size:15px;font-weight:700;color:#ffd45a;margin-bottom:5px;white-space:pre-wrap}
+.noteText{font-size:14px;line-height:1.4;white-space:pre-wrap;color:#d5dbe2}
+.note.reputation .noteTitle{color:#b7ff46}
+.note.reward .noteTitle{color:#ffd45a}
+@media(max-width:1000px){.slot{width:min(620px,72vw)}.note{min-width:0}.noteTitle{font-size:14px}.noteText{font-size:13px}}
+</style>
+</head>
+<body>
+<div id="notifications">
+  <div class="slot" id="top"></div>
+  <div class="slot" id="left"></div>
+  <div class="slot" id="right"></div>
+</div>
+<script>
+(function(){
+'use strict';
+var ws=null, counters={top:0,left:0,right:0};
+function esc(s){return String(s==null?'':s).replace(/[&<>\"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'})[c]})}
+function slotName(n){n=String(n||'top').toLowerCase();return n==='left'||n==='right'?'#'+n:'#top'}
+function showNotification(n){
+  n=n||{};
+  var slot=slotName(n.position);
+  var host=document.querySelector(slot);if(!host)return;
+  var id=++counters[slot.slice(1)];
+  var item=document.createElement('div');
+  item.className='note '+(n.accent||'');
+  item.dataset.id=String(id);
+  item.innerHTML=(n.title?'<div class="noteTitle">'+esc(n.title)+'</div>':'')+'<div class="noteText">'+esc(n.text||'')+'</div>';
+  host.appendChild(item);
+  requestAnimationFrame(function(){item.classList.add('show')});
+  var duration=Math.max(1500,Number(n.durationMs)||4500);
+  setTimeout(function(){item.classList.remove('show');setTimeout(function(){item.remove()},260)},duration);
+}
+function connect(){
+  try{
+    ws=new WebSocket('ws://localhost:8085/');
+    ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_notify')showNotification(d.notification||{})}catch(e){}};
+    ws.onclose=function(){setTimeout(connect,1500)};
+    ws.onerror=function(){try{ws.close()}catch(e){}};
+  }catch(e){setTimeout(connect,1500)}
+}
+document.addEventListener('DOMContentLoaded',connect);
+})();
+</script>
+</body>
+</html>
