@@ -23,7 +23,6 @@ function toTarget(p){
     return {id:key,uid:String(p.Uid||key),GameName:key,RealName:questLabel(p),name:questLabel(p),Category:'Квестовые',category:'__custom',Description:'Квестовая точка. Характеристики редактируются в редакторе квестов.',Enabled:true,ShowInAr:Boolean(p.ArVisible),ShowOnMap:Boolean(p.MinimapVisible),X:Number(p.X)||0,Y:Number(p.Y)||0,Z:Number(p.Z)||0,x:Number(p.X)||0,y:Number(p.Y)||0,z:Number(p.Z)||0,Color:'#ffd21f',color:'#ffd21f',Icon:'default',LabelStroke:1,TriggerRadius:Number(p.TriggerRadiusM)||35,CooldownMinutes:0,Hidden:0,DeleteOnComplete:0,DialogId:'',Action:'',Caption:'',EnterReward:0,AfterReward:0,EnterXp:0,AfterXp:0,source:'custom',__questPoint:true,__questData:p};
 }
 function questPointsAsTargets(){return questPoints.map(toTarget)}
-
 function installCombinedTargets(){
     if(typeof window.MapEditor2SetTargets!=='function')return;
     applyingTargets=true;
@@ -31,7 +30,6 @@ function installCombinedTargets(){
     finally{applyingTargets=false}
     queueDecorate();
 }
-
 function installSetTargetsWrapper(){
     if(typeof window.MapEditor2SetTargets!=='function'||window.__ets2QuestSetTargetsWrapped)return;
     const original=window.MapEditor2SetTargets;
@@ -44,17 +42,14 @@ function installSetTargetsWrapper(){
         try{return original(combined)}finally{applyingTargets=false;queueDecorate()}
     };
 }
-
 function queueDecorate(){
     if(decorateQueued)return;
     decorateQueued=true;
     requestAnimationFrame(()=>{decorateQueued=false;decorateSidebar();syncQuestSelection();restrictQuestEditor()});
 }
-
 function findCustomCategory(){return document.querySelector('.category[data-cat-key="__custom"]')}
 function findQuestButtons(){return Array.from(document.querySelectorAll('.pointButton[data-point-id]')).filter(b=>String(b.dataset.pointId||'').startsWith(PREFIX))}
 function findQuestButton(key){return findQuestButtons().find(b=>b.dataset.pointId===key)||null}
-
 function hideQuestSourceButtons(){
     const sourceUids=new Set();
     for(const p of questPoints){const uid=String(p&&p.OriginalUid||'').trim();if(uid)sourceUids.add(uid.toLowerCase())}
@@ -66,7 +61,6 @@ function hideQuestSourceButtons(){
         else if(b.dataset.questSourceHidden==='1'){b.style.display='';delete b.dataset.questSourceHidden}
     }
 }
-
 function decorateSidebar(){
     const list=$('categoryList');if(!list)return;
     const custom=findCustomCategory();
@@ -77,7 +71,6 @@ function decorateSidebar(){
         custom.style.display=regularCount?'':'none';
     }
     hideQuestSourceButtons();
-
     let cat=document.getElementById('questSidebarCategory'),created=false;
     if(!cat){
         cat=document.createElement('div');cat.id='questSidebarCategory';cat.className='category open';
@@ -97,7 +90,6 @@ function decorateSidebar(){
     body.appendChild(frag);const count=cat.querySelector('.catCount');if(count)count.textContent=String(questPoints.length);
 }
 function escapeHtml(s){return String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}
-
 function selectQuestPoint(key){
     selectedQuestKey=key;queueDecorate();
     const custom=findCustomCategory();if(custom)custom.style.display='';
@@ -105,7 +97,6 @@ function selectQuestPoint(key){
     const head=custom&&custom.querySelector('.categoryHead');if(head&&!custom.classList.contains('open'))head.click();
     let tries=0;const timer=setInterval(()=>{const button=findQuestButton(key);if(button){clearInterval(timer);button.click();setTimeout(queueDecorate,40);return}if(++tries>20){clearInterval(timer);queueDecorate()}},50);
 }
-
 function currentQuestButton(){return findQuestButtons().find(b=>b.classList.contains('selected'))||null}
 function syncQuestSelection(){
     const button=currentQuestButton();if(button)selectedQuestKey=button.dataset.pointId||selectedQuestKey;
@@ -116,7 +107,6 @@ function selectedQuestData(){
     if(!selectedQuestKey)return null;const raw=selectedQuestKey.slice(PREFIX.length),sep=raw.indexOf(':');if(sep<1)return null;return questByKey.get(raw)||null;
 }
 function questKeyParts(key){const raw=String(key||'').slice(PREFIX.length),i=raw.indexOf(':');return i<1?null:{questId:raw.slice(0,i),interactionId:raw.slice(i+1)}}
-
 function restrictQuestEditor(){
     const p=selectedQuestData(),body=$('rightBody'),actions=$('editActionsBar');
     if(!p||!body||!actions)return;
@@ -130,7 +120,6 @@ function restrictQuestEditor(){
     const fav=body.querySelector('.favStarRow');if(fav)fav.style.display='none';
     let meta=body.querySelector('.questPointEditorHint');if(!meta){meta=document.createElement('div');meta.className='editHint questPointEditorHint';body.insertBefore(meta,body.firstChild)}
     meta.innerHTML='<b>Квестовая точка</b><br>Можно перемещать точку на карте, менять название и видимость в AR/миникарте. Остальные параметры редактируются в редакторе квестов.';
-
     let save=actions.querySelector('.questPointSaveBtn'),cancel=actions.querySelector('.questPointCancelBtn');
     if(!save||!cancel){
         actions.innerHTML='';save=document.createElement('button');save.className='editBtn primary questPointSaveBtn';cancel=document.createElement('button');cancel.className='editBtn questPointCancelBtn';cancel.textContent='Отмена';
@@ -138,7 +127,6 @@ function restrictQuestEditor(){
     }
     save.textContent=saveBusy?'Сохранение…':'Сохранить';save.disabled=saveBusy;cancel.disabled=saveBusy;
 }
-
 function readQuestForm(){
     const nameCtrl=fieldControl('RealName'),xCtrl=fieldControl('X'),yCtrl=fieldControl('Y'),zCtrl=fieldControl('Z'),arCtrl=fieldControl('ShowInAr'),mapCtrl=fieldControl('ShowOnMap');
     const x=Number(xCtrl&&xCtrl.value),y=Number(yCtrl&&yCtrl.value),z=Number(zCtrl&&zCtrl.value);if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))return null;
@@ -165,12 +153,14 @@ const style=document.createElement('style');style.textContent=`
 #questSidebarCategory .questCategoryBody{display:block!important}
 #questSidebarCategory .questPointButton{display:flex!important}
 #questSidebarCategory .questMarker{width:15px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;line-height:1}
-#questSidebarCategory .questMarker.yellow{color:#ffd21f}.#questSidebarCategory .questMarker.gray{color:#9da5af}
+#questSidebarCategory .questMarker.yellow{color:#ffd21f}
+#questSidebarCategory .questMarker.gray{color:#9da5af}
 #questSidebarCategory .questPointButton .pointName{font-weight:600}
 #questSidebarCategory .questPointButton.selected{background:#394454!important}
 .questPointEditPanel .editMeta{color:#7f8a98}
 .questPointEditPanel .questPointEditorHint{border:1px solid rgba(255,210,31,.28);background:rgba(255,210,31,.06);margin:0 0 8px}
-`;document.head.appendChild(style);
+`;
+document.head.appendChild(style);
 const observer=new MutationObserver(()=>queueDecorate());observer.observe(document.body,{childList:true,subtree:true});
 installSetTargetsWrapper();window.chrome?.webview?.postMessage('map2-quest-bridge-ready');connect();queueDecorate();
 })();
