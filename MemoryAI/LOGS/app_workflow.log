@@ -1,0 +1,277 @@
+
+======= ETS2 Assist started 2026-09-17 18:50:08.375 =======
+BUILD_VERSION=1.0.40.45-QUESTS-09.17-1848
+2026-09-17 18:50:08.376 [INFO] ETS2 Assist logger initialized.
+2026-09-17 18:50:08.385 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-17 18:50:08.404 [INFO] Hotkeys: Ctrl+X (игра: новая метка AR/миникарта), Ctrl+Shift+X (то же), S, R, N, Ctrl+T, Ctrl+Shift+T, Ctrl+PGUP/PGDN (FOV AR1 гориз.), Ctrl+Shift+PGUP/PGDN (FOV AR1 верт.), Ctrl+Shift+HOME/END (FOV AR2)
+2026-09-17 18:50:08.459 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-17 18:50:11.276 [INFO] [AR] Модель точек обновлена: 5748 (цели: 1).
+2026-09-17 18:52:08.710 [INFO] Starting system...
+2026-09-17 18:52:08.711 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-17 18:52:08.712 [INFO] Checking ETS2 plugins...
+2026-09-17 18:52:08.714 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-17 18:52:08.714 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-17 18:52:08.715 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-17 18:52:08.716 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-17 18:52:08.717 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-17 18:52:08.718 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-17 18:52:08.718 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-17 18:52:08.719 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-17 18:52:08.724 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789653008).
+2026-09-17 18:52:08.725 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6099, lastWrite=2026-09-17 15:07:42
+2026-09-17 18:52:08.726 [INFO] [WEB] web_ui_hybrid.html: build=1.0.40.28, bytes=4743, lastWrite=2026-09-15 20:50:28
+2026-09-17 18:52:08.727 [INFO] Trigger HTTP server started on port 8083.
+2026-09-17 18:52:08.729 [INFO] WebSocket save server started on port 8084.
+2026-09-17 18:52:08.748 [INFO] Script started with PID 20816
+2026-09-17 18:52:08.769 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-17 18:52:08.772 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_pda_map.html.txt: X=0, Y=756, 324x324
+2026-09-17 18:52:08.773 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_ui_hybrid.html.txt: X=557, Y=734, 806x346
+2026-09-17 18:52:08.774 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_pause_logo.html.txt: X=1726, Y=0, 194x194
+2026-09-17 18:52:08.776 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_heights.html.txt: X=1267, Y=0, 653x324
+2026-09-17 18:52:08.777 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_quests.html.txt: X=0, Y=0, 1920x1080
+2026-09-17 18:52:08.779 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_notifications.html.txt: X=0, Y=0, 1920x1080
+2026-09-17 18:52:08.780 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_ar_hud.html.txt: X=0, Y=0, 1920x1080
+2026-09-17 18:52:10.316 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-17 18:52:12.026 [INFO] [TruckTel] Найден порт через активные соединения: 8081
+2026-09-17 18:52:12.065 [INFO] [TruckTel] web_data.json обновлён, wsPort = 8081
+2026-09-17 18:52:12.068 [INFO] Pause check timer started.
+2026-09-17 18:52:12.258 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-17 18:52:12.262 [INFO] SCS SDK input controller initialized successfully.
+2026-09-17 18:52:12.273 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8081/api/ws/delta/flat/ (REST-снимок: http://localhost:8081/api/rest/flat/truck).
+2026-09-17 18:52:12.282 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,00° | голова pitch=-9,18° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,19° крен=-0,00° | fwd.Y=-0,1598 right.Y=0,0000 up.Y=0,9872
+2026-09-17 18:52:12.289 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=403 y(центр)=403 y(право)=403 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:52:12.332 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:52:13.354 [INFO] [QUEST][PAUSE_BRIDGE] state=RUNNING previous=UNKNOWN intent=False
+2026-09-17 18:52:13.355 [INFO] [QUEST][PAUSE_BRIDGE] runtime._paused=false
+2026-09-17 18:52:13.355 [INFO] [QUEST][PAUSE_BRIDGE] overlay sync requested paused=false
+2026-09-17 18:52:13.355 [INFO] [QUEST][PAUSE_BRIDGE] state broadcasted
+2026-09-17 18:52:13.816 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-17 18:52:13.854 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-17 18:52:13.858 [INFO] [WS Command] map_ready
+2026-09-17 18:52:13.899 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-17 18:52:15.861 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-17 18:52:15.876 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5670 (переопр=0, custom=0), targets=1
+2026-09-17 18:52:17.291 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,18° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,19° крен=-0,00° | fwd.Y=-0,1598 right.Y=0,0000 up.Y=0,9872
+2026-09-17 18:52:17.294 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=403 y(центр)=403 y(право)=403 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:52:18.357 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-17 18:52:18.400 [INFO] [WebSocket] Команда звука: icon
+2026-09-17 18:52:22.307 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,18° roll=0,00° | кабина pitch=-0,00° roll=0,00° | КАМЕРА наклон=9,19° крен=-0,00° | fwd.Y=-0,1598 right.Y=0,0000 up.Y=0,9872
+2026-09-17 18:52:22.309 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=403 y(центр)=403 y(право)=403 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:52:25.273 [INFO] [AR] Плоскость: ПО КОЛЁСАМ (измеренный уклон полотна).
+2026-09-17 18:52:27.310 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,18° roll=0,00° | кабина pitch=0,00° roll=-0,00° | КАМЕРА наклон=9,19° крен=-0,00° | fwd.Y=-0,1598 right.Y=0,0000 up.Y=0,9872
+2026-09-17 18:52:27.312 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=403 y(центр)=403 y(право)=403 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:52:32.342 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,00° | голова pitch=-9,18° roll=0,00° | кабина pitch=0,00° roll=-0,00° | КАМЕРА наклон=9,19° крен=-0,00° | fwd.Y=-0,1598 right.Y=0,0000 up.Y=0,9872
+2026-09-17 18:52:32.344 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=403 y(центр)=403 y(право)=403 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:52:37.358 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,18° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,19° крен=-0,00° | fwd.Y=-0,1598 right.Y=0,0000 up.Y=0,9872
+2026-09-17 18:52:37.361 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=403 y(центр)=403 y(право)=403 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:52:42.391 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,00° | голова pitch=-9,18° roll=0,00° | кабина pitch=-0,00° roll=0,00° | КАМЕРА наклон=9,19° крен=-0,00° | fwd.Y=-0,1598 right.Y=0,0000 up.Y=0,9872
+2026-09-17 18:52:42.394 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=403 y(центр)=403 y(право)=403 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:52:47.422 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,00° | голова pitch=-9,18° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=9,19° крен=-0,00° | fwd.Y=-0,1598 right.Y=0,0000 up.Y=0,9872
+2026-09-17 18:52:47.425 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=403 y(центр)=403 y(право)=403 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:52:49.883 [INFO] [UI] Показ карты ВСЕГДА (вкл)
+2026-09-17 18:52:49.887 [INFO] Command 'minimap_auto' sent to map.
+2026-09-17 18:52:49.891 [INFO] Command 'minimap_show' sent to map.
+2026-09-17 18:52:52.446 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,18° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=9,19° крен=-0,00° | fwd.Y=-0,1598 right.Y=0,0000 up.Y=0,9872
+2026-09-17 18:52:52.448 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=403 y(центр)=403 y(право)=403 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:52:52.712 [INFO] [AR] Геометрия AR HUD: экран '\\.\DISPLAY1' 1920x1080 @(0,0).
+2026-09-17 18:52:52.961 [INFO] [WebSocket] Получено сообщение: {"command":"ar_view_request"}...
+2026-09-17 18:52:54.085 [INFO] [AR] TILT (start): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,18° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=9,19° крен=-0,00° | fwd.Y=-0,1598 right.Y=0,0000 up.Y=0,9872
+2026-09-17 18:52:54.091 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=403 y(центр)=403 y(право)=403 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:52:54.095 [INFO] Command 'ar_fov' sent to map.
+2026-09-17 18:52:54.108 [INFO] Command 'ar_view' sent to map.
+2026-09-17 18:52:54.110 [INFO] [AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).
+2026-09-17 18:52:54.146 [INFO] [AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).
+2026-09-17 18:52:54.170 [INFO] [WebSocket] Команда от клиента: ar_view_request
+2026-09-17 18:52:54.176 [INFO] [WS Command] ar_view_request
+2026-09-17 18:52:54.186 [INFO] Command 'ar_view' sent to map.
+2026-09-17 18:52:56.485 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-17 18:52:56.503 [INFO] [WebSocket] Команда звука: icon
+2026-09-17 18:52:57.455 [INFO] [AR] TILT (ws): кузов pitch=0,02° roll=0,03° | голова pitch=-11,83° roll=0,00° | кабина pitch=-0,00° roll=0,02° | КАМЕРА наклон=11,81° крен=-0,04° | fwd.Y=-0,2047 right.Y=0,0007 up.Y=0,9788
+2026-09-17 18:52:57.460 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=362 y(центр)=363 y(право)=364 наклон линии=0,04° (центр экрана cy=540)
+2026-09-17 18:52:57.876 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:52:59.251 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:52:59.618 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:52:59.893 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:00.112 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:00.230 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:00.504 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:00.773 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:00.815 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:00.868 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:01.059 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:02.466 [INFO] [AR] TILT (ws): кузов pitch=0,05° roll=0,01° | голова pitch=-13,37° roll=0,00° | кабина pitch=0,02° roll=0,08° | КАМЕРА наклон=13,29° крен=-0,09° | fwd.Y=-0,2300 right.Y=0,0014 up.Y=0,9732
+2026-09-17 18:53:02.469 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=338 y(центр)=340 y(право)=342 наклон линии=0,10° (центр экрана cy=540)
+2026-09-17 18:53:02.484 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:03.588 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:04.597 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:04.654 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:04.669 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:04.796 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:04.878 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:04.928 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:04.979 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:05.765 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:06.012 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:06.100 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:06.337 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:06.497 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:06.651 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:06.725 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:06.937 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:07.160 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:07.316 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:07.480 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:07.492 [INFO] [AR] TILT (ws): кузов pitch=0,10° roll=-0,20° | голова pitch=-13,88° roll=0,00° | кабина pitch=0,07° roll=-0,31° | КАМЕРА наклон=13,71° крен=0,42° | fwd.Y=-0,2371 right.Y=-0,0071 up.Y=0,9715
+2026-09-17 18:53:07.496 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=342 y(центр)=334 y(право)=325 наклон линии=-0,48° (центр экрана cy=540)
+2026-09-17 18:53:07.510 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:07.562 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:07.625 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:07.794 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:07.842 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:07.891 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:07.949 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.015 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.084 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.140 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.192 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.244 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.314 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.370 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.657 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.816 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.858 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.900 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:08.995 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.060 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.114 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.217 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.355 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.410 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.466 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.515 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.633 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.678 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.731 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.771 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.822 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.910 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:09.964 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.013 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.067 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.110 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.194 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.237 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.282 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.363 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.404 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.461 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.513 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.553 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.648 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.698 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.785 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.874 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.911 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:10.930 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.045 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.233 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.278 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.335 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.440 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.557 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.601 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.674 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.731 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.788 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.840 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.891 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:11.985 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.033 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.046 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.100 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.150 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.235 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.339 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.385 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.438 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.502 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.528 [INFO] [AR] TILT (ws): кузов pitch=-0,57° roll=-0,43° | голова pitch=-14,65° roll=0,00° | кабина pitch=-1,39° roll=-1,37° | КАМЕРА наклон=16,59° крен=1,68° | fwd.Y=-0,2854 right.Y=-0,0281 up.Y=0,9580
+2026-09-17 18:53:12.545 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=320 y(центр)=288 y(право)=256 наклон линии=-1,93° (центр экрана cy=540)
+2026-09-17 18:53:12.551 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.616 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:12.740 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:13.014 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:13.270 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:13.564 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:13.854 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:14.203 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:14.976 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:15.274 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:17.541 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,02° | голова pitch=-15,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=15,02° крен=-0,01° | fwd.Y=-0,2591 right.Y=0,0001 up.Y=0,9659
+2026-09-17 18:53:17.546 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=313 y(центр)=313 y(право)=313 наклон линии=0,01° (центр экрана cy=540)
+2026-09-17 18:53:22.589 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,02° | голова pitch=-15,00° roll=0,00° | кабина pitch=0,00° roll=-0,00° | КАМЕРА наклон=15,01° крен=-0,01° | fwd.Y=-0,2591 right.Y=0,0002 up.Y=0,9659
+2026-09-17 18:53:22.591 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=313 y(центр)=313 y(право)=313 наклон линии=0,01° (центр экрана cy=540)
+2026-09-17 18:53:27.598 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,02° | голова pitch=-15,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=15,01° крен=-0,01° | fwd.Y=-0,2591 right.Y=0,0001 up.Y=0,9659
+2026-09-17 18:53:27.602 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=313 y(центр)=313 y(право)=313 наклон линии=0,01° (центр экрана cy=540)
+2026-09-17 18:53:28.002 [INFO] Command 'ar_view' sent to map.
+2026-09-17 18:53:28.007 [INFO] [VIEW] Радиус показа точек в AR = 5 м.
+2026-09-17 18:53:28.012 [INFO] Command 'ar_target' sent to map.
+2026-09-17 18:53:32.098 [INFO] Command 'show_ui_first' sent to map.
+2026-09-17 18:53:32.100 [INFO] [UI] Отправлена команда show_ui_first (первый показ с увеличением)
+2026-09-17 18:53:32.101 [INFO] Command 'hide_pause_logo' sent to map.
+2026-09-17 18:53:32.102 [INFO] [UI] Пауз-лого скрыт (в фокусе и не на паузе / вне фокуса)
+2026-09-17 18:53:32.103 [INFO] Command 'minimap_auto' sent to map.
+2026-09-17 18:53:32.104 [INFO] Command 'minimap_show' sent to map.
+2026-09-17 18:53:32.602 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,02° | голова pitch=-5,04° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=5,05° крен=-0,00° | fwd.Y=-0,0881 right.Y=0,0000 up.Y=0,9961
+2026-09-17 18:53:32.603 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=465 y(центр)=465 y(право)=465 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:53:37.618 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,02° | голова pitch=-7,34° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=7,35° крен=-0,01° | fwd.Y=-0,1279 right.Y=0,0001 up.Y=0,9918
+2026-09-17 18:53:37.620 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=431 y(центр)=431 y(право)=431 наклон линии=0,01° (центр экрана cy=540)
+2026-09-17 18:53:38.206 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-17 18:53:38.209 [INFO] [WebSocket] Команда звука: icon
+2026-09-17 18:53:42.624 [INFO] [AR] TILT (ws): кузов pitch=0,23° roll=-0,02° | голова pitch=-8,36° roll=0,00° | кабина pitch=0,16° roll=-0,03° | КАМЕРА наклон=7,97° крен=0,07° | fwd.Y=-0,1386 right.Y=-0,0012 up.Y=0,9903
+2026-09-17 18:53:42.626 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=423 y(центр)=422 y(право)=420 наклон линии=-0,08° (центр экрана cy=540)
+2026-09-17 18:53:47.630 [INFO] [AR] TILT (ws): кузов pitch=-0,03° roll=0,21° | голова pitch=-7,96° roll=0,00° | кабина pitch=-0,04° roll=0,39° | КАМЕРА наклон=7,98° крен=-0,51° | fwd.Y=-0,1388 right.Y=0,0087 up.Y=0,9903
+2026-09-17 18:53:47.631 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=412 y(центр)=421 y(право)=431 наклон линии=0,58° (центр экрана cy=540)
+2026-09-17 18:53:52.644 [INFO] [AR] TILT (ws): кузов pitch=-0,05° roll=-0,00° | голова pitch=-7,82° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=7,87° крен=-0,01° | fwd.Y=-0,1370 right.Y=0,0001 up.Y=0,9906
+2026-09-17 18:53:52.646 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=423 y(центр)=423 y(право)=423 наклон линии=0,01° (центр экрана cy=540)
+2026-09-17 18:53:58.059 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,33° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,34° крен=-0,00° | fwd.Y=-0,1451 right.Y=0,0000 up.Y=0,9894
+2026-09-17 18:53:58.061 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:54:01.874 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-17 18:54:01.875 [INFO] [WebSocket] Команда звука: icon
+2026-09-17 18:54:03.112 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=0,00° | голова pitch=-8,57° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,59° крен=-0,00° | fwd.Y=-0,1493 right.Y=0,0000 up.Y=0,9888
+2026-09-17 18:54:03.116 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=412 y(центр)=412 y(право)=412 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:54:08.166 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=0,00° | голова pitch=-8,57° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,59° крен=-0,00° | fwd.Y=-0,1493 right.Y=0,0000 up.Y=0,9888
+2026-09-17 18:54:08.168 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=412 y(центр)=412 y(право)=412 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:54:13.211 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=0,00° | голова pitch=-10,16° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=10,17° крен=-0,00° | fwd.Y=-0,1767 right.Y=0,0000 up.Y=0,9843
+2026-09-17 18:54:13.213 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=388 y(центр)=388 y(право)=388 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:54:15.589 [INFO] Command 'hide_ui' sent to map.
+2026-09-17 18:54:15.590 [INFO] [UI] Отправлена команда hide_ui (пауза / потеря фокуса / игра не запущена)
+2026-09-17 18:54:18.284 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=0,00° | голова pitch=-10,16° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=10,17° крен=-0,00° | fwd.Y=-0,1767 right.Y=0,0000 up.Y=0,9843
+2026-09-17 18:54:18.286 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=388 y(центр)=388 y(право)=388 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:54:23.330 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=0,00° | голова pitch=-10,16° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=10,17° крен=-0,00° | fwd.Y=-0,1767 right.Y=0,0000 up.Y=0,9843
+2026-09-17 18:54:23.333 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=388 y(центр)=388 y(право)=388 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:54:28.554 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=0,00° | голова pitch=-10,16° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=10,17° крен=-0,00° | fwd.Y=-0,1767 right.Y=0,0000 up.Y=0,9843
+2026-09-17 18:54:28.563 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=388 y(центр)=388 y(право)=388 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 18:54:29.470 [INFO] Exit: показываю диалог подтверждения выхода.
+2026-09-17 18:54:31.661 [INFO] Exit: подтверждено, выполняю остановку системы.
+2026-09-17 18:54:31.674 [INFO] Stopping system...
+2026-09-17 18:54:31.752 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-17 18:54:31.773 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-17 18:54:31.786 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-17 18:54:31.831 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-17 18:54:32.065 [INFO] [WebSocket] Получено сообщение: {"command":"ar_view_request"}...
+2026-09-17 18:54:32.087 [INFO] [WebSocket] Команда от клиента: ar_view_request
+2026-09-17 18:54:32.090 [INFO] [WS Command] ar_view_request
+2026-09-17 18:54:32.134 [INFO] Command 'ar_view' sent to map.
+2026-09-17 18:54:32.151 [INFO] [AR] AR HUD закрывается.
+2026-09-17 18:54:32.178 [INFO] System stopped
+2026-09-17 18:54:32.214 [INFO] Trigger HTTP server stopped.
+2026-09-17 18:54:32.281 [INFO] WebSocket save server stopped.
+2026-09-17 18:54:32.344 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-17 18:54:32.422 [INFO] Процесс WebOverlay (PID 31628) убит.
+2026-09-17 18:54:32.881 [INFO] KillChildProcesses завершён.
+2026-09-17 18:54:32.883 [INFO] [SCS] Controller disposed.
+2026-09-17 18:54:32.930 [INFO] System stopped.
+2026-09-17 18:54:33.488 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-17 18:54:33.533 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-17 18:54:33.534 [INFO] [TRUCK] Фид телеметрии остановлен.
