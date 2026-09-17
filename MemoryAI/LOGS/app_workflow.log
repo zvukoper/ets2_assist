@@ -275,3 +275,279 @@ BUILD_VERSION=1.0.40.45-QUESTS-09.17-1848
 2026-09-17 18:54:33.488 [INFO] Зависшие msedgewebview2 (наши) завершены.
 2026-09-17 18:54:33.533 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
 2026-09-17 18:54:33.534 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-17 20:03:40.132 =======
+BUILD_VERSION=1.0.40.45-QUESTS-09.17-2002
+2026-09-17 20:03:40.148 [INFO] ETS2 Assist logger initialized.
+2026-09-17 20:03:40.157 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-17 20:03:40.175 [INFO] Hotkeys: Ctrl+X (игра: новая метка AR/миникарта), Ctrl+Shift+X (то же), S, R, N, Ctrl+T, Ctrl+Shift+T, Ctrl+PGUP/PGDN (FOV AR1 гориз.), Ctrl+Shift+PGUP/PGDN (FOV AR1 верт.), Ctrl+Shift+HOME/END (FOV AR2)
+2026-09-17 20:03:40.225 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-17 20:03:42.803 [INFO] [AR] Модель точек обновлена: 5748 (цели: 1).
+2026-09-17 20:04:20.353 [INFO] Starting system...
+2026-09-17 20:04:20.355 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-17 20:04:20.356 [INFO] Checking ETS2 plugins...
+2026-09-17 20:04:20.358 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-17 20:04:20.359 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-17 20:04:20.360 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-17 20:04:20.361 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-17 20:04:20.362 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-17 20:04:20.362 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-17 20:04:20.363 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-17 20:04:20.364 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-17 20:04:20.370 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789657419).
+2026-09-17 20:04:20.372 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6099, lastWrite=2026-09-17 15:07:42
+2026-09-17 20:04:20.373 [INFO] [WEB] web_ui_hybrid.html: build=1.0.40.28, bytes=4743, lastWrite=2026-09-15 20:50:28
+2026-09-17 20:04:20.375 [INFO] Trigger HTTP server started on port 8083.
+2026-09-17 20:04:20.376 [INFO] WebSocket save server started on port 8084.
+2026-09-17 20:04:20.393 [INFO] Script started with PID 10184
+2026-09-17 20:04:20.412 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-17 20:04:20.414 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_pda_map.html.txt: X=0, Y=756, 324x324
+2026-09-17 20:04:20.416 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_ui_hybrid.html.txt: X=557, Y=734, 806x346
+2026-09-17 20:04:20.417 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_pause_logo.html.txt: X=1726, Y=0, 194x194
+2026-09-17 20:04:20.418 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_heights.html.txt: X=1267, Y=0, 653x324
+2026-09-17 20:04:20.419 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_quests.html.txt: X=0, Y=0, 1920x1080
+2026-09-17 20:04:20.420 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_notifications.html.txt: X=0, Y=0, 1920x1080
+2026-09-17 20:04:20.421 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_ar_hud.html.txt: X=0, Y=0, 1920x1080
+2026-09-17 20:04:21.931 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-17 20:04:23.374 [INFO] [TruckTel] Найден порт через активные соединения: 8081
+2026-09-17 20:04:23.377 [INFO] [TruckTel] web_data.json обновлён, wsPort = 8081
+2026-09-17 20:04:23.379 [INFO] Pause check timer started.
+2026-09-17 20:04:23.423 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-17 20:04:23.424 [INFO] SCS SDK input controller initialized successfully.
+2026-09-17 20:04:23.434 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8081/api/ws/delta/flat/ (REST-снимок: http://localhost:8081/api/rest/flat/truck).
+2026-09-17 20:04:27.077 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-17 20:04:27.106 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-17 20:04:27.145 [INFO] [WS Command] map_ready
+2026-09-17 20:04:27.180 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-17 20:04:29.438 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-17 20:04:29.475 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5670 (переопр=0, custom=0), targets=1
+2026-09-17 20:04:36.202 [INFO] Exit: показываю диалог подтверждения выхода.
+2026-09-17 20:04:37.498 [INFO] Exit: подтверждено, выполняю остановку системы.
+2026-09-17 20:04:37.510 [INFO] Stopping system...
+2026-09-17 20:04:37.515 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-17 20:04:37.517 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-17 20:04:37.531 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-17 20:04:37.577 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-17 20:04:37.635 [INFO] [AR] AR HUD закрывается.
+2026-09-17 20:04:37.656 [INFO] System stopped
+2026-09-17 20:04:37.837 [INFO] Trigger HTTP server stopped.
+2026-09-17 20:04:37.858 [INFO] WebSocket save server stopped.
+2026-09-17 20:04:37.940 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-17 20:04:38.010 [INFO] Процесс WebOverlay (PID 15544) убит.
+2026-09-17 20:04:38.472 [INFO] KillChildProcesses завершён.
+2026-09-17 20:04:38.503 [INFO] [SCS] Controller disposed.
+2026-09-17 20:04:38.506 [INFO] System stopped.
+2026-09-17 20:04:38.912 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-17 20:04:38.947 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-17 20:04:38.947 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-17 20:11:06.744 =======
+BUILD_VERSION=1.0.40.45-QUESTS-09.17-2009
+2026-09-17 20:11:06.758 [INFO] ETS2 Assist logger initialized.
+2026-09-17 20:11:06.769 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-17 20:11:06.781 [INFO] Hotkeys: Ctrl+X (игра: новая метка AR/миникарта), Ctrl+Shift+X (то же), S, R, N, Ctrl+T, Ctrl+Shift+T, Ctrl+PGUP/PGDN (FOV AR1 гориз.), Ctrl+Shift+PGUP/PGDN (FOV AR1 верт.), Ctrl+Shift+HOME/END (FOV AR2)
+2026-09-17 20:11:06.827 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-17 20:11:09.491 [INFO] [AR] Модель точек обновлена: 5748 (цели: 1).
+2026-09-17 20:13:04.378 [INFO] Starting system...
+2026-09-17 20:13:04.379 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-17 20:13:04.380 [INFO] Checking ETS2 plugins...
+2026-09-17 20:13:04.381 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-17 20:13:04.382 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-17 20:13:04.382 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-17 20:13:04.383 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-17 20:13:04.384 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-17 20:13:04.385 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-17 20:13:04.385 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-17 20:13:04.386 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-17 20:13:04.391 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789657866).
+2026-09-17 20:13:04.393 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6099, lastWrite=2026-09-17 15:07:42
+2026-09-17 20:13:04.394 [INFO] [WEB] web_ui_hybrid.html: build=1.0.40.28, bytes=4743, lastWrite=2026-09-15 20:50:28
+2026-09-17 20:13:04.396 [INFO] Trigger HTTP server started on port 8083.
+2026-09-17 20:13:04.398 [INFO] WebSocket save server started on port 8084.
+2026-09-17 20:13:04.412 [INFO] Script started with PID 15024
+2026-09-17 20:13:04.433 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-17 20:13:04.435 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_pda_map.html.txt: X=0, Y=756, 324x324
+2026-09-17 20:13:04.436 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_ui_hybrid.html.txt: X=557, Y=734, 806x346
+2026-09-17 20:13:04.437 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_pause_logo.html.txt: X=1726, Y=0, 194x194
+2026-09-17 20:13:04.438 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_heights.html.txt: X=1267, Y=0, 653x324
+2026-09-17 20:13:04.439 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_quests.html.txt: X=0, Y=0, 1920x1080
+2026-09-17 20:13:04.440 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_notifications.html.txt: X=0, Y=0, 1920x1080
+2026-09-17 20:13:04.441 [INFO] [OVERLAY] Записана геометрия http___localhost_8082_web_ar_hud.html.txt: X=0, Y=0, 1920x1080
+2026-09-17 20:13:05.863 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-17 20:13:07.360 [INFO] [TruckTel] Найден порт через активные соединения: 8081
+2026-09-17 20:13:07.363 [INFO] [TruckTel] web_data.json обновлён, wsPort = 8081
+2026-09-17 20:13:07.366 [INFO] Pause check timer started.
+2026-09-17 20:13:07.369 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-17 20:13:07.376 [INFO] SCS SDK input controller initialized successfully.
+2026-09-17 20:13:07.387 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8081/api/ws/delta/flat/ (REST-снимок: http://localhost:8081/api/rest/flat/truck).
+2026-09-17 20:13:08.223 [INFO] [QUEST][PAUSE_BRIDGE] state=PAUSED previous=UNKNOWN intent=False port=8081
+2026-09-17 20:13:08.224 [INFO] [QUEST][PAUSE_BRIDGE] runtime._paused=true
+2026-09-17 20:13:08.224 [INFO] [QUEST][PAUSE_BRIDGE] overlay sync requested paused=true
+2026-09-17 20:13:08.224 [INFO] [QUEST][PAUSE_BRIDGE] state broadcasted
+2026-09-17 20:13:09.029 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-17 20:13:09.057 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-17 20:13:09.112 [INFO] [WS Command] map_ready
+2026-09-17 20:13:09.167 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-17 20:13:11.468 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-17 20:13:11.485 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5670 (переопр=0, custom=0), targets=1
+2026-09-17 20:13:44.757 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,00° | голова pitch=-10,17° roll=0,00° | кабина pitch=-0,00° roll=0,00° | КАМЕРА наклон=10,18° крен=-0,00° | fwd.Y=-0,1768 right.Y=0,0000 up.Y=0,9843
+2026-09-17 20:13:44.762 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=388 y(центр)=388 y(право)=388 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 20:13:44.777 [INFO] Command 'ar_target' sent to map.
+2026-09-17 20:13:49.762 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,00° | голова pitch=-12,97° roll=0,00° | кабина pitch=-0,00° roll=0,00° | КАМЕРА наклон=12,98° крен=0,00° | fwd.Y=-0,2246 right.Y=-0,0000 up.Y=0,9744
+2026-09-17 20:13:49.787 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=345 y(центр)=345 y(право)=345 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:13:54.030 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-17 20:13:54.050 [INFO] [WebSocket] Команда звука: icon
+2026-09-17 20:13:54.052 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-17 20:13:54.093 [INFO] [WebSocket] Команда звука: icon
+2026-09-17 20:13:55.488 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:13:55.493 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:00.860 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:00.865 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:06.009 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:06.011 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:11.203 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:11.214 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:16.435 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:16.437 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:21.684 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:21.687 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:26.935 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:26.937 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:32.180 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:32.183 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:37.429 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:37.433 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:42.704 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:42.712 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:47.946 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:47.948 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:53.269 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:53.274 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:14:58.544 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,10° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,11° крен=0,00° | fwd.Y=-0,2268 right.Y=-0,0000 up.Y=0,9739
+2026-09-17 20:14:58.553 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=343 y(центр)=343 y(право)=343 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:15:03.951 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,33° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,34° крен=0,00° | fwd.Y=-0,2308 right.Y=-0,0000 up.Y=0,9730
+2026-09-17 20:15:03.957 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=339 y(центр)=339 y(право)=339 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:15:08.986 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,56° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,57° крен=0,00° | fwd.Y=-0,2347 right.Y=-0,0000 up.Y=0,9721
+2026-09-17 20:15:08.991 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=336 y(центр)=336 y(право)=336 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:15:14.011 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,56° roll=0,00° | кабина pitch=0,00° roll=-0,00° | КАМЕРА наклон=13,57° крен=0,00° | fwd.Y=-0,2347 right.Y=-0,0000 up.Y=0,9721
+2026-09-17 20:15:14.018 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=336 y(центр)=336 y(право)=336 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:15:17.743 [INFO] [UI] Показ карты ВСЕГДА (вкл)
+2026-09-17 20:15:17.746 [INFO] Command 'minimap_auto' sent to map.
+2026-09-17 20:15:17.748 [INFO] Command 'minimap_show' sent to map.
+2026-09-17 20:15:19.015 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,56° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=13,57° крен=0,00° | fwd.Y=-0,2346 right.Y=-0,0000 up.Y=0,9721
+2026-09-17 20:15:19.019 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=336 y(центр)=336 y(право)=336 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:15:24.016 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,56° roll=0,00° | кабина pitch=0,00° roll=-0,00° | КАМЕРА наклон=13,57° крен=0,00° | fwd.Y=-0,2347 right.Y=-0,0000 up.Y=0,9721
+2026-09-17 20:15:24.020 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=336 y(центр)=336 y(право)=336 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:15:29.032 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=0,00° | голова pitch=-13,56° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=13,57° крен=0,00° | fwd.Y=-0,2347 right.Y=-0,0000 up.Y=0,9721
+2026-09-17 20:15:29.040 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=336 y(центр)=336 y(право)=336 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:15:29.888 [INFO] Restarting overlay...
+2026-09-17 20:15:29.913 [INFO] Процесс WebOverlay (PID 13536) убит.
+2026-09-17 20:15:30.405 [INFO] Overlay processes killed. Restarting...
+2026-09-17 20:15:30.408 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-17 20:15:31.600 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-17 20:15:31.643 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-17 20:15:31.800 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-17 20:15:31.960 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-17 20:15:31.962 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-17 20:15:31.963 [INFO] [WS Command] map_ready
+2026-09-17 20:15:31.965 [INFO] [WS Command] map_ready
+2026-09-17 20:15:31.967 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-17 20:15:31.971 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-17 20:15:34.062 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-12,25° roll=0,00° | кабина pitch=-0,00° roll=0,00° | КАМЕРА наклон=12,27° крен=0,00° | fwd.Y=-0,2124 right.Y=-0,0000 up.Y=0,9772
+2026-09-17 20:15:34.066 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=356 y(центр)=356 y(право)=356 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:15:38.187 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-17 20:15:38.257 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-17 20:15:38.308 [INFO] [OVR] map_overrides_data #3 (map_ready): cities=77 (переопр=0), pois=5670 (переопр=0, custom=0), targets=1
+2026-09-17 20:15:38.311 [INFO] [OVR] map_overrides_data #3 (map_ready): cities=77 (переопр=0), pois=5670 (переопр=0, custom=0), targets=1
+2026-09-17 20:15:38.325 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-17 20:15:38.339 [INFO] [WebSocket] Команда звука: icon
+2026-09-17 20:15:39.070 [INFO] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-13,21° roll=0,00° | кабина pitch=0,00° roll=-0,00° | КАМЕРА наклон=13,22° крен=-0,00° | fwd.Y=-0,2287 right.Y=0,0001 up.Y=0,9735
+2026-09-17 20:15:39.081 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=341 y(центр)=341 y(право)=341 наклон линии=0,00° (центр экрана cy=540)
+2026-09-17 20:15:44.764 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:15:44.767 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:15:49.963 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:15:49.966 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:15:55.465 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:15:55.468 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:00.772 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:00.775 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:06.121 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:06.125 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:11.415 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:11.423 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:16.674 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:16.678 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:22.296 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:22.300 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:27.641 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:27.646 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:32.800 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:32.803 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:38.048 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:38.051 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:43.336 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:43.339 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:48.533 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:48.537 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:53.815 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:53.818 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:16:59.091 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:16:59.094 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:04.441 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:04.444 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:09.825 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:09.828 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:15.154 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:15.157 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:20.470 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:20.473 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:25.753 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:25.756 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:31.043 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:31.045 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:36.357 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:36.361 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:41.669 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:41.673 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:46.916 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:46.919 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:52.168 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:52.172 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:17:57.430 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:17:57.433 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:02.682 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:02.686 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:07.938 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:07.941 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:13.307 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:13.309 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:18.653 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:18.656 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:23.955 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:23.958 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:29.191 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:29.194 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:34.496 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:34.500 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:39.701 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:39.705 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:44.987 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:44.989 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:50.305 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:50.308 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:18:55.589 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:18:55.592 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:19:00.919 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:19:00.922 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:19:06.349 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:19:06.352 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:19:11.627 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:19:11.631 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:19:16.971 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:19:16.974 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:19:22.303 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:19:22.306 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:19:27.559 [INFO] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-8,35° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=8,36° крен=0,00° | fwd.Y=-0,1453 right.Y=-0,0000 up.Y=0,9894
+2026-09-17 20:19:27.563 [INFO] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,1° fh=737 fv=846 → y(лево)=416 y(центр)=416 y(право)=416 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-17 20:19:30.763 [INFO] [AR] Ошибка подбора цели: The process cannot access the file 'F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\Logs\app_data.log' because it is being used by another process.
+2026-09-17 20:19:31.094 [INFO] [AR] Ошибка подбора цели: The process cannot access the file 'F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\Logs\app_data.log' because it is being used by another process.

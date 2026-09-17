@@ -88,6 +88,14 @@ if (Test-Path $webOverlayProject) {
 dotnet clean
 dotnet restore
 dotnet publish -c Release
+# Publish must succeed BEFORE any post-publish cleanup. Otherwise a failed build
+# would wipe the WebView2 cache, the diagnostic logs in MemoryAI\LOGS and then
+# launch a stale EXE - i.e. destroy exactly the evidence needed to diagnose it.
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "dotnet publish failed with exit code $LASTEXITCODE - aborting post-publish cleanup." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
 # Stage 3: post-publish cache wipe (recursive — see 1c for the root cause) and
 # verification that the freshly built web content really reached publish\data.
 foreach ($root in @($publishRoot, $binRoot)) {
@@ -114,6 +122,8 @@ $pubData = Join-Path $publishRoot 'data'
 $webExt = @('.html', '.js', '.css', '.json', '.ico', '.png', '.svg')
 $mismatch = @()
 $hashed = 0
+# Reset per build; becomes $true only after a fully verified delivery check.
+$deliveryOk = $false
 if ((Test-Path $srcData) -and (Test-Path $pubData)) {
     foreach ($src in Get-ChildItem -Path $srcData -Recurse -File -ErrorAction SilentlyContinue) {
         if ($src.FullName -like '*WebOverlay.exe.WebView2*') { continue }   # runtime cache, never published
@@ -133,8 +143,10 @@ if ($mismatch.Count -gt 0) {
     Write-Host "PUBLISH DELIVERY CHECK FAILED ($($mismatch.Count) files):" -ForegroundColor Red
     $mismatch | Select-Object -First 20 | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
     Write-Host "publish\data does NOT match data\ - the overlay would serve stale content." -ForegroundColor Red
+    $deliveryOk = $false
 } else {
     Write-Host "Publish delivery check OK: web content byte-identical ($hashed files hashed), all sizes match." -ForegroundColor Green
+    $deliveryOk = $true
 }
 
 # Stage 3c: WebView2 profiles must be gone, otherwise the overlay may reuse cache.
@@ -149,6 +161,37 @@ if ($leftover.Count -gt 0) {
     $leftover | Select-Object -First 10 -ExpandProperty FullName | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
 } else {
     Write-Host "WebView2 cache cleared (no *.WebView2 / EBWebView folders remain)." -ForegroundColor Green
+}
+
+# Stage 3d: temporary diagnostic logs must not survive a successful build.
+# MemoryAI\LOGS is a drop zone for logs the user hands over for analysis; per the
+# project rules only the service README.md stays after a successful publish.
+$logsDir = Join-Path $PSScriptRoot 'MemoryAI\LOGS'
+if (-not $deliveryOk) {
+    Write-Host 'MemoryAI\LOGS cleanup SKIPPED: publish delivery check failed, keep the logs for diagnosis.' -ForegroundColor Yellow
+} elseif (Test-Path $logsDir) {
+    $logsToDelete = @(Get-ChildItem -LiteralPath $logsDir -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne 'README.md' })
+    # Subfolders (e.g. unpacked archives) go as well - they are never service files.
+    $logsDirsToDelete = @(Get-ChildItem -LiteralPath $logsDir -Directory -ErrorAction SilentlyContinue)
+    $removedLogs = 0
+    foreach ($f in $logsToDelete) {
+        Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
+        if (-not (Test-Path -LiteralPath $f.FullName)) { $removedLogs++ }
+    }
+    foreach ($d in $logsDirsToDelete) {
+        Remove-Item -LiteralPath $d.FullName -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if (-not (Test-Path (Join-Path $logsDir 'README.md'))) {
+        Write-Host "MemoryAI\LOGS cleanup WARNING: README.md is missing from $logsDir" -ForegroundColor Yellow
+    }
+    if ($removedLogs -gt 0) {
+        Write-Host "MemoryAI\LOGS cleaned: $removedLogs temporary file(s) removed (README.md kept)." -ForegroundColor Green
+    } else {
+        Write-Host "MemoryAI\LOGS already clean (only README.md)." -ForegroundColor Green
+    }
+} else {
+    Write-Host "MemoryAI\LOGS not found, skipping log cleanup." -ForegroundColor Yellow
 }
 
 # Stage 4: launch

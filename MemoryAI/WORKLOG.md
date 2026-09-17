@@ -6047,6 +6047,46 @@ exe = `ets2_assist_build.txt` = `web_runtime_manifest.json`; `publish/data` = 17
 снимается в `finally`, если вызов НЕ передан в UI-очередь.
 ---
 
+## 17.09.2026 — compile.ps1: автоочистка MemoryAI\LOGS (Stage 3d) + проверка успеха publish
+
+### Задание
+«Добавь в compile скрипт очистку папки MemoryAI\LOGS всех файлов, кроме README.md.»
+
+### Сделано (Stage 3d в `compile.ps1`)
+- Новая стадия ПОСЛЕ проверки доставки, ПЕРЕД запуском приложения: удаляет из
+  `MemoryAI\LOGS` **все файлы, кроме `README.md`**, а также подпапки (распакованные
+  архивы логов — тоже не служебные). Теперь чистить вручную не нужно.
+- Вывод различает три случая, чтобы из лога сборки было понятно, что произошло:
+  - `MemoryAI\LOGS cleaned: N temporary file(s) removed (README.md kept).`
+  - `MemoryAI\LOGS already clean (only README.md).`
+  - `MemoryAI\LOGS cleanup SKIPPED: publish delivery check failed, keep the logs for diagnosis.`
+  - отдельно `... WARNING: README.md is missing` — если служебный файл потерян.
+
+### Попутно закрыт реальный риск (не косметика)
+⛔ **`dotnet publish` в скрипте НЕ ПРОВЕРЯЛСЯ по `$LASTEXITCODE`.** При падении сборки
+скрипт молча шёл дальше: чистил кэш WebView2, удалял логи и **запускал старый exe** —
+то есть сам уничтожал материалы для разбора поломки. Теперь:
+- после `dotnet publish` проверка `$LASTEXITCODE`: `dotnet publish failed ... aborting
+  post-publish cleanup` + `exit` ДО любых чисток;
+- флаг `$deliveryOk` (изначально `$false`) выставляется только при успешной проверке
+  доставки; при провале — очистка `MemoryAI\LOGS` ПРОПУСКАЕТСЯ с явным сообщением.
+
+### Проверка
+- Синтаксис: `[Parser]::ParseFile` — 0 ошибок.
+- Логика протестирована на временных файлах (без полной пересборки), извлекая Stage 3d
+  из скрипта отдельно:
+  - созданы `test1.log`, `app_data.log`, `notes.txt`, подпапка `archive\inner.log`;
+  - `$deliveryOk=$true` → `cleaned: 3 ... (README.md kept)`, подпапка удалена, `README.md` на месте;
+  - повторный запуск → `already clean (only README.md)`;
+  - `$deliveryOk=$false` → `cleanup SKIPPED`, `diag.log` **остался** на месте.
+- Папка `MemoryAI\LOGS` возвращена в исходное состояние (только `README.md`).
+
+### Документация
+`MemoryAI\LOGS\README.md` — раздел «Автоматическая очистка» (список сообщений);
+`MemoryAI\INSTRUCTIONS.md` — шаг 6 правила финальной сборки + запрет разрушающей
+пост-обработки без подтверждённого успеха; Stage 3d в перечне проверок доставки.
+---
+
 ## 16.09.2026 — v1.0.40.44: SMOOTH-CAM (плавность движения точек в AR)
 
 ### Жалоба пользователя
@@ -6123,6 +6163,8 @@ MD5 `publish\data\js\ar_hud.js` (8DE986C8…).
 гипотеза: компенсация действует на ВЕКТОР UP камеры, а не на угол. Значения
 заморожены: режим 2, доля 0.5.
 ---
+
+## 16.09.2026 — v1.0.40.42/43: FREEZE-FIX2 (замирание точек + цвет точек)
 
 ### Две жалобы пользователя
 1) «Почему точки замирают на 2 секунды каждые 7-8 секунд и не обновляют свое
