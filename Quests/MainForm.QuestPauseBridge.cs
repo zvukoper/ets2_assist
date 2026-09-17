@@ -22,7 +22,10 @@ namespace ETS2_Assist_GUI
             {
                 var current = Current;
                 if (current != null && !current.IsDisposed)
+                {
                     await current.SyncQuestPauseStateAsync().ConfigureAwait(true);
+                    Quests.QuestDiagnostics.Tick();
+                }
             };
             timer.Start();
             return timer;
