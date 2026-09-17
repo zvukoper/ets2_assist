@@ -1,12 +1,13 @@
 $ErrorActionPreference = 'Stop'
 
-function Replace-Once([string]$Text, [string]$Pattern, [string]$Replacement, [string]$Name) {
-    $new = [regex]::Replace($Text, $Pattern, $Replacement, [Text.RegularExpressions.RegexOptions]::Singleline)
-    if ($new -eq $Text) { throw "Pattern not found: $Name" }
-    return $new
+function Replace-Between([string]$Text, [string]$StartMarker, [string]$EndMarker, [string]$Replacement, [string]$Name) {
+    $start = $Text.IndexOf($StartMarker, [StringComparison]::Ordinal)
+    if ($start -lt 0) { throw "Start marker not found: $Name" }
+    $end = $Text.IndexOf($EndMarker, $start + $StartMarker.Length, [StringComparison]::Ordinal)
+    if ($end -lt 0) { throw "End marker not found: $Name" }
+    return $Text.Substring(0, $start) + $Replacement + $Text.Substring($end)
 }
 
-# MainForm overlay defaults and startup -------------------------------------------------
 $path = 'MainForm.cs'
 $text = Get-Content -Raw -Encoding UTF8 $path
 
@@ -46,8 +47,9 @@ $geometry = @'
             x = bounds.Left + Math.Max(0, (bounds.Width - w) / 2);
             y = bounds.Top + Math.Max(0, (bounds.Height - h) / 2);
         }
+
 '@
-$text = Replace-Once $text '(?s)        private static void ComputeOverlayGeometry\(.*?\n        \}\n\n        private void EnsureOverlayWindowConfig' ($geometry + "`r`n        private void EnsureOverlayWindowConfig") 'overlay geometry'
+$text = Replace-Between $text '        private static void ComputeOverlayGeometry' '        private void EnsureOverlayWindowConfig' ($geometry) 'ComputeOverlayGeometry'
 
 $configAndStart = @'
         private static bool TryReadOverlayState(string path, out int x, out int y, out int w, out int h)
@@ -67,10 +69,9 @@ $configAndStart = @'
         private static bool IsKnownLegacyOverlayDefault(string url, int x, int y, int w, int h)
         {
             string n = (url ?? string.Empty).ToLowerInvariant();
-            if (n.Contains("web_pda_map.html")) return x == 130 && y == 130 && w == 331 && h == 331;
-            if (n.Contains("web_ui_hybrid.html")) return x == 208 && y == 208 && w == 859 && h == 465;
-            if (n.Contains("web_pause_logo.html")) return x == 156 && y == 156 && w == 207 && h == 207;
-            return false;
+            return (n.Contains("web_pda_map.html") && x == 130 && y == 130 && w == 331 && h == 331) ||
+                   (n.Contains("web_ui_hybrid.html") && x == 208 && y == 208 && w == 859 && h == 465) ||
+                   (n.Contains("web_pause_logo.html") && x == 156 && y == 156 && w == 207 && h == 207);
         }
 
         private void EnsureOverlayWindowConfig()
@@ -98,9 +99,7 @@ $configAndStart = @'
                 foreach (string url in urls)
                 {
                     string file = Path.Combine(configDir, OverlayStateFileName(url));
-                    bool fullscreen = url.Contains("web_ar_hud.html", StringComparison.OrdinalIgnoreCase) ||
-                                      url.Contains("web_quests.html", StringComparison.OrdinalIgnoreCase) ||
-                                      url.Contains("web_notifications.html", StringComparison.OrdinalIgnoreCase);
+                    bool fullscreen = url.Contains("web_ar_hud.html", StringComparison.OrdinalIgnoreCase) || url.Contains("web_quests.html", StringComparison.OrdinalIgnoreCase) || url.Contains("web_notifications.html", StringComparison.OrdinalIgnoreCase);
                     bool write = !File.Exists(file);
                     if (!write && TryReadOverlayState(file, out int oldX, out int oldY, out int oldW, out int oldH))
                     {
@@ -140,22 +139,24 @@ $configAndStart = @'
                 Process.Start(overlayExe, $"append {urlQuests}"); Thread.Sleep(200);
                 Process.Start(overlayExe, $"append {urlNotifications}"); Thread.Sleep(200);
                 AppendLog("[OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.");
-
                 if (AppSettings.ShowHeightsWindow)
                     Process.Start(overlayExe, $"append {urlHeights}");
             }
             catch (Exception ex) { AppendLog($"Failed to start overlay: {ex.Message}"); }
         }
-'@
-$text = Replace-Once $text '(?s)        private void EnsureOverlayWindowConfig\(\).*?(?=\r?\n        // ================================================================\r?\n        // AR HUD)' ($configAndStart + "`r`n        // ================================================================`r`n        // AR HUD") 'overlay config/startup'
 
-# AR1 lifecycle is stateful in Assist. WebOverlay is never killed just to stop AR.
-$text = $text.Replace('        private void ToggleArOverlay()', '        private bool _ar1Running;' + [Environment]::NewLine + [Environment]::NewLine + '        private void ToggleArOverlay()')
-$text = Replace-Once $text '(?s)        internal bool IsAr1Running\s*\{.*?        \}\s*\r?\n\r?\n        // Остановка AR1' @'
+'@
+$text = Replace-Between $text '        private void EnsureOverlayWindowConfig' '        // AR HUD:' $configAndStart 'overlay config/startup'
+
+# AR1 state and targeted close. Ensure field exists exactly once.
+if ($text -notmatch 'private bool _ar1Running;') {
+    $text = $text.Replace('        private void ToggleArOverlay()', '        private bool _ar1Running;' + [Environment]::NewLine + [Environment]::NewLine + '        private void ToggleArOverlay()')
+}
+$text = Replace-Between $text '        internal bool IsAr1Running' '        // Остановка AR1' @'
         internal bool IsAr1Running => _ar1Running;
 
-        // Остановка AR1'@ 'AR running state'
-$text = Replace-Once $text '(?s)        internal void StopArOverlay\(bool manual\)\s*\{.*?\r?\n        \}\r?\n\r?\n        // v1\.0\.40\.27: тоггл-подсветка' @'
+'@ 'AR running state'
+$text = Replace-Between $text '        internal void StopArOverlay(bool manual)' '        // v1.0.40.27: тоггл-подсветка' @'
         internal void StopArOverlay(bool manual)
         {
             string overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "WebOverlay.exe");
@@ -168,47 +169,43 @@ $text = Replace-Once $text '(?s)        internal void StopArOverlay\(bool manual
             AppendLog(manual ? "[AR] AR HUD закрывается кнопкой." : "[AR] AR HUD закрывается.");
         }
 
-        // v1.0.40.27: тоггл-подсветка'@ 'AR targeted stop'
-$text = [regex]::Replace($text, '(?s)\r?\n\s*// Если AR уже запущен.*?\r?\n\s*Process\.Start\(overlayExe, url\);', "`r`n                Process.Start(overlayExe, url);")
-$text = $text.Replace('                Process.Start(overlayExe, url);' + [Environment]::NewLine + '                StartArTargetFeed();', '                Process.Start(overlayExe, url);' + [Environment]::NewLine + '                _ar1Running = true;' + [Environment]::NewLine + '                StartArTargetFeed();')
+'@ 'AR targeted stop'
+
+if ($text.Contains('                // Если AR уже запущен')) {
+    $text = Replace-Between $text '                // Если AR уже запущен' '                StartArTargetFeed();' @'
+                Process.Start(overlayExe, url);
+                _ar1Running = true;
+'@ 'remove AR process kill'
+} elseif ($text -notmatch '_ar1Running = true;') {
+    $text = $text.Replace('                Process.Start(overlayExe, url);' + [Environment]::NewLine + '                StartArTargetFeed();', '                Process.Start(overlayExe, url);' + [Environment]::NewLine + '                _ar1Running = true;' + [Environment]::NewLine + '                StartArTargetFeed();')
+}
 Set-Content -Path $path -Value $text -Encoding UTF8
 
-# QuestRuntime: MainForm owns web_quests.html permanently.
+# QuestRuntime now only publishes state; MainForm owns the permanent fullscreen page.
 $path = 'Quests/QuestRuntime.cs'
 $text = Get-Content -Raw -Encoding UTF8 $path
 $text = $text -replace '        private bool _overlayVisible;\s*\r?\n', ''
 $text = $text -replace '        private Process\? _overlayProcess;\s*\r?\n', ''
-$text = Replace-Once $text '(?s)        private async Task UpdateOverlayAsync\(\).*?(?=\r?\n        private void EnforceArPointDebugMode)' @'
+$text = Replace-Between $text '        private async Task UpdateOverlayAsync()' '        private void EnforceArPointDebugMode' @'
         private Task UpdateOverlayAsync()
         {
             return Task.CompletedTask;
         }
+
 '@ 'QuestRuntime overlay lifecycle'
-$text = Replace-Once $text '(?s)        public void Dispose\(\)\s*\{.*?(?=\r?\n\s*\[DllImport)' @'
-        public void Dispose()
-        {
-            if (_disposed) return;
-            _disposed = true;
-            try { _tickTimer?.Dispose(); } catch { }
-            try { _server?.Stop(); } catch { }
-            _server = null;
-            try { TruckTelemetry.Stop(); } catch { }
-        }
-'@ 'QuestRuntime Dispose'
 Set-Content -Path $path -Value $text -Encoding UTF8
 
-# Notification destination for future top/left/right effects.
+# Future notification effects can select top/left/right.
 $path = 'Quests/QuestModels.cs'
 $text = Get-Content -Raw -Encoding UTF8 $path
-if ($text -notmatch 'NotifyPosition')
-{
-    $text = $text.Replace('public string NotifyTitle { get; set; } = ""; public string NotifyText { get; set; } = "";', 'public string NotifyTitle { get; set; } = ""; public string NotifyText { get; set; } = ""; public string NotifyPosition { get; set; } = "top";')
+if ($text -notmatch 'NotifyPosition') {
+    $text = $text.Replace('public string NotifyTitle { get; set; } = ""; public string NotifyText { get; set; } = ""; public List<string> ResetQuests', 'public string NotifyTitle { get; set; } = ""; public string NotifyText { get; set; } = ""; public string NotifyPosition { get; set; } = "top"; public List<string> ResetQuests')
 }
 Set-Content -Path $path -Value $text -Encoding UTF8
 
 $path = 'Quests/QuestRuntime.cs'
 $text = Get-Content -Raw -Encoding UTF8 $path
-$text = $text.Replace('["title"]=effect.NotifyTitle ?? "", ["text"]=effect.NotifyText, ["icon"]=""', '["title"]=effect.NotifyTitle ?? "", ["text"]=effect.NotifyText, ["icon"]="", ["position"]=(effect.NotifyPosition ?? "top")')
+$text = $text.Replace('["title"]=effect.NotifyTitle ?? "", ["text"]=effect.NotifyText, ["icon"]="" } });', '["title"]=effect.NotifyTitle ?? "", ["text"]=effect.NotifyText, ["icon"]="", ["position"]=(effect.NotifyPosition ?? "top") } });')
 Set-Content -Path $path -Value $text -Encoding UTF8
 
 $main = Get-Content -Raw -Encoding UTF8 MainForm.cs
@@ -216,7 +213,7 @@ $qr = Get-Content -Raw -Encoding UTF8 Quests/QuestRuntime.cs
 $models = Get-Content -Raw -Encoding UTF8 Quests/QuestModels.cs
 if ($main -match 'Contains\("AR HUD"\).*proc\.Kill') { throw 'AR still kills WebOverlay host process' }
 if ($main -notmatch 'web_quests\.html' -or $main -notmatch 'web_notifications\.html') { throw 'Quest/notification overlay startup missing' }
-if ($main -notmatch '_ar1Running') { throw 'AR running state missing' }
-if ($qr -match '_overlayProcess|_overlayVisible|EnsureOverlayAsync|FocusOverlay|HideOverlay') { throw 'QuestRuntime still owns WebOverlay lifecycle' }
+if ($main -notmatch 'Screen screen = GetGameScreen\(\)') { throw 'Game-screen geometry missing' }
+if ($qr -match 'private async Task UpdateOverlayAsync') { throw 'Old async overlay lifecycle remains' }
 if ($models -notmatch 'NotifyPosition') { throw 'NotifyPosition missing' }
 Write-Host 'Quest overlay source patch applied and validated.'
