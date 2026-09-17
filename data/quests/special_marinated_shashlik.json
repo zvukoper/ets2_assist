@@ -1,16 +1,17 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "special_marinated_shashlik",
   "title": "Спецмаринад для Руслана",
   "description": "Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.",
-  "requirements": { "all": [], "any": [], "none": [] },
+  "requiredQuests": [],
   "excludes": [],
-  "steps": {
-    "available": { "id": "available", "description": "Поговорить с Русланом." },
-    "meat_pickup": { "id": "meat_pickup", "description": "Забрать мясо в спецмаринаде у мясника Гоши." },
-    "return_to_ruslan": { "id": "return_to_ruslan", "description": "Вернуться к Руслану и передать мясо." },
-    "completed": { "id": "completed", "description": "Квест завершён." }
-  },
+  "incompatibleQuests": [],
+  "resetQuests": [],
+  "exclusiveGroup": "",
+  "activationsPerPlayer": 0,
+  "instantActivation": false,
+  "schedule": { "enabled": false, "timeAvailable": [], "weekAvailable": [], "dateAvailable": [] },
+  "loadingScreen": { "enabled": true, "image": "images/quest/ruslan.svg", "sound": "", "durationMs": 2200 },
   "interactions": [
     {
       "id": "ruslan",
@@ -22,35 +23,65 @@
       "defaultMarker": "yellow_exclamation",
       "activeMarker": "gray_question",
       "completedMarker": "none",
+      "markerByStep": { "return_to_ruslan": "yellow_question" },
+      "triggerWhenNoMarker": true,
+      "arOffscreenPointer": false,
+      "permanentName": false,
+      "completedName": "Шашлычник Руслан",
       "initialDialogue": "ruslan_start",
       "activeDialogue": "ruslan_waiting",
-      "completedDialogue": "ruslan_no_more",
+      "completedDialogue": "ruslan_completed",
       "cancelledDialogue": "ruslan_return_offer",
-      "showWhenQuestCompleted": true,
-      "completedName": "Шашлычник Руслан"
+      "showWhenQuestCompleted": true
     },
     {
       "id": "gosha",
       "name": "Мясник Гоша",
-      "source": { "category": "village_house_5", "uid": "0x456de6105b400003" },
+      "source": {
+        "category": "village_house_5",
+        "uid": "",
+        "selector": {
+          "category": "village_house_5",
+          "minDistanceM": 1000,
+          "maxDistanceM": 3000,
+          "maxRoadDistanceM": 100,
+          "anchorInteractionId": "ruslan",
+          "createCustomPoint": true
+        }
+      },
       "triggerRadiusM": 35,
       "minimapVisible": true,
       "arVisible": true,
       "defaultMarker": "yellow_exclamation",
       "activeMarker": "yellow_exclamation",
       "completedMarker": "none",
+      "markerByStep": { "return_to_ruslan": "none", "completed": "none" },
+      "minimapVisibleByStep": { "meat_pickup": true, "return_to_ruslan": true, "completed": true },
+      "arVisibleByStep": { "meat_pickup": true, "return_to_ruslan": false, "completed": false },
+      "triggerWhenNoMarker": false,
+      "arOffscreenPointer": true,
       "requiredQuestStatus": "Active",
       "requiredQuestStep": "meat_pickup",
       "permanentName": true,
+      "completedName": "Мясник Гоша",
       "initialDialogue": "gosha_meat",
+      "activeDialogue": "gosha_meat",
+      "completedDialogue": "",
+      "cancelledDialogue": "",
       "showWhenQuestCompleted": false
     }
   ],
+  "steps": {
+    "available": { "id": "available", "description": "Поговорить с Русланом." },
+    "meat_pickup": { "id": "meat_pickup", "description": "Забрать мясо в спецмаринаде у мясника Гоши." },
+    "return_to_ruslan": { "id": "return_to_ruslan", "description": "Вернуться к Руслану и передать мясо." },
+    "completed": { "id": "completed", "description": "Квест завершён." }
+  },
   "dialogues": {
     "ruslan_start": {
       "speaker": "Руслан",
       "text": "Приветствую, бродяга. Что интересует?",
-      "image": "images/quest/ruslan.jpg",
+      "image": "images/quest/ruslan.svg",
       "options": [
         { "text": "Хочу попробовать твой лучший шашлык! (+1 к выносливости, +1 к силе)", "next": "ruslan_special_offer" },
         { "text": "Ищу подработку. Нужно с чем подсобить? (+ репутация)", "next": "ruslan_job_offer" },
@@ -60,98 +91,52 @@
     "ruslan_special_offer": {
       "speaker": "Руслан",
       "text": "Тогда ты по адресу. У меня есть специальная версия шашлыка, проверенный веками рецепт, доведённый до совершенства. Я его не продаю массово, только для специальных клиентов. И дело не в деньгах, хотя он стоит прилично. Я должен убедиться, что ты надёжный клиент. Выполни для меня задание и посмотрим.",
-      "image": "images/quest/ruslan.jpg",
+      "image": "images/quest/ruslan.svg",
       "options": [
-        {
-          "text": "Хорошо. Что нужно сделать?",
-          "close": true,
-          "effects": [
-            { "setQuestStatus": "Active", "setStep": "meat_pickup", "stat": "endurance", "addStat": 1 },
-            { "stat": "strength", "addStat": 1 }
-          ]
-        },
+        { "text": "Хорошо. Что нужно сделать?", "close": true, "effects": [ { "setQuestStatus": "Active", "setStep": "meat_pickup", "stat": "endurance", "addStat": 1 }, { "stat": "strength", "addStat": 1 } ] },
         { "text": "Понял, подумаю ещё.", "close": true }
       ]
     },
     "ruslan_job_offer": {
       "speaker": "Руслан",
       "text": "Есть одно дело. Нужно сгонять к знакомому мяснику за лучшим свежим мясом в секретном маринаде. Я пока не могу, заказов много. Если поможешь, угощу тебя кое-чем необычным (+1 к выносливости, +1 к силе). У меня есть специальная версия шашлыка, проверенный веками рецепт, доведённый до совершенства. Я его не продаю массово, только для специальных клиентов. Не пожалеешь. Если согласен, дам адрес. Его сейчас предупрежу, что ты заедешь.",
-      "image": "images/quest/ruslan.jpg",
+      "image": "images/quest/ruslan.svg",
       "options": [
-        {
-          "text": "Согласен. Где забирать?",
-          "close": true,
-          "effects": [
-            { "setQuestStatus": "Active", "setStep": "meat_pickup" }
-          ]
-        },
+        { "text": "Согласен. Где забирать?", "close": true, "effects": [ { "setQuestStatus": "Active", "setStep": "meat_pickup", "stat": "endurance", "addStat": 1 }, { "stat": "strength", "addStat": 1 } ] },
         { "text": "Понял, подумаю ещё.", "close": true }
       ]
     },
     "ruslan_waiting": {
       "speaker": "Руслан",
       "text": "Привёз мясо?",
-      "image": "images/quest/ruslan.jpg",
+      "image": "images/quest/ruslan.svg",
       "options": [
-        {
-          "text": "Да, держи. (требуется: «Мясо в спецмаринаде")",
-          "requirements": { "all": [ { "item": "special_marinade_meat", "amount": 1 } ], "any": [], "none": [] },
-          "next": "ruslan_completed",
-          "effects": [
-            { "item": "special_marinade_meat", "removeItem": 1 },
-            { "setQuestStatus": "Completed", "setStep": "completed" }
-          ]
-        },
+        { "text": "Да, держи. (требуется: «Мясо в спецмаринаде»)", "requirements": { "all": [ { "item": "special_marinade_meat", "amount": 1 } ], "any": [], "none": [] }, "next": "ruslan_completed", "effects": [ { "item": "special_marinade_meat", "removeItem": 1 }, { "setQuestStatus": "Completed", "setStep": "completed" } ] },
         { "text": "В процессе.", "close": true },
-        {
-          "text": "Слушай, пока никак не получается. Давай как-нибудь потом.",
-          "close": true,
-          "effects": [
-            { "setQuestStatus": "Available", "setStep": "available", "flag": "returnOffer", "setFlag": true }
-          ]
-        }
+        { "text": "Слушай, пока никак не получается. Давай как-нибудь потом.", "close": true, "effects": [ { "setQuestStatus": "Available", "setStep": "available", "flag": "returnOffer", "setFlag": true } ] }
       ]
     },
     "ruslan_return_offer": {
       "speaker": "Руслан",
       "text": "С возвращением. Не передумал? Предложение всё еще в силе.",
-      "image": "images/quest/ruslan.jpg",
+      "image": "images/quest/ruslan.svg",
       "options": [
-        {
-          "text": "Согласен. Где забирать?",
-          "close": true,
-          "effects": [
-            { "setQuestStatus": "Active", "setStep": "meat_pickup", "flag": "returnOffer", "setFlag": false }
-          ]
-        },
+        { "text": "Согласен. Где забирать?", "close": true, "effects": [ { "setQuestStatus": "Active", "setStep": "meat_pickup", "flag": "returnOffer", "setFlag": false } ] },
         { "text": "Понял, подумаю ещё.", "close": true }
       ]
     },
     "ruslan_completed": {
       "speaker": "Руслан",
       "text": "Спасибо тебе огромное. Вот, попробуй шашлык мой. Говорят от него прям духом воспрянешь. Если понравится, забегай ещё. У меня всегда есть чего перекусить вкусного и тебе будет скидка.",
-      "image": "images/quest/ruslan.jpg",
+      "image": "images/quest/ruslan.svg",
       "options": [ { "text": "Спасибо. Пока.", "close": true } ]
-    },
-    "ruslan_no_more": {
-      "speaker": "Руслан",
-      "text": "Заданий пока нет. Возвращайтесь позже. (в разработке)",
-      "image": "images/quest/ruslan.jpg",
-      "options": [ { "text": "Понял. Пока.", "close": true } ]
     },
     "gosha_meat": {
       "speaker": "Мясник Гоша",
       "text": "Ты от Руслана? Держи, свежайшая отборная шея в спецмаринаде. Привет Руслану.",
-      "image": "images/quest/gosha.jpg",
+      "image": "images/quest/gosha.svg",
       "options": [
-        {
-          "text": "Спасибо. Пока.",
-          "close": true,
-          "effects": [
-            { "item": "special_marinade_meat", "addItem": 1 },
-            { "setStep": "return_to_ruslan", "renameInteraction": "gosha", "renameTo": "Мясник Гоша", "notifyTitle": "", "notifyText": "Получено: Мясо в спецмаринаде x1" }
-          ]
-        },
+        { "text": "Спасибо. Пока.", "close": true, "effects": [ { "item": "special_marinade_meat", "addItem": 1 }, { "setStep": "return_to_ruslan" }, { "renameInteraction": "gosha", "renameTo": "Мясник Гоша", "notifyText": "Получено: Мясо в спецмаринаде x1" } ] },
         { "text": "Я загляну позже", "close": true }
       ]
     }
