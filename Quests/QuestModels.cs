@@ -4,67 +4,23 @@ using System.Collections.Generic;
 namespace ETS2_Assist_GUI.Quests
 {
     public enum QuestStatus { Available, Active, Completed, Cancelled, Failed, Archived }
-
     public sealed class QuestDefinition
     {
-        public int SchemaVersion { get; set; } = 2;
-        public string Id { get; set; } = "";
-        public string Title { get; set; } = "";
-        public string Description { get; set; } = "";
-        public QuestRequirement? Requirements { get; set; }
-        public List<string> RequiredQuests { get; set; } = new();
-        public List<string> Excludes { get; set; } = new();
-        public List<string> IncompatibleQuests { get; set; } = new();
-        public List<string> ResetQuests { get; set; } = new();
-        public string ExclusiveGroup { get; set; } = "";
-        public int ActivationsPerPlayer { get; set; }
-        public bool InstantActivation { get; set; }
-        public QuestScheduleDefinition? Schedule { get; set; }
-        public QuestLoadingDefinition? LoadingScreen { get; set; }
-        public string ActionName { get; set; } = "";
-        public string Currency { get; set; } = "";
-        public string TeleportTo { get; set; } = "";
-        public string TeleportToOrder { get; set; } = "";
-        public int DelayBeforeTeleportMs { get; set; }
-        public int DelayAfterTeleportMs { get; set; }
-        public List<string> CustomFunctions { get; set; } = new();
-        public List<QuestInteractionDefinition> Interactions { get; set; } = new();
-        public Dictionary<string, QuestDialogueNode> Dialogues { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-        public Dictionary<string, QuestStepDefinition> Steps { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-        public List<QuestReward> Rewards { get; set; } = new();
+        public int SchemaVersion { get; set; } = 2; public string Id { get; set; } = ""; public string Title { get; set; } = ""; public string Description { get; set; } = "";
+        public QuestRequirement? Requirements { get; set; } public List<string> RequiredQuests { get; set; } = new(); public List<string> Excludes { get; set; } = new(); public List<string> IncompatibleQuests { get; set; } = new(); public List<string> ResetQuests { get; set; } = new(); public string ExclusiveGroup { get; set; } = "";
+        public int ActivationsPerPlayer { get; set; } public bool InstantActivation { get; set; } public QuestScheduleDefinition? Schedule { get; set; } public QuestLoadingDefinition? LoadingScreen { get; set; } public string ActionName { get; set; } = ""; public string Currency { get; set; } = ""; public string TeleportTo { get; set; } = ""; public string TeleportToOrder { get; set; } = ""; public int DelayBeforeTeleportMs { get; set; } public int DelayAfterTeleportMs { get; set; } public List<string> CustomFunctions { get; set; } = new();
+        public List<QuestInteractionDefinition> Interactions { get; set; } = new(); public Dictionary<string, QuestDialogueNode> Dialogues { get; set; } = new(StringComparer.OrdinalIgnoreCase); public Dictionary<string, QuestStepDefinition> Steps { get; set; } = new(StringComparer.OrdinalIgnoreCase); public List<QuestReward> Rewards { get; set; } = new();
     }
-
     public sealed class QuestScheduleDefinition { public bool Enabled { get; set; } public List<string> TimeAvailable { get; set; } = new(); public List<string> WeekAvailable { get; set; } = new(); public List<string> DateAvailable { get; set; } = new(); }
     public sealed class QuestLoadingDefinition { public bool Enabled { get; set; } = true; public string Image { get; set; } = ""; public string Sound { get; set; } = ""; public int DurationMs { get; set; } = 2200; }
     public sealed class QuestStepDefinition { public string Id { get; set; } = ""; public string Description { get; set; } = ""; }
-
     public sealed class QuestInteractionDefinition
     {
-        public string Id { get; set; } = "";
-        public string Name { get; set; } = "";
-        public QuestPointSource Source { get; set; } = new();
-        public double TriggerRadiusM { get; set; } = 35;
-        public bool MinimapVisible { get; set; } = true;
-        public bool ArVisible { get; set; } = true;
-        public Dictionary<string,bool> MinimapVisibleByStep { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-        public Dictionary<string,bool> ArVisibleByStep { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-        public string DefaultMarker { get; set; } = "none";
-        public string ActiveMarker { get; set; } = "none";
-        public string CompletedMarker { get; set; } = "none";
-        public Dictionary<string,string> MarkerByStep { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-        public bool TriggerWhenNoMarker { get; set; }
-        public bool ArOffscreenPointer { get; set; }
-        public string RequiredQuestStatus { get; set; } = "";
-        public string RequiredQuestStep { get; set; } = "";
-        public bool PermanentName { get; set; }
-        public string CompletedName { get; set; } = "";
-        public string InitialDialogue { get; set; } = "";
-        public string ActiveDialogue { get; set; } = "";
-        public string CompletedDialogue { get; set; } = "";
-        public string CancelledDialogue { get; set; } = "";
-        public bool ShowWhenQuestCompleted { get; set; }
+        public string Id { get; set; } = ""; public string Name { get; set; } = ""; public QuestPointSource Source { get; set; } = new(); public double TriggerRadiusM { get; set; } = 35; public bool MinimapVisible { get; set; } = true; public bool ArVisible { get; set; } = true;
+        public Dictionary<string,bool> MinimapVisibleByStep { get; set; } = new(StringComparer.OrdinalIgnoreCase); public Dictionary<string,bool> ArVisibleByStep { get; set; } = new(StringComparer.OrdinalIgnoreCase); public string DefaultMarker { get; set; } = "none"; public string ActiveMarker { get; set; } = "none"; public string CompletedMarker { get; set; } = "none";
+        public Dictionary<string,string> MarkerByStep { get; set; } = new(StringComparer.OrdinalIgnoreCase); public bool TriggerWhenNoMarker { get; set; } public bool ArOffscreenPointer { get; set; } public string RequiredQuestStatus { get; set; } = ""; public string RequiredQuestStep { get; set; } = ""; public bool PermanentName { get; set; } public string CompletedName { get; set; } = "";
+        public string InitialDialogue { get; set; } = ""; public string ActiveDialogue { get; set; } = ""; public string CompletedDialogue { get; set; } = ""; public string CancelledDialogue { get; set; } = ""; public bool ShowWhenQuestCompleted { get; set; }
     }
-
     public sealed class QuestPointSource { public string Category { get; set; } = ""; public string Uid { get; set; } = ""; public QuestPointSelector? Selector { get; set; } }
     public sealed class QuestPointSelector { public string Category { get; set; } = ""; public double MinDistanceM { get; set; } public double MaxDistanceM { get; set; } public double MaxRoadDistanceM { get; set; } = 80; public string AnchorInteractionId { get; set; } = ""; public bool CreateCustomPoint { get; set; } = true; }
     public sealed class QuestDialogueNode { public string Speaker { get; set; } = ""; public string Text { get; set; } = ""; public string Image { get; set; } = ""; public List<QuestDialogueOption> Options { get; set; } = new(); }
