@@ -1,33 +1,43 @@
 using System;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace ETS2_Assist_GUI
 {
     internal sealed partial class MapEditor2Form
     {
-        private System.Windows.Forms.Timer? _questEditorOverlayTimer;
         private bool _questEditorOverlayInjected;
+        private static readonly System.Windows.Forms.Timer _questEditorOverlayPump = CreateQuestEditorOverlayPump();
 
-        private void InitializeQuestEditorOverlay()
+        static MapEditor2Form()
         {
-            if (_questEditorOverlayTimer != null) return;
-            _questEditorOverlayTimer = new System.Windows.Forms.Timer { Interval = 600 };
-            _questEditorOverlayTimer.Tick += (_, _) =>
+            _questEditorOverlayPump.Start();
+        }
+
+        private static System.Windows.Forms.Timer CreateQuestEditorOverlayPump()
+        {
+            var timer = new System.Windows.Forms.Timer { Interval = 600 };
+            timer.Tick += (_, _) =>
             {
-                if (_questEditorOverlayInjected || IsDisposed || !_pageReady || _webView.CoreWebView2 == null) return;
                 try
                 {
-                    _questEditorOverlayInjected = true;
-                    _ = _webView.CoreWebView2.ExecuteScriptAsync("(function(){if(document.getElementById('questEditorOverlayScript'))return;var s=document.createElement('script');s.id='questEditorOverlayScript';s.src='js/quest_editor.js';document.body.appendChild(s);})();");
-                    _questEditorOverlayTimer?.Stop();
+                    foreach (var form in Application.OpenForms.OfType<MapEditor2Form>())
+                        form.TryInjectQuestEditorOverlay();
                 }
-                catch { _questEditorOverlayInjected = false; }
+                catch { }
             };
-            FormClosed += (_, _) =>
+            return timer;
+        }
+
+        private void TryInjectQuestEditorOverlay()
+        {
+            if (_questEditorOverlayInjected || IsDisposed || !_pageReady || _webView.CoreWebView2 == null) return;
+            try
             {
-                try { _questEditorOverlayTimer?.Stop(); _questEditorOverlayTimer?.Dispose(); } catch { }
-            };
-            _questEditorOverlayTimer.Start();
+                _questEditorOverlayInjected = true;
+                _ = _webView.CoreWebView2.ExecuteScriptAsync("(function(){if(document.getElementById('questEditorOverlayScript'))return;var s=document.createElement('script');s.id='questEditorOverlayScript';s.src='js/quest_editor.js';document.body.appendChild(s);})();");
+            }
+            catch { _questEditorOverlayInjected = false; }
         }
     }
 }
