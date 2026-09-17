@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace ETS2_Assist_GUI
