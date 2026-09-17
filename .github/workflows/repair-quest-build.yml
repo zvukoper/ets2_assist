@@ -1,0 +1,58 @@
+name: One-time quest build repair
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, 'AUTO-FIX QUEST BUILD') }}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v5
+
+      - name: Repair quest sources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $runtimePath = 'Quests/QuestRuntime.cs'
+          $runtime = [System.IO.File]::ReadAllText($runtimePath, [System.Text.Encoding]::UTF8)
+
+          $oldDispose = 'public void Dispose(){if(_disposed)return;_disposed=true;try{_tickTimer?.Dispose();}catch{}try{_server?.Stop();}catch{} _server=null;HideOverlay();try{if(_overlayProcess!=null&&!_overlayProcess.HasExited)_overlayProcess.CloseMainWindow();}catch{}try{_overlayProcess?.Dispose();}catch{}_overlayProcess=null;try{TruckTelemetry.Stop();}catch{}}'
+          $newDispose = 'public void Dispose(){if(_disposed)return;_disposed=true;try{_tickTimer?.Dispose();}catch{}try{_server?.Stop();}catch{} _server=null;try{TruckTelemetry.Stop();}catch{}}'
+          if (-not $runtime.Contains($oldDispose)) { throw 'Expected stale QuestRuntime.Dispose implementation was not found.' }
+          $runtime = $runtime.Replace($oldDispose, $newDispose)
+
+          $oldDebug = 'private void EnforceArPointDebugMode(){try{bool debug=_store.Settings.DebugShowAllPoints;int radius=(int)Math.Clamp(_store.Settings.DebugRadiusM,5,5000);if(_lastDebugShow.HasValue&&_lastDebugShow.Value==debug&&_lastDebugRadius==radius)return;_lastDebugShow=debug;_lastDebugRadius=radius;AppSettings.ArDisplayRadiusM=debug?radius:0;if(_host.IsHandleCreated)_host.BeginInvoke(new Action(ForceArRebuild));}catch{}}'
+          $newDebug = 'private void EnforceArPointDebugMode(){try{bool debug=_store.Settings.DebugShowAllPoints;int radius=(int)Math.Clamp(_store.Settings.DebugRadiusM,5,5000);if(_lastDebugShow.HasValue&&_lastDebugShow.Value==debug&&_lastDebugRadius==radius)return;_lastDebugShow=debug;_lastDebugRadius=radius;if(debug){AppSettings.ArDisplayRadiusM=radius;}else if(AppSettings.ArDisplayRadiusM<5){AppSettings.ArDisplayRadiusM=50;}if(_host.IsHandleCreated)_host.BeginInvoke(new Action(ForceArRebuild));}catch{}}'
+          if (-not $runtime.Contains($oldDebug)) { throw 'Expected quest AR debug-radius implementation was not found.' }
+          $runtime = $runtime.Replace($oldDebug, $newDebug)
+          [System.IO.File]::WriteAllText($runtimePath, $runtime, [System.Text.UTF8Encoding]::new($true))
+
+          $diagPath = 'Quests/QuestDiagnostics.cs'
+          $diag = [System.IO.File]::ReadAllText($diagPath, [System.Text.Encoding]::UTF8)
+          $oldDiag = 'bool hasOverride = overrides != null && overrides.TryGetValue(QuestId + ":" + InteractionId, out var edit) && edit != null;'
+          $newDiag = 'QuestEditorPointOverride? edit = null;\nbool hasOverride = overrides != null && overrides.TryGetValue(QuestId + ":" + InteractionId, out edit) && edit != null;'
+          if (-not $diag.Contains($oldDiag)) { throw 'Expected QuestDiagnostics definite-assignment code was not found.' }
+          $diag = $diag.Replace($oldDiag, $newDiag)
+          [System.IO.File]::WriteAllText($diagPath, $diag, [System.Text.UTF8Encoding]::new($true))
+
+      - name: Build repaired project
+        shell: pwsh
+        run: dotnet build ETS2_Assist_GUI.csproj --configuration Release --no-restore
+
+      - name: Commit repaired sources and remove workflow
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+users.noreply.github.com'
+          git add Quests/QuestRuntime.cs Quests/QuestDiagnostics.cs
+          git rm .github/workflows/repair-quest-build.yml
+          git commit -m 'AUTO-FIX QUEST BUILD: restore clean quest runtime build'
+          git push
