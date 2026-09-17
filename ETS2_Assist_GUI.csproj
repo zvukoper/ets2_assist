@@ -13,8 +13,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>40</VersionSet>
-    <VersionIter>44</VersionIter>
-    <VersionDesc>SMOOTH-CAM</VersionDesc>
+    <VersionIter>45</VersionIter>
+    <VersionDesc>QUESTS</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>
@@ -27,41 +27,20 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>data\ets2_assist.ico</ApplicationIcon>
 </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="UIAutomationClient" />
-    <Reference Include="UIAutomationTypes" />
-  </ItemGroup>
+  <ItemGroup><Reference Include="UIAutomationClient" /><Reference Include="UIAutomationTypes" /></ItemGroup>
   <ItemGroup>
     <None Remove="data\**\*" />
-    <Content Include="data\**\*" Exclude="data\bin\WebOverlay.exe.WebView2\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="language\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
+    <Content Include="data\**\*" Exclude="data\bin\WebOverlay.exe.WebView2\**"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content>
+    <Content Include="language\**\*"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></Content>
   </ItemGroup>
   <Target Name="SyncDataToPublish" AfterTargets="Publish">
-    <ItemGroup>
-      <_SourceTopDirs Include="data\*\" Exclude="data\bin\">
-        <_PublishPath>$(PublishDir)%(Identity)</_PublishPath>
-      </_SourceTopDirs>
-      <_DataSourceFiles Include="data\**\*" Exclude="data\bin\WebOverlay.exe.WebView2\**" />
-    </ItemGroup>
+    <ItemGroup><_SourceTopDirs Include="data\*\" Exclude="data\bin\"><_PublishPath>$(PublishDir)%(Identity)</_PublishPath></_SourceTopDirs><_DataSourceFiles Include="data\**\*" Exclude="data\bin\WebOverlay.exe.WebView2\**" /></ItemGroup>
     <RemoveDir Directories="@(_SourceTopDirs->'$(PublishDir)%(Identity)')" />
     <Copy SourceFiles="@(_DataSourceFiles)" DestinationFiles="@(_DataSourceFiles->'$(PublishDir)data\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="false" />
     <Message Text="SyncDataToPublish: скопировано @(_DataSourceFiles->Count()) файлов data -> $(PublishDir)data" Importance="high" />
   </Target>
-  <ItemGroup>
-    <None Include=".github\copilot-instructions.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </None>
-  </ItemGroup>
+  <ItemGroup><None Include=".github\copilot-instructions.md" /></ItemGroup>
+  <ItemGroup><None Update="appsettings.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory><CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory></None></ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="System.Management" Version="10.0.10" />
