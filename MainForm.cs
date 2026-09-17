@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -2660,145 +2660,133 @@ RegisterHotKeyChecked(
             return safe + ".txt";
         }
 
-        private static void ComputeOverlayGeometry(string url, System.Drawing.Rectangle wa, out int x, out int y, out int w, out int h)
+        private static void ComputeOverlayGeometry(string url, System.Drawing.Rectangle bounds, out int x, out int y, out int w, out int h)
         {
-            // Доля площади экрана от WorkingArea. Площадь ~ frac, значит сторона ~ sqrt(frac).
-            double frac;
-            string kind = url.Contains("web_pda_map") ? "map"
-                        : url.Contains("web_ui_hybrid") ? "hybrid"
-                        : url.Contains("web_heights") ? "heights"
-                        : url.Contains("web_pause_logo") ? "logo" : "map";
-            switch (kind)
+            string normalized = (url ?? string.Empty).ToLowerInvariant();
+            if (normalized.Contains("web_ar_hud.html") || normalized.Contains("web_quests.html") || normalized.Contains("web_notifications.html"))
+            { x = bounds.X; y = bounds.Y; w = bounds.Width; h = bounds.Height; return; }
+            if (normalized.Contains("web_pda_map.html"))
             {
-                case "map": // миникарта: левый нижний угол, квадрат, на 30% больше (~6% площади)
-                    frac = 0.06;
-                    int side = (int)Math.Round(Math.Min(wa.Width, wa.Height) * Math.Sqrt(frac) * 1.3);
-                    w = side;
-                    h = side;
-                    x = wa.X;
-                    y = wa.Bottom - h;
-                    break;
-                case "hybrid": // гибрид: по центру по горизонтали, на 15% ниже нижнего края
-                    frac = 0.20;
-                    w = (int)Math.Round(wa.Width * Math.Sqrt(frac));
-                    h = (int)Math.Round(wa.Height * Math.Sqrt(frac));
-                    x = wa.X + (wa.Width - w) / 2;
-                    y = wa.Bottom - h + (int)(wa.Height * 0.15);
-                    break;
-                case "heights": // v1.0.40.31: визуализация высот — ПРАВЫЙ ВЕРХНИЙ УГОЛ
-                    w = (int)Math.Round(wa.Width * 0.34);
-                    h = (int)Math.Round(wa.Height * 0.30);
-                    x = wa.Right - w;
-                    y = wa.Y;
-                    break;
-                default: // pause_logo: левый верхний угол, на 15% больше (~3% площади), квадрат
-                    frac = 0.03;
-                    int logoSide = (int)Math.Round(Math.Min(wa.Width, wa.Height) * Math.Sqrt(frac) * 1.15);
-                    w = logoSide;
-                    h = logoSide;
-                    x = wa.X;
-                    y = wa.Y;
-                    break;
+                int side = Math.Max(100, (int)Math.Round(bounds.Height * 0.30));
+                side = Math.Min(side, Math.Min(bounds.Width, bounds.Height));
+                w = h = side; x = bounds.Left; y = bounds.Bottom - h; return;
             }
+            if (normalized.Contains("web_ui_hybrid.html"))
+            {
+                w = Math.Max(100, (int)Math.Round(bounds.Width * 0.42));
+                h = Math.Max(100, (int)Math.Round(bounds.Height * 0.32));
+                w = Math.Min(w, bounds.Width); h = Math.Min(h, bounds.Height);
+                x = bounds.Left + (bounds.Width - w) / 2; y = bounds.Bottom - h; return;
+            }
+            if (normalized.Contains("web_pause_logo.html"))
+            {
+                int side = Math.Max(100, (int)Math.Round(bounds.Height * 0.18));
+                side = Math.Min(side, Math.Min(bounds.Width, bounds.Height));
+                w = h = side; x = bounds.Right - w; y = bounds.Top; return;
+            }
+            if (normalized.Contains("web_heights.html"))
+            {
+                w = Math.Max(100, (int)Math.Round(bounds.Width * 0.34));
+                h = Math.Max(100, (int)Math.Round(bounds.Height * 0.30));
+                w = Math.Min(w, bounds.Width); h = Math.Min(h, bounds.Height);
+                x = bounds.Right - w; y = bounds.Top; return;
+            }
+            w = 800; h = 600;
+            x = bounds.Left + Math.Max(0, (bounds.Width - w) / 2);
+            y = bounds.Top + Math.Max(0, (bounds.Height - h) / 2);
+        }
+        private static bool TryReadOverlayState(string path, out int x, out int y, out int w, out int h)
+        {
+            x = y = w = h = 0;
+            try
+            {
+                string[] lines = File.ReadAllLines(path, Encoding.UTF8);
+                if (lines.Length < 5) return false;
+                x = int.Parse(lines[0]); y = int.Parse(lines[1]);
+                w = int.Parse(lines[3]); h = int.Parse(lines[4]);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        private static bool IsKnownLegacyOverlayDefault(string url, int x, int y, int w, int h)
+        {
+            string n = (url ?? string.Empty).ToLowerInvariant();
+            return (n.Contains("web_pda_map.html") && x == 130 && y == 130 && w == 331 && h == 331) ||
+                   (n.Contains("web_ui_hybrid.html") && x == 208 && y == 208 && w == 859 && h == 465) ||
+                   (n.Contains("web_pause_logo.html") && x == 156 && y == 156 && w == 207 && h == 207);
         }
 
         private void EnsureOverlayWindowConfig()
         {
             try
             {
-                string configDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "WebOverlay", "config");
-                var screen = GetGameScreen();
-                var wa = screen.WorkingArea;
+                string configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WebOverlay", "config");
+                Directory.CreateDirectory(configDir);
+                Screen screen = GetGameScreen() ?? Screen.PrimaryScreen ?? Screen.AllScreens.FirstOrDefault();
+                if (screen == null) { AppendLog("[OVERLAY][ERROR] Не найден экран игры."); return; }
+
+                var bounds = screen.Bounds;
+                AppendLog($"[OVERLAY] Экран игры для дефолтов: {screen.DeviceName} bounds={bounds.X},{bounds.Y} {bounds.Width}x{bounds.Height}");
                 var urls = new[]
                 {
                     "http://localhost:8082/web_pda_map.html",
                     "http://localhost:8082/web_ui_hybrid.html",
                     "http://localhost:8082/web_pause_logo.html",
-                    // v1.0.40.31: окно визуализации высот — правый верхний угол, всегда открыто.
-                    "http://localhost:8082/web_heights.html"
+                    "http://localhost:8082/web_heights.html",
+                    "http://localhost:8082/web_quests.html",
+                    "http://localhost:8082/web_notifications.html",
+                    "http://localhost:8082/web_ar_hud.html"
                 };
-                foreach (var url in urls)
+
+                foreach (string url in urls)
                 {
-                    string path = Path.Combine(configDir, OverlayStateFileName(url));
-                    if (File.Exists(path)) continue;
-                    ComputeOverlayGeometry(url, wa, out int x, out int y, out int w, out int h);
-                    Directory.CreateDirectory(configDir);
-                    File.WriteAllLines(path, new[] { x.ToString(), y.ToString(), "1", w.ToString(), h.ToString() });
-                    AppendLog($"[OVERLAY] Создан файл позиции {Path.GetFileName(path)}: X={x}, Y={y}, {w}x{h} (экран {wa.Width}x{wa.Height})");
+                    string file = Path.Combine(configDir, OverlayStateFileName(url));
+                    bool fullscreen = url.Contains("web_ar_hud.html", StringComparison.OrdinalIgnoreCase) || url.Contains("web_quests.html", StringComparison.OrdinalIgnoreCase) || url.Contains("web_notifications.html", StringComparison.OrdinalIgnoreCase);
+                    bool write = !File.Exists(file);
+                    if (!write && TryReadOverlayState(file, out int oldX, out int oldY, out int oldW, out int oldH))
+                    {
+                        if (fullscreen) write = oldX != bounds.X || oldY != bounds.Y || oldW != bounds.Width || oldH != bounds.Height;
+                        else if (IsKnownLegacyOverlayDefault(url, oldX, oldY, oldW, oldH)) write = true;
+                    }
+                    if (!write) continue;
+                    ComputeOverlayGeometry(url, bounds, out int x, out int y, out int w, out int h);
+                    File.WriteAllLines(file, new[] { x.ToString(), y.ToString(), "1", w.ToString(), h.ToString() }, Encoding.UTF8);
+                    AppendLog($"[OVERLAY] Записана геометрия {Path.GetFileName(file)}: X={x}, Y={y}, {w}x{h}");
                 }
-                AppendLog("[OVERLAY] Конфигурация позиций оверлеев проверена/создана.");
             }
-            catch (Exception ex)
-            {
-                AppendLog($"[OVERLAY] Ошибка создания конфигурации позиций: {ex.Message}");
-            }
+            catch (Exception ex) { AppendLog($"[OVERLAY] Ошибка создания конфигурации позиций: {ex.Message}"); }
         }
 
         private void StartWebOverlay()
         {
             string overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "WebOverlay.exe");
-            if (!File.Exists(overlayExe))
-                overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "pano.exe");
-            if (!File.Exists(overlayExe))
-            {
-                AppendLog("WebOverlay executable not found.");
-                return;
-            }
+            if (!File.Exists(overlayExe)) overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "pano.exe");
+            if (!File.Exists(overlayExe)) { AppendLog("WebOverlay executable not found."); return; }
             try
             {
-                // При первом запуске — создать файлы позиций оверлеев (если их нет).
                 EnsureOverlayWindowConfig();
+                foreach (var proc in Process.GetProcessesByName("WebOverlay")) { try { proc.Kill(); proc.WaitForExit(1500); } catch { } }
+                foreach (var proc in Process.GetProcessesByName("pano")) { try { proc.Kill(); proc.WaitForExit(1500); } catch { } }
 
-                // Remove stale overlay host processes so old URL instances cannot remain stacked.
-                foreach (var proc in Process.GetProcessesByName("WebOverlay"))
-                {
-                    try { proc.Kill(); proc.WaitForExit(1500); } catch { }
-                }
-                foreach (var proc in Process.GetProcessesByName("pano"))
-                {
-                    try { proc.Kill(); proc.WaitForExit(1500); } catch { }
-                }
-
-                // Keep URLs stable: WebOverlay persists position/size by URL.
                 string urlMain = "http://localhost:8082/web_ui_hybrid.html";
                 string urlPda = "http://localhost:8082/web_pda_map.html";
                 string urlPauseLogo = "http://localhost:8082/web_pause_logo.html";
-                // v1.0.40.31: окно визуализации высот (боковая проекция) — правый верхний
-                // угол экрана игры, открыто ВСЕГДА вместе с остальными оверлеями.
+                string urlQuests = "http://localhost:8082/web_quests.html";
+                string urlNotifications = "http://localhost:8082/web_notifications.html";
                 string urlHeights = "http://localhost:8082/web_heights.html";
-                Process.Start(overlayExe, urlMain);
-                AppendLog("Main overlay started.");
-                System.Threading.Thread.Sleep(500);
-                Process.Start(overlayExe, $"append {urlPda}");
-                AppendLog("PDA map overlay appended.");
-                System.Threading.Thread.Sleep(200);
-                Process.Start(overlayExe, $"append {urlPauseLogo}");
-                AppendLog("Pause logo overlay appended.");
-                System.Threading.Thread.Sleep(200);
-                // ============================================================
-                // v1.0.40.40: ОКНО ВЫСОТ БОЛЬШЕ НЕ ОТКРЫВАЕТСЯ ПО УМОЛЧАНИЮ.
-                // Требование пользователя: «Убираем оси, сетку, визуализацию высот».
-                // Окно можно включить в меню «Вид» (настройка сохраняется).
-                // ============================================================
-                if (AppSettings.ShowHeightsWindow)
-                {
-                    Process.Start(overlayExe, $"append {urlHeights}");
-                    AppendLog("Heights visualization overlay appended (включено в меню «Вид»).");
-                }
-                else
-                {
-                    AppendLog("Окно визуализации высот не открывается (выключено в меню «Вид»).");
-                }
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"Failed to start overlay: {ex.Message}");
-            }
-        }
 
-        // ================================================================
+                Process.Start(overlayExe, urlMain); Thread.Sleep(500);
+                Process.Start(overlayExe, $"append {urlPda}"); Thread.Sleep(200);
+                Process.Start(overlayExe, $"append {urlPauseLogo}"); Thread.Sleep(200);
+                Process.Start(overlayExe, $"append {urlQuests}"); Thread.Sleep(200);
+                Process.Start(overlayExe, $"append {urlNotifications}"); Thread.Sleep(200);
+                AppendLog("[OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.");
+                if (AppSettings.ShowHeightsWindow)
+                    Process.Start(overlayExe, $"append {urlHeights}");
+            }
+            catch (Exception ex) { AppendLog($"Failed to start overlay: {ex.Message}"); }
+        }
         // AR HUD: ПОЛНОЭКРАННЫЙ ОВЕРЛЕЙ web_ar_hud.html НА МОНИТОРЕ ИГРЫ
         // Перекрестье дополненной реальности на ближайшую точку 3D
         // (учёт поворота головы + движения фуры; прижим к краю экрана).
@@ -2806,6 +2794,8 @@ RegisterHotKeyChecked(
         // v1.0.40.27: AR1 — ТОГГЛ. Повторный клик по кнопке останавливает оверлей
         // (процесс WebOverlay с заголовком «AR HUD») и канал AR-целей. Раньше кнопка
         // только запускала: выключить AR1 из приложения было нечем.
+        private bool _ar1Running;
+
         private void ToggleArOverlay()
         {
             if (IsAr1Running)
@@ -2817,55 +2807,20 @@ RegisterHotKeyChecked(
         }
 
         // Признак жизни AR1: процесс WebOverlay с окном «AR HUD».
-        internal bool IsAr1Running
-        {
-            get
-            {
-                try
-                {
-                    foreach (var proc in Process.GetProcessesByName("WebOverlay"))
-                    {
-                        try { if (proc.MainWindowTitle != null && proc.MainWindowTitle.Contains("AR HUD")) return true; }
-                        catch { }
-                        finally { proc.Dispose(); }
-                    }
-                }
-                catch { }
-                return false;
-            }
-        }
-
+        internal bool IsAr1Running => _ar1Running;
         // Остановка AR1: гасим оверлей и канал данных. Вызывается кнопкой-тогглом,
         // StopSystem и закрытием приложения.
         internal void StopArOverlay(bool manual)
         {
-            int killed = 0;
-            try
-            {
-                foreach (var proc in Process.GetProcessesByName("WebOverlay"))
-                {
-                    try
-                    {
-                        if (proc.MainWindowTitle != null && proc.MainWindowTitle.Contains("AR HUD"))
-                        {
-                            proc.Kill();
-                            proc.WaitForExit(2000);
-                            killed++;
-                        }
-                    }
-                    catch { }
-                    finally { proc.Dispose(); }
-                }
-            }
-            catch { }
-            // AR2 может быть выключен отдельно — канал гасим только если второго AR нет.
+            string overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "WebOverlay.exe");
+            if (!File.Exists(overlayExe)) overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "pano.exe");
+            try { if (File.Exists(overlayExe)) Process.Start(overlayExe, "close http://localhost:8082/web_ar_hud.html"); }
+            catch (Exception ex) { AppendLog($"[AR] Не удалось закрыть AR HUD: {ex.Message}"); }
+            _ar1Running = false;
             if (!IsAr2Running) StopArTargetFeed();
             SyncAr1Button();
-            AppendLog(manual
-                ? $"[AR] AR HUD остановлен кнопкой (процессов закрыто: {killed})."
-                : $"[AR] AR HUD остановлен (процессов закрыто: {killed}).");
+            AppendLog(manual ? "[AR] AR HUD закрывается кнопкой." : "[AR] AR HUD закрывается.");
         }
-
         // v1.0.40.27: тоггл-подсветка кнопки AR1 (как у AR2 — Lime при запущенном оверлее).
         internal void SyncAr1Button()
         {
@@ -2911,23 +2866,8 @@ RegisterHotKeyChecked(
                 File.WriteAllLines(cfgPath, new[] { b.X.ToString(), b.Y.ToString(), "1", b.Width.ToString(), b.Height.ToString() });
                 AppendLog($"[AR] Геометрия AR HUD: экран '{screen.DeviceName}' {b.Width}x{b.Height} @({b.X},{b.Y}).");
 
-                // Если AR уже запущен — закрываем старый процесс его окна (URL-ключ
-                // в заголовке у WebOverlay не гарантирован, ищем по заголовку).
-                foreach (var proc in Process.GetProcessesByName("WebOverlay"))
-                {
-                    try
-                    {
-                        if (proc.MainWindowTitle != null && proc.MainWindowTitle.Contains("AR HUD"))
-                        {
-                            proc.Kill(); proc.WaitForExit(2000);
-                            AppendLog("[AR] Предыдущий AR HUD остановлен.");
-                        }
-                    }
-                    catch { }
-                }
-
                 Process.Start(overlayExe, url);
-                StartArTargetFeed();
+                _ar1Running = true;                StartArTargetFeed();
                 // v1.0.40.27: подсветка кнопки тоггла (Lime) сразу после старта.
                 SyncAr1Button();
                 AppendLog("[AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).");
@@ -5021,3 +4961,4 @@ RegisterHotKeyChecked(
         }
     }
 }
+

@@ -41,8 +41,6 @@ namespace ETS2_Assist_GUI.Quests
         private int _tickBusy;
         private bool _disposed;
         private bool _paused;
-        private bool _overlayVisible;
-        private Process? _overlayProcess;
         private DateTime _lastStateSentUtc = DateTime.MinValue;
         private JObject? _lastState;
         private double _lastTruckX, _lastTruckY, _lastTruckZ;
@@ -480,7 +478,7 @@ namespace ETS2_Assist_GUI.Quests
                     if (_store.State.GeneratedPoints.TryGetValue(renameKey, out QuestGeneratedPoint? generatedPoint) && generatedPoint != null) { generatedPoint.Known = true; generatedPoint.Name = effect.RenameTo; }
                 }
                 foreach (string resetId in effect.ResetQuests ?? new List<string>()) _store.ResetQuestStateOnly(resetId);
-                if (!string.IsNullOrWhiteSpace(effect.NotifyText)) Broadcast(new JObject { ["command"]="quest_notify", ["notification"]=new JObject { ["title"]=effect.NotifyTitle ?? "", ["text"]=effect.NotifyText, ["icon"]="" } });
+                if (!string.IsNullOrWhiteSpace(effect.NotifyText)) Broadcast(new JObject { ["command"]="quest_notify", ["notification"]=new JObject { ["title"]=effect.NotifyTitle ?? "", ["text"]=effect.NotifyText, ["icon"]="", ["position"]=(effect.NotifyPosition ?? "top") } });
             }
             _store.SaveState();
         }
@@ -545,20 +543,10 @@ namespace ETS2_Assist_GUI.Quests
         private void Broadcast(JObject payload){try{_server?.WebSocketServices["/"]?.Sessions.Broadcast(payload.ToString(Formatting.None));}catch{}}
         private void SendError(string text)=>Broadcast(new JObject { ["command"]="quest_error",["text"]=text });
 
-        private async Task UpdateOverlayAsync()
+        private Task UpdateOverlayAsync()
         {
-            bool shouldShow=_paused&&_store.Settings.Enabled;
-            if(!shouldShow){if(_overlayVisible){_overlayVisible=false;HideOverlay();}return;}
-            if(!_overlayVisible){_overlayVisible=true;await EnsureOverlayAsync().ConfigureAwait(true);} FocusOverlay();
+            return Task.CompletedTask;
         }
-        private async Task EnsureOverlayAsync()
-        {
-            if(_overlayProcess!=null&&!_overlayProcess.HasExited)return;
-            string exe=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"data","bin","WebOverlay.exe"); if(!File.Exists(exe)){Logger.Current?.Data("[QUEST] WebOverlay.exe not found: "+exe);return;}
-            try{_overlayProcess=Process.Start(new ProcessStartInfo{FileName=exe,Arguments="http://localhost:8082/web_quests.html",UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Path.GetDirectoryName(exe)!});try{await Task.Delay(250).ConfigureAwait(true);}catch{}}catch(Exception ex){Logger.Current?.Data("[QUEST] overlay start: "+ex.Message);}
-        }
-        private void FocusOverlay(){if(!_paused||!_overlayVisible)return;try{Process? p=_overlayProcess;if(p==null||p.HasExited)return;p.Refresh();IntPtr h=p.MainWindowHandle;if(h==IntPtr.Zero)return;ShowWindow(h,SwShow);BringWindowToTop(h);SetForegroundWindow(h);}catch{}}
-        private void HideOverlay(){try{Process? p=_overlayProcess;if(p==null||p.HasExited)return;p.Refresh();if(p.MainWindowHandle!=IntPtr.Zero)ShowWindow(p.MainWindowHandle,SwHide);}catch{}}
         private void EnforceArPointDebugMode(){try{bool debug=_store.Settings.DebugShowAllPoints;int radius=(int)Math.Clamp(_store.Settings.DebugRadiusM,5,5000);if(_lastDebugShow.HasValue&&_lastDebugShow.Value==debug&&_lastDebugRadius==radius)return;_lastDebugShow=debug;_lastDebugRadius=radius;AppSettings.ArDisplayRadiusM=debug?radius:0;if(_host.IsHandleCreated)_host.BeginInvoke(new Action(ForceArRebuild));}catch{}}
         private void ForceArRebuild(){try{typeof(MainForm).GetMethod("RefreshArModel",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)?.Invoke(_host,null);_host.ForceArDataResend("quest-state-change");_resolver.ClearCaches();}catch{}}
         internal IReadOnlyList<QuestPointSnapshot> GetQuestPointsForEditor(){var result=new List<QuestPointSnapshot>();foreach(QuestDefinition def in _store.Definitions.Values)foreach(QuestInteractionDefinition interaction in def.Interactions)if(TryBuildEditorInteraction(def,interaction,out QuestPointSnapshot point))result.Add(point);return result;}
@@ -600,3 +588,5 @@ namespace ETS2_Assist_GUI.Quests
         [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hWnd,int nCmdShow);
     }
 }
+
+
