@@ -179,7 +179,7 @@ namespace ETS2_Assist_GUI.Quests
         {
             try
             {
-                string text = (await _http.GetStringAsync("http://localhost:8080/api/rest/single/frame/paused").ConfigureAwait(true)).Trim();
+                string text = (await _http.GetStringAsync($"http://localhost:{TruckTelemetry.Port}/api/rest/single/frame/paused").ConfigureAwait(true)).Trim();
                 if (bool.TryParse(text, out bool b)) return b;
                 var token = JToken.Parse(text);
                 if (token.Type == JTokenType.Boolean) return token.Value<bool>();
