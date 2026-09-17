@@ -45,6 +45,7 @@ namespace ETS2_Assist_GUI.Quests
         private Process? _overlayProcess;
         private DateTime _lastStateSentUtc = DateTime.MinValue;
         private JObject? _lastState;
+        private double _lastTruckX, _lastTruckY, _lastTruckZ;
 
         private sealed class QuestPointCoord
         {
@@ -152,7 +153,7 @@ namespace ETS2_Assist_GUI.Quests
                     try { await TickAsync().ConfigureAwait(true); }
                     catch (Exception ex) { Logger.Current?.Data("[QUEST] tick: " + ex.Message); }
                     finally { Volatile.Write(ref _tickBusy, 0); }
-                });
+                }));
             }
             catch { Volatile.Write(ref _tickBusy, 0); }
         }
@@ -170,6 +171,9 @@ namespace ETS2_Assist_GUI.Quests
                 return;
             }
 
+            _lastTruckX = truck.X;
+            _lastTruckY = truck.Y;
+            _lastTruckZ = truck.Z;
             _nearby.Clear();
             _nearby.AddRange(GetAvailableInteractions(truck.X, truck.Y, truck.Z));
             HandleTriggers(_nearby);
@@ -215,24 +219,19 @@ namespace ETS2_Assist_GUI.Quests
             {
                 string key = p.QuestId + ":" + p.InteractionId;
                 if (!_inside.Add(key)) continue;
+                bool noMore = p.Marker == "none";
                 Broadcast(new JObject
                 {
                     ["command"] = "quest_notify",
                     ["notification"] = new JObject
                     {
-                        ["title"] = "Рядом доступно задание",
-                        ["text"] = "Выйдите в меню или поставьте игру на паузу, чтобы узнать подробности",
+                        ["title"] = noMore ? "" : "Рядом доступно задание",
+                        ["text"] = noMore ? "Заданий пока нет. Возвращайтесь позже. (в разработке)" : "Выйдите в меню или поставьте игру на паузу, чтобы узнать подробности",
                         ["icon"] = p.Marker
                     }
                 });
             }
             _inside.RemoveWhere(k => !now.Contains(k));
-
-            // A completed Ruslan point remains interactive only for the post-completion "no more" toast.
-            if (!_nearby.Any(p => p.QuestId == "special_marinated_shashlik" && p.InteractionId == "ruslan"))
-            {
-                _inside.Remove("special_marinated_shashlik:ruslan");
-            }
         }
 
         private bool IsQuestAvailable(QuestDefinition def)
@@ -263,7 +262,7 @@ namespace ETS2_Assist_GUI.Quests
                 marker = interaction.ActiveMarker;
                 dialogue = interaction.ActiveDialogue;
                 if (def.Id == "special_marinated_shashlik" && interaction.Id == "ruslan" && progress.Step == "return_to_ruslan") marker = "yellow_question";
-                if (permanentlyNamed && interaction.Id == "gosha") { marker = "none"; dialogue = interaction.InitialDialogue; }
+                if (permanentlyNamed && interaction.Id == "gosha") marker = "none";
             }
             else if (progress.Status == QuestStatus.Completed)
             {
@@ -495,7 +494,7 @@ namespace ETS2_Assist_GUI.Quests
             var inventory = new JArray();
             foreach (var item in _store.State.Inventory) inventory.Add(new JObject { ["id"] = item.Key, ["name"] = DisplayItemName(item.Key), ["amount"] = item.Value });
             var nearby = new JArray();
-            foreach (var p in _nearby) nearby.Add(new JObject { ["QuestId"] = p.QuestId, ["InteractionId"] = p.InteractionId, ["Name"] = p.Name, ["Marker"] = p.Marker, ["distance"] = Math.Sqrt(DistanceSquared(p.X, p.Y, p.Z, 0, 0, 0)) });
+            foreach (var p in _nearby) nearby.Add(new JObject { ["QuestId"] = p.QuestId, ["InteractionId"] = p.InteractionId, ["Name"] = p.Name, ["Marker"] = p.Marker, ["distance"] = Math.Sqrt(DistanceSquared(p.X, p.Y, p.Z, _lastTruckX, _lastTruckY, _lastTruckZ)) });
 
             var payload = new JObject
             {
