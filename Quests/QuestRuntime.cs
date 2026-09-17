@@ -239,6 +239,17 @@ namespace ETS2_Assist_GUI.Quests
             return true;
         }
 
+        private void ApplyEditorOverride(string key, ref QuestResolvedPoint coord, ref string name, ref bool minimapVisible, ref bool arVisible)
+        {
+            if (!_store.State.EditorPointOverrides.TryGetValue(key, out QuestEditorPointOverride? edit) || edit == null) return;
+            if (edit.X.HasValue) coord.X = edit.X.Value;
+            if (edit.Y.HasValue) coord.Y = edit.Y.Value;
+            if (edit.Z.HasValue) coord.Z = edit.Z.Value;
+            if (!string.IsNullOrWhiteSpace(edit.Name)) name = edit.Name;
+            if (edit.MinimapVisible.HasValue) minimapVisible = edit.MinimapVisible.Value;
+            if (edit.ArVisible.HasValue) arVisible = edit.ArVisible.Value;
+        }
+
         private bool TryBuildInteraction(QuestDefinition def, QuestInteractionDefinition interaction, out QuestPointSnapshot point)
         {
             point = new QuestPointSnapshot();
@@ -263,12 +274,14 @@ namespace ETS2_Assist_GUI.Quests
             bool arVisible = interaction.ArVisible;
             if (!string.IsNullOrWhiteSpace(progress.Step) && interaction.ArVisibleByStep.TryGetValue(progress.Step, out bool arStep)) arVisible = arStep;
 
+            string name = GetPermanentName(def.Id, interaction.Id, interaction.Name);
+            if (progress.Status == QuestStatus.Completed && !string.IsNullOrWhiteSpace(interaction.CompletedName)) name = interaction.CompletedName;
+            ApplyEditorOverride(key, ref coord, ref name, ref minimapVisible, ref arVisible);
+
             if (progress.Status == QuestStatus.Completed && !interaction.ShowWhenQuestCompleted && !generatedKnown && !permanent) return false;
             bool visible = minimapVisible || (arVisible && marker != "none") || interaction.PermanentName || knownPermanent;
             if (!visible) return false;
 
-            string name = GetPermanentName(def.Id, interaction.Id, interaction.Name);
-            if (progress.Status == QuestStatus.Completed && !string.IsNullOrWhiteSpace(interaction.CompletedName)) name = interaction.CompletedName;
             point = new QuestPointSnapshot
             {
                 QuestId = def.Id, InteractionId = interaction.Id, Uid = coord.Uid, OriginalUid = coord.OriginalUid, Category = coord.Category, Name = name,
@@ -279,6 +292,52 @@ namespace ETS2_Assist_GUI.Quests
                 TriggerRadiusM = interaction.TriggerRadiusM > 0 ? interaction.TriggerRadiusM : _store.Settings.TriggerRadiusM
             };
             if (!_activeDialogue.ContainsKey(key)) _activeDialogue[key] = dialogue ?? "";
+            return true;
+        }
+
+        private bool TryBuildEditorInteraction(QuestDefinition def, QuestInteractionDefinition interaction, out QuestPointSnapshot point)
+        {
+            point = new QuestPointSnapshot();
+            string key = def.Id + ":" + interaction.Id;
+            if (!_resolver.TryResolve(def, interaction, out QuestResolvedPoint coord)) return false;
+            var progress = GetProgress(def.Id);
+
+            string marker = interaction.DefaultMarker;
+            if (progress.Status == QuestStatus.Active) marker = interaction.ActiveMarker;
+            else if (progress.Status == QuestStatus.Completed) marker = interaction.CompletedMarker;
+            else if (progress.ReturnOffer && !string.IsNullOrWhiteSpace(interaction.CancelledDialogue)) marker = interaction.DefaultMarker;
+            if (!string.IsNullOrWhiteSpace(progress.Step) && interaction.MarkerByStep.TryGetValue(progress.Step, out string? stepMarker)) marker = stepMarker;
+
+            bool minimapVisible = interaction.MinimapVisible;
+            if (!string.IsNullOrWhiteSpace(progress.Step) && interaction.MinimapVisibleByStep.TryGetValue(progress.Step, out bool mapStep)) minimapVisible = mapStep;
+            bool arVisible = interaction.ArVisible;
+            if (!string.IsNullOrWhiteSpace(progress.Step) && interaction.ArVisibleByStep.TryGetValue(progress.Step, out bool arStep)) arVisible = arStep;
+
+            string name = GetPermanentName(def.Id, interaction.Id, interaction.Name);
+            if (progress.Status == QuestStatus.Completed && !string.IsNullOrWhiteSpace(interaction.CompletedName)) name = interaction.CompletedName;
+            ApplyEditorOverride(key, ref coord, ref name, ref minimapVisible, ref arVisible);
+
+            point = new QuestPointSnapshot
+            {
+                QuestId = def.Id,
+                InteractionId = interaction.Id,
+                Uid = coord.Uid,
+                OriginalUid = coord.OriginalUid,
+                Category = coord.Category,
+                Name = name,
+                Marker = marker,
+                X = coord.X,
+                Y = coord.Y,
+                Z = coord.Z,
+                MinimapVisible = minimapVisible,
+                ArVisible = arVisible && marker != "none",
+                Interactive = true,
+                PermanentName = interaction.PermanentName,
+                IsGenerated = coord.IsGenerated,
+                ArOffscreenPointer = interaction.ArOffscreenPointer && marker != "none",
+                TriggerWhenNoMarker = interaction.TriggerWhenNoMarker,
+                TriggerRadiusM = interaction.TriggerRadiusM > 0 ? interaction.TriggerRadiusM : _store.Settings.TriggerRadiusM
+            };
             return true;
         }
 
@@ -330,8 +389,43 @@ namespace ETS2_Assist_GUI.Quests
             {
                 case "quest_select_interaction": BeginInvokeUi(() => SelectInteraction(data["questId"]?.Value<string>() ?? "", data["id"]?.Value<string>() ?? "")); break;
                 case "quest_dialog_option": BeginInvokeUi(() => ApplyDialogOption(data["questId"]?.Value<string>() ?? "", data["interaction"]?.Value<string>() ?? "", data["index"]?.Value<int>() ?? -1)); break;
+                case "quest_editor_point_save": BeginInvokeUi(() => SaveEditorPoint(data)); break;
                 case "quest_reset": BeginInvokeUi(() => { _store.ResetQuest(data["id"]?.Value<string>() ?? "special_marinated_shashlik", true); _inside.Clear(); _activeDialogue.Clear(); _nearby.Clear(); ForceArRebuild(); BroadcastState(true); }); break;
             }
+        }
+
+        private void SaveEditorPoint(JObject data)
+        {
+            string questId = data["questId"]?.Value<string>()?.Trim() ?? "";
+            string interactionId = data["interactionId"]?.Value<string>()?.Trim() ?? "";
+            if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) { SendError("Квестовая точка: квест не найден."); return; }
+            QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));
+            if (interaction == null) { SendError("Квестовая точка: взаимодействие не найдено."); return; }
+
+            double x = data["x"]?.Value<double>() ?? double.NaN;
+            double y = data["y"]?.Value<double>() ?? double.NaN;
+            double z = data["z"]?.Value<double>() ?? double.NaN;
+            if (!double.IsFinite(x) || !double.IsFinite(y) || !double.IsFinite(z)) { SendError("Квестовая точка: некорректные координаты."); return; }
+            if (!_resolver.TryResolve(def, interaction, out _)) { SendError("Квестовая точка: исходная точка не разрешилась."); return; }
+
+            string name = data["name"]?.Value<string>()?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(name)) name = interaction.Name;
+            bool minimapVisible = data["minimapVisible"]?.Value<bool>() ?? true;
+            bool arVisible = data["arVisible"]?.Value<bool>() ?? true;
+            string key = questId + ":" + interactionId;
+            _store.State.EditorPointOverrides[key] = new QuestEditorPointOverride
+            {
+                Name = name,
+                X = x,
+                Y = y,
+                Z = z,
+                MinimapVisible = minimapVisible,
+                ArVisible = arVisible
+            };
+            _store.SaveState();
+            ForceArRebuild();
+            BroadcastState(true);
+            Broadcast(new JObject { ["command"] = "quest_editor_point_saved", ["questId"] = questId, ["interactionId"] = interactionId });
         }
 
         private void SelectInteraction(string questId, string interactionId)
@@ -383,7 +477,7 @@ namespace ETS2_Assist_GUI.Quests
                 if (!string.IsNullOrWhiteSpace(effect.RenameInteraction) && !string.IsNullOrWhiteSpace(effect.RenameTo))
                 {
                     string renameKey = def.Id + ":" + effect.RenameInteraction; _store.State.PermanentInteractionNames[renameKey] = effect.RenameTo;
-                    if (_store.State.GeneratedPoints.TryGetValue(renameKey, out QuestGeneratedPoint? generated) && generated != null) { generated.Known = true; generated.Name = effect.RenameTo; }
+                    if (_store.State.GeneratedPoints.TryGetValue(renameKey, out QuestGeneratedPoint? generatedPoint) && generatedPoint != null) { generatedPoint.Known = true; generatedPoint.Name = effect.RenameTo; }
                 }
                 foreach (string resetId in effect.ResetQuests ?? new List<string>()) _store.ResetQuestStateOnly(resetId);
                 if (!string.IsNullOrWhiteSpace(effect.NotifyText)) Broadcast(new JObject { ["command"]="quest_notify", ["notification"]=new JObject { ["title"]=effect.NotifyTitle ?? "", ["text"]=effect.NotifyText, ["icon"]="" } });
@@ -411,14 +505,17 @@ namespace ETS2_Assist_GUI.Quests
                 else if (reward.Type.Equals("stat", StringComparison.OrdinalIgnoreCase)) AddAmount(_store.State.Stats, reward.Id, reward.Amount);
             }
             p.Flags["__rewardsGranted"] = true;
-            Broadcast(new JObject { ["command"]="quest_notify", ["notification"]=new JObject { ["title"]="", ["text"]="Предмет отдан:\nМясо в спецмаринаде x1", ["icon"]="", ["rewardItems"]=rewardItems } });
-            if (repLines.Count > 0) Broadcast(new JObject { ["command"]="quest_notify", ["notification"]=new JObject { ["title"]="Получена репутация:", ["text"]=string.Join("\n", repLines), ["icon"]="", ["accent"]="reputation" } });
+            Broadcast(new JObject { ["command"]="quest_notify", ["notification"] = new JObject { ["title"]="", ["text"]="Предмет отдан:\nМясо в спецмаринаде x1", ["icon"]="", ["rewardItems"]=rewardItems } });
+            if (repLines.Count > 0) Broadcast(new JObject { ["command"]="quest_notify", ["notification"] = new JObject { ["title"]="Получена репутация:", ["text"]=string.Join("\n", repLines), ["icon"]="", ["accent"]="reputation" } });
         }
 
         private JObject BuildStatePayload(string? selectedQuest=null, string? selectedInteraction=null, string? explicitDialogue=null)
         {
             var points = new JArray();
             foreach (QuestDefinition def in _store.Definitions.Values) foreach (QuestInteractionDefinition interaction in def.Interactions) if (TryBuildInteraction(def, interaction, out QuestPointSnapshot point)) points.Add(JObject.FromObject(point));
+            var editorPoints = new JArray();
+            foreach (QuestDefinition def in _store.Definitions.Values) foreach (QuestInteractionDefinition interaction in def.Interactions) if (TryBuildEditorInteraction(def, interaction, out QuestPointSnapshot point)) editorPoints.Add(JObject.FromObject(point));
+
             var active=new JArray(); var archive=new JArray();
             foreach (QuestDefinition def in _store.Definitions.Values)
             {
@@ -427,7 +524,7 @@ namespace ETS2_Assist_GUI.Quests
             }
             var inventory=new JArray(); foreach(var item in _store.State.Inventory) inventory.Add(new JObject { ["id"]=item.Key,["name"]=DisplayItemName(item.Key),["amount"]=item.Value });
             var nearby=new JArray(); foreach(var p in _nearby) nearby.Add(new JObject { ["QuestId"]=p.QuestId,["InteractionId"]=p.InteractionId,["Name"]=p.Name,["Marker"]=p.Marker,["ArVisible"]=p.ArVisible,["ArOffscreenPointer"]=p.ArOffscreenPointer,["distance"]=Math.Sqrt(DistanceSquared(p.X,p.Y,p.Z,_lastTruckX,_lastTruckY,_lastTruckZ)) });
-            var payload=new JObject { ["command"]="quest_state",["paused"]=_paused,["enabled"]=_store.Settings.Enabled,["points"]=points,["nearby"]=nearby,["activeQuests"]=active,["archiveQuests"]=archive,["inventory"]=inventory,["settings"]=JObject.FromObject(_store.Settings) };
+            var payload=new JObject { ["command"]="quest_state",["paused"]=_paused,["enabled"]=_store.Settings.Enabled,["points"]=points,["editorPoints"]=editorPoints,["nearby"]=nearby,["activeQuests"]=active,["archiveQuests"]=archive,["inventory"]=inventory,["settings"]=JObject.FromObject(_store.Settings) };
             if(!string.IsNullOrWhiteSpace(selectedQuest)&&!string.IsNullOrWhiteSpace(selectedInteraction))
             {
                 if(explicitDialogue==null) _activeDialogue.TryGetValue(selectedQuest+":"+selectedInteraction,out explicitDialogue);
@@ -464,7 +561,7 @@ namespace ETS2_Assist_GUI.Quests
         private void HideOverlay(){try{Process? p=_overlayProcess;if(p==null||p.HasExited)return;p.Refresh();if(p.MainWindowHandle!=IntPtr.Zero)ShowWindow(p.MainWindowHandle,SwHide);}catch{}}
         private void EnforceArPointDebugMode(){try{bool debug=_store.Settings.DebugShowAllPoints;int radius=(int)Math.Clamp(_store.Settings.DebugRadiusM,5,5000);if(_lastDebugShow.HasValue&&_lastDebugShow.Value==debug&&_lastDebugRadius==radius)return;_lastDebugShow=debug;_lastDebugRadius=radius;AppSettings.ArDisplayRadiusM=debug?radius:0;if(_host.IsHandleCreated)_host.BeginInvoke(new Action(ForceArRebuild));}catch{}}
         private void ForceArRebuild(){try{typeof(MainForm).GetMethod("RefreshArModel",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)?.Invoke(_host,null);_host.ForceArDataResend("quest-state-change");_resolver.ClearCaches();}catch{}}
-        internal IReadOnlyList<QuestPointSnapshot> GetQuestPointsForEditor(){var result=new List<QuestPointSnapshot>();foreach(QuestDefinition def in _store.Definitions.Values)foreach(QuestInteractionDefinition interaction in def.Interactions)if(TryBuildInteraction(def,interaction,out QuestPointSnapshot point)&&point.Interactive)result.Add(point);return result;}
+        internal IReadOnlyList<QuestPointSnapshot> GetQuestPointsForEditor(){var result=new List<QuestPointSnapshot>();foreach(QuestDefinition def in _store.Definitions.Values)foreach(QuestInteractionDefinition interaction in def.Interactions)if(TryBuildEditorInteraction(def,interaction,out QuestPointSnapshot point))result.Add(point);return result;}
         private void ProcessInstantActivations(){if(!_store.Settings.Enabled)return;foreach(QuestDefinition def in _store.Definitions.Values){if(!def.InstantActivation)continue;QuestProgress p=GetProgress(def.Id);if(p.Status!=QuestStatus.Available||(def.ActivationsPerPlayer>0&&ActivationCount(def.Id)>=def.ActivationsPerPlayer)||!IsQuestAvailable(def))continue;string firstStep=def.Steps.Keys.FirstOrDefault(k=>!k.Equals("available",StringComparison.OrdinalIgnoreCase))??"active";ApplyEffects(def,new[]{new QuestEffect{SetQuestStatus="Active",SetStep=firstStep}});}}
 
         private bool ScheduleAllows(QuestDefinition def)
