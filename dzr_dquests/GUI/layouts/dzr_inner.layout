@@ -1,0 +1,9 @@
+WindowWidgetClass rootFrame1 {
+ size 1 1
+ halign center_ref
+ valign center_ref
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+}

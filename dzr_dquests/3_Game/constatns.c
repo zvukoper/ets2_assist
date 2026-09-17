@@ -1,0 +1,1 @@
+//static const string m_DZR_LayoutsPath = "dzr_dquests/GUI/layouts/";

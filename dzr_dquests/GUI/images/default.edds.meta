@@ -1,0 +1,16 @@
+MetaFileClass {
+ Name "{D1441ED2F5A0984D}dzr_dquests/GUI/images/default.edds"
+ Author "oc804"
+ ChangeDate 1446735986
+ Configurations {
+  PNGResourceClass PC {
+   SourceFile "default.png"
+  }
+  PNGResourceClass XBOX_ONE : PC {
+  }
+  PNGResourceClass PS4 : PC {
+  }
+  PNGResourceClass LINUX : PC {
+  }
+ }
+}

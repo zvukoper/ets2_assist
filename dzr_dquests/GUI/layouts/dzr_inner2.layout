@@ -1,0 +1,243 @@
+FrameWidgetClass rootFrame {
+ position 0 0
+ size 1 1
+ halign center_ref
+ valign center_ref
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ {
+  PanelWidgetClass dzrp_bs_background {
+   inheritalpha 0
+   ignorepointer 1
+   color 0 0 0 1
+   position 0 0
+   size 1 1
+   halign center_ref
+   valign center_ref
+   hexactpos 1
+   vexactpos 1
+   hexactsize 0
+   vexactsize 0
+   style rover_sim_colorable
+   {
+    ImageWidgetClass BG_Image {
+     visible 1
+     inheritalpha 1
+     ignorepointer 1
+     keepsafezone 0
+     position 0 0
+     size 1 1
+     halign center_ref
+     valign center_ref
+     hexactpos 0
+     vexactpos 0
+     hexactsize 0
+     vexactsize 0
+     scaled 1
+     image0 ""
+     mode blend
+     "src alpha" 0
+     "stretch mode" stretch_w_h
+    }
+    FrameWidgetClass TitleContainer {
+     visible 1
+     clipchildren 1
+     inheritalpha 1
+     color 0 0 0 1
+     position 0 0
+     size 1 0.1006
+     halign center_ref
+     hexactpos 0
+     vexactpos 0
+     hexactsize 0
+     vexactsize 0
+     {
+      PanelWidgetClass PanelWidget2 {
+       inheritalpha 1
+       ignorepointer 1
+       position 0 0
+       size 1 1
+       halign center_ref
+       valign center_ref
+       hexactpos 0
+       vexactpos 0
+       hexactsize 0
+       vexactsize 0
+       {
+        PanelWidgetClass BackgroundWidget {
+         visible 1
+         inheritalpha 1
+         color 0 0 0 0.7373
+         position 0 0
+         size 1 1
+         style rover_sim_colorable
+        }
+        MultilineTextWidgetClass dzrp_bs_text1 {
+         inheritalpha 1
+         position 0 0
+         size 1 1
+         halign center_ref
+         valign center_ref
+         hexactpos 0
+         vexactpos 0
+         hexactsize 0
+         vexactsize 0
+         scaled 1
+         text "Transporter"
+         font "gui/fonts/etelkatextpro48"
+         "exact text" 1
+         "text halign" center
+         "text valign" center
+         wrap 1
+         {
+          PanelWidgetClass PanelWidget0 {
+           visible 0
+           inheritalpha 1
+           ignorepointer 1
+           color 0.3176 0.3176 0.3176 1
+           position 0 0.029
+           size 698 3
+           halign center_ref
+           valign bottom_ref
+           hexactpos 0
+           vexactpos 0
+           hexactsize 1
+           vexactsize 1
+           style rover_sim_colorable
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+    FrameWidgetClass BottomPanel {
+     visible 1
+     clipchildren 1
+     inheritalpha 1
+     ignorepointer 0
+     color 0 0 0 1
+     position 0 0
+     size 1 0.21293
+     halign center_ref
+     valign bottom_ref
+     hexactpos 0
+     vexactpos 0
+     hexactsize 0
+     vexactsize 0
+     {
+      PanelWidgetClass PanelWidget3 {
+       visible 1
+       clipchildren 1
+       inheritalpha 1
+       ignorepointer 1
+       position 0 0
+       size 1 1
+       halign center_ref
+       valign bottom_ref
+       hexactpos 0
+       vexactpos 0
+       hexactsize 0
+       vexactsize 0
+       {
+        PanelWidgetClass BackgroundWidget0 {
+         visible 1
+         inheritalpha 1
+         color 0 0 0 0.7373
+         position 0 0
+         size 1 1
+         style rover_sim_colorable
+        }
+        MultilineTextWidgetClass dzrp_bs_text2 {
+         clipchildren 0
+         inheritalpha 1
+         size 0.77 0.39
+         halign center_ref
+         hexactpos 0
+         vexactpos 0
+         hexactsize 0
+         vexactsize 0
+         scaled 1
+         text "Hey! Don't think I've seen you before, or have I?! I'll turn the bus around and get you to your destination."
+         font "gui/fonts/MetronBook28"
+         "exact text" 1
+         "size to text h" 0
+         "size to text v" 0
+         "text halign" center
+         "text valign" center
+         wrap 1
+         {
+          ImageWidgetClass LinesImageLeft {
+           clipchildren 0
+           inheritalpha 1
+           ignorepointer 1
+           position 0 0.07
+           size 1 0.009
+           halign center_ref
+           valign bottom_ref
+           hexactpos 0
+           vexactpos 0
+           hexactsize 0
+           vexactsize 0
+           mode blend
+          }
+         }
+        }
+        MultilineTextWidgetClass dzrp_bs_text3 {
+         visible 1
+         clipchildren 0
+         inheritalpha 1
+         ignoregloballv 0
+         keepsafezone 0
+         position 0 105
+         size 0.91 0.5328
+         halign center_ref
+         hexactpos 1
+         vexactpos 1
+         hexactsize 0
+         vexactsize 0
+         scaled 1
+         text "That'll end your precious little leg field trip pretty damn quick, eh? "\
+         "So many years has passed and so few Survivors to drive around in this Godforsaken land...but I can't help it. I love my Bus, the country roads and the fresh air. It's the only thing left that reminds me of the time before the event. Hell I'll even drive from here to your destination all day back and forth by myself if I get bored. You don't say much do you? That's ok, we're soon there.\" "
+         font "gui/fonts/MetronBook22"
+         "exact text" 1
+         "size to text h" 0
+         "size to text v" 0
+         "text halign" center
+         wrap 1
+        }
+        ButtonWidgetClass exit_button {
+         inheritalpha 1
+         position 835.51001 -65.96
+         size 0.0679 0.1872
+         halign center_ref
+         valign center_ref
+         hexactpos 1
+         vexactpos 1
+         hexactsize 0
+         vexactsize 0
+         scriptclass ""
+         style Editor
+         text "Exit"
+         font "gui/fonts/etelkatextpro22"
+        }
+       }
+      }
+     }
+    }
+    TextWidgetClass TextWidget0 {
+     ignorepointer 1
+     position 1461.48999 11.9638
+     size 795.69202 251.62001
+     hexactpos 1
+     vexactpos 1
+     hexactsize 1
+     vexactsize 1
+     text "TEST2"
+    }
+   }
+  }
+ }
+}

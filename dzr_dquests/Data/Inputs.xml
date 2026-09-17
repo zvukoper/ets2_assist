@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<modded_inputs>
+    <inputs>
+        <actions>
+            <input name="UAUIDZR_TriggerFwd" loc="STR_IDZ_ACTIVATE_RECOGNITION" visible="true" />
+            
+            <input name="UAUIDZR_TriggerBck" loc="STR_IDZ_ACTIVATE_RECOGNITION" visible="true" />
+            
+            <input name="UAUIDZR_TriggerUp" loc="STR_IDZ_ACTIVATE_RECOGNITION" visible="true" />
+            
+            <input name="UAUIDZR_TriggerDwn" loc="STR_IDZ_ACTIVATE_RECOGNITION" visible="true" />
+            
+            <input name="UAUIDZR_TriggerLt" loc="STR_IDZ_ACTIVATE_RECOGNITION" visible="true" />
+            
+            <input name="UAUIDZR_TriggerRt" loc="STR_IDZ_ACTIVATE_RECOGNITION" visible="true" />
+            
+            <input name="UAUIDZR_TriggerAtCursor" loc="STR_IDZ_ACTIVATE_RECOGNITION" visible="true" />
+            
+            <input name="UAUIDZR_TriggerSetInvis" loc="STR_IDZ_ACTIVATE_RECOGNITION" visible="true" />
+            
+            <input name="UAUIDZR_TriggerSetVis" loc="STR_IDZ_ACTIVATE_RECOGNITION" visible="true" />
+        </actions>
+    </inputs>
+    <preset>
+        <input name="UAUIDZR_TriggerFwd">
+            <btn name="kNumpad8">
+            </btn>
+        </input>
+        <input name="UAUIDZR_TriggerBck">
+            <btn name="kNumpad2">
+            </btn>
+        </input>
+        <input name="UAUIDZR_TriggerUp">
+            <btn name="kNumpad9">
+            </btn>
+        </input>
+        <input name="UAUIDZR_TriggerDwn">
+            <btn name="kNumpad3">
+            </btn>
+        </input>
+        <input name="UAUIDZR_TriggerLt">
+            <btn name="kNumpad4">
+            </btn>
+        </input>
+        <input name="UAUIDZR_TriggerRt">
+            <btn name="kNumpad6">
+            </btn>
+        </input>
+        <input name="UAUIDZR_TriggerAtCursor">
+            <btn name="kNumpad5">
+            </btn>
+        </input>
+        <input name="UAUIDZR_TriggerSetInvis">
+            <btn name="kNumpad0">
+            </btn>
+        </input>
+        <input name="UAUIDZR_TriggerSetVis">
+            <btn name="kDecimal">
+            </btn>
+        </input>
+    </preset>
+</modded_inputs>

@@ -1,0 +1,438 @@
+FrameWidgetClass rootFrame {
+ position 0 0
+ size 1 1
+ halign center_ref
+ valign center_ref
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ {
+  PanelWidgetClass r_MainAnimation {
+   inheritalpha 0
+   ignorepointer 0
+   color 0 0 0 1
+   position 0 0
+   size 1 1
+   halign center_ref
+   valign center_ref
+   hexactpos 1
+   vexactpos 1
+   hexactsize 0
+   vexactsize 0
+   style rover_sim_colorable
+   {
+    ImageWidgetClass r_BackgroundImage {
+     visible 1
+     inheritalpha 1
+     ignorepointer 1
+     keepsafezone 0
+     position 0 0
+     size 1 1
+     halign center_ref
+     valign center_ref
+     hexactpos 0
+     vexactpos 0
+     hexactsize 0
+     vexactsize 0
+     scaled 1
+     image0 ""
+     imageTexture "{D1441ED2F5A0984D}dzr_dquests/GUI/images/default.edds"
+     mode blend
+     "src alpha" 0
+     "stretch mode" stretch_w_h
+    }
+    PanelWidgetClass PanelWidget1 {
+     visible 0
+     clipchildren 0
+     color 0 0 0 1
+     position 0 0
+     size 1 1
+     halign center_ref
+     valign center_ref
+     hexactpos 0
+     vexactpos 0
+     hexactsize 0
+     vexactsize 0
+     style rover_sim_colorable
+    }
+    ImageWidgetClass r_Logo {
+     visible 0
+     clipchildren 0
+     inheritalpha 1
+     ignorepointer 1
+     position 0.0696 0.0495
+     size 460 260
+     hexactpos 0
+     vexactpos 0
+     hexactsize 1
+     vexactsize 1
+     fixaspect outside
+     priority 850
+     image0 ""
+     imageTexture "{11E0E74D9B00F14E}iKR0GH_quest_resources/GUI/Z046_Logo.edds"
+     mode blend
+     "src alpha" 1
+     "clamp mode" clamp
+     "stretch mode" stretch_w_h
+     filter 1
+     nocache 0
+    }
+    FrameWidgetClass Shaders {
+     visible 0
+     clipchildren 0
+     inheritalpha 1
+     ignorepointer 1
+     color 0 0 0 1
+     position 0 0
+     size 1 1
+     halign center_ref
+     valign center_ref
+     hexactpos 0
+     vexactpos 0
+     hexactsize 0
+     vexactsize 0
+     {
+      ImageWidgetClass Vignette {
+       visible 1
+       inheritalpha 1
+       ignorepointer 1
+       color 0 0 0 0.7843
+       position 0 0
+       size 1 1
+       halign center_ref
+       valign center_ref
+       hexactpos 1
+       vexactpos 1
+       hexactsize 0
+       vexactsize 0
+       priority 1
+       imageTexture "{E6B3EF816E067499}Gui/textures/inventory_bgvignette.edds"
+       mode blend
+       "src alpha" 1
+       "clamp mode" clamp
+       "stretch mode" stretch_w_h
+       filter 0
+       nocache 1
+      }
+      ImageWidgetClass Colorful_Shader {
+       visible 1
+       inheritalpha 1
+       ignorepointer 1
+       keepsafezone 0
+       color 0 0.4 0.4 0.4706
+       position -1.09312 -27.3279
+       size 1 0.64265
+       hexactpos 1
+       vexactpos 1
+       hexactsize 0
+       vexactsize 0
+       scaled 1
+       imageTexture "{CD8F4CE8986F6AF8}iKR0GH_quest_resources/GUI/Shader.edds"
+       mode blend
+       "src alpha" 1
+       "clamp mode" clamp
+       "stretch mode" stretch_w_h
+      }
+      ImageWidgetClass HorizShader {
+       visible 0
+       inheritalpha 1
+       ignorepointer 1
+       keepsafezone 0
+       color 0 0 0 1
+       position 0 0
+       size 1 1
+       hexactpos 1
+       vexactpos 1
+       hexactsize 0
+       vexactsize 0
+       scaled 1
+       imageTexture "{BB83E3554F055155}iKR0GH_quest_resources/GUI/HorizShader.edds"
+       mode blend
+       "src alpha" 1
+       "clamp mode" clamp
+       "stretch mode" stretch_w_h
+       filter 1
+      }
+     }
+    }
+    FrameWidgetClass r_SecondAnimation {
+     visible 1
+     clipchildren 0
+     inheritalpha 1
+     ignorepointer 1
+     keepsafezone 0
+     color 0 0 0 1
+     position 0 0
+     size 1 0.23
+     halign center_ref
+     valign bottom_ref
+     hexactpos 0
+     vexactpos 0
+     hexactsize 0
+     vexactsize 0
+     {
+      PanelWidgetClass BackgroundColor {
+       visible 1
+       inheritalpha 1
+       ignorepointer 1
+       color 0 0 0 0.7647
+       position 0 0
+       size 1 1
+       style rover_sim_colorable
+      }
+      ImageWidgetClass LinesImageLeft {
+       clipchildren 0
+       inheritalpha 1
+       ignorepointer 1
+       position -0.1586 0.85
+       size 0.28 3
+       halign center_ref
+       valign bottom_ref
+       hexactpos 0
+       vexactpos 0
+       hexactsize 0
+       vexactsize 1
+       mode blend
+      }
+      ImageWidgetClass LinesRightImage {
+       clipchildren 0
+       inheritalpha 1
+       ignorepointer 1
+       position 0.1585 0.85
+       size 0.28 3
+       halign center_ref
+       valign bottom_ref
+       hexactpos 0
+       vexactpos 0
+       hexactsize 0
+       vexactsize 1
+       mode blend
+      }
+      ImageWidgetClass r_Icon {
+       visible 1
+       disabled 0
+       clipchildren 0
+       inheritalpha 1
+       ignorepointer 1
+       keepsafezone 0
+       position 0 0.7424
+       size 0.035 0.235
+       halign center_ref
+       valign bottom_ref
+       hexactpos 0
+       vexactpos 0
+       hexactsize 0
+       vexactsize 0
+       scaled 1
+       image0 "set:dayz_gui image:loading_screen_bulb"
+       imageTexture "{C7A7EE6DCFBB6CBD}iKR0GH_quest_resources/GUI/Bus.edds"
+       mode blend
+       "src alpha" 1
+       "stretch mode" fit_w_center
+       "flip u" 0
+       "flip v" 0
+       nocache 0
+       "Transition width" 0.074
+      }
+      MultilineTextWidgetClass r_Header {
+       visible 1
+       inheritalpha 1
+       ignorepointer 1
+       color 0.502 0 0 1
+       position 0.00069 0.62419
+       size 1 0.1
+       halign center_ref
+       valign bottom_ref
+       hexactpos 0
+       vexactpos 0
+       scaled 1
+       priority 850
+       style DayZNormal
+       text "NO TEXT"
+       font "gui/fonts/Metron-Bold22"
+       "exact text" 0
+       "size to text h" 1
+       "size to text v" 1
+       "text halign" center
+       "text valign" center
+      }
+      MultilineTextWidgetClass r_Description {
+       visible 1
+       clipchildren 0
+       inheritalpha 1
+       ignorepointer 1
+       ignoregloballv 0
+       keepsafezone 0
+       position 0 0.341
+       size 0.90049 0.24925
+       halign center_ref
+       valign bottom_ref
+       hexactpos 0
+       vexactpos 0
+       hexactsize 0
+       vexactsize 0
+       scaled 1
+       style DayZNormal
+       text "123"
+       font "gui/fonts/metron16"
+       "exact text" 1
+       "size to text h" 0
+       "size to text v" 0
+       "text halign" center
+       wrap 1
+      }
+      ProgressBarWidgetClass r_LoadingBar {
+       visible 1
+       inheritalpha 1
+       ignorepointer 1
+       position 0 0.29
+       size 600 3
+       halign center_ref
+       valign bottom_ref
+       hexactpos 0
+       vexactpos 0
+       hexactsize 1
+       vexactsize 1
+       style Loading
+       current 0
+       vertical 0
+      }
+      FrameWidgetClass r_LoadingTextContainer {
+       visible 1
+       clipchildren 0
+       inheritalpha 1
+       ignorepointer 1
+       keepsafezone 0
+       position 0 0.14
+       size 0.31 0.12
+       halign center_ref
+       valign bottom_ref
+       hexactpos 0
+       vexactpos 0
+       hexactsize 0
+       vexactsize 0
+       {
+        ImageWidgetClass LoadingText {
+         visible 1
+         disabled 0
+         clipchildren 0
+         inheritalpha 1
+         ignorepointer 1
+         keepsafezone 0
+         position 0 0
+         size 1 1
+         halign center_ref
+         valign center_ref
+         hexactpos 0
+         vexactpos 0
+         hexactsize 0
+         vexactsize 0
+         scaled 1
+         image0 ""
+         imageTexture "{73DE1C6F0B1A8619}iKR0GH_quest_resources/GUI/Loading.edds"
+         mode blend
+         "src alpha" 1
+         "clamp mode" clamp
+         "stretch mode" fit_h_center
+         "flip u" 0
+         "flip v" 0
+         nocache 0
+         "Transition width" 0.074
+        }
+       }
+      }
+     }
+    }
+    PanelWidgetClass r_ExitButtonAnimation {
+     clipchildren 0
+     inheritalpha 1
+     ignorepointer 0
+     position 0.02 0.03
+     size 42 42
+     halign right_ref
+     hexactpos 0
+     vexactpos 0
+     hexactsize 1
+     vexactsize 1
+     {
+      PanelWidgetClass r_ExitButtonImage {
+       ignorepointer 1
+       size 48 48
+       halign center_ref
+       valign center_ref
+       hexactpos 1
+       vexactpos 1
+       hexactsize 1
+       vexactsize 1
+       {
+        ImageWidgetClass cross {
+         visible 1
+         inheritalpha 1
+         size 1 1
+         halign center_ref
+         valign center_ref
+         hexactpos 1
+         vexactpos 1
+         hexactsize 0
+         vexactsize 0
+         scriptclass ""
+         imageTexture "{F94B08B548E241A2}iKR0GH_quest_resources/GUI/Exit.edds"
+         mode blend
+         "src alpha" 1
+         "clamp mode" clamp
+         "stretch mode" stretch_w_h
+         Mask "{F94B08B548E241A2}iKR0GH_quest_resources/GUI/Exit.edds"
+        }
+       }
+      }
+      PanelWidgetClass r_ExitButtonMouseOver {
+       visible 0
+       ignorepointer 1
+       size 48 48
+       halign center_ref
+       valign center_ref
+       hexactpos 1
+       vexactpos 1
+       hexactsize 1
+       vexactsize 1
+       {
+        ImageWidgetClass red_cross {
+         visible 1
+         inheritalpha 1
+         color 0.502 0 0 1
+         size 1 1
+         halign center_ref
+         valign center_ref
+         hexactpos 1
+         vexactpos 1
+         hexactsize 0
+         vexactsize 0
+         scriptclass ""
+         imageTexture "{F94B08B548E241A2}iKR0GH_quest_resources/GUI/Exit.edds"
+         mode blend
+         "src alpha" 1
+         "clamp mode" clamp
+         "stretch mode" stretch_w_h
+         Mask "{F94B08B548E241A2}iKR0GH_quest_resources/GUI/Exit.edds"
+        }
+       }
+      }
+      ButtonWidgetClass r_ExitButton {
+       clipchildren 0
+       inheritalpha 1
+       color 1 1 1 0
+       size 1 1
+       halign center_ref
+       valign center_ref
+       hexactpos 1
+       vexactpos 1
+       hexactsize 0
+       vexactsize 0
+      }
+     }
+    }
+   }
+  }
+ }
+}
