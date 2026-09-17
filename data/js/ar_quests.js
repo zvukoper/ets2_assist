@@ -22,16 +22,29 @@
         canvas.style.height=innerHeight+'px';
         ctx.setTransform(d,0,0,d,0,0);
     }
+    function readNumber(v, fallback){
+        var n=Number(v);
+        return Number.isFinite(n)?n:fallback;
+    }
+    function readVec3(v, fallback){
+        if(Array.isArray(v) && v.length>=3){
+            return {x:readNumber(v[0],fallback.x),y:readNumber(v[1],fallback.y),z:readNumber(v[2],fallback.z)};
+        }
+        if(v && typeof v==='object'){
+            return {x:readNumber(v.x,fallback.x),y:readNumber(v.y,fallback.y),z:readNumber(v.z,fallback.z)};
+        }
+        return {x:fallback.x,y:fallback.y,z:fallback.z};
+    }
     function dot(a,b){return a.x*b.x+a.y*b.y+a.z*b.z;}
     function len3(v){return Math.sqrt(v.x*v.x+v.y*v.y+v.z*v.z)||1;}
     function project(p){
         if(!cam.valid) return null;
-        var rel={x:Number(p.X)-cam.x,y:Number(p.Y)-cam.y,z:Number(p.Z)-cam.z};
+        var rel={x:readNumber(p.X,0)-cam.x,y:readNumber(p.Y,0)-cam.y,z:readNumber(p.Z,0)-cam.z};
         var depth=dot(rel,cam.fwd);
         if(depth<=0.05) return null;
         var sx=dot(rel,cam.right), sy=dot(rel,cam.up);
-        var hfov=(Number(cam.fov)||75)*Math.PI/180;
-        var vfov=(Number(cam.vfov)||65)*Math.PI/180;
+        var hfov=readNumber(cam.fov,75)*Math.PI/180;
+        var vfov=readNumber(cam.vfov,65)*Math.PI/180;
         return {
             x:innerWidth/2+(sx/depth)/Math.tan(hfov/2)*innerWidth/2,
             y:innerHeight/2-(sy/depth)/Math.tan(vfov/2)*innerHeight/2,
@@ -68,7 +81,7 @@
     function drawOffscreen(p,dist){
         if(!p.ArOffscreenPointer) return;
         var sp=project(p); if(sp && sp.x>=0 && sp.x<=innerWidth && sp.y>=0 && sp.y<=innerHeight) return;
-        var rel={x:Number(p.X)-cam.x,y:Number(p.Y)-cam.y,z:Number(p.Z)-cam.z};
+        var rel={x:readNumber(p.X,0)-cam.x,y:readNumber(p.Y,0)-cam.y,z:readNumber(p.Z,0)-cam.z};
         var sx=dot(rel,cam.right), sy=dot(rel,cam.up);
         var dx=sx,dy=-sy;
         if(Math.abs(dx)+Math.abs(dy)<0.001){dx=0;dy=1;}
@@ -97,7 +110,7 @@
         if(cam.valid){
             pts.forEach(function(p){
                 if(!p || !p.ArVisible || !p.Marker || p.Marker==='none') return;
-                var rel={x:Number(p.X)-cam.x,y:Number(p.Y)-cam.y,z:Number(p.Z)-cam.z};
+                var rel={x:readNumber(p.X,0)-cam.x,y:readNumber(p.Y,0)-cam.y,z:readNumber(p.Z,0)-cam.z};
                 var dist=len3(rel);
                 var sp=project(p);
                 if(sp && sp.x>-90 && sp.x<innerWidth+90 && sp.y>-90 && sp.y<innerHeight+90) drawMarker(p,sp,dist);
@@ -120,12 +133,15 @@
             tws.onmessage=function(ev){
                 try{
                     var d=JSON.parse(ev.data);if(d.command!=='ar_telemetry'||!d.camera)return;
-                    var c=d.camera,p=c.position||{},f=c.forward||{},r=c.right||{},u=c.up||{};
-                    cam.x=Number(p.x)||0;cam.y=Number(p.y)||0;cam.z=Number(p.z)||0;
-                    cam.fwd={x:Number(f.x)||0,y:Number(f.y)||0,z:Number(f.z)||-1};
-                    cam.right={x:Number(r.x)||1,y:Number(r.y)||0,z:Number(r.z)||0};
-                    cam.up={x:Number(u.x)||0,y:Number(u.y)||1,z:Number(u.z)||0};
-                    cam.fov=Number(c.fovDeg)||75;cam.vfov=Number(c.fovDegVertical)||65;cam.valid=!!c.valid;
+                    var c=d.camera;
+                    var p=readVec3(c.position,{x:0,y:0,z:0});
+                    var f=readVec3(c.forward,{x:0,y:0,z:-1});
+                    var r=readVec3(c.right,{x:1,y:0,z:0});
+                    var u=readVec3(c.up,{x:0,y:1,z:0});
+                    cam.x=p.x;cam.y=p.y;cam.z=p.z;
+                    cam.fwd=f;cam.right=r;cam.up=u;
+                    cam.fov=readNumber(c.fovDeg,75);cam.vfov=readNumber(c.fovDegVertical,65);
+                    cam.valid=c.valid===undefined?true:!!c.valid;
                 }catch(e){}
             };
             tws.onclose=function(){setTimeout(connectTelemetry,1500)};tws.onerror=function(){try{tws.close()}catch(e){}};
