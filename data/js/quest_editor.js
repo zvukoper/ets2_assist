@@ -95,7 +95,7 @@ function selectQuestPoint(key){
     const custom=findCustomCategory();if(custom)custom.style.display='';
     const direct=findQuestButton(key);if(direct){direct.click();setTimeout(queueDecorate,50);return}
     const head=custom&&custom.querySelector('.categoryHead');if(head&&!custom.classList.contains('open'))head.click();
-    let tries=0;const timer=setInterval(()=>{const button=findQuestButton(key);if(button){clearInterval(timer);button.click();setTimeout(queueDecorate,40);return}if(++tries>20){clearInterval(timer);queueDecorate()}},50);
+    let tries=0;const timer=setInterval(()=>{const button=findQuestButton(key);if(button){clearInterval(timer);button.click();setTimeout(queueDecorate,50);return}if(++tries>20){clearInterval(timer);queueDecorate()}},50);
 }
 function currentQuestButton(){return findQuestButtons().find(b=>b.classList.contains('selected'))||null}
 function syncQuestSelection(){
@@ -137,7 +137,7 @@ function wsSend(payload){try{const ws=new WebSocket('ws://localhost:8085/');ws.o
 function saveQuestPoint(){const data=readQuestForm();if(!data||!data.name){alert('Название квестовой точки не может быть пустым.');return}saveBusy=true;restrictQuestEditor();wsSend({command:'quest_editor_point_save',...data})}
 function cancelQuestPoint(){const key=selectedQuestKey;saveBusy=false;installCombinedTargets();setTimeout(()=>{if(key&&questByKey.has(key.slice(PREFIX.length)))selectQuestPoint(key)},120)}
 function applyQuestState(data){
-    const points=Array.isArray(data&&data.editorPoints)?data.editorPoints:[];
+    const points=Array.isArray(data&&data.editorPoints)?data.editorPoints:(Array.isArray(data&&data.points)?data.points:[]);
     const nextSignature=JSON.stringify(points.map(p=>({k:keyOf(p),u:p.Uid,n:p.Name,x:p.X,y:p.Y,z:p.Z,m:p.MinimapVisible,a:p.ArVisible,marker:p.Marker,origin:p.OriginalUid})));
     questByKey=new Map();for(const p of points){const k=keyOf(p);questByKey.set(k.slice(PREFIX.length),p)}questPoints=points;
     if(nextSignature!==questSignature){questSignature=nextSignature;installCombinedTargets()}else queueDecorate();
