@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <title>ETS2 Assist — AR HUD</title>
     <link rel="icon" href="ets2_assist.ico">
-    <!-- v1.0.40.28: ЕДИНЫЙ debugShow(bool) для всего веб-контента (подключается ПЕРВЫМ,
-         чтобы флаг успел стать до остальных скриптов и до логики показа). -->
+    <!-- v1.0.40.28: ЕДИНЫЙ debugShow(bool) для всего веб-контента. -->
     <script src="js/debug_show.js"></script>
     <style>
         html, body {
@@ -54,15 +53,16 @@
 <body>
     <canvas id="arCanvas"></canvas>
     <div id="arStatus">AR: подключение…</div>
-    <!-- ТОЛЬКО ar_hud.js: страница ничего не загружает сама.
-         Команды (ar_target) и телеметрия (ar_telemetry) приходят от приложения
-         по WS 8084 (command server, как у миникарты). -->
+
+    <!-- ar_hud.js остаётся владельцем игровой AR-отрисовки. -->
     <script src="js/ar_hud.js"></script>
     <script src="js/ar_quests.js"></script>
+    <!-- Только этот модуль управляет дополнительной диагностикой AR1.
+         По умолчанию обе опции выключены и ничего игроку не показывают. -->
+    <script src="js/ar_debug_view.js"></script>
     <script>
     // v1.0.40.46: AR1 обязан плавно исчезать при переходе игры в паузу.
-    // Состояние паузы уже рассылается QuestRuntime по WS 8085, поэтому AR HUD
-    // реагирует на тот же подтверждённый источник, что и квестовый интерфейс.
+    // Состояние паузы уже рассылается QuestRuntime по WS 8085.
     (function () {
         'use strict';
         var pauseWs = null;
