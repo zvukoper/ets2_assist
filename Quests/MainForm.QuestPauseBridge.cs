@@ -67,22 +67,35 @@ namespace ETS2_Assist_GUI
             try
             {
                 bool paused = await ReadQuestPauseStateAsync().ConfigureAwait(true);
-                if (_questPauseBridgeLast.HasValue && _questPauseBridgeLast.Value == paused) return;
-
-                bool? previous = _questPauseBridgeLast;
-                _questPauseBridgeLast = paused;
-                Logger.Current?.Workflow($"[QUEST][PAUSE_BRIDGE] state={(paused ? "PAUSED" : "RUNNING")} previous={(previous.HasValue ? (previous.Value ? "PAUSED" : "RUNNING") : "UNKNOWN")} intent={_pausedIntent} port={TruckTelemetry.Port}");
 
                 var runtime = Quests.QuestRuntime.Current;
                 if (runtime == null)
                 {
                     Logger.Current?.Workflow("[QUEST][PAUSE_BRIDGE] runtime=missing");
+                    _questPauseBridgeLast = paused;
                     return;
                 }
 
+                // QuestRuntime has its own polling path. The bridge is authoritative for
+                // pause detection on this host because the running TruckTel endpoint is
+                // discovered dynamically (in the test environment it is port 8081).
+                // Keep the runtime field synchronized on EVERY tick, not only when the
+                // observed state changes, so a legacy 8080 reader cannot overwrite it.
                 var type = typeof(Quests.QuestRuntime);
                 var pausedField = type.GetField("_paused", BindingFlags.Instance | BindingFlags.NonPublic);
+                bool runtimePausedBefore = pausedField?.GetValue(runtime) as bool? ?? paused;
                 pausedField?.SetValue(runtime, paused);
+
+                if (_questPauseBridgeLast.HasValue && _questPauseBridgeLast.Value == paused)
+                {
+                    if (runtimePausedBefore != paused)
+                        Logger.Current?.Workflow($"[QUEST][PAUSE_BRIDGE] runtime pause corrected {(runtimePausedBefore ? "true" : "false")} -> {(paused ? "true" : "false")} port={TruckTelemetry.Port}");
+                    return;
+                }
+
+                bool? previous = _questPauseBridgeLast;
+                _questPauseBridgeLast = paused;
+                Logger.Current?.Workflow($"[QUEST][PAUSE_BRIDGE] state={(paused ? "PAUSED" : "RUNNING")} previous={(previous.HasValue ? (previous.Value ? "PAUSED" : "RUNNING") : "UNKNOWN")} intent={_pausedIntent} port={TruckTelemetry.Port}");
                 Logger.Current?.Workflow($"[QUEST][PAUSE_BRIDGE] runtime._paused={(paused ? "true" : "false")}");
 
                 try
