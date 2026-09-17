@@ -9,11 +9,6 @@ namespace ETS2_Assist_GUI
         private bool _questEditorOverlayInjected;
         private static readonly System.Windows.Forms.Timer _questEditorOverlayPump = CreateQuestEditorOverlayPump();
 
-        static MapEditor2Form()
-        {
-            _questEditorOverlayPump.Start();
-        }
-
         private static System.Windows.Forms.Timer CreateQuestEditorOverlayPump()
         {
             var timer = new System.Windows.Forms.Timer { Interval = 600 };
@@ -26,6 +21,7 @@ namespace ETS2_Assist_GUI
                 }
                 catch { }
             };
+            timer.Start();
             return timer;
         }
 
