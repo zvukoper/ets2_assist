@@ -6,6 +6,7 @@ let baseTargets=[];
 let questPoints=[];
 let questByKey=new Map();
 let questSignature='';
+let renderedQuestSignature='';
 let selectedQuestKey='';
 let applyingTargets=false;
 let decorateQueued=false;
@@ -21,10 +22,7 @@ function markerLabel(marker){
     if(marker==='gray_question') return '?';
     return '';
 }
-function markerClass(marker){
-    if(marker==='gray_question') return 'gray';
-    return 'yellow';
-}
+function markerClass(marker){return marker==='gray_question'?'gray':'yellow'}
 function toTarget(p){
     const key=keyOf(p);
     return {
@@ -65,7 +63,6 @@ function toTarget(p){
         __questData:p
     };
 }
-
 function questPointsAsTargets(){return questPoints.map(toTarget)}
 
 function installCombinedTargets(){
@@ -107,9 +104,23 @@ function findCustomCategory(){return document.querySelector('.category[data-cat-
 function findQuestButtons(){return Array.from(document.querySelectorAll('.pointButton[data-point-id]')).filter(b=>String(b.dataset.pointId||'').startsWith(PREFIX))}
 function findQuestButton(key){return findQuestButtons().find(b=>b.dataset.pointId===key)||null}
 
+function hideQuestSourceButtons(){
+    const sourceUids=new Set();
+    for(const p of questPoints){const uid=String(p&&p.OriginalUid||'').trim();if(uid)sourceUids.add(uid.toLowerCase())}
+    if(!sourceUids.size)return;
+    for(const b of document.querySelectorAll('.pointButton[data-point-id]')){
+        const id=String(b.dataset.pointId||'');
+        if(id.startsWith(PREFIX))continue;
+        const lower=id.toLowerCase();
+        const hide=[...sourceUids].some(uid=>lower.includes(':'+uid+':'));
+        if(hide){b.style.display='none';b.dataset.questSourceHidden='1'}
+        else if(b.dataset.questSourceHidden==='1'){b.style.display='';delete b.dataset.questSourceHidden}
+    }
+}
+
 function decorateSidebar(){
     const list=$('categoryList');
-    if(!list) return;
+    if(!list)return;
 
     const custom=findCustomCategory();
     if(custom){
@@ -117,47 +128,48 @@ function decorateSidebar(){
         for(const b of custom.querySelectorAll('.pointButton')){
             const quest=String(b.dataset.pointId||'').startsWith(PREFIX);
             b.style.display=quest?'none':'';
-            if(!quest) regularCount++;
+            if(!quest&&!b.dataset.questSourceHidden)regularCount++;
         }
         const count=custom.querySelector('.catCount');
-        if(count) count.textContent=regularCount?String(regularCount):'';
+        if(count)count.textContent=regularCount?String(regularCount):'';
         custom.style.display=regularCount?'':'none';
     }
+    hideQuestSourceButtons();
 
     let cat=document.getElementById('questSidebarCategory');
+    let created=false;
     if(!cat){
         cat=document.createElement('div');
         cat.id='questSidebarCategory';
         cat.className='category open';
         cat.innerHTML='<div class="categoryHead questCategoryHead"><span class="caret">▾</span><span class="catName">Квестовые</span><span class="catCount"></span></div><div class="categoryBody questCategoryBody"></div>';
         const first=list.firstElementChild;
-        if(first) list.insertBefore(cat,first); else list.appendChild(cat);
+        if(first)list.insertBefore(cat,first);else list.appendChild(cat);
+        created=true;
     }
     const body=cat.querySelector('.questCategoryBody');
-    if(!body) return;
+    if(!body)return;
+    if(!created&&renderedQuestSignature===questSignature)return;
+
     body.innerHTML='';
+    renderedQuestSignature=questSignature;
     if(!questPoints.length){
         body.innerHTML='<div class="empty">Квестовых точек нет</div>';
-        const count=cat.querySelector('.catCount'); if(count) count.textContent='';
+        const count=cat.querySelector('.catCount');if(count)count.textContent='';
         return;
     }
-
     const frag=document.createDocumentFragment();
     for(const p of questPoints){
-        const key=keyOf(p);
-        const b=document.createElement('button');
-        b.type='button';
-        b.className='pointButton questPointButton'+(selectedQuestKey===key?' selected':'');
-        b.dataset.questKey=key;
-        const marker=markerLabel(p.Marker);
-        const markerHtml=marker?`<span class="questMarker ${markerClass(p.Marker)}">${marker}</span>`:'';
+        const key=keyOf(p),b=document.createElement('button');
+        b.type='button';b.className='pointButton questPointButton'+(selectedQuestKey===key?' selected':'');b.dataset.questKey=key;
+        const marker=markerLabel(p.Marker),markerHtml=marker?`<span class="questMarker ${markerClass(p.Marker)}">${marker}</span>`:'';
         b.innerHTML=markerHtml+`<span class="pointName">${escapeHtml(questLabel(p))}</span>`;
         b.title=`${questLabel(p)} · ${p.IsGenerated?'сгенерированная точка':'квестовая точка'}`;
         b.addEventListener('click',()=>selectQuestPoint(key));
         frag.appendChild(b);
     }
     body.appendChild(frag);
-    const count=cat.querySelector('.catCount'); if(count) count.textContent=String(questPoints.length);
+    const count=cat.querySelector('.catCount');if(count)count.textContent=String(questPoints.length);
 }
 
 function escapeHtml(s){return String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}
@@ -166,11 +178,11 @@ function selectQuestPoint(key){
     selectedQuestKey=key;
     queueDecorate();
     const custom=findCustomCategory();
-    if(custom) custom.style.display='';
+    if(custom)custom.style.display='';
     const direct=findQuestButton(key);
-    if(direct){direct.click();setTimeout(()=>{if(custom&&custom.querySelector('.pointButton[data-point-id^="'+PREFIX+'"]')){decorateSidebar()}},50);return;}
+    if(direct){direct.click();setTimeout(queueDecorate,50);return}
     const head=custom&&custom.querySelector('.categoryHead');
-    if(head&&!custom.classList.contains('open')) head.click();
+    if(head&&!custom.classList.contains('open'))head.click();
     let tries=0;
     const timer=setInterval(()=>{
         const button=findQuestButton(key);
@@ -182,74 +194,58 @@ function selectQuestPoint(key){
 function currentQuestButton(){return findQuestButtons().find(b=>b.classList.contains('selected'))||null}
 function syncQuestSelection(){
     const button=currentQuestButton();
-    if(button) selectedQuestKey=button.dataset.pointId||selectedQuestKey;
+    if(button)selectedQuestKey=button.dataset.pointId||selectedQuestKey;
     const cat=$('questSidebarCategory');
-    if(cat){cat.querySelectorAll('.questPointButton').forEach(b=>b.classList.toggle('selected',b.dataset.questKey===selectedQuestKey))}
+    if(cat)cat.querySelectorAll('.questPointButton').forEach(b=>b.classList.toggle('selected',b.dataset.questKey===selectedQuestKey));
 }
 
 function fieldRow(key){return document.querySelector(`#rightBody [data-field-key="${CSS.escape(key)}"]`)?.closest('.editRow')||null}
 function fieldControl(key){return document.querySelector(`#rightBody [data-field-key="${CSS.escape(key)}"]`)||null}
-
-function isQuestSelected(){return String(selectedQuestKey||'').startsWith(PREFIX)&&!!questByKey.get(selectedQuestKey.replace(PREFIX,''))}
 function selectedQuestData(){
-    if(!selectedQuestKey) return null;
+    if(!selectedQuestKey)return null;
     const raw=selectedQuestKey.slice(PREFIX.length);
     const sep=raw.indexOf(':');
-    if(sep<1) return null;
+    if(sep<1)return null;
     return questByKey.get(raw)||null;
 }
-function questKeyParts(key){const raw=String(key||'').slice(PREFIX.length),i=raw.indexOf(':');return i<1?null:{questId:raw.slice(0,i),interactionId:raw.slice(i+1)} }
+function questKeyParts(key){
+    const raw=String(key||'').slice(PREFIX.length),i=raw.indexOf(':');
+    return i<1?null:{questId:raw.slice(0,i),interactionId:raw.slice(i+1)};
+}
 
 function restrictQuestEditor(){
     const p=selectedQuestData();
-    if(!p){return}
-    const body=$('rightBody');
-    const actions=$('editActionsBar');
-    if(!body||!actions) return;
+    if(!p)return;
+    const body=$('rightBody'),actions=$('editActionsBar');
+    if(!body||!actions)return;
     body.classList.add('questPointEditPanel');
-
     const allowed=new Set(['RealName','ShowInAr','ShowOnMap','X','Y','Z']);
     for(const row of body.querySelectorAll('.editRow[data-field-key]')){
         const key=row.dataset.fieldKey||'';
-        if(key==='X'||key==='Y'||key==='Z'||key==='RealName'||key==='ShowInAr'||key==='ShowOnMap') row.style.display='';
-        else row.style.display='none';
+        row.style.display=allowed.has(key)?'':'none';
         const ctrl=row.querySelector('[data-field-key]');
         if(ctrl){
-            ctrl.disabled=!allowed.has(key)&&key!=='X'&&key!=='Y'&&key!=='Z';
+            ctrl.disabled=!allowed.has(key);
             if(key==='X'||key==='Y'||key==='Z'){
-                ctrl.readOnly=true;
-                ctrl.title='Координаты меняются перетаскиванием точки на карте';
-                ctrl.tabIndex=-1;
+                ctrl.readOnly=true;ctrl.title='Координаты меняются перетаскиванием точки на карте';ctrl.tabIndex=-1;
             }
         }
-        const reset=row.querySelector('.resetBtn');
-        if(reset) reset.style.display='none';
+        const reset=row.querySelector('.resetBtn');if(reset)reset.style.display='none';
     }
-    const fav=body.querySelector('.favStarRow');
-    if(fav) fav.style.display='none';
-
+    const fav=body.querySelector('.favStarRow');if(fav)fav.style.display='none';
     let meta=body.querySelector('.questPointEditorHint');
-    if(!meta){
-        meta=document.createElement('div');
-        meta.className='editHint questPointEditorHint';
-        body.insertBefore(meta,body.firstChild);
-    }
+    if(!meta){meta=document.createElement('div');meta.className='editHint questPointEditorHint';body.insertBefore(meta,body.firstChild)}
     meta.innerHTML='<b>Квестовая точка</b><br>Можно перемещать точку на карте, менять название и видимость в AR/миникарте. Остальные параметры редактируются в редакторе квестов.';
-
     actions.innerHTML='';
     const save=document.createElement('button');save.className='editBtn primary';save.textContent=saveBusy?'Сохранение…':'Сохранить';save.disabled=saveBusy;
     const cancel=document.createElement('button');cancel.className='editBtn';cancel.textContent='Отмена';cancel.disabled=saveBusy;
-    actions.append(save,cancel);
-    save.onclick=saveQuestPoint;
-    cancel.onclick=cancelQuestPoint;
+    actions.append(save,cancel);save.onclick=saveQuestPoint;cancel.onclick=cancelQuestPoint;
 }
 
 function readQuestForm(){
-    const nameCtrl=fieldControl('RealName');
-    const xCtrl=fieldControl('X'),yCtrl=fieldControl('Y'),zCtrl=fieldControl('Z');
-    const arCtrl=fieldControl('ShowInAr'),mapCtrl=fieldControl('ShowOnMap');
+    const nameCtrl=fieldControl('RealName'),xCtrl=fieldControl('X'),yCtrl=fieldControl('Y'),zCtrl=fieldControl('Z'),arCtrl=fieldControl('ShowInAr'),mapCtrl=fieldControl('ShowOnMap');
     const x=Number(xCtrl&&xCtrl.value),y=Number(yCtrl&&yCtrl.value),z=Number(zCtrl&&zCtrl.value);
-    if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z)) return null;
+    if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))return null;
     const parts=questKeyParts(selectedQuestKey);if(!parts)return null;
     return {questId:parts.questId,interactionId:parts.interactionId,name:String(nameCtrl&&nameCtrl.value||'').trim(),x,y,z,arVisible:Boolean(arCtrl&&arCtrl.checked),minimapVisible:Boolean(mapCtrl&&mapCtrl.checked)};
 }
@@ -261,49 +257,31 @@ function wsSend(payload){
         ws.onerror=()=>{try{ws.close()}catch{}};
     }catch{}
 }
-
 function saveQuestPoint(){
     const data=readQuestForm();
     if(!data||!data.name){alert('Название квестовой точки не может быть пустым.');return}
-    saveBusy=true;restrictQuestEditor();
-    wsSend({command:'quest_editor_point_save',...data});
+    saveBusy=true;restrictQuestEditor();wsSend({command:'quest_editor_point_save',...data});
 }
-
 function cancelQuestPoint(){
-    const key=selectedQuestKey;
-    saveBusy=false;
-    installCombinedTargets();
-    setTimeout(()=>{if(key&&questByKey.has(key.replace(PREFIX,'')))selectQuestPoint(key);},120);
+    const key=selectedQuestKey;saveBusy=false;installCombinedTargets();
+    setTimeout(()=>{if(key&&questByKey.has(key.slice(PREFIX.length)))selectQuestPoint(key)},120);
 }
-
 function applyQuestState(data){
     const points=Array.isArray(data&&data.editorPoints)?data.editorPoints:[];
-    const nextSignature=JSON.stringify(points.map(p=>({k:keyOf(p),u:p.Uid,n:p.Name,x:p.X,y:p.Y,z:p.Z,m:p.MinimapVisible,a:p.ArVisible,marker:p.Marker}))); 
-    questByKey=new Map();
-    for(const p of points){
-        const key=keyOf(p);questByKey.set(key.slice(PREFIX.length),p);
-    }
-    if(nextSignature!==questSignature){
-        questSignature=nextSignature;
-        questPoints=points;
-        if(typeof window.MapEditor2SetTargets==='function') installCombinedTargets();
-        else queueDecorate();
-    }else{
-        questPoints=points;
-        queueDecorate();
-    }
-    if(saveBusy){saveBusy=false}
-    queueDecorate();
+    const nextSignature=JSON.stringify(points.map(p=>({k:keyOf(p),u:p.Uid,n:p.Name,x:p.X,y:p.Y,z:p.Z,m:p.MinimapVisible,a:p.ArVisible,marker:p.Marker,origin:p.OriginalUid})));
+    questByKey=new Map();for(const p of points){const key=keyOf(p);questByKey.set(key.slice(PREFIX.length),p)}
+    questPoints=points;
+    if(nextSignature!==questSignature){questSignature=nextSignature;installCombinedTargets()}else queueDecorate();
+    saveBusy=false;queueDecorate();
 }
 
 window.MapEditor2InstallQuestPoints=function(base,points){
     installSetTargetsWrapper();
     baseTargets=Array.isArray(base)?base.filter(p=>!isQuestTarget(p)):[];
     questPoints=Array.isArray(points)?points:[];
-    questByKey=new Map();
-    questPoints.forEach(p=>{const k=keyOf(p);questByKey.set(k.slice(PREFIX.length),p)});
-    questSignature=JSON.stringify(questPoints.map(p=>({k:keyOf(p),u:p.Uid,n:p.Name,x:p.X,y:p.Y,z:p.Z,m:p.MinimapVisible,a:p.ArVisible,marker:p.Marker})));
-    installCombinedTargets();
+    questByKey=new Map();questPoints.forEach(p=>{const k=keyOf(p);questByKey.set(k.slice(PREFIX.length),p)});
+    questSignature=JSON.stringify(questPoints.map(p=>({k:keyOf(p),u:p.Uid,n:p.Name,x:p.X,y:p.Y,z:p.Z,m:p.MinimapVisible,a:p.ArVisible,marker:p.Marker,origin:p.OriginalUid})));
+    renderedQuestSignature='';installCombinedTargets();
 };
 
 function connect(){
