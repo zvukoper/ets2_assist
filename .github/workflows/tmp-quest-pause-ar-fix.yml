@@ -1,0 +1,63 @@
+name: One-time quest pause source fix
+
+on:
+  push:
+    branches: [feature/quest-system-prototype]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, 'AUTO-FIX QUEST PAUSE') && !contains(github.event.head_commit.message, 'Remove temporary quest pause workflow') }}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          cache: false
+
+      - name: Patch pause source URLs
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $files = @(
+            'UI/WebUIManager.cs',
+            'Quests/QuestRuntime.cs',
+            'MainForm.cs'
+          )
+          $old = '"http://localhost:8080/api/rest/single/frame/paused"'
+          $new = '$"http://localhost:{TruckTelemetry.Port}/api/rest/single/frame/paused"'
+
+          foreach ($path in $files) {
+            $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
+            $count = ([regex]::Matches($text, [regex]::Escape($old))).Count
+            if ($count -ne 1) {
+              throw "$path: expected exactly one hardcoded pause URL, found $count."
+            }
+            $text = $text.Replace($old, $new)
+            [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($true))
+          }
+
+          git diff --check
+          git diff -- UI/WebUIManager.cs Quests/QuestRuntime.cs MainForm.cs
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build ETS2_Assist_GUI.csproj --configuration Release --no-restore --nologo
+
+      - name: Commit and remove workflow
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add UI/WebUIManager.cs Quests/QuestRuntime.cs MainForm.cs
+          git commit -m 'AUTO-FIX QUEST PAUSE: use active TruckTel port'
+          git rm .github/workflows/tmp-quest-pause-ar-fix.yml
+          git commit -m 'Remove temporary quest pause workflow'
+          git push
