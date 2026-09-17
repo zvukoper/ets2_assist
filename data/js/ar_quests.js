@@ -119,10 +119,20 @@
         }
         requestAnimationFrame(draw);
     }
+
+    function applyPauseFade(paused){
+        var value=paused?'0':'1';
+        try{
+            document.documentElement.style.setProperty('transition','opacity 150ms linear','important');
+            document.body.style.setProperty('transition','opacity 150ms linear','important');
+            document.documentElement.style.setProperty('opacity',value,'important');
+            document.body.style.setProperty('opacity',value,'important');
+        }catch(e){}
+    }
     function connectQuest(){
         try{
             ws=new WebSocket('ws://localhost:8085/');
-            ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state')questState=d;}catch(e){}};
+            ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state'){questState=d;applyPauseFade(d.paused===true);}}catch(e){}};
             ws.onclose=function(){setTimeout(connectQuest,1500)};
             ws.onerror=function(){try{ws.close()}catch(e){}};
         }catch(e){setTimeout(connectQuest,1500)}
@@ -148,5 +158,5 @@
         }catch(e){setTimeout(connectTelemetry,1500)}
     }
     window.addEventListener('resize',resize);
-    document.addEventListener('DOMContentLoaded',function(){ensureCanvas();connectQuest();connectTelemetry();requestAnimationFrame(draw);});
+    document.addEventListener('DOMContentLoaded',function(){ensureCanvas();connectQuest();connectTelemetry();applyPauseFade(false);requestAnimationFrame(draw);});
 })();
