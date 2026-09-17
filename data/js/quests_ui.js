@@ -4,6 +4,7 @@ var ws=null,model=null,currentQuest='',currentInteraction='',wasPaused=false,las
 var $=function(id){return document.getElementById(id)};
 function esc(s){return String(s==null?'':s).replace(/[&<>\"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'})[c]})}
 function send(o){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(o))}
+function setNativeClickable(value){try{if(window.chrome&&window.chrome.webview)window.chrome.webview.postMessage(JSON.stringify({command:'set_clickable',value:!!value}));}catch(e){}}
 function markerIcon(m){if(m==='yellow_exclamation')return'editor_static_data/icons/quest_exclamation_yellow.svg';if(m==='yellow_question')return'editor_static_data/icons/quest_question_yellow.svg';if(m==='gray_question')return'editor_static_data/icons/quest_question_gray.svg';return''}
 function showLoading(data){
     var old=$('questLoading');if(old)old.remove();if(loadingTimer)clearTimeout(loadingTimer);
@@ -56,6 +57,7 @@ function selectInteraction(qid,iid){if(!model||model.paused!==true)return;curren
 function applyState(data){
     var app=$('questApp');if(!app)return;
     var paused=data.paused===true;
+    setNativeClickable(paused);
     app.classList.toggle('paused',paused);
     if(paused&&!wasPaused&&data.loadingNonce!==lastLoadingNonce){lastLoadingNonce=Number(data.loadingNonce||0);showLoading(data)}
     if(paused&&data.loadingNonce!==lastLoadingNonce){lastLoadingNonce=Number(data.loadingNonce||0)}
@@ -70,5 +72,5 @@ function applyState(data){
 function connect(){try{ws=new WebSocket('ws://localhost:8085/');ws.onopen=function(){send({command:'quest_ping'})};ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state')applyState(d);else if(d.command==='quest_error')showError(d.text)}catch(e){}};ws.onclose=function(){setTimeout(connect,1500)};ws.onerror=function(){try{ws.close()}catch(e){}}}catch(e){setTimeout(connect,1500)}}
 function showError(text){var e=$('overlayError');if(!e)return;e.textContent=text||'Ошибка';e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2500)}
 (function(){var style=document.createElement('style');style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#768497;font-size:10px}.questSectionTitle{padding:8px 10px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:#8c9aad;font-size:10px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid #ffd21f;background:rgba(255,210,31,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:#ffd45a;font-weight:700}.rewardLine{padding:3px 0;font-weight:600}.dialogOption{display:flex;flex-direction:column;gap:4px}.optionReason{font-size:10px;color:#7e8a98;font-weight:400}.questWindow .panelTitle{font-size:13px}.questWindow{grid-template-columns:240px minmax(420px,1fr) 310px}@media(max-width:1100px){.questWindow{grid-template-columns:190px minmax(0,1fr) 240px}.interactionList .sideMain{max-width:110px}}';document.head.appendChild(style)})();
-document.addEventListener('DOMContentLoaded',function(){clearDialogue();connect();});
+document.addEventListener('DOMContentLoaded',function(){clearDialogue();setNativeClickable(false);connect();});
 })();
