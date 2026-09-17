@@ -14,60 +14,36 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
           cache: false
+
       - name: Restore
         shell: pwsh
         run: dotnet restore ETS2_Assist_GUI.csproj
+
       - name: Patch
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $path = 'Quests/QuestRuntime.cs'
           $text = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8)
-          function Replace-Between([string]$Text, [string]$StartMarker, [string]$EndMarker, [string]$Replacement, [string]$Name) {
-              $start = $Text.IndexOf($StartMarker, [StringComparison]::Ordinal)
-              if ($start -lt 0) { throw "Start marker not found: $Name" }
-              $end = $Text.IndexOf($EndMarker, $start + $StartMarker.Length, [StringComparison]::Ordinal)
-              if ($end -lt 0) { throw "End marker not found: $Name" }
-              return $Text.Substring(0, $start) + $Replacement + $Text.Substring($end)
-          }
-          $newMethod = @'
-        private async Task<bool> ReadPauseAsync()
-        {
-            try
-            {
-                int currentPort = TruckTelemetry.Port;
-                int[] ports = currentPort == 8080 ? new[] { 8080, 8081 } : new[] { currentPort, 8080 };
-                foreach (int port in ports.Distinct())
-                {
-                    try
-                    {
-                        string text = (await _http.GetStringAsync($"http://localhost:{port}/api/rest/single/frame/paused").ConfigureAwait(true)).Trim();
-                        if (bool.TryParse(text, out bool b)) return b;
-                        var token = JToken.Parse(text);
-                        if (token.Type == JTokenType.Boolean) return token.Value<bool>();
-                        var paused = token["paused"]?.Value<bool>();
-                        if (paused.HasValue) return paused.Value;
-                        var value = token["value"]?.Value<bool>();
-                        if (value.HasValue) return value.Value;
-                    }
-                    catch { }
-                }
-            }
-            catch { }
-            return _paused;
-        }
-'@
-          $text = Replace-Between $text '        private async Task<bool> ReadPauseAsync()' '        private List<QuestPointSnapshot> GetAvailableInteractions' ($newMethod + "`r`n        private List<QuestPointSnapshot> GetAvailableInteractions") 'QuestRuntime pause reader'
+          $old = '"http://localhost:8080/api/rest/single/frame/paused"'
+          $new = '$"http://localhost:{TruckTelemetry.Port}/api/rest/single/frame/paused"'
+          $count = ([regex]::Matches($text, [regex]::Escape($old))).Count
+          if ($count -ne 1) { throw "Expected exactly one hardcoded QuestRuntime pause URL, found $count." }
+          $text = $text.Replace($old, $new)
           [IO.File]::WriteAllText($path, $text, [Text.UTF8Encoding]::new($true))
           git diff --check
+          git diff -- Quests/QuestRuntime.cs
+
       - name: Build
         shell: pwsh
         run: dotnet build ETS2_Assist_GUI.csproj --configuration Release --no-restore
+
       - name: Commit and remove workflow
         shell: pwsh
         run: |
