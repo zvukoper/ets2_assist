@@ -149,6 +149,7 @@ namespace ETS2_Assist_GUI.Quests
             State.Stats ??= new(StringComparer.OrdinalIgnoreCase);
             State.PermanentInteractionNames ??= new(StringComparer.OrdinalIgnoreCase);
             State.GeneratedPoints ??= new(StringComparer.OrdinalIgnoreCase);
+            State.EditorPointOverrides ??= new(StringComparer.OrdinalIgnoreCase);
             State.ActivationCounts ??= new(StringComparer.OrdinalIgnoreCase);
             foreach (var progress in State.Quests.Values)
             {
@@ -186,6 +187,7 @@ namespace ETS2_Assist_GUI.Quests
             state.Stats ??= new(StringComparer.OrdinalIgnoreCase);
             state.PermanentInteractionNames ??= new(StringComparer.OrdinalIgnoreCase);
             state.GeneratedPoints ??= new(StringComparer.OrdinalIgnoreCase);
+            state.EditorPointOverrides ??= new(StringComparer.OrdinalIgnoreCase);
             state.ActivationCounts ??= new(StringComparer.OrdinalIgnoreCase);
             foreach (var p in state.Quests.Values) p.Flags ??= new(StringComparer.OrdinalIgnoreCase);
         }
