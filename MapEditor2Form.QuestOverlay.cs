@@ -66,7 +66,7 @@ namespace ETS2_Assist_GUI
             {
                 AttachQuestEditorBridgeHook();
                 _questEditorOverlayInjected = true;
-                _ = _webView.CoreWebView2.ExecuteScriptAsync("(function(){if(document.getElementById('questEditorOverlayScript'))return;var s=document.createElement('script');s.id='questEditorOverlayScript';s.src='js/quest_editor.js';document.body.appendChild(s);})();");
+                _ = _webView.CoreWebView2.ExecuteScriptAsync("(function(){if(document.getElementById('questEditorOverlayScript'))return;var s=document.createElement('script');s.id='questEditorOverlayScript';s.src='../js/quest_editor.js';document.body.appendChild(s);})();");
             }
             catch { _questEditorOverlayInjected = false; }
         }
