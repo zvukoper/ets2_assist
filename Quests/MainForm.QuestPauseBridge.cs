@@ -8,14 +8,22 @@ namespace ETS2_Assist_GUI
 {
     public partial class MainForm
     {
-        private readonly System.Windows.Forms.Timer _questPauseBridgeTimer = CreateQuestPauseBridgeTimer();
+        // A single UI timer is sufficient because MainForm is a singleton. Keeping
+        // the timer static also avoids referencing instance members from a field
+        // initializer, which is illegal during object construction.
+        private static readonly System.Windows.Forms.Timer _questPauseBridgeTimer = CreateQuestPauseBridgeTimer();
         private int _questPauseBridgeBusy;
         private bool? _questPauseBridgeLast;
 
-        private System.Windows.Forms.Timer CreateQuestPauseBridgeTimer()
+        private static System.Windows.Forms.Timer CreateQuestPauseBridgeTimer()
         {
             var timer = new System.Windows.Forms.Timer { Interval = 300 };
-            timer.Tick += async (_, _) => await SyncQuestPauseStateAsync();
+            timer.Tick += async (_, _) =>
+            {
+                var current = Current;
+                if (current != null && !current.IsDisposed)
+                    await current.SyncQuestPauseStateAsync().ConfigureAwait(true);
+            };
             timer.Start();
             return timer;
         }
