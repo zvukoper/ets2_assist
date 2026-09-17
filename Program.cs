@@ -208,6 +208,7 @@ namespace ETS2_Assist_GUI
             try
             {
                 var mainForm = new MainForm();
+                Quests.QuestRuntime.Attach(mainForm);
                 _ = ThreadPool.RegisterWaitForSingleObject(
                     shutdownSignal,
                     static (state, _) =>

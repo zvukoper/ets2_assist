@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ETS2 Assist — Квесты</title>
+<style>
+:root{font-family:'Segoe UI',Arial,sans-serif;color:#e8edf4;background:transparent;user-select:none}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
+#questApp{position:fixed;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none}
+#questApp.paused{display:flex;pointer-events:auto}
+.questWindow{width:86vw;height:84vh;display:grid;grid-template-columns:230px minmax(400px,1fr) 285px;grid-template-rows:1fr 54px;gap:10px;padding:12px;box-sizing:border-box;background:rgba(13,17,22,.97);border:1px solid rgba(255,205,85,.35);box-shadow:0 15px 70px rgba(0,0,0,.75);border-radius:10px}
+.panel{min-width:0;min-height:0;background:rgba(24,29,36,.98);border:1px solid rgba(255,255,255,.08);border-radius:8px;overflow:hidden}
+.panelTitle{padding:11px 12px;font-weight:700;color:#ffd45a;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025)}
+.scroll{height:calc(100% - 43px);overflow:auto}
+.sideItem,.questItem{width:100%;border:0;border-bottom:1px solid rgba(255,255,255,.055);background:transparent;color:#dce3eb;padding:10px;text-align:left;cursor:pointer}
+.sideItem:hover,.questItem:hover,.sideItem.selected{background:rgba(255,205,85,.10)}
+.sideItem img{width:28px;height:28px;vertical-align:middle;margin-right:8px;object-fit:contain}.questItem span{display:block;color:#7f8c9e;font-size:11px;margin-top:4px}
+#dialog{display:flex;flex-direction:column;height:100%}
+#portrait{height:36%;min-height:180px;background:#0f1216;display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.07)}
+#dialogImage{width:100%;height:100%;object-fit:cover}
+#dialogBody{padding:18px;overflow:auto;flex:1}
+#dialogSpeaker{font-size:21px;font-weight:700;color:#fff;margin-bottom:10px}
+#dialogText{font-size:16px;line-height:1.55;white-space:pre-wrap;color:#d5dbe2}
+#dialogOptions{display:flex;flex-direction:column;gap:8px;margin-top:20px}
+.dialogOption{padding:12px 14px;border:1px solid rgba(255,255,255,.12);background:#232a33;color:#e7edf4;border-radius:6px;text-align:left;cursor:pointer;font:inherit}.dialogOption:hover{border-color:rgba(255,211,77,.5);background:#2c3440}.dialogOption:disabled{opacity:.38;cursor:not-allowed}
+.rewardLine{padding:6px 0}
+#inventory{grid-column:1/4;padding:12px 14px;display:flex;align-items:center;gap:14px;white-space:nowrap;overflow:auto;background:#11151b;border:1px solid rgba(255,255,255,.08);border-radius:8px}
+.inventoryTitle{font-weight:700;color:#ffd45a}.inventoryItem{padding:5px 8px;border-radius:5px;background:#242c35;color:#d7dee7}.muted{color:#788496;padding:12px}.error{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#5b2020;color:#fff;padding:8px 15px;border-radius:6px;opacity:0;transition:opacity .2s}.error.show{opacity:1}
+@media(max-width:1100px){.questWindow{grid-template-columns:180px 1fr 220px;width:96vw;height:90vh}.dialogText{font-size:14px}}
+</style>
+</head>
+<body>
+<div id="questApp">
+  <div class="questWindow">
+    <section class="panel"><div class="panelTitle">Интерактивы</div><div class="scroll" id="interactionList"></div></section>
+    <section class="panel" id="dialog"><div id="portrait"><img id="dialogImage" alt=""></div><div id="dialogBody"><div id="dialogSpeaker"></div><div id="dialogText">Выберите интерактив слева.</div><div id="dialogOptions"></div></div></section>
+    <section class="panel"><div class="panelTitle">Квесты</div><div class="scroll" id="questList"></div></section>
+    <div id="inventory"><span class="inventoryTitle">Инвентарь</span><span class="muted">пусто</span></div>
+  </div>
+  <div class="error" id="overlayError"></div>
+</div>
+<script src="js/debug_show.js"></script>
+<script src="js/quests_ui.js"></script>
+</body>
+</html>
