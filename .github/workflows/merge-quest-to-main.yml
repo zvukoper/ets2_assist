@@ -1,0 +1,31 @@
+name: Merge quest branch into main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  merge:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main with history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Merge quest branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin feature/quest-system-prototype
+          git merge --no-ff -X theirs origin/feature/quest-system-prototype -m 'Merge quest system into main'
+
+          git rm .github/workflows/merge-quest-to-main.yml
+          git commit --amend --no-edit
+          git push origin HEAD:main
