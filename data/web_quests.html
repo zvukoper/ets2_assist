@@ -13,7 +13,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 #questApp.paused{display:flex;pointer-events:auto}
 /* v1.0.40.59: над окном квестов — обычный курсор (в остальных слоях курсор игры
    скрыт). Вид курсора переключает js/quests_ui.js вместе с кликабельностью. */
-#questApp.paused{cursor:default}
+#questApp.paused{cursor:none}
+/* v1.0.40.61: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ. Системный/игровой курсор рисуется
+   ПОД окном (игра рисует его в свой кадр, а он ниже нашего слоя), поэтому
+   отображаем стрелку внутри страницы — она гарантированно выше. */
+#cursorDot{position:fixed;left:0;top:0;width:15px;height:21px;display:none;z-index:2147483000;pointer-events:none}
 #questTab{cursor:pointer}
 .questWindow{position:relative;width:min(1280px,92vw);height:min(900px,88vh);display:grid;grid-template-columns:240px minmax(420px,1fr) 310px;grid-template-rows:1fr 54px;gap:10px;padding:12px;box-sizing:border-box;background:rgba(13,17,22,.97);border:1px solid rgba(255,205,85,.35);box-shadow:0 15px 70px rgba(0,0,0,.75);border-radius:10px;opacity:1;transform:translateX(0);transition:transform 320ms ease-out,opacity 96ms ease-out}
 /* v1.0.40.60: СХЕМА АНИМАЦИИ СВОРАЧИВАНИЯ — точно по требованию пользователя.
@@ -52,7 +56,15 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .inventoryTitle{font-weight:700;color:#ffd45a}.inventoryItem{padding:5px 8px;border-radius:5px;background:#242c35;color:#d7dee7}.muted{color:#788496;padding:12px}.error{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#5b2020;color:#fff;padding:8px 15px;border-radius:6px;opacity:0;transition:opacity .2s;z-index:900}.error.show{opacity:1}
 #collapseBtn{position:absolute;right:8px;top:8px;z-index:5;width:30px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,205,85,.4);background:rgba(24,29,36,.95);color:#ffd45a;border-radius:5px;cursor:pointer;font:700 15px/1 'Segoe UI',Arial,sans-serif}
 #collapseBtn:hover{background:rgba(255,205,85,.18)}
-#questTab{position:fixed;left:0;top:50%;transform:translate(-115%,-50%);display:flex;align-items:center;justify-content:center;width:34px;padding:18px 6px;writing-mode:vertical-rl;background:rgba(13,17,22,.96);border:1px solid rgba(255,205,85,.45);border-left:0;border-radius:0 7px 7px 0;color:#ffd45a;font:700 14px/1 'Segoe UI',Arial,sans-serif;letter-spacing:1px;cursor:pointer;pointer-events:none;transition:transform 220ms ease,box-shadow 220ms ease;box-shadow:0 0 0 rgba(255,205,85,0)}
+#questTab{position:fixed;left:0;top:50%;transform:translate(-115%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;width:34px;padding:18px 6px;background:rgba(13,17,22,.96);border:1px solid rgba(255,205,85,.45);border-left:0;border-radius:0 7px 7px 0;color:#ffd45a;font:700 14px/1 'Segoe UI',Arial,sans-serif;letter-spacing:1px;cursor:pointer;pointer-events:none;transition:transform 220ms ease,box-shadow 220ms ease;box-shadow:0 0 0 rgba(255,205,85,0)}
+/* v1.0.40.61: подпись «Квесты» — вертикальная, подсказка TAB — ГОРИЗОНТАЛЬНАЯ,
+   мелким НЕЖИРНЫМ тёмно-серым шрифтом на тёмном фоне закладки.
+   ⛔ Позиционируем АБСОЛЮТНО: у закладки padding-bottom 18px, поэтому обычный
+   margin-bottom дал бы отступ 21px. Абсолютный `bottom` отсчитывается от
+   PADDING-бокса (то есть от внутренней стороны рамки 1px), поэтому для РОВНЫХ
+   3px от видимой границы закладки ставим 2px. */
+.questTabText{writing-mode:vertical-rl}
+.questTabHint{position:absolute;left:0;right:0;bottom:2px;text-align:center;writing-mode:horizontal-tb;color:#5c646e;font:400 9px/1 'Segoe UI',Arial,sans-serif;letter-spacing:0}
 #questTab.visible{transform:translate(0,-50%);pointer-events:auto}
 #questTab.pulse{animation:questTabPulse 2s ease-in-out infinite}
 @keyframes questTabPulse{0%,100%{box-shadow:0 0 2px rgba(255,205,85,.25);border-color:rgba(255,205,85,.45);background:rgba(13,17,22,.96)}50%{box-shadow:0 0 22px rgba(255,205,85,.95);border-color:#ffd45a;background:rgba(58,46,12,.96)}}
@@ -76,7 +88,14 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   </div>
   <div class="error" id="overlayError"></div>
 </div>
-<div id="questTab" data-category="interactive">Квесты</div>
+<div id="questTab" data-category="interactive"><span class="questTabText">Квесты</span><span class="questTabHint">TAB</span></div>
+<!-- v1.0.40.61: собственная стрелка курсора. Игра рисует СВОЙ курсор в игровой
+     кадр, а он лежит НИЖЕ нашего окна, поэтому системная стрелка и её счётчик
+     ShowCursor проблему не решают — рисуем курсор внутри страницы. -->
+<svg id="cursorDot" viewBox="0 0 15 21" xmlns="http://www.w3.org/2000/svg">
+  <path d="M1 1 L1 16.2 L5.1 12.6 L7.8 19.2 L10.4 18.1 L7.7 11.6 L12.6 11.4 Z"
+        fill="#fff" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/>
+</svg>
 <script src="js/quests_ui.js"></script>
 </body>
 </html>

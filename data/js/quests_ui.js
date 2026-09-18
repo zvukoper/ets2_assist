@@ -24,11 +24,63 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){retur
 function send(o){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(o))}
 function post(o){try{if(window.chrome&&window.chrome.webview)window.chrome.webview.postMessage(JSON.stringify(o));}catch(e){}}
 function setNativeClickable(value){post({command:'set_clickable',value:!!value})}
-/* v1.0.40.60: КУРСОР. Игра скрывает системный курсор и рисует свой; он остаётся
-   видимым и двигается ПОД окном. Страница не может это исправить: системный
-   курсор принадлежит рабочему столу. Поэтому просим САМ ХОСТ забрать курсор
-   (ShowCursor + IDC_ARROW) — ровно пока развёрнутое окно показывает мышь. */
-function setCursorOwned(value){post({command:'set_cursor',value:!!value})}
+
+/* ================================================================ КУРСОР
+ * v1.0.40.61: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ.
+ *
+ * ETS2 прячет системный курсор и рисует свой прямо в ИГРОВОЙ КАДР. Игровой кадр
+ * лежит НИЖЕ окна оверлея, поэтому стрелка игры видна и двигается «под окном»:
+ * ни ShowCursor, ни SetCursor, ни WM_SETCURSOR это не исправят — наш слой в
+ * любом случае выше. К тому же игра уводит счётчик ShowCursor глубоко в минус.
+ *
+ * Поэтому стрелку рисуем САМИ, внутри страницы: #cursorDot — обычный SVG,
+ * позиционируемый по координатам мыши. Он часть нашей разметки, значит всегда
+ * выше и игрового кадра, и любого системного курсора.
+ * Позиция берётся из события движения мыши (окно оверлея мышь принимает, пока
+ * окно развёрнуто), плюс опрос на случай, если событие не пришло.
+ * ================================================================ */
+var cursorEl=null,cursorTimer=null,cursorShown=false;
+
+function placeCursor(x,y){
+    cursorEl=cursorEl||$('cursorDot');   // резолвим лениво: place может вызваться первым
+    if(!cursorEl)return;
+    cursorEl.style.transform='translate('+x+'px,'+y+'px)';
+    if(!cursorShown){cursorShown=true;cursorEl.style.display='block'}
+}
+
+function trackCursorFromEvent(e){
+    if(!pagePaused||collapsed)return;
+    placeCursor(e.clientX,e.clientY);
+}
+
+function startCursorTrack(){
+    cursorEl=cursorEl||$('cursorDot');
+    if(!cursorEl)return;
+    window.addEventListener('mousemove',trackCursorFromEvent);
+    window.addEventListener('mouseover',trackCursorFromEvent);
+    if(!cursorTimer)cursorTimer=setInterval(function(){
+        if(!pagePaused||collapsed){stopCursorTrack();return}
+        /* Событие движения может не прийти (курсор уже стоит на месте) —
+           поэтому начальную позицию берём один раз принудительно. */
+        if(!cursorShown)placeCursor(window.innerWidth/2,window.innerHeight/2);
+    },120);
+}
+
+function stopCursorTrack(){
+    window.removeEventListener('mousemove',trackCursorFromEvent);
+    window.removeEventListener('mouseover',trackCursorFromEvent);
+    if(cursorTimer){clearInterval(cursorTimer);cursorTimer=null}
+    if(cursorEl){cursorEl.style.display='none';cursorShown=false}
+}
+
+/* Диагностика курсора из консоли страницы (аналог debugShow для этой части):
+   window.__questCursor.place(300,200) — поставить стрелку принудительно. */
+window.__questCursor={
+    place:function(x,y){placeCursor(x,y);return !!cursorEl&&cursorEl.style.display},
+    start:startCursorTrack,
+    stop:stopCursorTrack,
+    state:function(){return{shown:cursorShown,paused:pagePaused,collapsed:collapsed}}
+};
 function markerIcon(m){
     /* v1.0.40.56: иконки квестов — новые растровые Pointer_*.png (32x32).
        Соответствие: quest = «!», questdone = «?»; _on = жёлтый, _off = серый.
@@ -46,13 +98,21 @@ function markerIcon(m){
    остаются частью того же слоя. Чтобы игра не получала клики «сквозь» окно,
    контейнер перехватывает клик по прозрачной области (сворачивание). */
 function applyCursorLayer(){
-    /* v1.0.40.59: курсор над окном — обычная стрелка вместо спрятанного курсора
-       игры (в остальных слоях он остаётся скрытым). v1.0.40.60: одной CSS-стрелки
-       мало — курсор игры продолжает двигаться ПОД окном, поэтому курсор забирает
-       сам хост (ShowCursor + IDC_ARROW). */
+    /* v1.0.40.61: КУРСОР РИСУЕТ СТРАНИЦА.
+       ⛔ Почему не системный/игровой курсор: ETS2 прячет систему и рисует СВОЙ
+       курсор прямо в игровой кадр. Игровой кадр лежит НИЖЕ нашего окна, поэтому
+       его стрелка «двигается под окном» и никакие ShowCursor/SetCursor/WM_SETCURSOR
+       это не исправят — слой всегда выше. Системный курсор в игре к тому же
+       уведён счётчиком ShowCursor глубоко в минус.
+       РЕШЕНИЕ: скрываем курсор во всём слое (CSS `cursor:none`) и рисуем
+       СОБСТВЕННУЮ стрелку (<svg id="cursorDot">) по позиции мыши — она часть
+       нашей страницы, значит гарантированно выше игровой.
+       Скрытие системной стрелки оставлено как дополнительная мера: если игра
+       её не рисует, она не будет дублировать нашу. */
     var app=$('questApp');
-    if(app)app.style.cursor=pagePaused?'default':'';
-    setCursorOwned(pagePaused&&!collapsed);
+    if(app)app.style.cursor=pagePaused?'none':'';
+    var active=pagePaused&&!collapsed;
+    if(active)startCursorTrack();else stopCursorTrack();
 }
 
 /* Мышь окна управляется из двух состояний: активна ли пауза и свёрнуто ли окно.

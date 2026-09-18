@@ -6,7 +6,7 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build":  "1.0.40.60-QUEST-CURSOR-FADE-09.18-1638",
+    "build":  "1.0.40.61-QUEST-CURSOR-TAB-HINT-09.18-1658",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }
