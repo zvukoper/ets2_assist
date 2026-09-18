@@ -106,6 +106,8 @@
 
   var DEBUG = { show: false };
   window.debugShow = function (on) {
+    // v1.0.40.58: сначала общая логика (флаг + отмена скрытия по фокусу).
+    if (typeof window.ets2DebugShowBase === 'function') { try { window.ets2DebugShowBase(on); } catch (e) {} }
     DEBUG.show = (on === true);
     try { document.documentElement.dataset.debugShow = DEBUG.show ? '1' : '0'; } catch (e) {}
     if (statusEl) statusEl.style.display = '';

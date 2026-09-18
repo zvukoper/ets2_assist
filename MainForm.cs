@@ -1176,7 +1176,11 @@ RegisterHotKeyChecked(
                 bool on = chkWebDebug.Checked;
                 AR.ArBridge.DebugShow = on;         // AR2 (нативный) — своя отметка камеры
                 SendCommandToMap("debug_show", new JObject { ["enabled"] = on });
-                AppendLog($"[WEB] debugShow {(on ? "ВКЛ (принудительный показ)" : "ВЫКЛ (логика страниц)")} — команда отправлена всем страницам.");
+                // v1.0.40.58: debugShow отменяет ТОЛЬКО скрытие по фокусу, логика
+                // паузы остаётся. Сбрасываем кэш решения политики, иначе снятие
+                // фокуса продолжит действовать до следующей смены состояния.
+                ResetOverlayVisibilityCache();
+                AppendLog($"[WEB] debugShow {(on ? "ВКЛ (скрытие по фокусу игнорируется, пауза работает)" : "ВЫКЛ (логика страниц)")} — команда отправлена всем страницам.");
             };
 
             int consoleLeft = leftX + 240;

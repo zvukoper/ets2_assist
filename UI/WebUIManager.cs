@@ -156,10 +156,17 @@ namespace ETS2_Assist_GUI
             bool paused = snap < 0 ? _pausedIntent : snap == 1;
             LogPauseCheckAlive(gameRunning, paused, gameFocused);
 
+            // v1.0.40.58: ОТЛАДКА ВЕБ-КОНТЕНТА. При включённом debugShow чекбоксе
+            // оверлеи НЕ исчезают при потере фокуса (окно ушло на другой экран/
+            // пользователь работает в редакторе), но ЛОГИКА ПАУЗЫ работает как есть:
+            // пауза -> интерактивные, игра -> игровые. Отключается РОВНО правило
+            // фокуса, и ничего больше.
+            bool debugShow = AR.ArBridge.DebugShow;
+
             // Оверлеи допустимы только когда игра запущена и её окно активно.
             // Фокус на любом СТОРОННЕМ окне (включая основную форму приложения)
             // означает, что игровая картинка не видна — наложение запрещено.
-            bool gameVisible = gameRunning && gameFocused;
+            bool gameVisible = gameRunning && (debugShow || gameFocused);
 
             // Гистерезис: фиксируем смену только после 2 устойчивых тиков (~1 с),
             // чтобы кратковременная потеря фокуса не мигала оверлеями.
@@ -182,7 +189,7 @@ namespace ETS2_Assist_GUI
             bool showInteractive = visible && paused && !_gameUiForce;
             bool showGameUi = _gameUiForce || (visible && !paused);
 
-            UpdateOverlayLayerFocus(_committedActive);
+            UpdateOverlayLayerFocus(debugShow || _committedActive);
             ApplyOverlayVisibility(showGameUi, showInteractive, gameFocused);
         }
 

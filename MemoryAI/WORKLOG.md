@@ -249,3 +249,60 @@ git show b34b75f:MemoryAI/WORKLOG.md > WORKLOG_full_until_17.09.26.md
   `АРХИТЕКТУРА ПРОЕКТА.md`, `data/ets2_assist_build.txt`, `data/web_runtime_manifest.json`.
 - **ПЕНДИНГ:** проверка пользователем (иконки АР/миникарты, клик по закладке,
   фейдаут окна, категория и версия в редакторе).
+
+## 18.09.2026 — v1.0.40.58 DEBUGSHOW-FOCUS-ONLY
+
+- **Задачи пользователя (3 пункта):** (1) debugShow должен игнорировать логику скрытия
+  окон ВНЕ ФОКУСА — при включённой галочке веб-оверлеи без фокуса НЕ исчезают,
+  но логика ПАУЗЫ / БЕЗ ПАУЗЫ отрабатывает как обычно; (2) при debugShow гибридное
+  окно меняет масштабы и все блоки внутри искажаются; (3) рамку по периметру АР удалить.
+- **КОРЕНЬ №1 (пункты 1 и 2 — ОДИН ДЕФЕКТ).** Прежний `debug_show.js` вешал на все
+  найденные контейнеры И ИХ ПОТОМКОВ правило `.debug-show-force`
+  (`display:block !important; transform:none !important; max-width:none !important;
+  max-height:none !important`), снимал инлайн-стили и **замораживал** `classList`
+  + `MutationObserver` + дозатор 500 мс.
+  Последствия ровно те, что описал пользователь:
+  1) у гибрида flex-раскладка и анимация `scale` — правило ломало и то, и другое
+     («окно меняет масштабы, блоки искажаются»);
+  2) заморозка блокировала саму логику показа: `show_ui`/`hide_ui`,
+     `minimap_show`/`minimap_hide` переставали действовать ⇒ debugShow ОТКЛЮЧАЛ
+     логику паузы вместо того, чтобы отключать только правило фокуса.
+- **ФИКС (единый смысл):** debugShow отменяет РОВНО скрытие по фокусу и ничего больше.
+  - `data/js/ui_category.js`: правило взаимоисключения категорий
+    (`html.ets2-cat-game [data-category~="interactive"]` и обратное) теперь работает
+    ВСЕГДА (убран `:not([data-debug-show="1"])`); под debugShow закрыт ТОЛЬКО селектор
+    скрытия по фокусу (`html.ets2-hide-all`). `applyHideAll` при `__debugShow` не ставит
+    ни класс, ни `pointer-events:none`. Появился `window.ets2ReapplyVisibility()`:
+    запомненная команда `set_overlay_hidden` пересматривается при переключении режима
+    (иначе после выключения debugShow окна остались бы видимыми без фокуса).
+  - `data/js/debug_show.js`: удалены `forceShow/restore/installFreeze/uninstallFreeze`,
+    `MutationObserver`, дозатор 500 мс и вся работа с инлайн-стилями. Осталась одна
+    пассивная CSS-страховка `html[data-debug-show="1"].ets2-hide-all [data-category]`
+    (на случай, если стиль категорий ещё не загрузился) + снятие уже применённого класса.
+    Новый `window.ets2DebugShowBase` — базовая реализация для страниц со СВОИМ
+    `window.debugShow`.
+  - `data/js/ar_hud.js` и `data/web_heights.html` перекрывают `window.debugShow`
+    своими отметками, поэтому ТЕРЯЛИ флаг общего режима: теперь оба ПЕРВЫМ делом
+    вызывают `window.ets2DebugShowBase(on)`.
+  - `UI/WebUIManager.cs`: `gameVisible = gameRunning && (debugShow || gameFocused)`,
+    `UpdateOverlayLayerFocus(debugShow || _committedActive)` — обходится ТОЛЬКО
+    слагаемое фокуса; пауза и взаимоисключение категорий считаются как прежде.
+    `MainForm` при переключении чекбокса дополнительно зовёт `ResetOverlayVisibilityCache()`.
+- **ПУНКТ 3 (рамка по периметру АР):** удалены `CFG.showClipFrame`, функция
+  `drawClipFrame()` и оба её вызова в `data/js/ar_hud.js`. Прижим маркеров к краям
+  сохранён (`CFG.edgeMargin` в `clampToScreen`) — убрана только отрисовка рамки.
+  В AR2 (нативный) рамки никогда и не было.
+- **МЕТОДИКА:** дефект видел только пользователь — это ПОВЕДЕНЧЕСКИЙ баг (CSS-приоритеты
+  и заморозка DOM), а не исключение. Проверять такие правки в ЖИВОЙ странице:
+  включить галочку, снять фокус (Alt+Tab) и убедиться, что окна остались, затем
+  поставить/снять паузу и убедиться, что интерактивы/игровая категория переключаются.
+- **ПРОВЕРЕНО:** `node --check` (debug_show.js, ui_category.js, ar_hud.js) + инлайн-скрипт
+  web_heights.html — OK; `dotnet build` 0 ошибок; `compile.ps1` delivery OK (422 файла);
+  версии синхронизированы (exe = build.txt = manifest = 1.0.40.58-DEBUGSHOW-FOCUS-ONLY-09.18-1603);
+  MD5 пяти правленых web-файлов в publish совпадают.
+- **Изменённые файлы:** `data/js/debug_show.js`, `data/js/ui_category.js`,
+  `data/js/ar_hud.js`, `data/web_heights.html`, `UI/WebUIManager.cs`, `MainForm.cs`,
+  `ETS2_Assist_GUI.csproj`, `BuildInfo.cs`, `АРХИТЕКТУРА ПРОЕКТА.md`,
+  `data/ets2_assist_build.txt`, `data/web_runtime_manifest.json`.
+- **ПЕНДИНГ:** проверка пользователем (галочка debugShow: окна не исчезают без фокуса,
+  пауза переключает категории; гибрид не искажается; рамки по периметру АР нет).

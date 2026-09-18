@@ -158,9 +158,6 @@
         fovMarginY: 14,         // отступ от нижнего края, px
         showDebugDot: true,     // отметка позы камеры в режиме debugShow
 
-        // Рамка отсечения рендера — теперь ТОЛЬКО диагностическая (под debugShow).
-        showClipFrame: true,
-
         fps: 120,               // частота расчёта/перерисовки (×2 от ~60)
         showFPS: true
     };
@@ -558,9 +555,13 @@
     // ================================================================
     const DEBUG = { show: false };
     window.debugShow = function (on) {
+        // v1.0.40.58: сначала ОБЩАЯ логика (флаг + отмена скрытия по фокусу),
+        // затем свои отметки AR1. Иначе флаг режима на этой странице не встал бы,
+        // и логика фокуса продолжала бы прятать слой.
+        if (typeof window.ets2DebugShowBase === 'function') { try { window.ets2DebugShowBase(on); } catch (e) {} }
         DEBUG.show = (on === true);
         try { document.documentElement.dataset.debugShow = DEBUG.show ? '1' : '0'; } catch (e) {}
-        // AR1: принудительный показ статус-строки и отладочной рамки/отметок.
+        // AR1: принудительный показ статус-строки (отладочная рамка удалена — v1.0.40.58).
         if (statusEl) statusEl.style.display = '';
         if (DEBUG.show) {
             setStatus('ok', 'AR: DEBUG (принудительный показ) · FOV ' +
@@ -1676,27 +1677,6 @@
     // с полшагом (эффективно ~120 Гц лерпа) + экстраполяция камеры остаётся.
     let _fpsCnt = 0, _fpsAt = performance.now(), _fpsVal = 0;
 
-    // v82: рамка отсечения рендера — пунктирный прямоугольник на границе
-    // [edgeMargin .. W/H − edgeMargin]; внутри неё рисуется всё, за ней — обрезка.
-    function drawClipFrame() {
-        const m = CFG.edgeMargin;
-        ctx.save();
-        ctx.strokeStyle = 'rgba(120,220,255,0.35)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([6, 6]);
-        ctx.strokeRect(m, m, W - 2 * m, H - 2 * m);
-        // маленькие уголки-маркеры для наглядности
-        ctx.setLineDash([]);
-        ctx.strokeStyle = 'rgba(120,220,255,0.6)';
-        const L = 14;
-        for (const [cx2, cy2, sx, sy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) {
-            ctx.beginPath();
-            ctx.moveTo(cx2 + sx * L, cy2); ctx.lineTo(cx2, cy2); ctx.lineTo(cx2, cy2 + sy * L);
-            ctx.stroke();
-        }
-        ctx.restore();
-    }
-
     function render() {
         requestAnimationFrame(render);
         if (W !== window.innerWidth || H !== window.innerHeight) resize();
@@ -1705,10 +1685,9 @@
         // «Даже если ближайших точек нет, мы всё равно отрисовываем метки новых точек».
         ctx.fillStyle = 'rgba(255,255,255,0.45)';
         ctx.fillRect(W / 2 - 1, H / 2 - 1, 1.5, 1.5);
-        // v82: рамка отсечения рендера (границы, за которые метки не выходят).
-        // v1.0.40.30: в обычном режиме НЕ рисуем (только под debugShow) — это
-        // диагностическая рамка, а не элемент интерфейса.
-        if (CFG.showClipFrame && DEBUG.show) drawClipFrame();
+        // v1.0.40.58: РАМКА ОТСЕЧЕНИЯ ПО ПЕРИМЕТРУ УДАЛЕНА (решение пользователя —
+        // она больше не актуальна). Прицел к краям по-прежнему ограничивает
+        // CFG.edgeMargin в clampToScreen — только без отрисовки самой рамки.
         _fpsCnt++;
         const fNow = performance.now();
         if (fNow - _fpsAt >= 1000) { _fpsVal = _fpsCnt; _fpsCnt = 0; _fpsAt = fNow; }
@@ -1760,10 +1739,9 @@
         // ТЕКУЩИЙ FOV В ЛЕВОМ НИЖНЕМ УГЛУ (чёрная обводка).
         if (CFG.showFovText) drawFovText();
 
-        // DEBUG-режим (debugShow) — принудительный показ и отметки позы камеры.
+        // DEBUG-режим (debugShow) — отметка позы камеры.
         if (DEBUG.show) {
             if (CFG.showDebugDot && camUsable) drawCameraDebugDot(view);
-            drawClipFrame();
         }
 
         // ============================================================
