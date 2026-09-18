@@ -6,7 +6,7 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build":  "1.0.40.62-QUEST-INPUT-DIAG-09.18-2047",
+    "build":  "1.0.40.63-QUEST-INPUT-HWND-09.18-2230",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }

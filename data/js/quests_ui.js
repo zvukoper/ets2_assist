@@ -135,9 +135,56 @@ function send(o){
 function post(o){
     var sent=false;
     try{if(window.chrome&&window.chrome.webview){window.chrome.webview.postMessage(JSON.stringify(o));sent=true}}catch(e){}
-    qdCounters.posts++;qdLog('POST '+qdCommandText(o)+' sent='+sent);
+    qdCounters.posts++;
+    /* Кликабельность quest БОЛЬШЕ НЕ управляется native-командами: input
+       принимает отдельный HWND без color-key. Служебные команды отправляем
+       ТОЛЬКО визуальному слою, чтобы не засорять лог input-поверхности. */
+    if(!isInputSurface)qdLog('POST '+qdCommandText(o)+' sent='+sent);
 }
 function setNativeClickable(value){post({command:'set_clickable',value:!!value})}
+
+/* ================================================================ INPUT SURFACE
+ * v1.0.40.63: КЛИКАБЕЛЬНОСТЬ КВЕСТОВ ЧЕРЕЗ ОТДЕЛЬНОЕ ОКНО.
+ *
+ * ДИАГНОЗ: окно с активным LWA_COLORKEY (TransparencyKey) Windows ПОЛНОСТЬЮ
+ * исключает из desktop hit-test — WindowFromPoint возвращает игру, WM_NCHITTEST
+ * реально в WndProc не приходит, хотя прямой SendMessage отвечает HTCLIENT.
+ * Без color-key (LWA_ALPHA) hit-test сразу попадает в WebView2 и DOM mousemove
+ * оживает.
+ *
+ * РЕШЕНИЕ: страница открывается ДВАЖДЫ:
+ *   * визуальный fullscreen-слой (без #interactive) — отвечает за картинку,
+ *     остаётся на прежнем color-key пути;
+ *   * input-поверхность (с #interactive) — обычный HWND БЕЗ color-key,
+ *     покрывает ровно область #questWindow / #questTab и принимает мышь.
+ * Геометрия input-окна отправляется в долях viewport'а (не зависит от DPI). */
+var isInputSurface=(function(){try{return window.location.hash.indexOf('interactive')>=0}catch(e){return false}})();
+
+var lastInteractiveKey='';
+function publishInteractiveBounds(){
+    if(!isInputSurface)return;
+    var mode='hidden',el=null;
+    if(pagePaused&&!collapsed)el=$('questWindow');
+    else if(pagePaused&&collapsed)el=$('questTab');
+    var r=el?el.getBoundingClientRect():null;
+    if(r&&r.width>1&&r.height>1&&r.bottom>0&&r.right>0)mode=(el===$('questTab'))?'tab':'window';
+    var vw=Math.max(1,window.innerWidth),vh=Math.max(1,window.innerHeight);
+    var payload;
+    if(mode==='hidden'){
+        payload={command:'set_interactive_bounds',mode:'hidden',xr:0,yr:0,wr:0,hr:0};
+    }else{
+        var pad=4;
+        var x=Math.max(0,r.left-pad),y=Math.max(0,r.top-pad);
+        var w=Math.min(vw-x,r.width+pad*2),h=Math.min(vh-y,r.height+pad*2);
+        payload={command:'set_interactive_bounds',mode:mode,
+            xr:x/vw,yr:y/vh,wr:Math.min(1,w/vw),hr:Math.min(1,h/vh)};
+    }
+    var key=JSON.stringify(payload);
+    if(key===lastInteractiveKey)return;
+    lastInteractiveKey=key;
+    qdLog('[INPUT-BOUNDS] '+key);
+    post(payload);
+}
 
 /* ================================================================ КУРСОР
  * v1.0.40.61: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ.
@@ -181,16 +228,18 @@ function startCursorTrack(){
     /* Логируем ПЕРЕХОДЫ (иначе syncInput раз в секунду давал бы поток строк). */
     if(!qdTracking){
         qdTracking=true;
-        qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
+        qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart+' inputSurface='+isInputSurface);
     }
     if(!cursorEl)return;
     window.addEventListener('mousemove',trackCursorFromEvent);
     window.addEventListener('mouseover',trackCursorFromEvent);
     if(!cursorTimer)cursorTimer=setInterval(function(){
         if(!pagePaused||collapsed){stopCursorTrack('keepalive:paused-or-collapsed');return}
-        /* Событие движения может не прийти (курсор уже стоит на месте) —
-           поэтому начальную позицию берём один раз принудительно. */
-        if(!cursorShown)placeCursor(window.innerWidth/2,window.innerHeight/2);
+        /* Событие движения может не прийти (курсор уже стоит на месте) — поэтому
+           начальную позицию берём один раз принудительно. ТОЛЬКО на input-
+           поверхности: визуальный слой мышь не получает вообще (color-key),
+           и его стрелка навсегда застыла бы в центре экрана. */
+        if(!cursorShown&&isInputSurface)placeCursor(window.innerWidth/2,window.innerHeight/2);
     },120);
 }
 
@@ -253,6 +302,9 @@ function applyCursorLayer(){
    закладки у левой границы экрана; скрытое окно прозрачно для мыши. */
 function syncInput(notify){
     qdLog('syncInput '+qdStateText());
+    /* INPUT-ПОВЕРХНОСТЬ не управляет кликабельностью native: она сама является
+       кликабельным окном без color-key. Ей нужна только геометрия. */
+    if(isInputSurface){publishInteractiveBounds();return}
     applyCursorLayer();
     if(pagePaused&&!collapsed){
         setNativeClickable(true);
@@ -302,6 +354,10 @@ function applyCollapsed(value,notify,report){
     if(tab)tab.classList.toggle('visible',collapsed);
     if(collapsed)lastDialogueKey='';
     syncInput(notify);
+    /* Геометрия input-окна зависит от вида окна: пересчитаем ПОСЛЕ смены
+       классов/анимации — и сразу, и по завершении перехода. */
+    publishInteractiveBounds();
+    setTimeout(publishInteractiveBounds,360);
     /* Приложение запоминает вид окна (свёрнуто/развёрнуто). Сообщаем только о
        действиях игрока: состояние, пришедшее ОТ приложения, а также стартовое
        состояние страницы повторно отправлять нельзя — иначе окно при загрузке
@@ -438,6 +494,9 @@ function applyState(data){
         else if(!currentQuest){var m=(data.nearby||[]).find(function(p){return p.InteractionId===data.selectedInteraction});if(m)currentQuest=m.QuestId||''}
     }else if(data.selectedQuest)currentQuest=data.selectedQuest;
     syncInput(false);
+    /* Геометрия input-окна зависит от состояния — пересчитаем после рендера. */
+    publishInteractiveBounds();
+    setTimeout(publishInteractiveBounds,360);
     renderInteractions();renderQuests();renderInventory();
     if(data.dialogue){renderDialogue(data.dialogue)}
     else if(!data.selectedInteraction){currentInteraction='';currentQuest='';clearDialogue()}
@@ -475,8 +534,8 @@ window.onEts2Command=function(d){
     /* Закладка выезжает за 220 мс, а её кликабельная область считается по
        текущему прямоугольнику. Пока анимация идёт, прямоугольник ещё смещён,
        поэтому область пересчитывается по завершении перехода. */
-    if(tab)tab.addEventListener('transitionend',function(){if(collapsed)syncInput(false)});
-    window.addEventListener('resize',function(){if(collapsed)syncInput(false)});
+    if(tab)tab.addEventListener('transitionend',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
+    window.addEventListener('resize',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     var style=document.createElement('style');
     style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#768497;font-size:10px}.questSectionTitle{padding:8px 10px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:#8c9aad;font-size:10px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid #ffd21f;background:rgba(255,210,31,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:#ffd45a;font-weight:700}.rewardLine{padding:3px 0;font-weight:600}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.optionReason{font-size:10px;color:#7e8a98;font-weight:400}.dialogTextRole{font-family:Roboto,"Roboto Regular","Segoe UI",Arial,sans-serif}.dialogTextService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:12px}.optionRequirements{font-family:"Courier New",Courier,monospace;color:#0048ff;font-size:12px}.optionRequirements.unmet{color:#0048ff;opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:13px}';
     document.head.appendChild(style);
@@ -489,5 +548,9 @@ document.addEventListener('DOMContentLoaded',function(){
        от приложения командой set_quest_collapsed. */
     applyCollapsed(false,false,false);
     connect();
+    /* Первый отчёт о геометрии input-окна (initial render). */
+    publishInteractiveBounds();
+    setTimeout(publishInteractiveBounds,120);
+    setInterval(publishInteractiveBounds,1000);
 });
 })();
