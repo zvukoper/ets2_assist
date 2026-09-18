@@ -32,6 +32,14 @@ namespace ETS2_Assist_GUI
         // UI Components
         private NotifyIcon trayIcon = null!;
         private ContextMenuStrip trayMenu = null!;
+        private ToolStripMenuItem trayStartItem = null!;
+        private ToolStripMenuItem trayStopItem = null!;
+        private ToolStripMenuItem trayShowHeader = null!;
+        private ToolStripMenuItem trayCheckUpdatesItem = null!;
+        private ToolStripMenuItem trayExitItem = null!;
+        // Пункты «Монитор N» пересобираются перед каждым показом меню: набор
+        // экранов может измениться на ходу (подключили или отключили монитор).
+        private readonly List<ToolStripMenuItem> trayMonitorItems = new();
         private MenuStrip mainMenu = null!;
         private ToolStripMenuItem fileMenu = null!;
         private ToolStripMenuItem viewMenu = null!;   // v1.0.40.40: раздел «Вид» (отладка AR)
@@ -1360,11 +1368,19 @@ RegisterHotKeyChecked(
         private void InitializeTray()
         {
             trayMenu = new ContextMenuStrip();
-            trayMenu.Items.Add("Start System", null, (s, e) => StartSystem());
-            trayMenu.Items.Add("Stop System", null, (s, e) => StopSystem());
+            trayStartItem = new ToolStripMenuItem("Start System", null, (s, e) => StartSystem());
+            trayStopItem = new ToolStripMenuItem("Stop System", null, (s, e) => StopSystem());
+            trayShowHeader = new ToolStripMenuItem("Показать:") { Enabled = false };
+            trayCheckUpdatesItem = new ToolStripMenuItem("Check Updates", null, (s, e) => CheckUpdates());
+            trayExitItem = new ToolStripMenuItem("Exit", null, (s, e) => ConfirmExit());
+
+            trayMenu.Items.Add(trayStartItem);
+            trayMenu.Items.Add(trayStopItem);
             trayMenu.Items.Add("-");
-            trayMenu.Items.Add("Check Updates", null, (s, e) => CheckUpdates());
-            trayMenu.Items.Add("Exit", null, (s, e) => ConfirmExit());
+            trayMenu.Items.Add(trayShowHeader);
+            trayMenu.Items.Add("-");
+            trayMenu.Items.Add(trayCheckUpdatesItem);
+            trayMenu.Items.Add(trayExitItem);
 
             string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "icon.ico");
             Icon icon = File.Exists(iconPath) ? new Icon(iconPath) : SystemIcons.Application;
@@ -1376,6 +1392,85 @@ RegisterHotKeyChecked(
                 Visible = true
             };
             trayIcon.MouseDoubleClick += (s, e) => { this.Show(); this.WindowState = FormWindowState.Normal; };
+            // Список мониторов пересобирается перед показом меню.
+            trayMenu.Opening += (s, e) => RebuildTrayMonitorItems();
+        }
+
+        /// <summary>
+        /// Пересобирает пункты «Монитор N» под текущий набор экранов и отмечает
+        /// галочкой тот, на котором находится главная форма.
+        /// </summary>
+        private void RebuildTrayMonitorItems()
+        {
+            try
+            {
+                foreach (ToolStripMenuItem old in trayMonitorItems)
+                {
+                    trayMenu.Items.Remove(old);
+                    old.Dispose();
+                }
+                trayMonitorItems.Clear();
+
+                Screen current = Screen.FromControl(this);
+                Screen[] screens = Screen.AllScreens;
+                for (int i = 0; i < screens.Length; i++)
+                {
+                    int index = i;
+                    var item = new ToolStripMenuItem($"Монитор {i + 1}", null, (s, e) => MoveToMonitor(index))
+                    {
+                        Checked = screens[i].DeviceName.Equals(current?.DeviceName, StringComparison.OrdinalIgnoreCase),
+                        CheckOnClick = false
+                    };
+                    // Индексы считаем по фактическому расположению в меню, а не
+                    // по списку: порядок экранов между вызовами может отличаться.
+                    trayMenu.Items.Insert(trayMenu.Items.IndexOf(trayShowHeader) + 1 + i, item);
+                    trayMonitorItems.Add(item);
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Одноразово переносит главную форму на монитор с указанным индексом.
+        /// Игра иногда полностью забирает фокус, и окно приложения оказывается
+        /// под ней; выбор монитора возвращает форму поверх игры. Выбранный
+        /// монитор запоминается штатным механизмом границ окна.
+        /// </summary>
+        private void MoveToMonitor(int index)
+        {
+            try
+            {
+                Screen[] screens = Screen.AllScreens;
+                if (index < 0 || index >= screens.Length)
+                {
+                    AppendLog($"[UI] Монитор {index + 1} не найден (доступно {screens.Length}).");
+                    return;
+                }
+
+                Screen target = screens[index];
+                Rectangle work = target.WorkingArea;
+                if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+
+                int width = Math.Min(Width, work.Width);
+                int height = Math.Min(Height, work.Height);
+                Size = new Size(width, height);
+                SetDesktopLocation(work.Left, work.Top);
+                Show();
+                ForceForegroundWindow(Handle, "tray-monitor-switch");
+
+                AppSettings.WindowX = Left;
+                AppSettings.WindowY = Top;
+                AppSettings.WindowWidth = Width;
+                AppSettings.WindowHeight = Height;
+                AppSettings.WindowDeviceName = target.DeviceName;
+                AppSettings.Save();
+
+                AppendLog($"[UI] Главная форма перемещена на монитор {index + 1} ({target.DeviceName}).");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[UI] Ошибка перемещения на монитор {index + 1}: {ex.Message}");
+            }
         }
 
         private void SaveLanguageToConfig(string lang)
@@ -1464,10 +1559,13 @@ RegisterHotKeyChecked(
             helpMenu.Text = lang.Get("ui_help") ?? "Help";
             checkUpdatesMenu.Text = lang.Get("ui_check_updates") ?? "Check Updates";
             exitMenu.Text = lang.Get("ui_exit") ?? "Exit";
-            trayMenu.Items[0].Text = lang.Get("tray_start") ?? "Start System";
-            trayMenu.Items[1].Text = lang.Get("tray_stop") ?? "Stop System";
-            trayMenu.Items[3].Text = lang.Get("tray_check_updates") ?? "Check Updates";
-            trayMenu.Items[4].Text = lang.Get("tray_exit") ?? "Exit";
+            trayStartItem.Text = lang.Get("tray_start") ?? "Start System";
+            trayStopItem.Text = lang.Get("tray_stop") ?? "Stop System";
+            trayCheckUpdatesItem.Text = lang.Get("tray_check_updates") ?? "Check Updates";
+            trayExitItem.Text = lang.Get("tray_exit") ?? "Exit";
+            // «Показать:» и подписи мониторов не переводятся: имя монитора —
+            // системное обозначение экрана, одинаковое во всех языках.
+            trayShowHeader.Text = lang.Get("tray_show") ?? "Показать:";
         }
 
         private void RefreshUI()
@@ -1549,6 +1647,10 @@ RegisterHotKeyChecked(
 
             UpdateTruckTelPort();
 
+            // Вид окна квестов (свёрнуто/развёрнуто) читается из настроек ДО запуска
+            // политики: первый же тик показывает интерактивную категорию, и он должен
+            // знать сохранённый вид, иначе окно на миг развернётся вопреки настройке.
+            LoadQuestWindowState();
             StartPauseCheck();
 
             // ===== ИНИЦИАЛИЗАЦИЯ SCS CONTROLLER =====

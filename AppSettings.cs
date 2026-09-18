@@ -70,6 +70,14 @@ namespace ETS2_Assist_GUI
         /// <summary>Радиус показа точек в AR, м (требование: 50).</summary>
         public static int ArDisplayRadiusM { get; set; } = 50;
 
+        /// <summary>
+        /// Вид окна квестов: свёрнуто в закладку «Квесты» или развёрнуто.
+        /// Сохраняется между запусками — при следующем старте окно получит тот
+        /// же вид. Выбранный ранее квест при этом НЕ запоминается: окно всегда
+        /// открывается в исходном состоянии.
+        /// </summary>
+        public static bool QuestWindowCollapsed { get; set; } = false;
+
         // ================================================================
         // v1.0.40.44: ПЛАВНОСТЬ ДВИЖЕНИЯ ТОЧЕК (сглаживание позы камеры).
         // Телеметрия приходит ~28–35 Гц, рендер идёт 60+ Гц: без сглаживания
@@ -120,6 +128,8 @@ namespace ETS2_Assist_GUI
                     ShowHeightsWindow = settings.ShowHeightsWindow;
                     ArDisplayRadiusM = settings.ArDisplayRadiusM is >= 5 and <= 5000
                         ? settings.ArDisplayRadiusM : 50;
+                    // v1.0.40.50: сохранённый вид окна квестов (свёрнуто/развёрнуто).
+                    QuestWindowCollapsed = settings.QuestWindowCollapsed;
                     // v1.0.40.44: плавность движения точек.
                     Ar1SmoothCamera = settings.Ar1SmoothCamera;
                     Ar1SmoothTau = settings.Ar1SmoothTau is >= 0.005 and <= 0.5
@@ -158,6 +168,8 @@ namespace ETS2_Assist_GUI
                     Ar1ShowPlaneHorizon = Ar1ShowPlaneHorizon,
                     ShowHeightsWindow = ShowHeightsWindow,
                     ArDisplayRadiusM = ArDisplayRadiusM,
+                    // v1.0.40.50: вид окна квестов (свёрнуто/развёрнуто).
+                    QuestWindowCollapsed = QuestWindowCollapsed,
                     // v1.0.40.44: плавность движения точек.
                     Ar1SmoothCamera = Ar1SmoothCamera,
                     Ar1SmoothTau = Ar1SmoothTau
@@ -199,6 +211,8 @@ namespace ETS2_Assist_GUI
             public bool Ar1ShowPlaneHorizon { get; set; }
             public bool ShowHeightsWindow { get; set; }
             public int ArDisplayRadiusM { get; set; }
+            // v1.0.40.50: вид окна квестов (свёрнуто в закладку или развёрнуто).
+            public bool QuestWindowCollapsed { get; set; }
             // v1.0.40.44: сглаживание позы камеры (плавность точек).
             public bool Ar1SmoothCamera { get; set; }
             public double Ar1SmoothTau { get; set; }

@@ -18,6 +18,7 @@ ui_restart_overlay,Restart Overlay
 # Tray
 tray_start,Start System
 tray_stop,Stop System
+tray_show,Show:
 tray_check_updates,Check Updates
 tray_exit,Exit
 tray_minimized,Minimized to tray

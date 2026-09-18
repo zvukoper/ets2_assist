@@ -30,6 +30,9 @@ namespace ETS2_Assist_GUI.Quests
         private readonly HashSet<string> _inside = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> _activeDialogue = new(StringComparer.OrdinalIgnoreCase);
         private readonly List<QuestPointSnapshot> _nearby = new();
+        // Уведомление «Рядом доступно задание» держится 12 с: его нужно успеть
+        // прочитать, не отвлекаясь от управления грузовиком.
+        private const int RadiusNotificationMs = 12000;
         private readonly ToolStripMenuItem _menuRoot = new("Квесты");
         private readonly ToolStripMenuItem _menuEnabled = new("Система включена");
         private readonly ToolStripMenuItem _menuDebug = new("Отладочный показ всех точек");
@@ -218,7 +221,10 @@ namespace ETS2_Assist_GUI.Quests
                     {
                         ["title"] = noMore ? "" : "Рядом доступно задание",
                         ["text"] = noMore ? "Заданий пока нет. Возвращайтесь позже. (в разработке)" : "Выйдите в меню или поставьте игру на паузу, чтобы узнать подробности",
-                        ["icon"] = p.Marker
+                        ["icon"] = p.Marker,
+                        // Уведомление о появлении интерактива показывается дольше
+                        // обычного: игрок видит его периферийным зрением за рулём.
+                        ["durationMs"] = RadiusNotificationMs
                     }});
             }
             _inside.RemoveWhere(k => !now.Contains(k));

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -59,9 +60,10 @@ namespace ETS2_Assist_GUI
 
         private async void CheckPauseAndUpdateUI()
         {
-            // Если debug режим, не скрываем UI
+            // Если debug режим, не скрываем UI (и принудительно показываем окна слоёв)
             if (_debugMode)
             {
+                RestoreOverlayLayers();
                 // Если UI ещё не показан, показываем его с анимацией один раз
                 if (!_uiShown)
                 {
@@ -103,8 +105,71 @@ namespace ETS2_Assist_GUI
             bool showInteractive = visible && paused && !_gameUiForce;
             bool showGameUi = _gameUiForce || (visible && !paused);
 
+            UpdateOverlayLayerFocus(_committedActive);
             ApplyOverlayVisibility(showGameUi, showInteractive, gameFocused);
         }
+
+        /// <summary>
+        /// Спецпроверка фокуса. Все веб-оверлеи скрываются, если фокус ушёл на
+        /// СТОРОННЕЕ окно (в том числе на основную форму ETS2 Assist): игровая
+        /// камера уже не видна, наложение поверх пользовательских окон недопустимо.
+        /// Фокус на нашей собственной странице оверлея ничего не меняет.
+        /// Скрывается и контент страниц (команда set_overlay_hidden, порт 8084),
+        /// и сами окна слоёв (команды hide_all/show_all хосту по каналу).
+        /// Гистерезис берётся от общего решения политики (_committedActive),
+        /// чтобы стартовый/кратковременный переход фокуса не мигал окнами.
+        /// </summary>
+        private void UpdateOverlayLayerFocus(bool layersVisible)
+        {
+            try
+            {
+                bool wanted = !layersVisible;
+                if (wanted == _overlayLayersHidden) return;
+
+                _overlayLayersHidden = wanted;
+                SendCommandToMap("set_overlay_hidden", new JObject { ["hidden"] = wanted });
+                SendOverlayHostCommand();
+                AppendLog(wanted
+                    ? "[UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв)."
+                    : "[UI] Фокус вернулся в игру — веб-оверлеи показаны.");
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Команда хост-процессу оверлеев через именованный канал WebOverlayPipe.
+        /// Приложение владеет политикой показа, но окнами владеет хост, поэтому
+        /// скрытие окон слоёв выполняются его командами hide_all/show_all.
+        /// Канал — единственный безопасный способ: если хост не запущен,
+        /// подключение просто не удаётся и НИЧЕГО не запускается (запуск exe с
+        /// такой командой поднял бы лишний экземпляр со страницей справки).
+        /// </summary>
+        private void SendOverlayHostCommand()
+        {
+            Task.Run(() =>
+            {
+                lock (_overlayHostPipeLock)
+                {
+                    try
+                    {
+                        // Значение читается ПОД блокировкой: если состояние успело
+                        // смениться, пока задача ждала, хосту уйдёт актуальное.
+                        string command = _overlayLayersHidden ? "hide_all" : "show_all";
+                        using var pipe = new System.IO.Pipes.NamedPipeClientStream(".", "WebOverlayPipe", System.IO.Pipes.PipeDirection.Out);
+                        pipe.Connect(400);
+                        using var writer = new StreamWriter(pipe) { AutoFlush = true };
+                        writer.WriteLine(command);
+                    }
+                    catch
+                    {
+                        // Хост оверлеев не запущен — скрывать нечего.
+                    }
+                }
+            });
+        }
+
+        private readonly object _overlayHostPipeLock = new object();
+        private bool _overlayLayersHidden;
 
         /// <summary>
         /// Применяет строгую политику показа. Игровые и интерактивные интерфейсы
@@ -212,8 +277,10 @@ namespace ETS2_Assist_GUI
         {
             try
             {
-                if (_questCollapsed == collapsed) return;
                 _questCollapsed = collapsed;
+                // Вид окна запоминается между запусками приложения.
+                AppSettings.QuestWindowCollapsed = collapsed;
+                AppSettings.Save();
                 SendCommandToMap("set_quest_collapsed", new JObject { ["collapsed"] = collapsed });
                 AppendLog(collapsed
                     ? "[QUEST][UI] Окно квестов свёрнуто в закладку «Квесты»."
@@ -253,6 +320,16 @@ namespace ETS2_Assist_GUI
         private bool _gameUiForce;
 
         /// <summary>
+        /// Загружает сохранённый вид окна квестов. Вызывается один раз при старте
+        /// системы, ДО первого показа интерактивной категории, чтобы окно
+        /// открылось в том виде, в котором его оставил игрок.
+        /// </summary>
+        internal void LoadQuestWindowState()
+        {
+            _questCollapsed = AppSettings.QuestWindowCollapsed;
+        }
+
+        /// <summary>
         /// Сброс кэша предыдущего решения политики: следующий тик применит
         /// состояние заново (используется кнопками управления оверлеями).
         /// </summary>
@@ -263,12 +340,20 @@ namespace ETS2_Assist_GUI
             _lastMinimapAuto = null;
         }
 
+        /// <summary>
+        /// Принудительный показ окон слоёв (например, при остановке системы).
+        /// </summary>
+        internal void RestoreOverlayLayers()
+        {
+            if (!_overlayLayersHidden) return;
+            _overlayLayersHidden = false;
+            SendCommandToMap("set_overlay_hidden", new JObject { ["hidden"] = false });
+            SendOverlayHostCommand();
+        }
+
 
         /// <summary>
-        /// Игра считается сфокусированной, если активное окно принадлежит игре.
-        /// Фокус на своём собственном веб-оверлее тоже не считается «потерей игры»
-        /// (окна WebOverlay создаются с WS_EX_NOACTIVATE и не активируются, но
-        /// проверка оставлена на случай ручного включения кликабельности окна).
+        /// Игра считается сфокусированной, если активное окно принадлежит игры/нашему оверлею.
         /// </summary>
         private bool IsGameFocused()
         {

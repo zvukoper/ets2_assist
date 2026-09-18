@@ -18,6 +18,7 @@ ui_restart_overlay,Рестарт оверлея
 # Tray
 tray_start,Запустить систему
 tray_stop,Остановить систему
+tray_show,Показать:
 tray_check_updates,Проверить обновления
 tray_exit,Выход
 tray_minimized,Свёрнуто в трей

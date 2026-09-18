@@ -23,9 +23,19 @@
         st.id = STYLE_ID;
         st.textContent =
             'html:not([data-debug-show="1"]).ets2-cat-game [data-category~="interactive"],' +
-            'html:not([data-debug-show="1"]).ets2-cat-interactive [data-category~="game"]' +
+            'html:not([data-debug-show="1"]).ets2-cat-interactive [data-category~="game"],' +
+            'html.ets2-hide-all [data-category]' +
             '{visibility:hidden!important;opacity:0!important;pointer-events:none!important}';
         (document.head || document.documentElement).appendChild(st);
+    }
+
+    /* Полное скрытие: фокус ушёл на сторонний окно — наложение запрещено.
+     * Дополнительно к CSS отключаем pointer-events на корне, чтобы по
+     * невидимым элементам нельзя было случайно кликнуть. */
+    function applyHideAll(hidden) {
+        var root = document.documentElement;
+        root.classList.toggle('ets2-hide-all', !!hidden);
+        root.style.pointerEvents = hidden ? 'none' : '';
     }
 
     var category = null;
@@ -56,6 +66,7 @@
                     var d = JSON.parse(ev.data);
                     if (!d || !d.command) return;
                     if (d.command === 'set_overlay_category') apply(d.category);
+                    if (d.command === 'set_overlay_hidden') applyHideAll(d.hidden);
                     if (typeof window.onEts2Command === 'function') window.onEts2Command(d);
                 } catch (_) { }
             };

@@ -11,6 +11,14 @@
 'use strict';
 var ws=null,model=null,currentQuest='',currentInteraction='',wasPaused=false,collapsed=false;
 var pagePaused=false,hasInteractive=false,lastDialogueKey='',lastOptionsKey='',lastInteractionsKey='',lastQuestsKey='',typeTimer=null,fadeTimer=null;
+/* Время последнего сворачивания/разворачивания. Один жест игрока не должен
+   переключать вид дважды: двойной клик по кнопке или по прозрачной области
+   давал пару «свёрнуто → развёрнуто» в одну миллисекунду, и окно визуально
+   не сворачивалось. */
+var lastToggleAt=0;
+/* Окно открывается всегда в исходном состоянии: ранее выбранный диалог
+   не восстанавливается, игрок сам выбирает интерактив слева. */
+var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 function send(o){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(o))}
@@ -25,33 +33,48 @@ function markerIcon(m){if(m==='yellow_exclamation')return'editor_static_data/ico
 function syncInput(notify){
     if(pagePaused&&!collapsed){
         setNativeClickable(true);
-        post({command:'set_clickable_hotspot',x:0,y:0,w:0,h:0});
+        post({command:'set_clickable_hotspot',xr:0,yr:0,wr:0,hr:0});
     }else if(pagePaused&&collapsed){
         setNativeClickable(false);
         var tab=$('questTab');
         if(tab){
+            /* Доли клиентской области, а не CSS-пиксели: окно-хост не объявляет
+               DPI-манифест и при масштабе экрана пиксели страницы не совпадают
+               с пикселями окна. */
             var r=tab.getBoundingClientRect();
-            post({command:'set_clickable_hotspot',x:0,y:Math.max(0,Math.round(r.top)-6),w:Math.round(r.width)+8,h:Math.round(r.height)+12});
-        }else post({command:'set_clickable_hotspot',x:0,y:0,w:0,h:0});
+            var vw=Math.max(1,window.innerWidth),vh=Math.max(1,window.innerHeight);
+            var pad=6;
+            post({command:'set_clickable_hotspot',
+                xr:0,
+                yr:Math.max(0,(r.top-pad)/vh),
+                wr:Math.min(1,(r.width+8)/vw),
+                hr:Math.min(1,(r.height+pad*2)/vh)});
+        }else post({command:'set_clickable_hotspot',xr:0,yr:0,wr:0,hr:0});
     }else{
         setNativeClickable(false);
-        post({command:'set_clickable_hotspot',x:0,y:0,w:0,h:0});
+        post({command:'set_clickable_hotspot',xr:0,yr:0,wr:0,hr:0});
     }
     if(notify)post({command:'return_focus'});
 }
-function applyCollapsed(value,notify){
+function applyCollapsed(value,notify,report){
     collapsed=!!value;
     var w=$('questWindow'),tab=$('questTab');
     if(w)w.classList.toggle('collapsed',collapsed);
     if(tab)tab.classList.toggle('visible',collapsed);
     if(collapsed)lastDialogueKey='';
     syncInput(notify);
-    // Приложение запоминает вид окна (свёрнуто/развёрнуто) для журнала и
-    // восстановления вида при следующей паузе.
-    send({command:'quest_window_state',collapsed:collapsed});
+    /* Приложение запоминает вид окна (свёрнуто/развёрнуто). Сообщаем только о
+       действиях игрока: состояние, пришедшее ОТ приложения, а также стартовое
+       состояние страницы повторно отправлять нельзя — иначе окно при загрузке
+       перезапишет сохранённый вид. */
+    if(report)send({command:'quest_window_state',collapsed:collapsed});
 }
-function collapseWindow(){if(collapsed)return;applyCollapsed(true,true)}
-function expandWindow(){if(!collapsed)return;applyCollapsed(false,true)}
+function collapseWindow(){if(collapsed||blockToggle())return;applyCollapsed(true,true,true)}
+function expandWindow(){if(!collapsed||blockToggle())return;applyCollapsed(false,true,true)}
+/* Один жест — одно переключение: повторное событие того же жеста (двойной клик,
+   всплытие клика от кнопки к контейнеру) не должно отменять только что
+   применённое состояние. */
+function blockToggle(){var now=Date.now();if(now-lastToggleAt<250)return true;lastToggleAt=now;return false}
 function setTabPulse(value){hasInteractive=!!value;var tab=$('questTab');if(tab)tab.classList.toggle('pulse',hasInteractive)}
 
 /* ------------------------------------------------------------ набор текста */
@@ -150,7 +173,7 @@ function renderInventory(){
     var el=$('inventory');if(!el||!model)return;var items=model.inventory||[];
     el.innerHTML='<span class="inventoryTitle">Инвентарь</span> '+(items.length?items.map(function(x){return'<span class="inventoryItem">'+esc(x.name||x.id)+' ×'+esc(x.amount||0)+'</span>'}).join(' '):'<span class="muted">пусто</span>');
 }
-function clearDialogue(){stopTyping();lastDialogueKey='';lastOptionsKey='';var s=$('dialogSpeaker'),t=$('dialogText'),o=$('dialogOptions'),i=$('dialogImage');if(s)s.textContent='';if(t){t.classList.remove('fading');t.textContent='Выберите интерактив слева.'}if(o)o.innerHTML='';if(i){i.removeAttribute('src');i.style.display='none'}}
+function clearDialogue(){stopTyping();lastDialogueKey='';lastOptionsKey='';var s=$('dialogSpeaker'),t=$('dialogText'),o=$('dialogOptions'),i=$('dialogImage');if(s)s.textContent='';if(t){t.classList.remove('fading');t.textContent=EmptyHint}if(o)o.innerHTML='';if(i){i.removeAttribute('src');i.style.display='none'}}
 function selectInteraction(qid,iid){if(!model||model.paused!==true)return;currentQuest=qid;currentInteraction=iid;send({command:'quest_select_interaction',questId:qid,id:iid});renderInteractions()}
 
 function applyState(data){
@@ -181,21 +204,27 @@ function showError(text){var e=$('overlayError');if(!e)return;e.textContent=text
 window.onEts2Command=function(d){
     if(!d)return;
     if(d.command==='set_quest_tab_state'){setTabPulse(d.hasInteractive);if(collapsed)syncInput(false)}
-    else if(d.command==='set_quest_collapsed')applyCollapsed(d.collapsed,false);
+    else if(d.command==='set_quest_collapsed')applyCollapsed(d.collapsed,false,false);
 };
 
 (function(){
     /* Кнопка сворачивания, закладка и клик по прозрачной области окна. */
-    var btn=$('collapseBtn'),tab=$('questTab'),win=$('questWindow'),app=$('questApp');
+    var btn=$('collapseBtn'),tab=$('questTab'),app=$('questApp');
     if(btn)btn.addEventListener('click',function(e){e.stopPropagation();collapseWindow()});
     if(tab)tab.addEventListener('click',function(e){e.stopPropagation();expandWindow()});
-    function onBackdropClick(e){
+    /* Оверлей полноэкранный, поэтому «прозрачная область окна квестов» — это сам
+       контейнер #questApp вне панелей. Клик по ней сворачивает окно и выводит
+       закладку «Квесты»; клики по содержимому окна всплывают от его элементов
+       и не должны сворачивать окно. */
+    if(app)app.addEventListener('click',function(e){
         if(collapsed)return;
-        if(e.target.closest('.panel,button,#inventory'))return;
+        if(e.target!==app)return;
         collapseWindow();
-    }
-    if(win)win.addEventListener('click',onBackdropClick);
-    if(app)app.addEventListener('click',onBackdropClick);
+    });
+    /* Закладка выезжает за 220 мс, а её кликабельная область считается по
+       текущему прямоугольнику. Пока анимация идёт, прямоугольник ещё смещён,
+       поэтому область пересчитывается по завершении перехода. */
+    if(tab)tab.addEventListener('transitionend',function(){if(collapsed)syncInput(false)});
     window.addEventListener('resize',function(){if(collapsed)syncInput(false)});
     var style=document.createElement('style');
     style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#768497;font-size:10px}.questSectionTitle{padding:8px 10px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:#8c9aad;font-size:10px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid #ffd21f;background:rgba(255,210,31,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:#ffd45a;font-weight:700}.rewardLine{padding:3px 0;font-weight:600}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.optionReason{font-size:10px;color:#7e8a98;font-weight:400}.dialogTextRole{font-family:Roboto,"Roboto Regular","Segoe UI",Arial,sans-serif}.dialogTextService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:12px}.optionRequirements{font-family:"Courier New",Courier,monospace;color:#0048ff;font-size:12px}.optionRequirements.unmet{color:#0048ff;opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:13px}';
@@ -205,9 +234,9 @@ window.onEts2Command=function(d){
 document.addEventListener('DOMContentLoaded',function(){
     clearDialogue();
     setTabPulse(false);
-    applyCollapsed(false);
-    var w=$('questWindow');if(w)w.classList.remove('collapsed');
-    var tab=$('questTab');if(tab)tab.classList.remove('visible');
+    /* Стартовое состояние всегда развёрнутое; фактический вид окна приходит
+       от приложения командой set_quest_collapsed. */
+    applyCollapsed(false,false,false);
     connect();
 });
 })();
