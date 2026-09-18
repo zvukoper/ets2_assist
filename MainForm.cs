@@ -371,7 +371,11 @@ RegisterHotKeyChecked(
             // вызывает StartSystemAsync.
             StartControlServer();
 
-            this.Shown += (_, _) => EnsureStartupForeground();
+            this.Shown += (_, _) =>
+            {
+                ApplyStartupMonitorPreference();
+                EnsureStartupForeground();
+            };
             _ = Task.Run(WaitForInstanceSignal);
             _ = Task.Run(WaitForStartSignal);
         }
@@ -1449,12 +1453,17 @@ RegisterHotKeyChecked(
 
                 Screen target = screens[index];
                 Rectangle work = target.WorkingArea;
-                if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+                // Форма почти всегда развёрнута: у maximized-окна SetDesktopLocation
+                // ничего не меняет, поэтому сначала нормализуем, переносим и только
+                // потом разворачиваем — уже на выбранном мониторе.
+                bool wasMaximized = WindowState != FormWindowState.Minimized;
+                WindowState = FormWindowState.Normal;
 
                 int width = Math.Min(Width, work.Width);
                 int height = Math.Min(Height, work.Height);
                 Size = new Size(width, height);
                 SetDesktopLocation(work.Left, work.Top);
+                if (wasMaximized) WindowState = FormWindowState.Maximized;
                 Show();
                 ForceForegroundWindow(Handle, "tray-monitor-switch");
 
@@ -1470,6 +1479,82 @@ RegisterHotKeyChecked(
             catch (Exception ex)
             {
                 AppendLog($"[UI] Ошибка перемещения на монитор {index + 1}: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Монитор игры на момент старта. Кэш GetGameScreen() живёт 30 секунд, и
+        /// если ETS2 уже запущен, форма откроется на его мониторе — а это худший
+        /// вариант: игра забирает фокус, и окно приложения пропадает под ней.
+        /// </summary>
+        private static Screen? FindGameScreenNow()
+        {
+            try
+            {
+                foreach (var name in new[] { "eurotrucks2", "amtrucks2" })
+                {
+                    foreach (var p in Process.GetProcessesByName(name))
+                    {
+                        try
+                        {
+                            if (p.MainWindowHandle != IntPtr.Zero)
+                            {
+                                var s = Screen.FromHandle(p.MainWindowHandle);
+                                if (s != null) return s;
+                            }
+                        }
+                        finally { p.Dispose(); }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        /// <summary>
+        /// При старте форма открывается на мониторе, ОТЛИЧНОМ от монитора игры:
+        /// если игра на мониторе 1, берём следующий доступный. Сохранённый
+        /// пользователем монитор уважается — правило действует, только пока
+        /// позиция окна ещё ни разу не задавалась или сохранён монитор игры.
+        /// </summary>
+        private void ApplyStartupMonitorPreference()
+        {
+            try
+            {
+                Screen[] screens = Screen.AllScreens;
+                if (screens.Length < 2) return;
+
+                Screen? gameScreen = FindGameScreenNow();
+                if (gameScreen == null) return;
+
+                bool userPickedMonitor = !string.IsNullOrWhiteSpace(AppSettings.WindowDeviceName);
+                if (userPickedMonitor)
+                {
+                    // Выбор пользователя уважаем: переносим, только если он сам
+                    // оставил форму на мониторе игры.
+                    if (!AppSettings.WindowDeviceName.Equals(gameScreen.DeviceName, StringComparison.OrdinalIgnoreCase))
+                        return;
+                }
+                else
+                {
+                    // Явного выбора ещё не было: переносим, если форма оказалась
+                    // на мониторе игры (обычно это основной монитор).
+                    Screen? current = Screen.FromControl(this) ?? Screen.PrimaryScreen;
+                    if (current == null ||
+                        !current.DeviceName.Equals(gameScreen.DeviceName, StringComparison.OrdinalIgnoreCase))
+                        return;
+                }
+
+                int targetIndex = Array.FindIndex(screens, s =>
+                    !s.DeviceName.Equals(gameScreen.DeviceName, StringComparison.OrdinalIgnoreCase));
+                if (targetIndex < 0) return;
+
+                AppendLog($"[UI] Игра на мониторе {gameScreen.DeviceName}; главная форма переносится на монитор {targetIndex + 1}.");
+                MoveToMonitor(targetIndex);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[UI] Не удалось выбрать монитор при старте: {ex.Message}");
             }
         }
 

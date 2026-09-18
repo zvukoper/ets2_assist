@@ -6,7 +6,7 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build": "1.0.40.52-QUEST-TOGGLE-GUARD-09.18-1307",
+    "build": "1.0.40.53-AUTO-MONITOR-09.18-1317",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }

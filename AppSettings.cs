@@ -14,11 +14,20 @@ namespace ETS2_Assist_GUI
 
         /// <summary>
         /// Внешнее управление запуском (порт 8086). Разрешает запускать систему
-        /// запросом POST/GET /start, чтобы оверлеи поднимались без мыши —
-        /// например из скрипта тестирования. Внешние запросы не должны управлять
-        /// игрой случайно, поэтому по умолчанию выключено.
+        /// запросом POST/GET /start, чтобы оверлеи поднимались без мыши — из
+        /// скрипта тестирования. Включено по умолчанию: отладка без мыши важнее,
+        /// а сервер слушает только localhost.
         /// </summary>
-        public static bool ExternalControlEnabled { get; set; } = false;
+        public static bool ExternalControlEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Признак, что новое умолчание ExternalControlEnabled уже применено.
+        /// Прежние версии всегда писали в файл ExternalControlEnabled=false, и
+        /// отличить это умолчание от осознанного отказа пользователя невозможно.
+        /// Пока признак не записан, значение берётся новым умолчанием (включено);
+        /// после первой записи значение из файла уважается.
+        /// </summary>
+        public static bool ExternalControlDefaultApplied { get; set; } = false;
 
         /// <summary>Порт внешнего управления запуском (по умолчанию 8086).</summary>
         public static int ExternalControlPort { get; set; } = 8086;
@@ -95,7 +104,11 @@ namespace ETS2_Assist_GUI
 
         public static void Load()
         {
-            if (!File.Exists(SettingsFile)) return;
+            if (!File.Exists(SettingsFile))
+            {
+                ApplyExternalControlDefault();
+                return;
+            }
             try
             {
                 string json = File.ReadAllText(SettingsFile);
@@ -105,7 +118,10 @@ namespace ETS2_Assist_GUI
                     DebugMode = settings.DebugMode;
                     Language = settings.Language ?? "en";
                     AutoStartSystem = settings.AutoStartSystem;
-                    ExternalControlEnabled = settings.ExternalControlEnabled;
+                    // Разовая миграция: старое умолчание было «выключено», поэтому
+                    // false из файла до миграции не является выбором пользователя.
+                    ExternalControlDefaultApplied = settings.ExternalControlDefaultApplied;
+                    ExternalControlEnabled = !settings.ExternalControlDefaultApplied || settings.ExternalControlEnabled;
                     ExternalControlPort = settings.ExternalControlPort is >= 1024 and <= 65535
                         ? settings.ExternalControlPort : 8086;
                     StartMinimized = settings.StartMinimized;
@@ -135,8 +151,23 @@ namespace ETS2_Assist_GUI
                     Ar1SmoothTau = settings.Ar1SmoothTau is >= 0.005 and <= 0.5
                         ? settings.Ar1SmoothTau : 0.035;
                 }
+                ApplyExternalControlDefault();
             }
             catch { /* ignore errors */ }
+        }
+
+        /// <summary>
+        /// Одноразовая миграция умолчания внешнего управления. Прежние версии
+        /// всегда писали в файл ExternalControlEnabled=false, и отличить это
+        /// умолчание от осознанного отказа невозможно; поэтому включаем значение
+        /// и ставим признак. После первой записи файла значение уважается.
+        /// </summary>
+        private static void ApplyExternalControlDefault()
+        {
+            if (ExternalControlDefaultApplied) return;
+            ExternalControlDefaultApplied = true;
+            ExternalControlEnabled = true;
+            Save();
         }
 
         public static void Save()
@@ -149,6 +180,7 @@ namespace ETS2_Assist_GUI
                     Language = Language,
                     AutoStartSystem = AutoStartSystem,
                     ExternalControlEnabled = ExternalControlEnabled,
+                    ExternalControlDefaultApplied = ExternalControlDefaultApplied,
                     ExternalControlPort = ExternalControlPort,
                     StartMinimized = StartMinimized,
                     CheckUpdatesOnStart = CheckUpdatesOnStart,
@@ -186,6 +218,7 @@ namespace ETS2_Assist_GUI
             public string Language { get; set; } = string.Empty;
             public bool AutoStartSystem { get; set; }
             public bool ExternalControlEnabled { get; set; }
+            public bool ExternalControlDefaultApplied { get; set; }
             public int ExternalControlPort { get; set; } = 8086;
             public bool StartMinimized { get; set; }
             public bool CheckUpdatesOnStart { get; set; }
