@@ -24,6 +24,11 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){retur
 function send(o){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(o))}
 function post(o){try{if(window.chrome&&window.chrome.webview)window.chrome.webview.postMessage(JSON.stringify(o));}catch(e){}}
 function setNativeClickable(value){post({command:'set_clickable',value:!!value})}
+/* v1.0.40.60: КУРСОР. Игра скрывает системный курсор и рисует свой; он остаётся
+   видимым и двигается ПОД окном. Страница не может это исправить: системный
+   курсор принадлежит рабочему столу. Поэтому просим САМ ХОСТ забрать курсор
+   (ShowCursor + IDC_ARROW) — ровно пока развёрнутое окно показывает мышь. */
+function setCursorOwned(value){post({command:'set_cursor',value:!!value})}
 function markerIcon(m){
     /* v1.0.40.56: иконки квестов — новые растровые Pointer_*.png (32x32).
        Соответствие: quest = «!», questdone = «?»; _on = жёлтый, _off = серый.
@@ -42,14 +47,12 @@ function markerIcon(m){
    контейнер перехватывает клик по прозрачной области (сворачивание). */
 function applyCursorLayer(){
     /* v1.0.40.59: курсор над окном — обычная стрелка вместо спрятанного курсора
-       игры (в остальных слоях он остаётся скрытым). */
+       игры (в остальных слоях он остаётся скрытым). v1.0.40.60: одной CSS-стрелки
+       мало — курсор игры продолжает двигаться ПОД окном, поэтому курсор забирает
+       сам хост (ShowCursor + IDC_ARROW). */
     var app=$('questApp');
     if(app)app.style.cursor=pagePaused?'default':'';
-    /* Фактический ввод уходит в игру по каналам игры (WS 8085/8084), а не через
-       неактивируемое окно-оверлей: WS_EX_NOACTIVATE + OnActivated-подавление в
-       хосте — НАМЕРЕННЫЕ (иначе у игры отбирается фокус и ломается телеметрия,
-       см. v1.0.40.54). Поэтому page-level keydown в этом окне не ловится: TAB
-       приходит командой приложения quest_toggle_collapse. */
+    setCursorOwned(pagePaused&&!collapsed);
 }
 
 /* Мышь окна управляется из двух состояний: активна ли пауза и свёрнуто ли окно.

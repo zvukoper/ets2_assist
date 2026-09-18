@@ -15,12 +15,19 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
    скрыт). Вид курсора переключает js/quests_ui.js вместе с кликабельностью. */
 #questApp.paused{cursor:default}
 #questTab{cursor:pointer}
-.questWindow{position:relative;width:min(1280px,92vw);height:min(900px,88vh);display:grid;grid-template-columns:240px minmax(420px,1fr) 310px;grid-template-rows:1fr 54px;gap:10px;padding:12px;box-sizing:border-box;background:rgba(13,17,22,.97);border:1px solid rgba(255,205,85,.35);box-shadow:0 15px 70px rgba(0,0,0,.75);border-radius:10px;opacity:1;transform:translateX(0);transition:opacity 160ms ease,transform 220ms ease 160ms}
-/* v1.0.40.57: окно уезжает за край НЕ ПОЛНОСТЬЮ — в финальных кадрах анимации
-   добавляем фейдаут, иначе у левой границы остаётся видимая полоса.
-   Раскрытие — ЗЕРКАЛЬНОЕ: сначала проявление (opacity 0→1), затем въезд
-   (transform), т.е. задержки переходов меняются местами между состояниями. */
-.questWindow.collapsed{opacity:0;transform:translateX(calc(-100% - 40px));pointer-events:none;transition:transform 220ms ease,opacity 160ms ease 220ms}
+.questWindow{position:relative;width:min(1280px,92vw);height:min(900px,88vh);display:grid;grid-template-columns:240px minmax(420px,1fr) 310px;grid-template-rows:1fr 54px;gap:10px;padding:12px;box-sizing:border-box;background:rgba(13,17,22,.97);border:1px solid rgba(255,205,85,.35);box-shadow:0 15px 70px rgba(0,0,0,.75);border-radius:10px;opacity:1;transform:translateX(0);transition:transform 320ms ease-out,opacity 96ms ease-out}
+/* v1.0.40.60: СХЕМА АНИМАЦИИ СВОРАЧИВАНИЯ — точно по требованию пользователя.
+   Тайминги движения = 320 мс, поэтому проценты считаются от него:
+     кадр 0           — прозрачность 0% (окно полностью видно); движение
+                        стартует сразу с ease «с медленного с ускорением» = ease-in;
+     до 70% пути      — прозрачность ДЕРЖИТСЯ 0% (ключ: 70% от 320 мс = 224 мс);
+     с 70% до 99%     — прозрачность уходит в 100% (92 мс; 224+92 = 316 мс, т.е.
+                        99% кадров) ⇒ окно становится невидимым ЕЩЁ В ДВИЖЕНИИ.
+   Раньше фейдаут шёл с задержкой 220 мс И длился ещё 220 мс — он завершался
+   уже ПОСЛЕ остановки окна, и в самом конце была видна «полоса».
+   Раскрытие — зеркальное: движение с ease-out, проявление 96 мс с самого
+   начала (обратный порядок ключей: 0% → 30%, затем держится 100%). */
+.questWindow.collapsed{opacity:0;transform:translateX(calc(-100% - 40px));pointer-events:none;transition:transform 320ms ease-in,opacity 92ms ease-in 224ms}
 .panel{min-width:0;min-height:0;background:rgba(24,29,36,.98);border:1px solid rgba(255,255,255,.08);border-radius:8px;overflow:hidden}
 .panelTitle{padding:11px 12px;font-weight:700;color:#ffd45a;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025)}
 .scroll{height:calc(100% - 43px);overflow:auto}
