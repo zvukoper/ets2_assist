@@ -698,14 +698,18 @@ namespace ETS2_Assist_GUI
                     horizonTiltDeg = Math.Atan2(hy1 - hy0, sw) * 180.0 / Math.PI;
                 }
 
-                AppendLog(
+                // v1.0.40.55: ЭТИ СТРОКИ — ДАННЫЕ, А НЕ ЭТАПЫ.
+                // Раньше шли через AppendLog → в workflow И в консоль логов; при
+                // периодическом вызове давали тысячи строк (в логе: TILT/HORIZON-GEOM
+                // 2592 строки). Теперь только app_data.
+                Logger.Current?.Data(
                     $"[AR] TILT ({source}): кузов pitch={truckPitchDeg:F2}° roll={truckRollDeg:F2}° | " +
                     $"голова pitch={headPitchDeg:F2}° roll={headRollDeg:F2}° | " +
                     $"кабина pitch={cabinPitchDeg:F2}° roll={cabinRollDeg:F2}° | " +
                     $"КАМЕРА наклон={camNoseDownDeg:F2}° крен={camRollDeg:F2}° | " +
                     $"fwd.Y={_arCameraPose.Forward.Y:F4} right.Y={_arCameraPose.Right.Y:F4} up.Y={_arCameraPose.Up.Y:F4}");
 
-                AppendLog(
+                Logger.Current?.Data(
                     $"[AR] HORIZON-GEOM: {sw}x{sh} hFov={hFov:F1}° vFov={vFov:F1}° fh={fh:F0} fv={fv:F0} " +
                     $"→ y(лево)={hy0:F0} y(центр)={hyCentre:F0} y(право)={hy1:F0} " +
                     $"наклон линии={horizonTiltDeg:F2}° (центр экрана cy={cy:F0})");

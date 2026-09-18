@@ -204,7 +204,9 @@ namespace ETS2_Assist_GUI
         // его. Используется как запасной источник детекции паузы, когда телеметрия
         // (TruckTel /api/rest/single/frame/paused) недоступна или отдаёт неразбираемый ответ.
         private bool _pausedIntent = false;
-        private System.Windows.Forms.Timer _pauseCheckTimer = null!;
+        // v1.0.40.54: политика оверлеев живёт на ПОТОКОВОМ таймере
+        // (`_pauseCheckTimer` объявлен в UI/WebUIManager.cs). System.Windows.Forms.Timer
+        // здесь НЕ тикал — это и был корень «оверлеи живут отдельной жизнью».
 
         // Состояние показа оверлеев (карта/гибрид/пауз-лого) и тоггл показа миникарты.
         // «Показать карту» — ТОГГЛ: ВКЛ = карта НИКОГДА не исчезает (всегда на экране);
@@ -288,6 +290,11 @@ namespace ETS2_Assist_GUI
 
             InitializeComponents();
             InitializeTray();
+            // v1.0.40.55: ЛОГЕР СОЗДАЁТСЯ ДО ИНИЦИАЛИЗАЦИИ ЯЗЫКА. Раньше он
+            // поднимался в InitializeProcessManager, а InitializeLanguage идёт
+            // раньше — и её data-сообщение ("Language saved…") молча терялось
+            // (Logger.Current ещё null).
+            EnsureLogger();
             InitializeLanguage();
             // v1.0.40.27: сохранённый FOV AR1 (CTRL+PGUP/PGDN) применяем сразу при старте,
             // чтобы страница получила его ДО первого открытия оверлея.
@@ -354,7 +361,9 @@ RegisterHotKeyChecked(
                 RegisterHotKeyChecked(HOTKEY_TELEPORT, MOD_CONTROL, Keys.T, "Ctrl+T (teleport game)");
                 RegisterHotKeyChecked(HOTKEY_TELEPORT_EDITOR, MOD_CONTROL | MOD_SHIFT, Keys.T, "Ctrl+Shift+T (teleport editor)");
                 hotKeyRegistered = true;
-                AppendLog("Hotkeys: Ctrl+X (игра: новая метка AR/миникарта), Ctrl+Shift+X (то же), S, R, N, Ctrl+T, Ctrl+Shift+T, Ctrl+PGUP/PGDN (FOV AR1 гориз.), Ctrl+Shift+PGUP/PGDN (FOV AR1 верт.), Ctrl+Shift+HOME/END (FOV AR2)");
+                // v1.0.40.55: разовая сводка хоткеев — устаревшее сообщение,
+                // дублировало успешные регистрации. Только в app_data.
+                Logger.Current?.Data("Hotkeys: Ctrl+X (игра: новая метка AR/миникарта), Ctrl+Shift+X (то же), S, R, N, Ctrl+T, Ctrl+Shift+T, Ctrl+PGUP/PGDN (FOV AR1 гориз.), Ctrl+Shift+PGUP/PGDN (FOV AR1 верт.), Ctrl+Shift+HOME/END (FOV AR2)");
             }
             catch (Exception ex)
             {
@@ -1440,7 +1449,7 @@ RegisterHotKeyChecked(
         /// под ней; выбор монитора возвращает форму поверх игры. Выбранный
         /// монитор запоминается штатным механизмом границ окна.
         /// </summary>
-        private void MoveToMonitor(int index)
+        private void MoveToMonitor(int index, bool activate = true)
         {
             try
             {
@@ -1465,7 +1474,11 @@ RegisterHotKeyChecked(
                 SetDesktopLocation(work.Left, work.Top);
                 if (wasMaximized) WindowState = FormWindowState.Maximized;
                 Show();
-                ForceForegroundWindow(Handle, "tray-monitor-switch");
+                // v1.0.40.54: ЗАХВАТ ФОКУСА ТОЛЬКО ПО ЯВНОМУ ДЕЙСТВИЮ (трей).
+                // Автоперенос при старте фокус НЕ трогает: игра уже запущена, и
+                // захват уводил фокус из неё (телеметрия: «placement нет
+                // (пауза/окно игры неактивно)», политика: «фокус вне игры»).
+                if (activate) ForceForegroundWindow(Handle, "tray-monitor-switch");
 
                 AppSettings.WindowX = Left;
                 AppSettings.WindowY = Top;
@@ -1550,7 +1563,11 @@ RegisterHotKeyChecked(
                 if (targetIndex < 0) return;
 
                 AppendLog($"[UI] Игра на мониторе {gameScreen.DeviceName}; главная форма переносится на монитор {targetIndex + 1}.");
-                MoveToMonitor(targetIndex);
+                // v1.0.40.54: без захвата фокуса. Пока форма это делала, фокус
+                // уезжал из игры (игра была уже запущена), телеметрия отдавала
+                // «placement нет (пауза/окно игры неактивно)», а политика
+                // оверлеев видела «фокус вне игры» и скрывала всё.
+                MoveToMonitor(targetIndex, activate: false);
             }
             catch (Exception ex)
             {
@@ -1578,7 +1595,9 @@ RegisterHotKeyChecked(
                 }
                 config["language"] = lang;
                 File.WriteAllText(configPath, config.ToString(Formatting.Indented));
-                AppendLog($"Language saved to config.json: {lang}");
+                // v1.0.40.55: устаревшее сообщение о подключении локалей —
+                // рутинная запись настройки, не этап. Только в app_data.
+                Logger.Current?.Data($"Language saved to config.json: {lang}");
             }
             catch (Exception ex)
             {
@@ -1598,12 +1617,22 @@ RegisterHotKeyChecked(
 
         private void InitializeProcessManager()
         {
+            EnsureLogger();
+            procManager = new ProcessManager(logger);
+            procManager.StatusChanged += (s, e) => RefreshUI();
+        }
+
+        /// <summary>
+        /// Создать логгер РОВНО ОДИН РАЗ (идемпотентно). Порядок важен: логгер
+        /// должен существовать до первого обращения к Logger.Current.
+        /// </summary>
+        private void EnsureLogger()
+        {
+            if (logger != null) return;
             logger = new Logger();
             Logger.Current = logger;
             logger.OnLogMessage += (msg) => AppendLog(msg, persistWorkflow: false);
             logger.Workflow("ETS2 Assist logger initialized.");
-            procManager = new ProcessManager(logger);
-            procManager.StatusChanged += (s, e) => RefreshUI();
         }
 
         private void InitializeStatusTimer()
@@ -3440,7 +3469,9 @@ RegisterHotKeyChecked(
             try { TruckTelemetry.Stop(); } catch { }
             bool wasRunning = procManager.IsRunning;
             procManager.Stop();
-            _pauseCheckTimer?.Stop();
+            // v1.0.40.54: политика оверлеев живёт на потоковом таймере (UI/WebUIManager.cs).
+            try { _pauseCheckTimer?.Dispose(); } catch { }
+            _pauseCheckTimer = null;
             StopTriggerServer();
             StopWebSocketSaveServer();
             StopStaticWebServer();
@@ -3891,22 +3922,30 @@ RegisterHotKeyChecked(
             base.WndProc(ref m);
         }
 
+        // v1.0.40.54: порт TruckTel определяется в рантайме (сейчас 8081, 8080 МЁРТВ
+        // и на нём запрос всегда вис до таймаута 2 с). Синхронная копия — только для
+        // НЕ-UI путей (телепорт): из UI-потока пользоваться IsGamePausedAsync().
         private bool IsGamePaused()
 {
             try
             {
                 using (var client = new HttpClient())
                 {
-                    client.Timeout = TimeSpan.FromSeconds(2);
-                    // TruckTel-compatible direct REST endpoint.
-                    // The native ETS2 Assist plugin will expose the same API.
-                    var response = client.GetAsync("http://localhost:8080/api/rest/single/frame/paused").Result;
-                    if (response.IsSuccessStatusCode)
+                    client.Timeout = TimeSpan.FromMilliseconds(700);
+                    int currentPort = TruckTelemetry.Port;
+                    foreach (int port in (currentPort == 8080 ? new[] { 8080, 8081 } : new[] { currentPort, 8080 }).Distinct())
                     {
-                        var json = response.Content.ReadAsStringAsync().Result.Trim();
-                        var parsed = ParsePausedResponse(json);
-                        if (parsed.HasValue) return parsed.Value;
-                        return _pausedIntent;
+                        try
+                        {
+                            // TruckTel-compatible direct REST endpoint.
+                            // The native ETS2 Assist plugin will expose the same API.
+                            var response = client.GetAsync($"http://localhost:{port}/api/rest/single/frame/paused").Result;
+                            if (!response.IsSuccessStatusCode) continue;
+                            var json = response.Content.ReadAsStringAsync().Result.Trim();
+                            var parsed = ParsePausedResponse(json);
+                            if (parsed.HasValue) return parsed.Value;
+                        }
+                        catch { }
                     }
                 }
             }

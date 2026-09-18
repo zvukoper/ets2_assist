@@ -66,6 +66,28 @@ function getSdoIcon(iconName) {
 }
 
 // ================================================================
+// v1.0.40.56: ИКОНКИ КВЕСТОВ НА МИНИКАРТЕ (Pointer_*.png).
+//
+// Зачем отдельный путь: квестовые точки получают URL иконки в поле
+// `__questIcon` (его ставит js/quests_client.js). Исходники — 32x32, поэтому
+// на миникарте они МАСШТАБИРУЮТСЯ. Размер: 8 -> **12** (v1.0.40.57, по отзыву:
+// на 8 px иконка читалась плохо). SDO-иконки категорий идут по своему пути
+// (24 px, /editor_static_data/icons) и не затрагиваются.
+// ================================================================
+const questPointerIconSizePx = 12;
+const questPointerIconCache = {};
+function getQuestPointerIcon(url) {
+    if (!url) return null;
+    if (questPointerIconCache[url] !== undefined) return questPointerIconCache[url];
+    const img = new Image();
+    img.onload = () => { drawMinimap(); };
+    img.onerror = () => { questPointerIconCache[url] = null; };
+    img.src = url;
+    questPointerIconCache[url] = img;
+    return img;
+}
+
+// ================================================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (зависят от текущего состояния)
 // ================================================================
 function worldToScreen(wx, wz) {
@@ -261,6 +283,28 @@ function drawMinimap() {
         const size = Math.min(6, poiPointSize);
         // Прозрачность категории (meta.opacity, 0..1) — применяется к точке и названию.
         const poiOpacity = (poi.opacity === undefined || poi.opacity === null) ? 1 : Math.max(0, Math.min(1, Number(poi.opacity)));
+        // v1.0.40.56: КВЕСТОВАЯ ТОЧКА — новая иконка Pointer_*.png, СМАСШТАБИРОВАННАЯ
+        // до 8x8 (исходник 32x32). Идёт ПЕРЕД SDO-иконкой: у квестовой точки может
+        // остаться и базовый icon категории, а приоритет у квеста.
+        const questIconImg = poi.__questIcon ? getQuestPointerIcon(poi.__questIcon) : null;
+        if (questIconImg && questIconImg.complete && questIconImg.naturalWidth > 0) {
+            const qsz = questPointerIconSizePx;
+            ctx.save();
+            ctx.globalAlpha = poiOpacity;
+            ctx.drawImage(questIconImg, p.x - qsz/2, p.y - qsz/2, qsz, qsz);
+            if (showPoiLabels) {
+                ctx.font = '9px "Segoe UI", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillStyle = '#ffd21f';
+                ctx.shadowColor = 'rgba(0,0,0,0.7)';
+                ctx.shadowBlur = 4;
+                ctx.fillText(poi.name || poi.type || 'quest', p.x, p.y - qsz/2 - 2);
+                ctx.shadowBlur = 0;
+            }
+            ctx.restore();
+            continue;
+        }
         // SDO-иконка: если у точки задана иконка категории (meta.json) — рисуем
         // изображение 50x50 (масштаб ~24 px на карте) вместо цветного кружка.
         const iconImg = poi.icon ? getSdoIcon(poi.icon) : null;

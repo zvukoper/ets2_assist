@@ -19,7 +19,7 @@ namespace ETS2_Assist_GUI
                         return attr.InformationalVersion;
                 }
                 catch { }
-                return "1.0.40.53-AUTO-MONITOR";
+                return "1.0.40.57-QUEST-UI-AR-FIX";
             }
         }
     }

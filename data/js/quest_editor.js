@@ -18,6 +18,16 @@ function isQuestTarget(p){return String(p&&p.id||'').startsWith(PREFIX)||String(
 function questLabel(p){return String(p&&p.Name||p&&p.name||p&&p.InteractionId||'Квестовая точка')}
 function markerLabel(marker){if(marker==='yellow_exclamation')return '!';if(marker==='yellow_question'||marker==='gray_question')return '?';return ''}
 function markerClass(marker){return marker==='gray_question'?'gray':'yellow'}
+/* v1.0.40.56: иконки квестов в списке редактора — новые растровые Pointer_*.png
+   (32x32). Соответствие: quest = «!», questdone = «?»; _on = жёлтый, _off = серый.
+   ⚠️ ПУТЬ ОТНОСИТЕЛЬНО СТРАНИЦЫ: этот файл подключается в map_editor2/index.html
+   (../js/quest_editor.js), поэтому иконки лежат на уровень выше — иначе был бы 404. */
+function markerIconUrl(marker){
+    if(marker==='yellow_exclamation')return '../quests/images/Pointer_quest_on_32x32.png';
+    if(marker==='yellow_question')return '../quests/images/Pointer_questdone_on_32x32.png';
+    if(marker==='gray_question')return '../quests/images/Pointer_questdone_off_32x32.png';
+    return '';
+}
 function toTarget(p){
     const key=keyOf(p);
     return {id:key,uid:String(p.Uid||key),GameName:key,RealName:questLabel(p),name:questLabel(p),Category:'Квестовые',category:'__custom',Description:'Квестовая точка. Характеристики редактируются в редакторе квестов.',Enabled:true,ShowInAr:Boolean(p.ArVisible),ShowOnMap:Boolean(p.MinimapVisible),X:Number(p.X)||0,Y:Number(p.Y)||0,Z:Number(p.Z)||0,x:Number(p.X)||0,y:Number(p.Y)||0,z:Number(p.Z)||0,Color:'#ffd21f',color:'#ffd21f',Icon:'default',LabelStroke:1,TriggerRadius:Number(p.TriggerRadiusM)||35,CooldownMinutes:0,Hidden:0,DeleteOnComplete:0,DialogId:'',Action:'',Caption:'',EnterReward:0,AfterReward:0,EnterXp:0,AfterXp:0,source:'custom',__questPoint:true,__questData:p};
@@ -63,6 +73,10 @@ function hideQuestSourceButtons(){
 }
 function decorateSidebar(){
     const list=$('categoryList');if(!list)return;
+    /* v1.0.40.57: `__custom` («Цели») может быть СКРЫТА (display:none), если в ней
+       нет обычных точек — тогда квестовую секцию ставим ПЕРЕД первым видимым
+       ребёнком, иначе она уезжает под скрытый блок. */
+    const visibleFirst=Array.from(list.children).find(el=>el.id!=='questSidebarCategory'&&el.style.display!=='none')||null;
     const custom=findCustomCategory();
     if(custom){
         let regularCount=0;
@@ -75,8 +89,13 @@ function decorateSidebar(){
     if(!cat){
         cat=document.createElement('div');cat.id='questSidebarCategory';cat.className='category open';
         cat.innerHTML='<div class="categoryHead questCategoryHead"><span class="caret">▾</span><span class="catName">Квестовые</span><span class="catCount"></span></div><div class="categoryBody questCategoryBody"></div>';
-        const first=list.firstElementChild;if(first)list.insertBefore(cat,first);else list.appendChild(cat);created=true;
+        if(visibleFirst)list.insertBefore(cat,visibleFirst);else list.appendChild(cat);created=true;
+    }else if(visibleFirst&&cat.nextElementSibling!==visibleFirst&&cat!==list.firstElementChild){
+        // Секция есть, но уехала вниз после перерисовки — возвращаем её наверх.
+        list.insertBefore(cat,visibleFirst);
     }
+    // ⛔ Секция могла быть СКРЫТА перерисовкой сайдбара (свой display) — возвращаем.
+    if(cat.style.display==='none')cat.style.display='';
     const body=cat.querySelector('.questCategoryBody');if(!body)return;
     if(!created&&renderedQuestSignature===questSignature)return;
     body.innerHTML='';renderedQuestSignature=questSignature;
@@ -84,7 +103,8 @@ function decorateSidebar(){
     const frag=document.createDocumentFragment();
     for(const p of questPoints){
         const key=keyOf(p),b=document.createElement('button');b.type='button';b.className='pointButton questPointButton'+(selectedQuestKey===key?' selected':'');b.dataset.questKey=key;
-        const marker=markerLabel(p.Marker),markerHtml=marker?`<span class="questMarker ${markerClass(p.Marker)}">${marker}</span>`:'';
+        const iconUrl=markerIconUrl(p.Marker);
+        const markerHtml=iconUrl?`<img class="questMarkerIcon" src="${iconUrl}" alt="">`:(markerLabel(p.Marker)?`<span class="questMarker ${markerClass(p.Marker)}">${markerLabel(p.Marker)}</span>`:'');
         b.innerHTML=markerHtml+`<span class="pointName">${escapeHtml(questLabel(p))}</span>`;b.title=`${questLabel(p)} · ${p.IsGenerated?'сгенерированная точка':'квестовая точка'}`;b.addEventListener('click',()=>selectQuestPoint(key));frag.appendChild(b);
     }
     body.appendChild(frag);const count=cat.querySelector('.catCount');if(count)count.textContent=String(questPoints.length);
@@ -155,6 +175,8 @@ const style=document.createElement('style');style.textContent=`
 #questSidebarCategory .questMarker{width:15px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;line-height:1}
 #questSidebarCategory .questMarker.yellow{color:#ffd21f}
 #questSidebarCategory .questMarker.gray{color:#9da5af}
+/* v1.0.40.56: растровая иконка квеста (32x32 -> 16x16 в списке) */
+#questSidebarCategory .questMarkerIcon{width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:6px}
 #questSidebarCategory .questPointButton .pointName{font-weight:600}
 #questSidebarCategory .questPointButton.selected{background:#394454!important}
 .questPointEditPanel .editMeta{color:#7f8a98}

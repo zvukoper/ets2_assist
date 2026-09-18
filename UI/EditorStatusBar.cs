@@ -28,6 +28,8 @@ namespace ETS2_Assist_GUI
         private static readonly Color ActiveLime = Color.FromArgb(190, 255, 90);   // lime
         private static readonly Color CheckGreen = Color.FromArgb(30, 140, 60);    // тёмно-зелёная галочка
         private static readonly Color TextColor = Color.FromArgb(198, 205, 214);   // приглушённо белый
+        // Версия сборки — чуть тёмнее основного текста (служебная информация).
+        private static readonly Color VersionColor = Color.FromArgb(150, 168, 190);
         private const float CircleD = 7f;   // диаметр окружности-индикатора
         private const float SpinR = 5.5f;   // радиус вращающегося индикатора
 
@@ -35,6 +37,29 @@ namespace ETS2_Assist_GUI
         private float _angle;                 // угол вращения (градусы)
         private bool _busy;                   // идёт операция -> вращающийся индикатор
         private string _opText = "";          // текст операции (сохраняется и после завершения)
+
+        // v1.0.40.57: ПОЛНАЯ ВЕРСИЯ СБОРКИ в статусбаре редактора 2 (сразу после
+        // заголовка). Нужна, чтобы ОДНИМ ВЗГЛЯДОМ отличить применённые изменения
+        // редактора от закешированной старой страницы (WebView2 кэширует агрессивно).
+        // Заполняется редактором через SetBuildVersion(BulidInfo.Version);
+        // заголовок редактора остаётся отдельным состоянием системы.
+        private string _buildVersion = "";
+
+        /// <summary>
+        /// Полная строка версии сборки (MAJOR.MINOR.PATCH-ОПИСАНИЕ-ДАТА-ВРЕМЯ).
+        /// Рисуется после заголовка редактора, приглушённым цветом.
+        /// </summary>
+        public void SetBuildVersion(string version)
+        {
+            try
+            {
+                if (IsDisposed || !IsHandleCreated) return;
+                if (InvokeRequired) { BeginInvoke((Action)(() => SetBuildVersion(version))); return; }
+                _buildVersion = version ?? "";
+                Invalidate();
+            }
+            catch (ObjectDisposedException) { }
+        }
 
         // Состояния системы (левая часть): title -> активна?
         private readonly System.Collections.Generic.List<(string title, bool active)> _states = new();
@@ -124,6 +149,15 @@ namespace ETS2_Assist_GUI
                         g.DrawEllipse(pen, rect);
                     string label = active ? title : ("нет " + title);
                     x = DrawOutlined(g, label, x + CircleD + 5f, cy, font, textBrush, blackBrush) + 14f;
+                }
+
+                // ==== ВЕРСИЯ СБОРКИ (после заголовков, приглушённо) ====
+                // Рисуется ЗДЕСЬ, до правой части: так спиннер/галочка и текст
+                // операции по-прежнему ограничены правой половиной.
+                if (!string.IsNullOrEmpty(_buildVersion))
+                {
+                    using var verBrush = new SolidBrush(VersionColor);
+                    x = DrawOutlined(g, _buildVersion, x + 4f, cy, font, verBrush, blackBrush);
                 }
 
                 // ==== ПРАВАЯ ЧАСТЬ: текущая операция ====

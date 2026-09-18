@@ -5,6 +5,7 @@ using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Linq;
@@ -34,6 +35,26 @@ namespace ETS2_Assist_GUI
         private bool _lastGameFocused;
         private string _focusDiagnostics = "";
 
+        // ================================================================
+        // ПОЛИТИКА ОВЕРЛЕЕВ: ПОТОКОВЫЙ ТАЙМЕР, НЕ WinForms-ТАЙМЕР.
+        //
+        // КОРЕНЬ «миникарта/гибрид/квесты живут отдельной жизнью»: политика
+        // шла на System.Windows.Forms.Timer, который не тикает при удержании
+        // окна игры. ETS2 при старте забирает фокус, политика вызывала
+        // ForceForegroundWindow СВОЕГО окна и возвращала фокус приложению;
+        // окно игры, лишившись фокуса, перестаёт отдавать WM_TIMER, и
+        // CheckPauseAndUpdateUI не вызывался больше НИ РАЗУ (в логе сессии
+        // 13:34 — ни одной строки политики за 22 минуты).
+        //
+        // Тот же дефект уже дважды ловили в этом проекте (MapEditor2Form,
+        // AR-тик) и лечили сменой таймера. Повторяем проверенное решение:
+        // System.Threading.Timer НЕ зависит от очереди сообщений;
+        // работа с UI/командами — через BeginInvoke;
+        // Interlocked-флаг не даёт тикам накладываться (тик асинхронный).
+        // ================================================================
+        private System.Threading.Timer? _pauseCheckTimer;
+        private int _pauseCheckBusy;
+
         private void StartPauseCheck()
         {
             // Проверяем, включен ли debug-режим (передаётся через параметр в URL)
@@ -51,14 +72,67 @@ namespace ETS2_Assist_GUI
                 }
             }
 
-            _pauseCheckTimer = new System.Windows.Forms.Timer();
-            _pauseCheckTimer.Interval = 500;
-            _pauseCheckTimer.Tick += (s, e) => CheckPauseAndUpdateUI();
-            _pauseCheckTimer.Start();
-            AppendLog("[UI] Политика оверлеев запущена (гистерезис 1 с, опрос 500 мс).");
+            _pauseCheckTimer?.Dispose();
+            _pauseCheckTimer = new System.Threading.Timer(
+                _ => QueuePauseCheck(), null, PauseCheckIntervalMs, PauseCheckIntervalMs);
+            AppendLog($"[UI] Политика оверлеев запущена (гистерезис 1 с, опрос {PauseCheckIntervalMs} мс, потоковый таймер).");
         }
 
-        private async void CheckPauseAndUpdateUI()
+        private const int PauseCheckIntervalMs = 500;
+        private long _pauseCheckTicks;
+        private long _pauseCheckLastLogged;
+
+        // Снимок паузы, снятый В ФОНЕ (HTTP-запрос нельзя выполнять в обработчике
+        // сообщений: пока он идёт, оконная процедура стоит и WM_TIMER/Tick копятся).
+        // -1 = данных ещё нет, 0 = игра идёт, 1 = пауза.
+        private int _pauseSnapshot = -1;
+
+        /// <summary>
+        /// Тик политики приходит в потоке пула. Сеть опрашиваем ЗДЕСЬ (в фоне),
+        /// решение применяем в UI-потоке.
+        /// </summary>
+        private void QueuePauseCheck()
+        {
+            if (Interlocked.CompareExchange(ref _pauseCheckBusy, 1, 0) != 0) return;
+            bool handed = false;
+            try
+            {
+                if (IsDisposed || !IsHandleCreated) return;
+                int paused = IsGamePaused() ? 1 : 0;
+                Volatile.Write(ref _pauseSnapshot, paused);
+                BeginInvoke((Action)(() =>
+                {
+                    try { CheckPauseAndUpdateUI(); }
+                    finally { Volatile.Write(ref _pauseCheckBusy, 0); }
+                }));
+                handed = true;   // флаг снимет сам UI-вызов в finally
+            }
+            catch { }
+            finally
+            {
+                // ВАЖНО: если вызов НЕ передан в UI-очередь (форма закрывается или
+                // окно ещё без handle), флаг надо снять ЗДЕСЬ — иначе он «залипнет»
+                // в 1 и политика умрёт навсегда. Та же ловушка, что и в AR-тике.
+                if (!handed) Volatile.Write(ref _pauseCheckBusy, 0);
+            }
+        }
+
+        /// <summary>
+        /// Строка «жизни» политики: раз в 30 с в app_data.log. Без неё молчание
+        /// политики (ровно этот баг) невозможно отличить от «нечего показывать».
+        /// </summary>
+        private void LogPauseCheckAlive(bool gameRunning, bool paused, bool gameFocused)
+        {
+            long ticks = Interlocked.Increment(ref _pauseCheckTicks);
+            if (ticks - Interlocked.Read(ref _pauseCheckLastLogged) < 60) return;
+            Volatile.Write(ref _pauseCheckLastLogged, ticks);
+            AppendDataLog(
+                $"[UI] политика жива: тиков={ticks} running={gameRunning} paused={paused} " +
+                $"focus={gameFocused} active={_committedActive} gameUI={_lastGameUiVisible} " +
+                $"interactive={_lastInteractiveVisible} ({_focusDiagnostics})");
+        }
+
+        private void CheckPauseAndUpdateUI()
         {
             // Если debug режим, не скрываем UI (и принудительно показываем окна слоёв)
             if (_debugMode)
@@ -76,8 +150,11 @@ namespace ETS2_Assist_GUI
             }
 
             bool gameRunning = IsGameRunning();
-            bool paused = await IsGamePausedAsync();
             bool gameFocused = IsGameFocused();
+            // Пауза — из снимка, снятого в фоне (если ещё нет, берём намерение).
+            int snap = Volatile.Read(ref _pauseSnapshot);
+            bool paused = snap < 0 ? _pausedIntent : snap == 1;
+            LogPauseCheckAlive(gameRunning, paused, gameFocused);
 
             // Оверлеи допустимы только когда игра запущена и её окно активно.
             // Фокус на любом СТОРОННЕМ окне (включая основную форму приложения)
@@ -398,36 +475,15 @@ namespace ETS2_Assist_GUI
             _focusDiagnostics = "фокус вне игры";
             return false;
         }
-
+        /// <summary>
+        /// Асинхронный вариант проверки паузы: для НЕ-UI путей (квесты, телепорт),
+        /// где блокировать поток на HTTP-таймауте нельзя. Порт TruckTel определяется
+        /// динамически (см. MainForm.IsGamePaused — 8080 в новых сборках МЁРТВ).
+        /// </summary>
         private async Task<bool> IsGamePausedAsync()
         {
-            try
-            {
-                using (var client = new HttpClient())
-                {
-                    client.Timeout = TimeSpan.FromMilliseconds(700);
-                    int currentPort = TruckTelemetry.Port;
-                    int[] ports = currentPort == 8080 ? new[] { 8080, 8081 } : new[] { currentPort, 8080 };
-                    foreach (int port in ports.Distinct())
-                    {
-                        try
-                        {
-                            var response = await client.GetAsync($"http://localhost:{port}/api/rest/single/frame/paused");
-                            if (!response.IsSuccessStatusCode) continue;
-                            var json = (await response.Content.ReadAsStringAsync()).Trim();
-                            var parsed = ParsePausedResponse(json);
-                            if (parsed.HasValue) return parsed.Value;
-                        }
-                        catch { }
-                    }
-                }
-            }
-            catch
-            {
-                // ignored
-            }
-            // Телеметрия недоступна — используем последнее известное намерение приложения.
-            return _pausedIntent;
+            await Task.Yield();
+            return await Task.Run(IsGamePaused);
         }
     }
 }

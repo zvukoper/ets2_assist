@@ -5,6 +5,34 @@
     function getMapState(){try{return state;}catch(e){return window.state;}}
     function isBaseInteractive(p){var cat=String((p&&(p.type||p.category))||'').toLowerCase();return INTERACTIVE_CATS.has(cat);}
     function iconName(m){if(m==='yellow_exclamation')return'quest_exclamation_yellow.svg';if(m==='yellow_question')return'quest_question_yellow.svg';if(m==='gray_question')return'quest_question_gray.svg';return'';}
+    // ================================================================
+    // v1.0.40.56: ИКОНКИ КВЕСТОВ НА МИНИКАРТЕ — НОВЫЕ РАСТРОВЫЕ, 8x8.
+    //   Pointer_quest_on/off      — «!» (доступный квест);
+    //   Pointer_questdone_on/off  — «?» (шаг квеста/сдача);
+    //   _on = жёлтый, _off = серый.
+    // Раньше использовались SVG из editor_static_data/icons (они остаются
+    // запасным вариантом, если PNG почему-то не загрузится).
+    // ================================================================
+    var ICON_BASE='quests/images/';
+    var questIconCache={};
+    function questIconFor(m){
+        if(!m||m==='none')return'';
+        if(m==='yellow_exclamation')return ICON_BASE+'Pointer_quest_on_32x32.png';
+        if(m==='yellow_question')return ICON_BASE+'Pointer_questdone_on_32x32.png';
+        if(m==='gray_question')return ICON_BASE+'Pointer_questdone_off_32x32.png';
+        return '';
+    }
+    // Возвращает загруженный Image или null (тогда рисуется прежний SVG/точка).
+    function getQuestIcon(url){
+        if(!url)return null;
+        if(questIconCache[url]!==undefined)return questIconCache[url];
+        var img=new Image();
+        img.onload=function(){try{if(typeof drawMinimap==='function')drawMinimap();}catch(e){}};
+        img.onerror=function(){questIconCache[url]=null;};
+        img.src=url;
+        questIconCache[url]=img;
+        return img;
+    }
     function ensureCanvas(){var c=document.getElementById('minimapContainer');if(!c)return false;if(!minimapOverlay){minimapOverlay=document.createElement('canvas');minimapOverlay.id='questMinimapOverlay';minimapOverlay.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:75';c.appendChild(minimapOverlay);minimapCtx=minimapOverlay.getContext('2d');}var d=devicePixelRatio||1,w=c.clientWidth||1,h=c.clientHeight||1,ww=Math.round(w*d),hh=Math.round(h*d);if(minimapOverlay.width!==ww||minimapOverlay.height!==hh){minimapOverlay.width=ww;minimapOverlay.height=hh;}minimapOverlay.style.width=w+'px';minimapOverlay.style.height=h+'px';minimapCtx.setTransform(d,0,0,d,0,0);return true;}
     function questPointToScreen(q){var s=getMapState(),c=document.getElementById('minimapContainer');if(!s||!c||!s.truck)return null;var w=c.clientWidth||1,h=c.clientHeight||1,scale=Number(s.currentScale||s.scale||1);if(!Number.isFinite(scale)||scale<=0)scale=1;var heading=Number(s.truck.heading||0),dx=(Number(q.X)-Number(s.truck.x))/scale,dz=(Number(q.Z)-Number(s.truck.z))/scale;dx=-dx;var a=-heading+Math.PI,co=Math.cos(a),si=Math.sin(a),rx=dx*co-dz*si,ry=dx*si+dz*co;return{x:w/2+rx,y:h/2-ry,cx:w/2,cy:h/2};}
     function drawEdgeArrow(ctx,x,y,cx,cy,marker){var dx=x-cx,dy=y-cy,len=Math.hypot(dx,dy);if(!Number.isFinite(len)||len<1)return;var c=document.getElementById('minimapContainer'),w=c.clientWidth||1,h=c.clientHeight||1,margin=24,maxX=Math.max(margin,w-margin),maxY=Math.max(margin,h-margin),tX=dx>0?(maxX-cx)/dx:(margin-cx)/dx,tY=dy>0?(maxY-cy)/dy:(margin-cy)/dy,t=Math.min(Math.abs(tX)||Infinity,Math.abs(tY)||Infinity);if(!Number.isFinite(t)||t<=0)t=1;var px=Math.max(margin,Math.min(maxX,cx+dx*t)),py=Math.max(margin,Math.min(maxY,cy+dy*t)),ang=Math.atan2(dy,dx),yellow=marker!=='gray_question';ctx.save();ctx.translate(px,py);ctx.rotate(ang);ctx.fillStyle=yellow?'#ffd21f':'#aeb4bf';ctx.strokeStyle=yellow?'rgba(70,50,0,.95)':'rgba(25,30,35,.95)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(11,0);ctx.lineTo(-7,-7);ctx.lineTo(-4,0);ctx.lineTo(-7,7);ctx.closePath();ctx.fill();ctx.stroke();ctx.rotate(-ang);ctx.font='700 13px Segoe UI,Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=yellow?'#3b2b00':'#20252b';ctx.fillText(marker==='yellow_exclamation'?'!':'?',0,0);ctx.restore();}
@@ -12,7 +40,7 @@
     function rememberBasePois(){var s=getMapState();if(!s||!Array.isArray(s.pois))return;s.pois.forEach(function(p){var uid=String(p.uid||'');if(!uid||p.__questGenerated)return;if(!baseByUid.has(uid))baseByUid.set(uid,{uid:uid,x:p.x,z:p.z,name:p.name,icon:p.icon,type:p.type,color:p.color,opacity:p.opacity,layer:p.layer,displayOnMap:p.displayOnMap});});}
     function upsertGeneratedPoint(q){var s=getMapState();if(!s||!Array.isArray(s.pois)||!q||!q.Uid)return;var uid=String(q.Uid),p=s.pois.find(function(x){return String(x.uid||'')===uid;});if(!p){p={uid:uid,x:Number(q.X)||0,z:Number(q.Z)||0,y:Number(q.Y)||0,name:q.Name||'Квестовая точка',type:'quest',color:'#ffd21f',opacity:1,layer:9999,displayOnMap:false,icon:'',__questGenerated:true};s.pois.push(p);}return p;}
     function debugNear(p,radius){var s=getMapState();if(!s||!s.truck)return false;var r=Number(radius||50);return Math.hypot((Number(p.x)||0)-(Number(s.truck.x)||0),(Number(p.z)||0)-(Number(s.truck.z)||0))<=r;}
-    function applyQuestPoints(data){questState=data||{};var s=getMapState();if(!s||!Array.isArray(s.pois))return;rememberBasePois();var byUid=new Map();(questState.points||[]).forEach(function(q){if(q&&q.Uid){byUid.set(String(q.Uid),q);if(q.IsGenerated)upsertGeneratedPoint(q);}});s.pois=s.pois.filter(function(p){return !p.__questGenerated||byUid.has(String(p.uid||''));});s.pois.forEach(function(p){var uid=String(p.uid||''),q=byUid.get(uid),base=baseByUid.get(uid);if(q){p.name=q.Name||p.name;p.displayOnMap=!!q.MinimapVisible;if(q.Marker&&q.Marker!=='none'){p.icon=iconName(q.Marker);p.type='quest';p.color=q.Marker==='gray_question'?'#aeb4bf':'#ffd21f';p.opacity=1;p.layer=9999;}else{p.icon=base?base.icon:'';p.type=base?base.type:'quest_known';p.color=base?base.color:'#66bbff';p.opacity=base&&base.opacity!=null?base.opacity:1;p.layer=base&&base.layer!=null?base.layer:100;}return;}if(p.__questGenerated){p.displayOnMap=false;return;}if(base){p.name=base.name;p.icon=base.icon;p.type=base.type;p.color=base.color;p.opacity=base.opacity;p.layer=base.layer;p.displayOnMap=questState.settings&&questState.settings.DebugShowAllPoints?!!debugNear(p,questState.settings.DebugRadiusM):isBaseInteractive(base);}});try{if(typeof drawMinimap==='function')drawMinimap();}catch(e){}drawMinimapPointers();}
+    function applyQuestPoints(data){questState=data||{};var s=getMapState();if(!s||!Array.isArray(s.pois))return;rememberBasePois();var byUid=new Map();(questState.points||[]).forEach(function(q){if(q&&q.Uid){byUid.set(String(q.Uid),q);if(q.IsGenerated)upsertGeneratedPoint(q);}});s.pois=s.pois.filter(function(p){return !p.__questGenerated||byUid.has(String(p.uid||''));});s.pois.forEach(function(p){var uid=String(p.uid||''),q=byUid.get(uid),base=baseByUid.get(uid);if(q){p.name=q.Name||p.name;p.displayOnMap=!!q.MinimapVisible;if(q.Marker&&q.Marker!=='none'){p.icon=iconName(q.Marker);p.__questIcon=questIconFor(q.Marker);p.type='quest';p.color=q.Marker==='gray_question'?'#aeb4bf':'#ffd21f';p.opacity=1;p.layer=9999;}else{p.icon=base?base.icon:'';p.__questIcon='';p.type=base?base.type:'quest_known';p.color=base?base.color:'#66bbff';p.opacity=base&&base.opacity!=null?base.opacity:1;p.layer=base&&base.layer!=null?base.layer:100;}return;}p.__questIcon='';if(p.__questGenerated){p.displayOnMap=false;return;}if(base){p.name=base.name;p.icon=base.icon;p.type=base.type;p.color=base.color;p.opacity=base.opacity;p.layer=base.layer;p.displayOnMap=questState.settings&&questState.settings.DebugShowAllPoints?!!debugNear(p,questState.settings.DebugRadiusM):isBaseInteractive(base);}});try{if(typeof drawMinimap==='function')drawMinimap();}catch(e){}drawMinimapPointers();}
     function showNotification(){/* moved to the full-screen AR layer */}
     function connect(){try{ws=new WebSocket('ws://localhost:8085/');ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state')applyQuestPoints(d);}catch(e){}};ws.onclose=function(){setTimeout(connect,1500);};ws.onerror=function(){try{ws.close();}catch(e){}};}catch(e){setTimeout(connect,1500);}}
     function redrawLoop(){drawMinimapPointers();requestAnimationFrame(redrawLoop);}

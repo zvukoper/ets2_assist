@@ -235,6 +235,10 @@ namespace ETS2_Assist_GUI
                 }
             };
             LogEditor($"Редактор карты открыт. Городов={_cities.Count}, целей={_targets.Count}, POI={_pois.Count}, дороги={(_roadsPath != null ? "загружены" : "нет")}.");
+            // v1.0.40.57: полная версия сборки в статусбаре — после заголовка
+            // редактора. Нужна, чтобы визуально отличить применённые изменения
+            // редактора от закешированной WebView2 старой страницы.
+            _statusBar.SetBuildVersion(BuildInfo.Version);
             SetTruckStatus();
         }
 

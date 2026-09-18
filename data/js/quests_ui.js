@@ -24,7 +24,16 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){retur
 function send(o){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(o))}
 function post(o){try{if(window.chrome&&window.chrome.webview)window.chrome.webview.postMessage(JSON.stringify(o));}catch(e){}}
 function setNativeClickable(value){post({command:'set_clickable',value:!!value})}
-function markerIcon(m){if(m==='yellow_exclamation')return'editor_static_data/icons/quest_exclamation_yellow.svg';if(m==='yellow_question')return'editor_static_data/icons/quest_question_yellow.svg';if(m==='gray_question')return'editor_static_data/icons/quest_question_gray.svg';return''}
+function markerIcon(m){
+    /* v1.0.40.56: иконки квестов — новые растровые Pointer_*.png (32x32).
+       Соответствие: quest = «!», questdone = «?»; _on = жёлтый, _off = серый.
+       Прежние SVG из editor_static_data/icons оставлены запасным вариантом
+       через onerror, чтобы список не остался без иконки. */
+    if(m==='yellow_exclamation')return{src:'quests/images/Pointer_quest_on_32x32.png',fb:'editor_static_data/icons/quest_exclamation_yellow.svg'};
+    if(m==='yellow_question')return{src:'quests/images/Pointer_questdone_on_32x32.png',fb:'editor_static_data/icons/quest_question_yellow.svg'};
+    if(m==='gray_question')return{src:'quests/images/Pointer_questdone_off_32x32.png',fb:'editor_static_data/icons/quest_question_gray.svg'};
+    return null;
+}
 
 /* ---------------------------------------------------------------- сворачивание */
 /* Мышь окна управляется из двух состояний: активна ли пауза и свёрнуто ли окно.
@@ -44,12 +53,27 @@ function syncInput(notify){
             var r=tab.getBoundingClientRect();
             var vw=Math.max(1,window.innerWidth),vh=Math.max(1,window.innerHeight);
             var pad=6;
+            /* ⛔ ПОРЯДОК КОМАНД КРИТИЧЕН (корень «на закладку нельзя нажать»).
+               В хосте кликабельность ВЫВОДИТСЯ из двух полей:
+                 _clickable   — разрешена ли странице принимать мышь ВООБЩЕ;
+                 _hotspot     — ЕДИНСТВЕННАЯ принимающая область внутри окна.
+               `set_clickable(false)` в хосте СБРАСЫВАЕТ _hotspot (Rectangle.Empty)
+               и снова делает окно прозрачным для мыши. Раньше он отправлялся
+               ПЕРВЫМ, поэтому следующий set_clickable_hotspot задавал область,
+               но решение NeedsClickThroughStyle = (!_clickable || _hotspot.IsEmpty)
+               всё равно было true ⇒ мышь шла «сквозь» закладку.
+               Поэтому: СНАЧАЛА задаём горячую область, и только ПОТОМ разрешаем
+               странице принимать мышь. */
             post({command:'set_clickable_hotspot',
                 xr:0,
                 yr:Math.max(0,(r.top-pad)/vh),
                 wr:Math.min(1,(r.width+8)/vw),
                 hr:Math.min(1,(r.height+pad*2)/vh)});
-        }else post({command:'set_clickable_hotspot',xr:0,yr:0,wr:0,hr:0});
+            setNativeClickable(true);
+        }else{
+            post({command:'set_clickable_hotspot',xr:0,yr:0,wr:0,hr:0});
+            setNativeClickable(false);
+        }
     }else{
         setNativeClickable(false);
         post({command:'set_clickable_hotspot',xr:0,yr:0,wr:0,hr:0});
@@ -143,7 +167,7 @@ function renderInteractions(){
     var key=JSON.stringify([currentQuest,currentInteraction].concat(near.map(function(p){return[p.QuestId,p.InteractionId,p.Name,p.Marker,Math.round(p.distance||0)]})));
     if(key===lastInteractionsKey)return;
     lastInteractionsKey=key;
-    el.innerHTML=near.map(function(p){var active=p.QuestId===currentQuest&&p.InteractionId===currentInteraction;var icon=markerIcon(p.Marker);return'<button class="sideItem'+(active?' selected':'')+'" data-q="'+esc(p.QuestId)+'" data-i="'+esc(p.InteractionId)+'"><img src="'+icon+'"><span class="sideMain">'+esc(p.Name)+'</span><span class="sideDist">'+Math.round(p.distance||0)+' м</span></button>'}).join('');
+    el.innerHTML=near.map(function(p){var active=p.QuestId===currentQuest&&p.InteractionId===currentInteraction;var icon=markerIcon(p.Marker);var imgHtml=icon?'<img src="'+icon.src+'" onerror="this.onerror=null;this.src=\''+icon.fb+'\';">':'';return'<button class="sideItem'+(active?' selected':'')+'" data-q="'+esc(p.QuestId)+'" data-i="'+esc(p.InteractionId)+'">'+imgHtml+'<span class="sideMain">'+esc(p.Name)+'</span><span class="sideDist">'+Math.round(p.distance||0)+' м</span></button>'}).join('');
     el.querySelectorAll('.sideItem').forEach(function(b){b.onclick=function(){selectInteraction(b.dataset.q,b.dataset.i)}})
 }
 function renderQuests(){

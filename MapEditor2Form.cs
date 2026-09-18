@@ -173,6 +173,15 @@ namespace ETS2_Assist_GUI
             if (string.Equals(message, "map2-ready", StringComparison.Ordinal))
             {
                 _pageReady = true;
+                // v1.0.40.57: СБРОС ФЛАГА ИНЪЕКЦИИ КАТЕГОРИИ «КВЕСТОВЫЕ».
+                // `map2-ready` приходит на КАЖДУЮ загрузку страницы (в логе две
+                // записи подряд в одной сессии редактора). Флаг
+                // `_questEditorOverlayInjected` после первой загрузки оставался
+                // true, поэтому при перезагрузке страницы скрипт
+                // js/quest_editor.js НЕ подключался заново — вместе с ним
+                // исчезала и вся категория «Квестовые» в сайдбаре.
+                _questEditorOverlayInjected = false;
+                TryInjectQuestEditorOverlay();
                 Logger.Current?.Data("[TRUCK] редактор 2: страница готова (map2-ready) — сбрасываю счётчик отправки");
                 // Страница перезагрузилась: снимок нужно отправить заново, даже если
                 // revision не менялся (иначе метка не появится до следующего изменения).

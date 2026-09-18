@@ -61,12 +61,22 @@ namespace ETS2_Assist_GUI
 
         private void TryInjectQuestEditorOverlay()
         {
-            if (_questEditorOverlayInjected || IsDisposed || !_pageReady || _webView.CoreWebView2 == null) return;
+            if (IsDisposed || !_pageReady || _webView.CoreWebView2 == null) return;
             try
             {
                 AttachQuestEditorBridgeHook();
+                // v1.0.40.57: САМОЛЕЧЕНИЕ. Единственной точкой входа был флаг
+                // `_questEditorOverlayInjected`; после перезагрузки страницы он
+                // оставался true → скрипт НЕ подключался заново и категория
+                // «Квестовые» исчезала из сайдбара. Теперь решение принимает САМА
+                // страница (проверяет, есть ли уже элемент script), поэтому вызов
+                // идемпотентен и повторяется насосом (600 мс), пока страница жива.
+                // Стоимость — один ExecuteScriptAsync раз в 600 мс.
                 _questEditorOverlayInjected = true;
-                _ = _webView.CoreWebView2.ExecuteScriptAsync("(function(){if(document.getElementById('questEditorOverlayScript'))return;var s=document.createElement('script');s.id='questEditorOverlayScript';s.src='../js/quest_editor.js';document.body.appendChild(s);})();");
+                _ = _webView.CoreWebView2.ExecuteScriptAsync(
+                    "(function(){if(document.getElementById('questEditorOverlayScript'))return;" +
+                    "var s=document.createElement('script');s.id='questEditorOverlayScript';s.src='../js/quest_editor.js';" +
+                    "document.body.appendChild(s);})();");
             }
             catch { _questEditorOverlayInjected = false; }
         }
