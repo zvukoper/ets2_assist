@@ -36,10 +36,27 @@ function markerIcon(m){
 }
 
 /* ---------------------------------------------------------------- сворачивание */
+/* Полноэкранный оверлей квестов НЕ должен пропускать мышь иначе, чем к окну:
+   в развёрнутом состоянии окно занимает центр, но прозрачные поля вокруг него
+   остаются частью того же слоя. Чтобы игра не получала клики «сквозь» окно,
+   контейнер перехватывает клик по прозрачной области (сворачивание). */
+function applyCursorLayer(){
+    /* v1.0.40.59: курсор над окном — обычная стрелка вместо спрятанного курсора
+       игры (в остальных слоях он остаётся скрытым). */
+    var app=$('questApp');
+    if(app)app.style.cursor=pagePaused?'default':'';
+    /* Фактический ввод уходит в игру по каналам игры (WS 8085/8084), а не через
+       неактивируемое окно-оверлей: WS_EX_NOACTIVATE + OnActivated-подавление в
+       хосте — НАМЕРЕННЫЕ (иначе у игры отбирается фокус и ломается телеметрия,
+       см. v1.0.40.54). Поэтому page-level keydown в этом окне не ловится: TAB
+       приходит командой приложения quest_toggle_collapse. */
+}
+
 /* Мышь окна управляется из двух состояний: активна ли пауза и свёрнуто ли окно.
    Развёрнутое окно кликабельно целиком; свёрнутое отдаёт мыши только область
    закладки у левой границы экрана; скрытое окно прозрачно для мыши. */
 function syncInput(notify){
+    applyCursorLayer();
     if(pagePaused&&!collapsed){
         setNativeClickable(true);
         post({command:'set_clickable_hotspot',xr:0,yr:0,wr:0,hr:0});
@@ -229,6 +246,10 @@ window.onEts2Command=function(d){
     if(!d)return;
     if(d.command==='set_quest_tab_state'){setTabPulse(d.hasInteractive);if(collapsed)syncInput(false)}
     else if(d.command==='set_quest_collapsed')applyCollapsed(d.collapsed,false,false);
+    /* v1.0.40.59: TAB (хоткей приложения, активен только когда видна интерактивная
+       категория) — ТО ЖЕ, что стрелочка сворачивания: развёрнуто → свернуть и
+       оставить закладку, свёрнуто (видна закладка) → развернуть. */
+    else if(d.command==='quest_toggle_collapse'){if(collapsed)expandWindow();else collapseWindow()}
 };
 
 (function(){

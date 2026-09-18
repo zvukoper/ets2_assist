@@ -330,6 +330,11 @@ namespace ETS2_Assist_GUI
                     : "[UI] Интерактивные интерфейсы скрыты (игра снята с паузы или фокус вне игры).");
             }
 
+            // v1.0.40.59: пока на экране интерактивная категория (а это значит, что
+            // видна закладка «Квесты» либо само окно), TAB переключает окно — как
+            // стрелочка сворачивания. В остальное время TAB не перехватываем.
+            SetQuestToggleHotkeyActive(showInteractive);
+
             if (gameFocused != _lastGameFocused)
             {
                 _lastGameFocused = gameFocused;

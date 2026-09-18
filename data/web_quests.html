@@ -11,6 +11,10 @@
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
 #questApp{position:fixed;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none}
 #questApp.paused{display:flex;pointer-events:auto}
+/* v1.0.40.59: над окном квестов — обычный курсор (в остальных слоях курсор игры
+   скрыт). Вид курсора переключает js/quests_ui.js вместе с кликабельностью. */
+#questApp.paused{cursor:default}
+#questTab{cursor:pointer}
 .questWindow{position:relative;width:min(1280px,92vw);height:min(900px,88vh);display:grid;grid-template-columns:240px minmax(420px,1fr) 310px;grid-template-rows:1fr 54px;gap:10px;padding:12px;box-sizing:border-box;background:rgba(13,17,22,.97);border:1px solid rgba(255,205,85,.35);box-shadow:0 15px 70px rgba(0,0,0,.75);border-radius:10px;opacity:1;transform:translateX(0);transition:opacity 160ms ease,transform 220ms ease 160ms}
 /* v1.0.40.57: окно уезжает за край НЕ ПОЛНОСТЬЮ — в финальных кадрах анимации
    добавляем фейдаут, иначе у левой границы остаётся видимая полоса.

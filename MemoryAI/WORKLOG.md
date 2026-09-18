@@ -306,3 +306,43 @@ git show b34b75f:MemoryAI/WORKLOG.md > WORKLOG_full_until_17.09.26.md
   `data/ets2_assist_build.txt`, `data/web_runtime_manifest.json`.
 - **ПЕНДИНГ:** проверка пользователем (галочка debugShow: окна не исчезают без фокуса,
   пауза переключает категории; гибрид не искажается; рамки по периметру АР нет).
+
+## 18.09.2026 — v1.0.40.59 QUEST-TAB-TOGGLE
+
+- **Задача пользователя:** когда на экране видна закладка «Квесты», нажатие TAB
+  должно сворачивать/разворачивать окно квестов. Окно выводится поверх игры и
+  полностью забирает себе фокус и курсор. TAB в окне квестов — то же, что нажатие
+  на стрелочку сворачивания: сворачивает окно и оставляет закладку.
+- **КОРЕНЬ (почему нельзя просто `keydown` на странице):** хост оверлеев намеренно
+  создаётся с `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW`, `ShowWithoutActivation=true` и
+  подавленным `OnActivated` (`Program.SuppressOverlayActivation`). Это ЗАЩИТА от
+  регресса v1.0.40.54: захват фокуса оверлеем отбирал foreground у ETS2, телеметрия
+  рапортовала «placement нет (пауза/окно игры неактивно)» и политика прятала ВСЁ.
+  ⇒ Страница НИКОГДА не получает WM_KEYDOWN, и `document`-keydown там не сработает.
+- **РЕШЕНИЕ:** TAB — ГЛОБАЛЬНЫЙ ХОТКЕЙ ПРИЛОЖЕНИЯ, активный РОВНО ПОКА видна
+  интерактивная категория (закладка или окно).
+  - `MainForm`: `HOTKEY_QUEST_TOGGLE = 9022`, регистрация `MOD_NOREPEAT` + `Keys.Tab`
+    (без Ctrl/Shift) в `SetQuestToggleHotkeyActive(bool)`; в `WndProc` →
+    `SendCommandToMap("quest_toggle_collapse")`.
+  - ⛔ ХОТКЕЙ РЕГИСТРИРУЕТСЯ И СНИМАЕТСЯ ДИНАМИЧЕСКИ из
+    `WebUIManager.ApplyOverlayVisibility` по `showInteractive` — иначе TAB был бы
+    перехвачен глобально во ВСЕХ приложениях. При `StopSystem` снимается гарантированно.
+  - `data/js/quests_ui.js`: команда `quest_toggle_collapse` идёт через ТЕ ЖЕ
+    `collapseWindow`/`expandWindow`, что и стрелочка, поэтому защита от двойного
+    жеста (250 мс `blockToggle()`) и отчёт `quest_window_state` работают как прежде.
+- **ФОКУС И КУРСОР (частично ограничено осознанно):** окно реально принимает мышь
+  целиком (`set_clickable(true)` + `set_clickable_hotspot` сброшен), а над окном
+  показывается ОБЫЧНЫЙ КУРСОР — новый `applyCursorLayer()` в `syncInput` +
+  `#questApp.paused{cursor:default}` (в остальных слоях курсор игры скрыт).
+  При сворачивании прежний `return_focus` возвращает управление игре.
+  ⛔ FOREGROUND оверлею НЕ отдаём: это сломало бы телеметрию (см. корень выше).
+  ⛔ Настройка `WebOverlay` — ОТДЕЛЬНЫЙ РЕПО, правки GUI-репо его не меняют.
+- **ПРОВЕРЕНО:** `node --check js/quests_ui.js`; `dotnet build` 0 ошибок;
+  `compile.ps1` delivery OK (422 файла), кэш WebView2 очищен; версии синхронизированы
+  (exe = build.txt = manifest = 1.0.40.59-QUEST-TAB-TOGGLE-09.18-1623); MD5 правленых
+  web-файлов в publish совпадают.
+- **Изменённые файлы:** `MainForm.cs`, `UI/WebUIManager.cs`, `data/js/quests_ui.js`,
+  `data/web_quests.html`, `ETS2_Assist_GUI.csproj`, `BuildInfo.cs`,
+  `АРХИТЕКТУРА ПРОЕКТА.md`, `data/ets2_assist_build.txt`, `data/web_runtime_manifest.json`.
+- **ПЕНДИНГ:** проверка пользователем (TAB сворачивает/разворачивает окно, когда видна
+  закладка или окно; закладка остаётся при сворачивании).

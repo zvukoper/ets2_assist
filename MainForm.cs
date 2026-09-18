@@ -177,6 +177,12 @@ namespace ETS2_Assist_GUI
         private const int HOTKEY_AR1_ROLLFACTOR_UP = 9020;   // CTRL+SHIFT+J — доля +0.1
         private const int HOTKEY_AR1_ROLLFACTOR_DOWN = 9021; // CTRL+SHIFT+K — доля −0.1
         private const int HOTKEY_AR1_FOV_DOWN = 9014; // CTRL+PGDN — FOV AR1 −1°
+        // v1.0.40.59: TAB — свернуть/развернуть окно квестов (как стрелочка).
+        // Хоткей регистрируется ТОЛЬКО пока на экране интерактивная категория
+        // (пауза + фокус на игре): всё остальное время TAB принадлежит системе,
+        // иначе он был бы перехвачен глобально во всех приложениях.
+        private const int HOTKEY_QUEST_TOGGLE = 9022;
+        private bool _questToggleHotkeyRegistered;
         // v1.0.40.18: камера редактора при телепорте (Ctrl+Shift+T) ставится С ЮГА от цели,
         // на 7 м дальше и на 5 м выше точки, чтобы объект оставался в поле зрения.
         internal const double EditorCamDistanceM = 7.0;   // дистанция от цели (по оси Z, юг)
@@ -412,11 +418,45 @@ RegisterHotKeyChecked(
             }
         }
 
+        /// <summary>
+        /// v1.0.40.59: TAB — свернуть/развернуть окно квестов, пока на экране
+        /// интерактивная категория (то есть видна закладка «Квесты» либо само окно).
+        /// Хоткей регистрируется и снимается ДИНАМИЧЕСКИ вместе с категорией:
+        /// постоянно держать TAB нельзя — он был бы перехвачен глобально и
+        /// сломал бы переключение окон во всех остальных приложениях.
+        /// </summary>
+        private void SetQuestToggleHotkeyActive(bool active)
+        {
+            if (!active || !hotKeyRegistered || IsDisposed || !IsHandleCreated)
+            {
+                if (!_questToggleHotkeyRegistered) return;
+                try { UnregisterHotKey(this.Handle, HOTKEY_QUEST_TOGGLE); } catch { }
+                _questToggleHotkeyRegistered = false;
+                return;
+            }
+
+            if (_questToggleHotkeyRegistered) return;
+            try
+            {
+                // MOD_NOREPEAT: удержание TAB не должно переключать окно повторно.
+                bool ok = RegisterHotKey(this.Handle, HOTKEY_QUEST_TOGGLE, MOD_NOREPEAT, (uint)Keys.Tab);
+                _questToggleHotkeyRegistered = ok;
+                if (!ok)
+                {
+                    int err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                    AppendLog($"[HOTKEY] Не удалось зарегистрировать Tab (переключение окна квестов) — код {err}");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[HOTKEY] Ошибка регистрации Tab: {ex.Message}");
+            }
+        }
+
         private void WaitForInstanceSignal()
         {
             var signal = Program.InstanceSignal;
             if (signal == null) return;
-
             while (!IsDisposed && !Disposing)
             {
                 if (!signal.WaitOne(1000)) continue;
@@ -3476,6 +3516,9 @@ RegisterHotKeyChecked(
             // v1.0.40.54: политика оверлеев живёт на потоковом таймере (UI/WebUIManager.cs).
             try { _pauseCheckTimer?.Dispose(); } catch { }
             _pauseCheckTimer = null;
+            // v1.0.40.59: TAB (переключение окна квестов) держим только пока видна
+            // интерактивная категория — при остановке системы снимаем гарантированно.
+            SetQuestToggleHotkeyActive(false);
             StopTriggerServer();
             StopWebSocketSaveServer();
             StopStaticWebServer();
@@ -3845,6 +3888,12 @@ RegisterHotKeyChecked(
                     case HOTKEY_AR1_FOV_DOWN:
                         // v1.0.40.27: CTRL+PGDN — FOV AR1 −1° (шаг 1 градус, автоповтор).
                         SetAr1Fov(AR.ArBridge.FovDegreesAr1 - 1.0, "Ctrl+PGDN");
+                        break;
+                    case HOTKEY_QUEST_TOGGLE:
+                        // v1.0.40.59: TAB — то же, что стрелочка сворачивания окна
+                        // квестов: развёрнуто → свернуть и оставить закладку,
+                        // свёрнуто (видна закладка) → развернуть.
+                        SendCommandToMap("quest_toggle_collapse");
                         break;
                     case HOTKEY_AR1_VFOV_UP:
                         // v1.0.40.34: CTRL+SHIFT+PGUP — вертикальный FOV AR1 +0.2° (было 0.5°).
@@ -4999,6 +5048,8 @@ RegisterHotKeyChecked(
                 UnregisterHotKey(this.Handle, HOTKEY_AR1_PLANEMODE);
                 UnregisterHotKey(this.Handle, HOTKEY_AR1_ROLLFACTOR_UP);
                 UnregisterHotKey(this.Handle, HOTKEY_AR1_ROLLFACTOR_DOWN);
+                UnregisterHotKey(this.Handle, HOTKEY_QUEST_TOGGLE);
+                _questToggleHotkeyRegistered = false;
                 UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
             }
             catch (Exception ex)
