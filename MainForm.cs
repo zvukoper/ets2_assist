@@ -2531,6 +2531,12 @@ RegisterHotKeyChecked(
                     foreach (var prop in extra.Properties())
                         msg[prop.Name] = prop.Value;
                 }
+                // ДИАГНОСТИКА ВВОДА (временно): логируем ФАКТИЧЕСКИ отправленные
+                // значения команд окна квестов, а не предполагаемые.
+                if (IsQuestInputCommand(command))
+                {
+                    Logger.Current?.Workflow($"[QUEST-DIAG][POST] to page command={command} payload={msg.ToString(Formatting.None)}");
+                }
                 _wsSaveServer.WebSocketServices["/"]?.Sessions?.Broadcast(msg.ToString(Formatting.None));
                 // ПРАВИЛО ЛОГОВ (31.08.2026): потоковые команды (ar_telemetry и т.п.,
                 // идут 30 раз/с) НЕ пишем в workflow — это спам данными. Только в
@@ -2550,6 +2556,15 @@ RegisterHotKeyChecked(
         // Потоковые (высокочастотные) команды: лог только в app_data, не в workflow.
         private static bool IsStreamingCommand(string command) =>
             command == "ar_telemetry";   // 30 Гц — единственный потоковый канал сейчас
+
+        /// <summary>ДИАГНОСТИКА (временно): команды, влияющие на мышь окна квестов.</summary>
+        private static bool IsQuestInputCommand(string command) =>
+            command == "set_clickable" ||
+            command == "set_clickable_hotspot" ||
+            command == "set_quest_collapsed" ||
+            command == "quest_toggle_collapse" ||
+            command == "set_quest_tab_state" ||
+            command == "set_overlay_category";
 
         // ================================================================
         // СОХРАНЕНИЕ ТРЕКА
@@ -3355,6 +3370,10 @@ RegisterHotKeyChecked(
             if (!File.Exists(overlayExe)) { AppendLog("WebOverlay executable not found."); return; }
             try
             {
+                // ДИАГНОСТИКА (временно): исключаем «GitHub Program.cs новый, но
+                // реально запущен старый WebOverlay.exe». Полный путь + SHA-256 +
+                // время записи файла оверлея и собственного EXE.
+                LogOverlayExeIdentity(overlayExe);
                 EnsureOverlayWindowConfig();
                 foreach (var proc in Process.GetProcessesByName("WebOverlay")) { try { proc.Kill(); proc.WaitForExit(1500); } catch { } }
                 foreach (var proc in Process.GetProcessesByName("pano")) { try { proc.Kill(); proc.WaitForExit(1500); } catch { } }
@@ -3376,6 +3395,43 @@ RegisterHotKeyChecked(
                     Process.Start(overlayExe, $"append {urlHeights}");
             }
             catch (Exception ex) { AppendLog($"Failed to start overlay: {ex.Message}"); }
+        }
+
+        /// <summary>
+        /// ДИАГНОСТИКА (временно): фиксирует, ЧТО именно запускается как оверлей.
+        /// Нужно, чтобы исключить «новый Program.cs, но старый WebOverlay.exe».
+        /// </summary>
+        private void LogOverlayExeIdentity(string overlayExe)
+        {
+            try
+            {
+                string ownExe = Application.ExecutablePath;
+                AppendLog($"[OVERLAY-DIAG][START] overlayExe={overlayExe} exists={File.Exists(overlayExe)} " +
+                    $"sha256={ComputeFileSha256(overlayExe)} lastWriteUtc={(File.Exists(overlayExe) ? File.GetLastWriteTimeUtc(overlayExe).ToString("O") : "-")} " +
+                    $"size={(File.Exists(overlayExe) ? new FileInfo(overlayExe).Length : 0)}");
+                AppendLog($"[OVERLAY-DIAG][START] ownExe={ownExe} version={BuildInfo.Version} " +
+                    $"sha256={ComputeFileSha256(ownExe)} lastWriteUtc={File.GetLastWriteTimeUtc(ownExe):O} size={new FileInfo(ownExe).Length}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[OVERLAY-DIAG][START] identity error: {ex.Message}");
+            }
+        }
+
+        /// <summary>SHA-256 файла; при ошибке возвращает причину строкой.</summary>
+        private static string ComputeFileSha256(string path)
+        {
+            try
+            {
+                if (!File.Exists(path)) return "missing";
+                using var stream = File.OpenRead(path);
+                using var sha = System.Security.Cryptography.SHA256.Create();
+                return Convert.ToHexString(sha.ComputeHash(stream));
+            }
+            catch (Exception ex)
+            {
+                return "error:" + ex.Message;
+            }
         }
         // AR HUD: ПОЛНОЭКРАННЫЙ ОВЕРЛЕЙ web_ar_hud.html НА МОНИТОРЕ ИГРЫ
         // Перекрестье дополненной реальности на ближайшую точку 3D

@@ -328,6 +328,7 @@ namespace ETS2_Assist_GUI
                 AppendLog(showInteractive
                     ? "[UI] Интерактивные интерфейсы показаны: минилого + интерактивы (квесты)."
                     : "[UI] Интерактивные интерфейсы скрыты (игра снята с паузы или фокус вне игры).");
+                Logger.Current?.Workflow($"[QUEST-DIAG] state source=policy paused={!showGameUi} collapsed={_questCollapsed} interactive={showInteractive} gameUi={showGameUi} focused={gameFocused}");
             }
 
             // v1.0.40.59: пока на экране интерактивная категория (а это значит, что
@@ -370,6 +371,8 @@ namespace ETS2_Assist_GUI
                 // Вид окна запоминается между запусками приложения.
                 AppSettings.QuestWindowCollapsed = collapsed;
                 AppSettings.Save();
+                // ДИАГНОСТИКА (временно): фактическое состояние окна, а не предполагаемое.
+                Logger.Current?.Workflow($"[QUEST-DIAG] state source=page paused={_lastPauseState} collapsed={collapsed} interactive={_lastInteractiveVisible}");
                 SendCommandToMap("set_quest_collapsed", new JObject { ["collapsed"] = collapsed });
                 AppendLog(collapsed
                     ? "[QUEST][UI] Окно квестов свёрнуто в закладку «Квесты»."
@@ -387,6 +390,7 @@ namespace ETS2_Assist_GUI
         {
             try
             {
+                Logger.Current?.Workflow($"[QUEST-DIAG] state source=restore paused=true collapsed={_questCollapsed}");
                 SendCommandToMap("set_quest_collapsed", new JObject { ["collapsed"] = _questCollapsed });
             }
             catch { }

@@ -19,7 +19,7 @@ namespace ETS2_Assist_GUI
                         return attr.InformationalVersion;
                 }
                 catch { }
-                return "1.0.40.61-QUEST-CURSOR-TAB-HINT";
+                return "1.0.40.62-QUEST-INPUT-DIAG";
             }
         }
     }

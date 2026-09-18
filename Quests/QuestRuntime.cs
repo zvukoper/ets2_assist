@@ -388,6 +388,9 @@ namespace ETS2_Assist_GUI.Quests
         private void OnQuestMessage(JObject data)
         {
             string command = data["command"]?.Value<string>() ?? "";
+            // ДИАГНОСТИКА ВВОДА (временно): отделяем «мышь не приходит» от
+            // «мышь приходит, но action не доходит до C#». Поведение не меняется.
+            Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] command={command} paused={_paused} raw={data.ToString(Formatting.None)}");
             switch (command)
             {
                 case "quest_select_interaction": BeginInvokeUi(() => SelectInteraction(data["questId"]?.Value<string>() ?? "", data["id"]?.Value<string>() ?? "")); break;
@@ -434,6 +437,7 @@ namespace ETS2_Assist_GUI.Quests
 
         private void SelectInteraction(string questId, string interactionId)
         {
+            Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] select_interaction questId={questId} id={interactionId} paused={_paused}");
             if (!_paused) { SendError("Интерактив доступен только на паузе игры."); return; }
             if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) return;
             QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));
@@ -456,6 +460,7 @@ namespace ETS2_Assist_GUI.Quests
 
         private void ApplyDialogOption(string questId, string interactionId, int index)
         {
+            Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] dialog_option questId={questId} interaction={interactionId} index={index} paused={_paused}");
             if (!_paused) { SendError("Взаимодействие разрешено только на паузе игры."); return; }
             if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) return;
             QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));

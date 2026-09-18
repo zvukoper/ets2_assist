@@ -21,8 +21,122 @@ var lastToggleAt=0;
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
-function send(o){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(o))}
-function post(o){try{if(window.chrome&&window.chrome.webview)window.chrome.webview.postMessage(JSON.stringify(o));}catch(e){}}
+
+/* ================================================================ ДИАГНОСТИКА ВВОДА
+ * ВРЕМЕННАЯ, ТОЛЬКО НАБЛЮДЕНИЕ. Ничего не меняет в поведении страницы.
+ *
+ * Задача: найти точное место сбоя мыши в интерактивном окне. Считаем события
+ * DOM и складываем готовые строки в кольцевой буфер. Буфер забирает хост
+ * (WebOverlay.exe) через ExecuteScriptAsync и пишет в файл
+ * %APPDATA%\WebOverlay\quest-input-diagnostic.log.
+ * Плюс те же строки печатаются в console.
+ *
+ * window.__questDiag.drain()    — забрать и очистить буфер событий;
+ * window.__questDiag.snapshot() — счётчики и текущее состояние (без очистки);
+ * window.__questDiag.state()    — paused/collapsed.
+ * ================================================================ */
+var qdEvents=[],qdEventsMax=400;
+var qdCounters={mouseMove:0,mouseDown:0,mouseUp:0,click:0,place:0,posts:0,wsOut:0,cursorStart:0,cursorStop:0};
+var qdLastMove={x:null,y:null,target:'',at:0};
+var qdLastPlace={x:null,y:null,shown:false};
+var qdLastState={paused:null,collapsed:null};
+var qdMouseLog={lastAt:0,lastX:null,lastY:null};
+var qdPlaceLogAt=0,qdMouseBound=false,qdTracking=false,qdLastQuestStateKey='';
+function qdPush(line){try{qdEvents.push({t:Date.now(),l:line});if(qdEvents.length>qdEventsMax)qdEvents.splice(0,qdEvents.length-qdEventsMax)}catch(e){}}
+/* Каждая строка уходит ровно в формате требования: [QUEST-DIAG]... */
+function qdLog(line){
+    var text='[QUEST-DIAG]'+(line.charAt(0)==='['?'':' ')+line;
+    qdPush(text);
+    try{console.log(text)}catch(e){}
+}
+function qdElementName(el){
+    try{
+        if(!el)return'(null)';
+        if(el.nodeType===3)el=el.parentNode;
+        if(!el||!el.tagName)return String(el);
+        var name=el.tagName.toLowerCase();
+        if(el.id)name+='#'+el.id;
+        var cls=el.getAttribute&&el.getAttribute('class');
+        if(cls)name+='.'+String(cls).trim().split(/\s+/).join('.');
+        return name.length>90?name.slice(0,90)+'…':name;
+    }catch(e){return'(?)'}
+}
+function qdStateText(){return'paused='+pagePaused+' collapsed='+collapsed}
+/* Состояние окна логируем только при реальном изменении — иначе поток спама. */
+function qdStateChanged(){
+    if(qdLastState.paused===pagePaused&&qdLastState.collapsed===collapsed)return;
+    qdLastState.paused=pagePaused;qdLastState.collapsed=collapsed;
+    qdLog('state '+qdStateText());
+}
+function qdCommandText(o){
+    if(!o||typeof o.command!=='string')return String(o);
+    if(o.command==='set_clickable')return'set_clickable value='+(o.value===true);
+    if(o.command==='set_clickable_hotspot')return'set_clickable_hotspot xr='+o.xr+' yr='+o.yr+' wr='+o.wr+' hr='+o.hr;
+    return o.command;
+}
+/* Счётчики DOM-мыши. Отдельные слушатели: существующие обработчики НЕ трогаем. */
+function qdBindMouse(){
+    if(qdMouseBound)return;qdMouseBound=true;
+    window.addEventListener('mousemove',function(e){
+        qdCounters.mouseMove++;
+        qdLastMove.x=e.clientX;qdLastMove.y=e.clientY;qdLastMove.target=qdElementName(e.target);qdLastMove.at=Date.now();
+        var first=qdMouseLog.lastX===null;
+        if(!first){
+            if(Math.abs(e.clientX-qdMouseLog.lastX)<20&&Math.abs(e.clientY-qdMouseLog.lastY)<20)return;
+            if(Date.now()-qdMouseLog.lastAt<160)return;      /* не чаще ~6/с */
+        }
+        qdMouseLog.lastAt=Date.now();qdMouseLog.lastX=e.clientX;qdMouseLog.lastY=e.clientY;
+        qdLog('[JS-MOUSE] client='+e.clientX+','+e.clientY+' '+qdStateText()+' target='+qdLastMove.target);
+    },true);
+    window.addEventListener('mousedown',function(e){
+        qdCounters.mouseDown++;
+        qdLog('[JS-MOUSE-DOWN] button='+e.button+' client='+e.clientX+','+e.clientY+' '+qdStateText()+' target='+qdElementName(e.target));
+    },true);
+    window.addEventListener('mouseup',function(e){
+        qdCounters.mouseUp++;
+        qdLog('[JS-MOUSE-UP] button='+e.button+' client='+e.clientX+','+e.clientY);
+    },true);
+    window.addEventListener('click',function(e){
+        qdCounters.click++;
+        var extra='';
+        try{
+            var t=e.target;
+            if(t&&t.dataset){extra=' data-index='+(t.dataset.index??'')+' data-q='+(t.dataset.q??'')+' data-i='+(t.dataset.i??'')}
+        }catch(_){}
+        qdLog('[CLICK] target='+qdElementName(e.target)+' x='+e.clientX+' y='+e.clientY+' '+qdStateText()+extra);
+    },true);
+}
+window.__questDiag={
+    drain:function(){var out=qdEvents.slice(0);qdEvents.length=0;return out},
+    snapshot:function(){return{
+        mouseMove:qdCounters.mouseMove,mouseDown:qdCounters.mouseDown,mouseUp:qdCounters.mouseUp,
+        click:qdCounters.click,place:qdCounters.place,posts:qdCounters.posts,wsOut:qdCounters.wsOut,
+        cursorStart:qdCounters.cursorStart,cursorStop:qdCounters.cursorStop,
+        lastX:qdLastMove.x===null?-1:qdLastMove.x,lastY:qdLastMove.y===null?-1:qdLastMove.y,lastTarget:qdLastMove.target,
+        paused:pagePaused,collapsed:collapsed,
+        cursorDotShown:!!(cursorEl&&cursorEl.style.display==='block'),
+        cursorDotX:qdLastPlace.x===null?-1:qdLastPlace.x,cursorDotY:qdLastPlace.y===null?-1:qdLastPlace.y,
+        cursorElExists:!!(cursorEl||$('cursorDot'))
+    }},
+    state:function(){return{paused:pagePaused,collapsed:collapsed}}
+};
+qdBindMouse();
+setInterval(function(){
+    /* Пишем ВСЕГДА (в т.ч. при count=0): именно нулевой счётчик доказывает,
+       что цепочка Windows/WebView2 → DOM не работает. */
+    qdLog('[JS-MOUSE-SUMMARY] count='+qdCounters.mouseMove+' last='+qdLastMove.x+','+qdLastMove.y+' lastTarget='+qdLastMove.target+' clicks='+qdCounters.click+' mousedown='+qdCounters.mouseDown+' '+qdStateText());
+},5000);
+
+function send(o){
+    var sent=false;
+    if(ws&&ws.readyState===WebSocket.OPEN){ws.send(JSON.stringify(o));sent=true}
+    if(o&&typeof o.command==='string'&&o.command.indexOf('quest_')===0){qdCounters.wsOut++;qdLog('[WS-OUT] command='+o.command+' sent='+sent)}
+}
+function post(o){
+    var sent=false;
+    try{if(window.chrome&&window.chrome.webview){window.chrome.webview.postMessage(JSON.stringify(o));sent=true}}catch(e){}
+    qdCounters.posts++;qdLog('POST '+qdCommandText(o)+' sent='+sent);
+}
 function setNativeClickable(value){post({command:'set_clickable',value:!!value})}
 
 /* ================================================================ КУРСОР
@@ -46,6 +160,14 @@ function placeCursor(x,y){
     if(!cursorEl)return;
     cursorEl.style.transform='translate('+x+'px,'+y+'px)';
     if(!cursorShown){cursorShown=true;cursorEl.style.display='block'}
+    /* ДИАГНОСТИКА: первые 5 вызовов, затем не чаще 2-3 раз в секунду. */
+    qdCounters.place++;
+    qdLastPlace.x=x;qdLastPlace.y=y;qdLastPlace.shown=!!(cursorEl&&cursorEl.style.display==='block');
+    var now=Date.now();
+    if(qdCounters.place<=5||now-qdPlaceLogAt>=400){
+        qdPlaceLogAt=now;
+        qdLog('[CURSOR-PLACE] x='+x+' y='+y+' shown='+qdLastPlace.shown+' placeCount='+qdCounters.place);
+    }
 }
 
 function trackCursorFromEvent(e){
@@ -55,18 +177,29 @@ function trackCursorFromEvent(e){
 
 function startCursorTrack(){
     cursorEl=cursorEl||$('cursorDot');
+    qdCounters.cursorStart++;
+    /* Логируем ПЕРЕХОДЫ (иначе syncInput раз в секунду давал бы поток строк). */
+    if(!qdTracking){
+        qdTracking=true;
+        qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
+    }
     if(!cursorEl)return;
     window.addEventListener('mousemove',trackCursorFromEvent);
     window.addEventListener('mouseover',trackCursorFromEvent);
     if(!cursorTimer)cursorTimer=setInterval(function(){
-        if(!pagePaused||collapsed){stopCursorTrack();return}
+        if(!pagePaused||collapsed){stopCursorTrack('keepalive:paused-or-collapsed');return}
         /* Событие движения может не прийти (курсор уже стоит на месте) —
            поэтому начальную позицию берём один раз принудительно. */
         if(!cursorShown)placeCursor(window.innerWidth/2,window.innerHeight/2);
     },120);
 }
 
-function stopCursorTrack(){
+function stopCursorTrack(reason){
+    qdCounters.cursorStop++;
+    if(qdTracking){
+        qdTracking=false;
+        qdLog('[CURSOR] stop reason='+(reason||'unspecified')+' cursorElementExists='+!!cursorEl+' stopCount='+qdCounters.cursorStop);
+    }
     window.removeEventListener('mousemove',trackCursorFromEvent);
     window.removeEventListener('mouseover',trackCursorFromEvent);
     if(cursorTimer){clearInterval(cursorTimer);cursorTimer=null}
@@ -112,13 +245,14 @@ function applyCursorLayer(){
     var app=$('questApp');
     if(app)app.style.cursor=pagePaused?'none':'';
     var active=pagePaused&&!collapsed;
-    if(active)startCursorTrack();else stopCursorTrack();
+    if(active)startCursorTrack();else stopCursorTrack('applyCursorLayer:inactive');
 }
 
 /* Мышь окна управляется из двух состояний: активна ли пауза и свёрнуто ли окно.
    Развёрнутое окно кликабельно целиком; свёрнутое отдаёт мыши только область
    закладки у левой границы экрана; скрытое окно прозрачно для мыши. */
 function syncInput(notify){
+    qdLog('syncInput '+qdStateText());
     applyCursorLayer();
     if(pagePaused&&!collapsed){
         setNativeClickable(true);
@@ -162,6 +296,7 @@ function syncInput(notify){
 }
 function applyCollapsed(value,notify,report){
     collapsed=!!value;
+    qdStateChanged();
     var w=$('questWindow'),tab=$('questTab');
     if(w)w.classList.toggle('collapsed',collapsed);
     if(tab)tab.classList.toggle('visible',collapsed);
@@ -284,9 +419,16 @@ function applyState(data){
     var app=$('questApp');if(!app)return;
     model=data;
     var paused=data.paused===true;
+    /* Состояние приходит ~раз в секунду: логируем только ПЕРЕХОДЫ (пауза,
+       выбранный интерактив, наличие диалога) — иначе поток одинаковых строк. */
+    var stateKey=paused+'|'+(data.selectedInteraction||'')+'|'+(data.dialogue?'1':'0')+'|'+((data.nearby||[]).length);
+    if(stateKey!==qdLastQuestStateKey){
+        qdLastQuestStateKey=stateKey;
+        qdLog('WS-IN(8085) quest_state paused='+paused+' selectedInteraction='+(data.selectedInteraction||'')+' nearby='+((data.nearby||[]).length)+' dialogue='+(data.dialogue?'yes':'no'));
+    }
     app.classList.toggle('paused',paused);
-    if(!paused){wasPaused=false;pagePaused=false;currentInteraction='';currentQuest='';lastDialogueKey='';clearDialogue();syncInput(false);return}
-    wasPaused=true;pagePaused=true;
+    if(!paused){wasPaused=false;pagePaused=false;qdStateChanged();currentInteraction='';currentQuest='';lastDialogueKey='';clearDialogue();syncInput(false);return}
+    wasPaused=true;pagePaused=true;qdStateChanged();
     /* Активный диалог приходит с выбранными идентификаторами — без них ответ
        игрока уходил бы без адреса. Если квест не пришёл, берём его из списка
        ближайших интерактивов. */
@@ -307,6 +449,7 @@ function showError(text){var e=$('overlayError');if(!e)return;e.textContent=text
 /* Команды приложения, адресованные именно окну квестов. */
 window.onEts2Command=function(d){
     if(!d)return;
+    qdLog('WS-IN(8084) command='+d.command+' payload='+JSON.stringify(d));
     if(d.command==='set_quest_tab_state'){setTabPulse(d.hasInteractive);if(collapsed)syncInput(false)}
     else if(d.command==='set_quest_collapsed')applyCollapsed(d.collapsed,false,false);
     /* v1.0.40.59: TAB (хоткей приложения, активен только когда видна интерактивная
