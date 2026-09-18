@@ -136,10 +136,7 @@ function post(o){
     var sent=false;
     try{if(window.chrome&&window.chrome.webview){window.chrome.webview.postMessage(JSON.stringify(o));sent=true}}catch(e){}
     qdCounters.posts++;
-    /* Кликабельность quest БОЛЬШЕ НЕ управляется native-командами: input
-       принимает отдельный HWND без color-key. Служебные команды отправляем
-       ТОЛЬКО визуальному слою, чтобы не засорять лог input-поверхности. */
-    if(!isInputSurface)qdLog('POST '+qdCommandText(o)+' sent='+sent);
+    qdLog('POST '+qdCommandText(o)+' sent='+sent);
 }
 function setNativeClickable(value){post({command:'set_clickable',value:!!value})}
 
@@ -152,17 +149,12 @@ function setNativeClickable(value){post({command:'set_clickable',value:!!value})
  * Без color-key (LWA_ALPHA) hit-test сразу попадает в WebView2 и DOM mousemove
  * оживает.
  *
- * РЕШЕНИЕ: страница открывается ДВАЖДЫ:
- *   * визуальный fullscreen-слой (без #interactive) — отвечает за картинку,
- *     остаётся на прежнем color-key пути;
- *   * input-поверхность (с #interactive) — обычный HWND БЕЗ color-key,
- *     покрывает ровно область #questWindow / #questTab и принимает мышь.
- * Геометрия input-окна отправляется в долях viewport'а (не зависит от DPI). */
-var isInputSurface=(function(){try{return window.location.hash.indexOf('interactive')>=0}catch(e){return false}})();
-
+ * РЕШЕНИЕ: страница ОДНА (визуальная), а мышь принимает отдельное голое
+ * native-окно InteractiveQuestForm — без WebView2, без color-key. Его события
+ * приходят сюда через PostWebMessageAsJson и превращаются в DOM-события.
+ * Геометрия отправляется в долях viewport'а (не зависит от DPI). */
 var lastInteractiveKey='';
 function publishInteractiveBounds(){
-    if(!isInputSurface)return;
     var mode='hidden',el=null;
     if(pagePaused&&!collapsed)el=$('questWindow');
     else if(pagePaused&&collapsed)el=$('questTab');
@@ -228,18 +220,19 @@ function startCursorTrack(){
     /* Логируем ПЕРЕХОДЫ (иначе syncInput раз в секунду давал бы поток строк). */
     if(!qdTracking){
         qdTracking=true;
-        qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart+' inputSurface='+isInputSurface);
+        qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
     }
     if(!cursorEl)return;
-    window.addEventListener('mousemove',trackCursorFromEvent);
-    window.addEventListener('mouseover',trackCursorFromEvent);
+    /* FIX v3: позицию курсора задаёт ТОЛЬКО native-событие (dispatchNativeMouse).
+       DOM-слушатели mousemove/mouseover сняты: визуальный слой мышь не получает
+       вообще (color-key), поэтому они были мёртвым кодом. */
     if(!cursorTimer)cursorTimer=setInterval(function(){
         if(!pagePaused||collapsed){stopCursorTrack('keepalive:paused-or-collapsed');return}
-        /* Событие движения может не прийти (курсор уже стоит на месте) — поэтому
-           начальную позицию берём один раз принудительно. ТОЛЬКО на input-
-           поверхности: визуальный слой мышь не получает вообще (color-key),
-           и его стрелка навсегда застыла бы в центре экрана. */
-        if(!cursorShown&&isInputSurface)placeCursor(window.innerWidth/2,window.innerHeight/2);
+        /* Событие движения может не прийти (курсор уже стоит на месте) —
+           поэтому принудительный старт в центре оставлен, но ТОЛЬКО до первого
+           настоящего native-события: дальше позицию задаёт placeCursor(x,y)
+           из dispatchNativeMouse (§18). */
+        if(!cursorShown)placeCursor(window.innerWidth/2,window.innerHeight/2);
     },120);
 }
 
@@ -302,9 +295,16 @@ function applyCursorLayer(){
    закладки у левой границы экрана; скрытое окно прозрачно для мыши. */
 function syncInput(notify){
     qdLog('syncInput '+qdStateText());
-    /* INPUT-ПОВЕРХНОСТЬ не управляет кликабельностью native: она сама является
-       кликабельным окном без color-key. Ей нужна только геометрия. */
-    if(isInputSurface){publishInteractiveBounds();return}
+    /* FIX v3: native-кликабельность больше НЕ переключается. Мышь принимает
+       отдельное голое native-окно (без color-key), а странице нужно только
+       сообщить ему, где лежит UI. */
+    publishInteractiveBounds();
+    if(notify)post({command:'return_focus'});
+}
+/* Старый native clickability-путь оставлен для справки, но НЕ вызывается:
+   для web_quests.html он бесполезен (color-key исключает окно из hit-test). */
+function syncInputLegacy(notify){
+    qdLog('syncInputLegacy '+qdStateText());
     applyCursorLayer();
     if(pagePaused&&!collapsed){
         setNativeClickable(true);
