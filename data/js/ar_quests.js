@@ -185,7 +185,7 @@
                     cam.x=p.x;cam.y=p.y;cam.z=p.z;
                     cam.fwd=f;cam.right=r;cam.up=u;
                     cam.fov=readNumber(c.fovDeg,75);cam.vfov=readNumber(c.fovDegVertical,65);
-                    cam.groundPlane=c.groundPlane||null;
+                    cam.groundPlane=d.groundPlane||null;
                     cam.valid=c.valid===undefined?true:!!c.valid;
                 }catch(e){}
             };

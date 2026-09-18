@@ -11,6 +11,17 @@ namespace ETS2_Assist_GUI
         public static bool DebugMode { get; set; } = false;
         public static string Language { get; set; } = "en";
         public static bool AutoStartSystem { get; set; } = false;
+
+        /// <summary>
+        /// Внешнее управление запуском (порт 8086). Разрешает запускать систему
+        /// запросом POST/GET /start, чтобы оверлеи поднимались без мыши —
+        /// например из скрипта тестирования. Внешние запросы не должны управлять
+        /// игрой случайно, поэтому по умолчанию выключено.
+        /// </summary>
+        public static bool ExternalControlEnabled { get; set; } = false;
+
+        /// <summary>Порт внешнего управления запуском (по умолчанию 8086).</summary>
+        public static int ExternalControlPort { get; set; } = 8086;
         public static bool StartMinimized { get; set; } = false;
         public static bool CheckUpdatesOnStart { get; set; } = true;
         public static string GitHubRepoUrl { get; set; } = "https://api.github.com/repos/zvukoper/ets2_assist/releases/latest";
@@ -86,6 +97,9 @@ namespace ETS2_Assist_GUI
                     DebugMode = settings.DebugMode;
                     Language = settings.Language ?? "en";
                     AutoStartSystem = settings.AutoStartSystem;
+                    ExternalControlEnabled = settings.ExternalControlEnabled;
+                    ExternalControlPort = settings.ExternalControlPort is >= 1024 and <= 65535
+                        ? settings.ExternalControlPort : 8086;
                     StartMinimized = settings.StartMinimized;
                     CheckUpdatesOnStart = settings.CheckUpdatesOnStart;
                     GitHubRepoUrl = settings.GitHubRepoUrl ?? "https://api.github.com/repos/zvukoper/ets2_assist/releases/latest";
@@ -124,6 +138,8 @@ namespace ETS2_Assist_GUI
                     DebugMode = DebugMode,
                     Language = Language,
                     AutoStartSystem = AutoStartSystem,
+                    ExternalControlEnabled = ExternalControlEnabled,
+                    ExternalControlPort = ExternalControlPort,
                     StartMinimized = StartMinimized,
                     CheckUpdatesOnStart = CheckUpdatesOnStart,
                     GitHubRepoUrl = GitHubRepoUrl,
@@ -157,6 +173,8 @@ namespace ETS2_Assist_GUI
             public bool DebugMode { get; set; }
             public string Language { get; set; } = string.Empty;
             public bool AutoStartSystem { get; set; }
+            public bool ExternalControlEnabled { get; set; }
+            public int ExternalControlPort { get; set; } = 8086;
             public bool StartMinimized { get; set; }
             public bool CheckUpdatesOnStart { get; set; }
             public string GitHubRepoUrl { get; set; } = string.Empty;

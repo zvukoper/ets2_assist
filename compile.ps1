@@ -62,6 +62,12 @@ foreach ($root in @($publishRoot, $binRoot)) {
 # standard development layout. Build it first so data\bin\WebOverlay.exe used by
 # ETS2 Assist always contains the current window-state/default-position fixes.
 $webOverlayProject = Join-Path $PSScriptRoot '..\weboverlay\WebOverlay.csproj'
+# Worktrees live one level deeper (repo.worktrees\<name>), so the sibling repo is
+# at ..\..\weboverlay there. Resolve it explicitly — otherwise the overlay host is
+# silently left stale instead of being delivered.
+if (-not (Test-Path $webOverlayProject)) {
+    $webOverlayProject = Join-Path $PSScriptRoot '..\..\weboverlay\WebOverlay.csproj'
+}
 $webOverlayPublish = Join-Path $PSScriptRoot 'obj\WebOverlayPublish'
 $webOverlayExe = Join-Path $webOverlayPublish 'WebOverlay.exe'
 if (Test-Path $webOverlayProject) {

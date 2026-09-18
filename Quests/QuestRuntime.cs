@@ -167,10 +167,12 @@ namespace ETS2_Assist_GUI.Quests
             ProcessInstantActivations();
             if (!TruckTelemetry.TryGetSnapshot(out var truck, out _, out bool haveSample) || !haveSample)
             {
-                _nearby.Clear(); BroadcastState(_paused); await UpdateOverlayAsync().ConfigureAwait(true); EnforceArPointDebugMode(); return;
+                _nearby.Clear(); _host.SetQuestInteractiveSignal(false); BroadcastState(_paused); await UpdateOverlayAsync().ConfigureAwait(true); EnforceArPointDebugMode(); return;
             }
             _lastTruckX = truck.X; _lastTruckY = truck.Y; _lastTruckZ = truck.Z;
             _nearby.Clear(); _nearby.AddRange(GetAvailableInteractions(truck.X, truck.Y, truck.Z)); HandleTriggers(_nearby);
+            // Закладка «Квесты» пульсирует только когда рядом есть интерактив.
+            _host.SetQuestInteractiveSignal(_nearby.Any(p => !string.IsNullOrWhiteSpace(p.Marker) && p.Marker != "none"));
             if (_paused || _nearby.Count > 0 || DateTime.UtcNow - _lastStateSentUtc > TimeSpan.FromSeconds(1)) BroadcastState(_paused || _nearby.Count > 0);
             await UpdateOverlayAsync().ConfigureAwait(true); EnforceArPointDebugMode();
         }
@@ -261,10 +263,8 @@ namespace ETS2_Assist_GUI.Quests
             if (!_resolver.TryResolve(def, interaction, out QuestResolvedPoint coord)) return false;
 
             string marker = interaction.DefaultMarker;
-            string dialogue = interaction.InitialDialogue;
-            if (progress.Status == QuestStatus.Active) { marker = interaction.ActiveMarker; dialogue = interaction.ActiveDialogue; }
-            else if (progress.Status == QuestStatus.Completed) { marker = interaction.CompletedMarker; dialogue = interaction.CompletedDialogue; }
-            else if (progress.ReturnOffer && !string.IsNullOrWhiteSpace(interaction.CancelledDialogue)) { marker = interaction.DefaultMarker; dialogue = interaction.CancelledDialogue; }
+            if (progress.Status == QuestStatus.Active) marker = interaction.ActiveMarker;
+            else if (progress.Status == QuestStatus.Completed) marker = interaction.CompletedMarker;
             if (!string.IsNullOrWhiteSpace(progress.Step) && interaction.MarkerByStep.TryGetValue(progress.Step, out string? stepMarker)) marker = stepMarker;
 
             bool minimapVisible = interaction.MinimapVisible;
@@ -289,7 +289,6 @@ namespace ETS2_Assist_GUI.Quests
                 ArOffscreenPointer = interaction.ArOffscreenPointer && marker != "none", TriggerWhenNoMarker = interaction.TriggerWhenNoMarker,
                 TriggerRadiusM = interaction.TriggerRadiusM > 0 ? interaction.TriggerRadiusM : _store.Settings.TriggerRadiusM
             };
-            if (!_activeDialogue.ContainsKey(key)) _activeDialogue[key] = dialogue ?? "";
             return true;
         }
 
@@ -386,6 +385,7 @@ namespace ETS2_Assist_GUI.Quests
             switch (command)
             {
                 case "quest_select_interaction": BeginInvokeUi(() => SelectInteraction(data["questId"]?.Value<string>() ?? "", data["id"]?.Value<string>() ?? "")); break;
+                case "quest_window_state": BeginInvokeUi(() => _host.OnQuestWindowCollapsedChanged(data["collapsed"]?.Value<bool>() ?? false)); break;
                 case "quest_dialog_option": BeginInvokeUi(() => ApplyDialogOption(data["questId"]?.Value<string>() ?? "", data["interaction"]?.Value<string>() ?? "", data["index"]?.Value<int>() ?? -1)); break;
                 case "quest_editor_point_save": BeginInvokeUi(() => SaveEditorPoint(data)); break;
                 case "quest_reset": BeginInvokeUi(() => { _store.ResetQuest(data["id"]?.Value<string>() ?? "special_marinated_shashlik", true); _inside.Clear(); _activeDialogue.Clear(); _nearby.Clear(); ForceArRebuild(); BroadcastState(true); }); break;
@@ -432,9 +432,20 @@ namespace ETS2_Assist_GUI.Quests
             if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) return;
             QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));
             if (interaction == null || !TryBuildInteraction(def, interaction, out _)) return;
+            // v1.0.41: окно квестов всегда открывается в исходном состоянии —
+            // игрок сам выбирает интерактив, ранее открытый диалог не восстанавливается.
             string key = questId + ":" + interactionId;
-            string dialogue = _activeDialogue.TryGetValue(key, out string? d) ? d : interaction.InitialDialogue;
-            BroadcastState(true, questId, interactionId, dialogue);
+            _activeDialogue.Remove(key);
+            BroadcastState(true, questId, interactionId, ResolveEntryDialogue(def, interaction));
+        }
+
+        private string ResolveEntryDialogue(QuestDefinition def, QuestInteractionDefinition interaction)
+        {
+            QuestProgress progress = GetProgress(def.Id);
+            if (progress.ReturnOffer && !string.IsNullOrWhiteSpace(interaction.CancelledDialogue)) return interaction.CancelledDialogue;
+            if (progress.Status == QuestStatus.Active && !string.IsNullOrWhiteSpace(interaction.ActiveDialogue)) return interaction.ActiveDialogue;
+            if (progress.Status == QuestStatus.Completed && !string.IsNullOrWhiteSpace(interaction.CompletedDialogue)) return interaction.CompletedDialogue;
+            return interaction.InitialDialogue;
         }
 
         private void ApplyDialogOption(string questId, string interactionId, int index)
@@ -445,8 +456,7 @@ namespace ETS2_Assist_GUI.Quests
             if (interaction == null || !TryBuildInteraction(def, interaction, out _)) return;
             string key = questId + ":" + interactionId;
             string current = _activeDialogue.TryGetValue(key, out string? d) && !string.IsNullOrWhiteSpace(d)
-                ? d : (GetProgress(def.Id).ReturnOffer && !string.IsNullOrWhiteSpace(interaction.CancelledDialogue)
-                    ? interaction.CancelledDialogue : GetProgress(def.Id).Status == QuestStatus.Active ? interaction.ActiveDialogue : interaction.InitialDialogue);
+                ? d : ResolveEntryDialogue(def, interaction);
             if (!def.Dialogues.TryGetValue(current, out QuestDialogueNode? node) || index < 0 || index >= node.Options.Count) return;
             QuestDialogueOption option = node.Options[index];
             if (option.Requirements != null && !EvaluateRequirement(option.Requirements)) { SendError("Условия варианта не выполнены."); return; }
@@ -534,8 +544,37 @@ namespace ETS2_Assist_GUI.Quests
 
         private JObject BuildDialoguePayload(QuestDefinition def, QuestDialogueNode node)
         {
-            var options=new JArray(); foreach(QuestDialogueOption option in node.Options) { bool enabled=option.Requirements==null||EvaluateRequirement(option.Requirements); options.Add(new JObject { ["text"]=option.Text,["enabled"]=enabled,["close"]=option.Close,["reason"]=enabled?"":"Условие не выполнено" }); }
-            return new JObject { ["speaker"]=node.Speaker,["text"]=node.Text,["image"]=node.Image,["options"]=options };
+            var options=new JArray();
+            foreach(QuestDialogueOption option in node.Options)
+            {
+                bool enabled=option.Requirements==null||EvaluateRequirement(option.Requirements);
+                string requirementText=DescribeRequirements(option.Requirements);
+                options.Add(new JObject
+                {
+                    ["text"]=option.Text,
+                    ["serviceText"]=option.ServiceText ?? "",
+                    ["enabled"]=enabled,
+                    ["close"]=option.Close,
+                    ["requirements"]=requirementText,
+                    ["requirementsMet"]=enabled,
+                    ["reason"]=enabled?"":"Условие не выполнено"
+                });
+            }
+            return new JObject { ["speaker"]=node.Speaker,["text"]=node.Text,["serviceText"]=node.ServiceText ?? "",["image"]=node.Image,["options"]=options };
+        }
+
+        private string DescribeRequirements(QuestRequirement? req)
+        {
+            if(req==null)return "";
+            var parts=new List<string>();
+            foreach(QuestCondition c in req.All)
+            {
+                if(!string.IsNullOrWhiteSpace(c.Stat))parts.Add($"[{c.Stat} {c.MinStatValue}]");
+                else if(!string.IsNullOrWhiteSpace(c.Item))parts.Add($"[требуется: {DisplayItemName(c.Item)} x{Math.Max(1,c.Amount)}]");
+                else if(!string.IsNullOrWhiteSpace(c.Reputation))parts.Add($"[репутация {c.Reputation} {c.MinValue}]");
+                else if(!string.IsNullOrWhiteSpace(c.QuestId))parts.Add($"[квест {c.QuestId}{(string.IsNullOrWhiteSpace(c.QuestStep)?"":" / "+c.QuestStep)}]");
+            }
+            return string.Join(" ",parts);
         }
 
         private string DisplayItemName(string id) => id switch { "special_marinade_meat"=>"Мясо в спецмаринаде", "legendary_shashlik"=>"Легендарный шашлык от Руслана", _=>id };

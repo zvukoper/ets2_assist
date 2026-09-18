@@ -51,54 +51,52 @@
     </style>
 </head>
 <body>
-    <canvas id="arCanvas"></canvas>
-    <div id="arStatus">AR: подключение…</div>
+    <canvas id="arCanvas" data-category="game"></canvas>
+    <div id="arStatus" data-category="game">AR: подключение…</div>
 
     <!-- ar_hud.js остаётся владельцем игровой AR-отрисовки. -->
+    <script src="js/debug_show.js"></script>
+    <script src="js/ui_category.js"></script>
     <script src="js/ar_hud.js"></script>
     <script src="js/ar_quests.js"></script>
     <!-- Только этот модуль управляет дополнительной диагностикой AR1.
          По умолчанию обе опции выключены и ничего игроку не показывают. -->
     <script src="js/ar_debug_view.js"></script>
+    <style>
+        /* Тоггл кнопки «AR»: слой скрыт, но окно и страница остаются живыми. */
+        html[data-ar-layer="off"] #arCanvas,
+        html[data-ar-layer="off"] #arStatus { visibility: hidden !important; }
+    </style>
     <script>
-    // v1.0.40.46: AR1 обязан плавно исчезать при переходе игры в паузу.
-    // Состояние паузы уже рассылается QuestRuntime по WS 8085.
+    // v1.0.41: показом AR1 владеет ОБЩАЯ политика категорий (js/ui_category.js,
+    // атрибут data-category="game"). Дублирующий канал паузы здесь больше не нужен:
+    // AR скрывается вместе с остальными игровыми интерфейсами.
+    // Отдельно обрабатывается команда приложения «ar_layer_visible» — это тоггл
+    // кнопки AR в главной форме, он не влияет на остальные слои.
     (function () {
         'use strict';
-        var pauseWs = null;
-        var reconnectTimer = null;
-
-        function setPaused(paused) {
-            document.body.style.opacity = paused ? '0' : '1';
+        var visible = true;
+        function apply() {
+            document.documentElement.setAttribute('data-ar-layer', visible ? 'on' : 'off');
         }
-
-        function connectPauseState() {
+        apply();
+        var ws = null;
+        function connect() {
             try {
-                pauseWs = new WebSocket('ws://localhost:8085/');
-                pauseWs.onmessage = function (ev) {
+                ws = new WebSocket('ws://localhost:8084/');
+                ws.onmessage = function (ev) {
                     try {
-                        var data = JSON.parse(ev.data);
-                        if (data && data.command === 'quest_state')
-                            setPaused(data.paused === true);
+                        var d = JSON.parse(ev.data);
+                        if (d && d.command === 'ar_layer_visible') { visible = d.value !== false; apply(); }
                     } catch (_) { }
                 };
-                pauseWs.onclose = function () {
-                    pauseWs = null;
-                    if (reconnectTimer) clearTimeout(reconnectTimer);
-                    reconnectTimer = setTimeout(connectPauseState, 250);
-                };
-                pauseWs.onerror = function () {
-                    try { pauseWs.close(); } catch (_) { }
-                };
+                ws.onclose = function () { setTimeout(connect, 1000); };
+                ws.onerror = function () { try { ws.close(); } catch (_) { } };
             } catch (_) {
-                reconnectTimer = setTimeout(connectPauseState, 250);
+                setTimeout(connect, 1000);
             }
         }
-
-        if (document.readyState === 'loading')
-            document.addEventListener('DOMContentLoaded', connectPauseState);
-        else
-            connectPauseState();
+        connect();
     })();
     </script>
 </body>

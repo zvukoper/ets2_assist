@@ -6,6 +6,8 @@
 <title>ETS2 Assist pause</title>
 <!-- v1.0.40.28: ЕДИНЫЙ debugShow(bool) — принудительный показ контента для отладки. -->
 <script src="js/debug_show.js"></script>
+<!-- v1.0.41: мини-лого живёт в ИНТЕРАКТИВНОЙ категории (показывается на паузе). -->
+<script src="js/ui_category.js"></script>
 <link rel="icon" href="ets2_assist.ico">
 <style>
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;pointer-events:none}
@@ -16,15 +18,14 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 </style>
 </head>
 <body>
-<div id="pauseLogo"><img src="ets2a_logo.png" alt="ETS2 Assist"><span id="pauseVersion">v.1.0.34-0000</span></div>
+<div id="pauseLogo" data-category="interactive"><img src="ets2a_logo.png" alt="ETS2 Assist"><span id="pauseVersion">v.1.0.34-0000</span></div>
 <script>
 const logo=document.getElementById('pauseLogo');
 function updVersion(){fetch('ets2_assist_build.txt?_='+Date.now()).then(r=>r.text()).then(v=>{const t=v.trim();const p=t.split('-');document.getElementById('pauseVersion').textContent='v.'+t;}).catch(()=>{});}
 updVersion();setInterval(updVersion,5000);
-function setLogo(visible){logo.classList.toggle('visible',visible);if(visible)updVersion();}
-let ws;
-function connect(){try{ws=new WebSocket('ws://localhost:8084/');ws.onmessage=e=>{try{const d=JSON.parse(e.data);if(d.command==='show_pause_logo')setLogo(true);if(d.command==='hide_pause_logo')setLogo(false)}catch{}};ws.onclose=()=>setTimeout(connect,1000)}catch{setTimeout(connect,1000)}}
-connect();
+// Показ мини-лого полностью определяется категорией оверлеев:
+// interactive (пауза) — видно, game (игра или фокус вне игры) — скрыто.
+window.onEts2Category=function(category){logo.classList.toggle('visible',category==='interactive');if(category==='interactive')updVersion();};
 </script>
 </body>
 </html>

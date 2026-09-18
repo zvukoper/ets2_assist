@@ -111,6 +111,7 @@ namespace ETS2_Assist_GUI
         private Label indicatorEts2Assist = null!;
         private Label indicatorEts2 = null!;
         private Label indicatorEts2Plugins = null!;
+        private Label indicatorControl = null!;
         private Label indicatorTruckTel = null!;
         private Label indicatorWebServer = null!;
         private Label indicatorWebOverlay = null!;
@@ -226,6 +227,14 @@ namespace ETS2_Assist_GUI
         private HttpListener? _triggerListener;
         private Thread? _triggerListenerThread;
         private bool _triggerListenerRunning = false;
+
+        // ====== ВНЕШНЕЕ УПРАВЛЕНИЕ ЗАПУСКОМ (порт 8086) ======
+        // Требование: оверлеи должны подниматься без мыши, чтобы было удобно
+        // тестировать. Разрешается только при AppSettings.ExternalControlEnabled,
+        // чтобы запуск системы нельзя было инициировать посторонним запросом.
+        private HttpListener? _controlListener;
+        private Thread? _controlListenerThread;
+        private volatile bool _controlListenerRunning;
 
         // ========== НАСТРОЙКИ ЗАПИСИ ==========
         private string _recordingMode = "auto";
@@ -344,13 +353,19 @@ RegisterHotKeyChecked(
                 AppendLog($"Failed to register hotkeys: {ex.Message}");
             }
 
-            if (AppSettings.AutoStartSystem)
+            if (AppSettings.AutoStartSystem || Program.StartSystemRequested)
             {
                 Task.Run(async () => await StartSystemAsync());
             }
 
+            // Сервер внешнего управления поднимается ДО старта системы: иначе
+            // запуск по HTTP был бы невозможен (курица и яйцо) — /start сам
+            // вызывает StartSystemAsync.
+            StartControlServer();
+
             this.Shown += (_, _) => EnsureStartupForeground();
             _ = Task.Run(WaitForInstanceSignal);
+            _ = Task.Run(WaitForStartSignal);
         }
 
         // v101: try/catch — любое исключение (напр. Handle до создания окна) НЕ
@@ -392,6 +407,48 @@ RegisterHotKeyChecked(
                 {
                     return;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Внешний запуск без мыши. Сигнал приходит от `ETS2_Assist.exe --start`,
+        /// когда приложение уже работает (холодный старт обрабатывается в
+        /// конструкторе через Program.StartSystemRequested). Действие — то же
+        /// самое StartSystem(), что и по кнопке, поэтому поведение совпадает.
+        /// </summary>
+        private void WaitForStartSignal()
+        {
+            try
+            {
+                var signal = Program.StartSignal;
+                if (signal == null) return;
+
+                while (!IsDisposed && !Disposing)
+                {
+                    if (!signal.WaitOne(1000)) continue;
+                    try
+                    {
+                        BeginInvoke(() => RunOnUi(new Action(() =>
+                        {
+                            if (procManager.IsRunning)
+                            {
+                                AppendLog("[CONTROL] Повторный внешний запуск: система уже работает, перезапускаю оверлеи.");
+                                RestartOverlay();
+                                return;
+                            }
+                            AppendLog("[CONTROL] Запуск системы по внешнему сигналу.");
+                            _ = StartSystemAsync();
+                        }), "[CONTROL]"));
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[CONTROL] Ошибка ожидания внешнего запуска: {ex.Message}");
             }
         }
 
@@ -1004,26 +1061,27 @@ RegisterHotKeyChecked(
                 if (_minimapAutoLogic)
                 {
                     // Тоггл ВКЛ: карта всегда видна, немедленно показываем (без ожидания таймера).
+                    // Взаимоисключение категорий сохраняем: игровая категория вытесняет интерактивы.
+                    _gameUiForce = true;
                     SendCommandToMap("minimap_auto", new JObject { ["enabled"] = true });
                     SendCommandToMap("minimap_show");
                 }
                 else
                 {
-                    // Тоггл ВЫКЛ: обычная авто-логика (пауза -> лого, не пауза -> карта/гибрид).
+                    // Тоггл ВЫКЛ: обычная авто-логика (пауза -> интерактивы, не пауза -> карта/гибрид).
+                    _gameUiForce = false;
                     SendCommandToMap("minimap_auto", new JObject { ["enabled"] = false });
-                    bool activeNow = IsGameRunning() && !IsGamePaused() && IsGameFocused();
-                    SendCommandToMap(activeNow ? "minimap_show" : "minimap_hide");
                 }
-                _lastMinimapVisible = null; // заставить авто-логику перевычислить на след. тике
-                _lastMinimapAuto = null;
+                ResetOverlayVisibilityCache();
                 SyncShowMapButton();
                 UpdateStartButton();
             };
 
             btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 440), Size = new Size(120, 30) };
             btnShowHybrid.Click += (s, e) => {
-                AppendLog("Debug: Show hybrid button clicked");
-                SendCommandToMap("show_ui");
+                AppendLog("Debug: принудительный показ игровой категории (гибрид + миникарта).");
+                _gameUiForce = true;
+                ResetOverlayVisibilityCache();
             };
 
             // Тест паузы через тот же Named Pipe, который используется при достижении цели.
@@ -1194,6 +1252,8 @@ RegisterHotKeyChecked(
             indicatorEts2 = CreateIndicator("ETS2", indicatorTop);
             indicatorTop += step;
             indicatorEts2Plugins = CreateIndicator("ETS2 Plugins", indicatorTop);
+            indicatorTop += step;
+            indicatorControl = CreateIndicator("External Control", indicatorTop);
             indicatorTop += step;
             indicatorTruckTel = CreateIndicator("TruckTel", indicatorTop);
             indicatorTruckTel.Cursor = Cursors.Hand;
@@ -1476,6 +1536,12 @@ RegisterHotKeyChecked(
 
             StartWebOverlay();
 
+            // Требование: все веб-оверлеи стартуют ОДНОВРЕМЕННО. AR HUD (web_ar_hud.html)
+            // раньше запускался только кнопкой — из-за этого часть слоёв жила отдельной
+            // жизнью и «то гибрид, то карта» не показывались. Теперь AR HUD поднимается
+            // вместе с остальными оверлеями, а кнопка лишь переключает его видимость.
+            StartArOverlayLayer();
+
             // v1.0.40.31: окно визуализации высот открыто ВСЕГДА (правый верхний угол),
             // значит телеметрия фуры (WS + REST + тик + плоскость дороги по колёсам)
             // должна идти НЕЗАВИСИМО от того, нажат ли «Запустить AR».
@@ -1647,6 +1713,232 @@ RegisterHotKeyChecked(
             }
         }
 
+        // ================================================================
+        // ВНЕШНЕЕ УПРАВЛЕНИЕ ЗАПУСКОМ (порт 8086 по умолчанию)
+        //
+        // Запуск оверлеев больше не требует клика мышью: тот же StartSystem()
+        // доступен по HTTP. Сервер поднимается ТОЛЬКО когда включена настройка
+        // ExternalControlEnabled — тогда на кнопке «Start» появляется индикатор
+        // «ВНЕШНЕЕ УПРАВЛЕНИЕ: ПОРТ n».
+        //
+        //   GET|POST /start           — запустить систему (идемпотентно);
+        //   GET|POST /start?force=1   — перезапустить оверлеи, если уже запущено;
+        //   GET|POST /stop            — остановить систему;
+        //   GET|POST /restart_overlay — перезапустить только окна оверлеев;
+        //   GET      /status          — состояние (running, overlay, game, paused).
+        // ================================================================
+        private void StartControlServer()
+        {
+            if (_controlListenerRunning) return;
+            if (!AppSettings.ExternalControlEnabled)
+            {
+                AppendLog("[CONTROL] Внешнее управление запуском выключено (настройка ExternalControlEnabled).");
+                return;
+            }
+
+            try
+            {
+                _controlListener = new HttpListener();
+                _controlListener.Prefixes.Add($"http://localhost:{AppSettings.ExternalControlPort}/");
+                _controlListener.Start();
+                _controlListenerRunning = true;
+                _controlListenerThread = new Thread(ControlListenerLoop) { IsBackground = true };
+                _controlListenerThread.Start();
+                AppendLog($"[CONTROL] Внешнее управление запуском: http://localhost:{AppSettings.ExternalControlPort}/start");
+            }
+            catch (Exception ex)
+            {
+                _controlListenerRunning = false;
+                AppendLog($"[CONTROL] Не удалось запустить сервер внешнего управления: {ex.Message}");
+            }
+        }
+
+        private void StopControlServer()
+        {
+            if (!_controlListenerRunning) return;
+            try
+            {
+                _controlListenerRunning = false;
+                _controlListener?.Stop();
+                _controlListener?.Close();
+                _controlListenerThread?.Join(1000);
+                AppendLog("[CONTROL] Сервер внешнего управления остановлен.");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[CONTROL] Ошибка остановки сервера внешнего управления: {ex.Message}");
+            }
+        }
+
+        private void ControlListenerLoop()
+        {
+            while (_controlListenerRunning && _controlListener != null && _controlListener.IsListening)
+            {
+                try
+                {
+                    var context = _controlListener.GetContext();
+                    Task.Run(() => ProcessControlRequest(context));
+                }
+                catch (HttpListenerException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    AppendLog($"[CONTROL] Ошибка сервера управления: {ex.Message}");
+                }
+            }
+        }
+
+        private void ProcessControlRequest(HttpListenerContext context)
+        {
+            var response = context.Response;
+            try
+            {
+                var request = context.Request;
+                response.Headers.Add("Access-Control-Allow-Origin", "*");
+                response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
+
+                if (request.HttpMethod == "OPTIONS")
+                {
+                    response.StatusCode = 200;
+                    return;
+                }
+
+                string path = request.Url?.AbsolutePath?.TrimEnd('/') ?? "";
+                if (path.Length == 0) path = "/status";
+
+                string message;
+                bool ok = true;
+                switch (path.ToLowerInvariant())
+                {
+                    case "/start":
+                    {
+                        bool force = request.QueryString["force"] == "1" ||
+                                     string.Equals(request.QueryString["force"], "true", StringComparison.OrdinalIgnoreCase);
+                        if (procManager.IsRunning)
+                        {
+                            if (!force)
+                            {
+                                message = "Система уже запущена.";
+                                break;
+                            }
+                            message = "Система уже запущена — перезапускаю оверлеи (force=1).";
+                            RestartOverlay();
+                        }
+                        else
+                        {
+                            message = "Запуск системы по внешнему запросу.";
+                            // RunOnUi: StartSystemAsync работает с контролами и оверлеями.
+                            RunOnUiAsync(async () => await StartSystemAsync(), "[CONTROL]");
+                        }
+                        break;
+                    }
+                    case "/stop":
+                        message = "Остановка системы по внешнему запросу.";
+                        RunOnUi(new Action(StopSystem), "[CONTROL]");
+                        break;
+                    case "/restart_overlay":
+                        message = "Перезапуск оверлеев по внешнему запросу.";
+                        RunOnUi(new Action(RestartOverlay), "[CONTROL]");
+                        break;
+                    case "/status":
+                    {
+                        int webCount = WebOverlayWindowCount();
+                        message = JsonConvert.SerializeObject(new
+                        {
+                            running = procManager.IsRunning,
+                            overlayWindows = webCount,
+                            overlayProcess = Process.GetProcessesByName("WebOverlay").Length > 0,
+                            game = IsGameRunning(),
+                            paused = IsGamePaused(),
+                            externalControlPort = AppSettings.ExternalControlPort,
+                            version = BuildInfo.Version
+                        });
+                        break;
+                    }
+                    default:
+                        ok = false;
+                        response.StatusCode = 404;
+                        message = $"Неизвестная команда '{path}'. Доступно: /start, /start?force=1, /stop, /restart_overlay, /status";
+                        break;
+                }
+
+                AppendLog($"[CONTROL] {request.HttpMethod} {path} → {message}");
+                byte[] buffer = Encoding.UTF8.GetBytes(message);
+                response.ContentType = path.Equals("/status", StringComparison.OrdinalIgnoreCase)
+                    ? "application/json"
+                    : "text/plain; charset=utf-8";
+                response.ContentLength64 = buffer.Length;
+                response.OutputStream.Write(buffer, 0, buffer.Length);
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    response.StatusCode = 500;
+                    byte[] buffer = Encoding.UTF8.GetBytes($"Ошибка: {ex.Message}");
+                    response.OutputStream.Write(buffer, 0, buffer.Length);
+                }
+                catch { }
+                AppendLog($"[CONTROL] Ошибка обработки запроса: {ex.Message}");
+            }
+            finally
+            {
+                try { response.OutputStream.Close(); } catch { }
+            }
+        }
+
+        /// <summary>Выполняет действие в UI-потоке (сервер управления работает в фоне).</summary>
+        private void RunOnUi(Action action, string tag)
+        {
+            try
+            {
+                if (!IsHandleCreated) return;
+                if (InvokeRequired) BeginInvoke(action);
+                else action();
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"{tag} Не удалось выполнить действие: {ex.Message}");
+            }
+        }
+
+        private void RunOnUiAsync(Func<Task> action, string tag)
+        {
+            RunOnUi(() => { _ = RunGuardedAsync(action, tag); }, tag);
+        }
+
+        private async Task RunGuardedAsync(Func<Task> action, string tag)
+        {
+            try { await action(); }
+            catch (Exception ex) { AppendLog($"{tag} Ошибка выполнения: {ex.Message}"); }
+        }
+
+        /// <summary>Число живых окон оверлеев (для /status).</summary>
+        private int WebOverlayWindowCount()
+        {
+            var pids = new HashSet<uint>();
+            foreach (var p in Process.GetProcessesByName("WebOverlay"))
+            {
+                try { pids.Add((uint)p.Id); } catch { } finally { p.Dispose(); }
+            }
+            if (pids.Count == 0) return 0;
+
+            // Process.MainWindowHandle не подходит: окна оверлеев создаются как
+            // WS_EX_TOOLWINDOW и часто ещё и скрыты политикой видимости, поэтому
+            // считаем окна через EnumWindows по PID процесса-хоста.
+            int count = 0;
+            EnumWindows((hWnd, _) =>
+            {
+                GetWindowThreadProcessId(hWnd, out uint pid);
+                if (pids.Contains(pid)) count++;
+                return true;
+            }, IntPtr.Zero);
+            return count;
+        }
+
         private void TriggerListenerLoop()
         {
             while (_triggerListenerRunning && _triggerListener != null && _triggerListener.IsListening)
@@ -1781,20 +2073,46 @@ RegisterHotKeyChecked(
             private static Action<JObject>? _onTrail;
             private static Action<string>? _playSoundAction;
             private static Action<JObject>? _onCommand;
-            private static Func<string>? _uiSyncCommand;
 
             public static void SetLog(Action<string> log) => _log = log;
             public static void SetOnTrail(Action<JObject> action) => _onTrail = action;
             public static void SetPlaySoundAction(Action<string> action) => _playSoundAction = action;
             public static void SetOnCommand(Action<JObject> action) => _onCommand = action;
-            public static void SetUiSync(Func<string> provider) => _uiSyncCommand = provider;
 
             protected override void OnOpen()
             {
                 try
                 {
-                    var command = _uiSyncCommand?.Invoke() ?? "show_ui";
-                    Send(JsonConvert.SerializeObject(new { command }));
+                    // v1.0.41: политика оверлеев принадлежит приложению и
+                    // рассылается по категориям (см. UI/WebUIManager.cs). Новая
+                    // страница получает ТОЛЬКО состояние собственной категории,
+                    // без устаревшей пары show_ui/hide_ui.
+                    var category = _categoryProvider?.Invoke() ?? "game";
+                    Send(JsonConvert.SerializeObject(new
+                    {
+                        command = "set_overlay_category",
+                        category,
+                        hasInteractive = _questInteractiveProvider?.Invoke() ?? false,
+                        collapsed = _questCollapsedProvider?.Invoke() ?? false
+                    }));
+                    // Состояние окна квестов передаётся явными командами: страница
+                    // применяет сохранённый вид (свёрнуто/развёрнуто) и пульсацию
+                    // закладки независимо от категории.
+                    Send(JsonConvert.SerializeObject(new
+                    {
+                        command = "set_quest_collapsed",
+                        collapsed = _questCollapsedProvider?.Invoke() ?? false
+                    }));
+                    Send(JsonConvert.SerializeObject(new
+                    {
+                        command = "set_quest_tab_state",
+                        hasInteractive = _questInteractiveProvider?.Invoke() ?? false
+                    }));
+                    if (string.Equals(category, "game", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Send(JsonConvert.SerializeObject(new { command = "show_game_ui" }));
+                        Send(JsonConvert.SerializeObject(new { command = "minimap_show" }));
+                    }
                     // v1.0.40.27: подключился новый WS-клиент (в т.ч. страница AR1 после
                     // рестарта оверлея) — форсируем разовую рассылку телеметрии и цели,
                     // иначе страница висит на «нет телеметрии», пока фура не тронется.
@@ -1806,6 +2124,15 @@ RegisterHotKeyChecked(
 
             private static Action? _onClientConnected;
             public static void SetOnClientConnected(Action action) => _onClientConnected = action;
+            private static Func<string>? _categoryProvider;
+            private static Func<bool>? _questInteractiveProvider;
+            private static Func<bool>? _questCollapsedProvider;
+            public static void SetCategoryProvider(Func<string> provider) => _categoryProvider = provider;
+            public static void SetQuestStateProviders(Func<bool> interactive, Func<bool> collapsed)
+            {
+                _questInteractiveProvider = interactive;
+                _questCollapsedProvider = collapsed;
+            }
 
 
             protected override void OnMessage(MessageEventArgs e)
@@ -1871,7 +2198,10 @@ RegisterHotKeyChecked(
                 TrailBehavior.SetOnTrail(data => SaveTrailFromWebSocket(data));
                 TrailBehavior.SetPlaySoundAction(PlaySound);
                 TrailBehavior.SetOnCommand(data => OnClientCommand(data));
-                TrailBehavior.SetUiSync(() => _lastPauseState == true ? "hide_ui" : "show_ui");
+                // v1.0.41: новая страница сразу получает СВОЮ категорию оверлеев,
+                // а не устаревшую пару show_ui/hide_ui.
+                TrailBehavior.SetCategoryProvider(() => _gameUiForce ? "game" : (_lastPauseState == true ? "interactive" : "game"));
+                TrailBehavior.SetQuestStateProviders(() => _questHasInteractive, () => _questCollapsed);
                 // v1.0.40.27: новый WS-клиент → форс-рассылка данных AR (страница AR1,
                 // подключившаяся на паузе/при неподвижной фуре, иначе ждала события).
                 TrailBehavior.SetOnClientConnected(() => ForceArDataResend("новый WS-клиент"));
@@ -2791,25 +3121,56 @@ RegisterHotKeyChecked(
         // Перекрестье дополненной реальности на ближайшую точку 3D
         // (учёт поворота головы + движения фуры; прижим к краю экрана).
         // ================================================================
-        // v1.0.40.27: AR1 — ТОГГЛ. Повторный клик по кнопке останавливает оверлей
-        // (процесс WebOverlay с заголовком «AR HUD») и канал AR-целей. Раньше кнопка
-        // только запускала: выключить AR1 из приложения было нечем.
+        // v1.0.41: окно AR HUD поднимается ВМЕСТЕ со всеми остальными оверлеями
+        // (требование «все веб-оверлеи стартуют одновременно»). Кнопка больше не
+        // создаёт и не убивает окно — она переключает видимость слоя, поэтому набор
+        // окон WebOverlay постоянен и политика категорий всегда управляет всеми.
         private bool _ar1Running;
+        private bool _arLayerVisible = true;
 
         private void ToggleArOverlay()
         {
-            if (IsAr1Running)
-            {
-                StopArOverlay(manual: true);
-                return;
-            }
-            LaunchArOverlay();
+            if (IsAr1Running) { SetArOverlayVisible(!_arLayerVisible); return; }
+            StartArOverlayLayer();
         }
 
-        // Признак жизни AR1: процесс WebOverlay с окном «AR HUD».
+        // Признак жизни AR1: слой AR HUD поднят (окно создано при старте системы).
         internal bool IsAr1Running => _ar1Running;
-        // Остановка AR1: гасим оверлей и канал данных. Вызывается кнопкой-тогглом,
-        // StopSystem и закрытием приложения.
+        internal bool IsAr1Visible => _ar1Running && _arLayerVisible;
+
+        /// <summary>
+        /// Поднимает окно AR HUD без переключения видимости: политика категорий
+        /// (гибрид/миникарта/уведомления против интерактивов) сама решит, показывать
+        /// ли его сейчас. Вызывается при старте системы вместе с остальными слоями.
+        /// </summary>
+        internal void StartArOverlayLayer()
+        {
+            if (_ar1Running) return;
+            string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "WebOverlay.exe");
+            if (!File.Exists(exe)) exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "pano.exe");
+            if (!File.Exists(exe)) { AppendLog("[AR] WebOverlay executable not found — AR HUD недоступен."); return; }
+
+            _ar1Running = true;
+            _arLayerVisible = true;
+            LaunchArOverlay();
+            SendCommandToMap("ar_layer_visible", new JObject { ["value"] = true });
+        }
+
+        /// <summary>
+        /// Включает/выключает показ слоя AR HUD. Окно остаётся живым: страница лишь
+        /// прячет своё содержимое, поэтому перезапуск оверлея не требуется.
+        /// </summary>
+        internal void SetArOverlayVisible(bool visible)
+        {
+            if (!_ar1Running) { StartArOverlayLayer(); return; }
+            _arLayerVisible = visible;
+            SendCommandToMap("ar_layer_visible", new JObject { ["value"] = visible });
+            SyncAr1Button();
+            AppendLog(visible ? "[AR] Слой AR HUD включён." : "[AR] Слой AR HUD выключен (окно сохранено).");
+        }
+
+        // Остановка AR1: гасим окно оверлея и канал данных. Вызывается StopSystem
+        // и закрытием приложения.
         internal void StopArOverlay(bool manual)
         {
             string overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "WebOverlay.exe");
@@ -2821,13 +3182,13 @@ RegisterHotKeyChecked(
             SyncAr1Button();
             AppendLog(manual ? "[AR] AR HUD закрывается кнопкой." : "[AR] AR HUD закрывается.");
         }
-        // v1.0.40.27: тоггл-подсветка кнопки AR1 (как у AR2 — Lime при запущенном оверлее).
+        // v1.0.40.27: тоггл-подсветка кнопки AR1 (как у AR2 — Lime при видимом слое).
         internal void SyncAr1Button()
         {
             if (btnLaunchAR == null || btnLaunchAR.IsDisposed) return;
             bool on = IsAr1Running;
-            btnLaunchAR.Text = on ? "AR (Web) — ON" : "Запустить AR";
-            btnLaunchAR.BackColor = on ? Color.Lime : DefaultButtonColor();
+            btnLaunchAR.Text = !on ? "Запустить AR" : (_arLayerVisible ? "AR (Web) — ON" : "AR (Web) — OFF");
+            btnLaunchAR.BackColor = on && _arLayerVisible ? Color.Lime : DefaultButtonColor();
         }
 
         private void LaunchArOverlay()
@@ -2867,7 +3228,8 @@ RegisterHotKeyChecked(
                 AppendLog($"[AR] Геометрия AR HUD: экран '{screen.DeviceName}' {b.Width}x{b.Height} @({b.X},{b.Y}).");
 
                 Process.Start(overlayExe, url);
-                _ar1Running = true;                StartArTargetFeed();
+                _ar1Running = true;
+                StartArTargetFeed();
                 // v1.0.40.27: подсветка кнопки тоггла (Lime) сразу после старта.
                 SyncAr1Button();
                 AppendLog("[AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).");
@@ -2889,12 +3251,19 @@ RegisterHotKeyChecked(
             StopArOverlay(manual: false);
             // v1.0.40.21: освобождаем фид телеметрии (счётчик ссылок TruckTelemetry).
             try { TruckTelemetry.Stop(); } catch { }
+            bool wasRunning = procManager.IsRunning;
             procManager.Stop();
             _pauseCheckTimer?.Stop();
             StopTriggerServer();
             StopWebSocketSaveServer();
             StopStaticWebServer();
             KillChildProcesses();
+            // Сервер внешнего управления намеренно НЕ гасим вместе с системой:
+            // он не часть оверлеев, а пульт управления ими. Иначе /start работал бы
+            // только до первого /stop, и запускать систему без мыши было бы нельзя
+            // дважды за сеанс.
+            if (wasRunning)
+                AppendLog($"[CONTROL] Пульт управления остаётся доступен: http://localhost:{AppSettings.ExternalControlPort}/start");
 
             // ===== ОСВОБОЖДЕНИЕ SCS CONTROLLER =====
             SCSController.OnLog -= (msg) => AppendLog(msg); // отписка
@@ -4426,6 +4795,7 @@ RegisterHotKeyChecked(
 
             try { trayIcon.Visible = false; } catch { }
             try { UnregisterHotkeysSafely(); } catch { }
+            StopControlServer();
 
             // Останавливаем систему синхронно (в фоне, чтобы не блокировать UI-поток),
             // затем обязательно зачищаем оверлеи и выходим.
@@ -4514,6 +4884,10 @@ RegisterHotKeyChecked(
             try { trayIcon.Visible = false; } catch { }
 
             UnregisterHotkeysSafely();
+            // Пульт внешнего управления гасим только при реальном выходе из
+            // приложения: внутри StopSystem() он намеренно выживает, иначе /start
+            // можно было бы вызвать лишь один раз за сеанс.
+            StopControlServer();
 
             try
             {
@@ -4754,6 +5128,11 @@ RegisterHotKeyChecked(
                 gameRunning ? "RUNNING" : "NOT RUNNING", gameRunning);
             SetStatusText(indicatorEts2Plugins, "ETS2 Plugins",
                 plugins ? "INSTALLED" : "NOT INSTALLED", plugins);
+            // Внешнее управление запуском: ON значит «/start поднимает оверлеи
+            // без мыши», OFF — сервер управления выключен настройкой.
+            SetStatusText(indicatorControl, "External Control",
+                _controlListenerRunning ? $"ON (порт {AppSettings.ExternalControlPort})" : "OFF",
+                _controlListenerRunning);
             if (gameRunning && dataFresh)
             {
                 string speedText = speed >= 0 ? $"{speed} km/h" : "0 km/h";

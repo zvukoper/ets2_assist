@@ -11,8 +11,32 @@ namespace ETS2_Assist_GUI
         private const string InstanceMutexName = "Local\\ETS2_Assist_MainInstance";
         private const string InstanceSignalName = "Local\\ETS2_Assist_MainWindowSignal";
         internal const string ShutdownSignalName = "Local\\ETS2_Assist_GracefulShutdownSignal";
+        // Внешний запуск оверлеев без мыши: `ETS2_Assist.exe --start`.
+        // Вместо мыши этот сигнал поднимает систему ТОЙ ЖЕ кнопкой Start
+        // (MainForm.StartSystem), поэтому поведение полностью совпадает.
+        internal const string StartSignalName = "Local\\ETS2_Assist_StartSignal";
         private static Mutex? _instanceMutex;
         internal static EventWaitHandle? InstanceSignal { get; private set; }
+        internal static EventWaitHandle? StartSignal { get; private set; }
+
+        /// <summary>
+        /// Приложение запущено с `--start`: систему нужно поднять сразу, без мыши.
+        /// </summary>
+        internal static bool StartSystemRequested { get; private set; }
+
+        internal static void SignalStartSystem()
+        {            try
+            {
+                using var signal = EventWaitHandle.OpenExisting(StartSignalName);
+                signal.Set();
+            }
+            catch (WaitHandleCannotBeOpenedException)
+            {
+            }
+            catch (Exception)
+            {
+            }
+        }
 
         internal static void SignalExistingInstance()
         {
@@ -25,6 +49,9 @@ namespace ETS2_Assist_GUI
             {
             }
         }
+
+        private static bool HasArg(string[]? args, string name)
+            => args != null && Array.Exists(args, a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
 
         internal static void SignalGracefulShutdown()
         {
@@ -169,14 +196,28 @@ namespace ETS2_Assist_GUI
                 return;
             }
 
+            // `--start` — запуск оверлеев без мыши. Если приложение уже работает,
+            // ему уходит сигнал запуска; иначе флаг доходит до MainForm и система
+            // поднимается сама сразу после старта окна.
+            bool startSystem = HasArg(args, "--start");
+            StartSystemRequested = startSystem;
+            if (startSystem && HasArg(args, "--start-only"))
+            {
+                // Только сигнал уже запущенному приложению, без старта копии.
+                SignalStartSystem();
+                return;
+            }
+
             _instanceMutex = new Mutex(true, InstanceMutexName, out bool createdNew);
             if (!createdNew)
             {
                 SignalExistingInstance();
+                if (startSystem) SignalStartSystem();
                 return;
             }
 
             InstanceSignal = new EventWaitHandle(false, EventResetMode.AutoReset, InstanceSignalName);
+            StartSignal = new EventWaitHandle(false, EventResetMode.AutoReset, StartSignalName);
             using var shutdownSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShutdownSignalName);
 
             File.AppendAllText("startup.log", $"{DateTime.Now}: Application started BUILD={BuildInfo.Version}\n");
