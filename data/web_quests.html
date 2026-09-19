@@ -59,6 +59,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 #inventoryWindow{
     left:104px;top:74px;width:278px;height:829px;
     z-index:35;
+    border-radius:10px;
+    background:rgba(23,24,25,.87);
+    overflow:hidden;
 }
 
 #questLayout{position:absolute;left:0;top:0;width:1410px;height:906px;display:block}
@@ -166,6 +169,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 }
 .inventoryItemLabel{min-width:0}
 #inventoryList{height:100%;padding:6px;overflow:auto;box-sizing:border-box}
+.inventoryItem{
+    width:100%;display:flex;justify-content:space-between;gap:8px;
+    padding:9px 7px;margin-bottom:2px;border-radius:7px;
+    text-align:left;cursor:pointer;font:inherit;
+}
 .inventoryItem small{color:#8c98a9}
 
 #overlayError{
