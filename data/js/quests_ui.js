@@ -350,7 +350,7 @@ bindQuestNativeInput();
  * затем больше НЕ читает системную позицию: каждое dx/dy добавляется к
  * виртуальной координате. Системный курсор при этом отпущен через set_cursor(false).
  * ================================================================ */
-var cursorEl=null,cursorTimer=null,cursorShown=false;
+var cursorEl=null,cursorTimer=null,cursorShown=false,cursorSystemReleased=false;
 
 function placeCursor(x,y){
     cursorEl=cursorEl||$('cursorDot');   // резолвим лениво: place может вызваться первым
@@ -442,7 +442,10 @@ function applyCursorLayer(){
     /* Системная стрелка не является курсором квестов. ETS2 удерживает её
        возле центра; наличие этой стрелки поверх страницы даёт дрожание.
        Видимый курсор теперь только #cursorDot. */
-    post({command:'set_cursor',value:false});
+    if(!cursorSystemReleased){
+        post({command:'set_cursor',value:false});
+        cursorSystemReleased=true;
+    }
     if(active)startCursorTrack();else stopCursorTrack('applyCursorLayer:inactive');
 }
 
