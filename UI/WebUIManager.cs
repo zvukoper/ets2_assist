@@ -277,7 +277,23 @@ namespace ETS2_Assist_GUI
         {
             if (!_committedActive || !IsQuestHookGameForeground()) return;
 
-            AppendLog($"[QUEST] ESC detected flow={_questPauseFlow} validatedPaused={_validatedPaused}");
+            AppendLog($"[QUEST] ESC detected flow={_questPauseFlow} validatedPaused={_validatedPaused} nonEscMenuGuard={_questNonEscMenuGuard}");
+
+            /* ESC после F1-F12/PAUSE относится к открытому игровому окну.
+               Первый ESC только закрывает его; наш интерактив запускается
+               следующим отдельным ESC уже на главном экране. */
+            if (_questNonEscMenuGuard)
+            {
+                _questNonEscMenuGuard = false;
+                _questNonEscMenuGuardVk = 0;
+                if (_questPauseFlow == QuestPauseFlowState.WaitingForPause)
+                {
+                    HideQuestPauseShell();
+                    _questPauseFlow = QuestPauseFlowState.Running;
+                }
+                AppendLog("[QUEST] ESC ignored: открыт режим F1-F12/PAUSE.");
+                return;
+            }
 
             if (_questPauseFlow == QuestPauseFlowState.InteractivePaused)
             {
