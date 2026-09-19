@@ -166,14 +166,14 @@ function publishInteractiveBounds(){
         else if(collapsed){mode='quest-tab';el=$('questTab')}
         else{mode='quest-window';el=$('questWindow')}
     }
-    if(!el){post({command:'set_interactive_bounds',mode:'hidden',x:0,y:0,w:0,h:0});lastInteractiveKey='hidden';return}
+    if(!el){post({command:'set_interactive_bounds',mode:'hidden',xr:0,yr:0,wr:0,hr:0});lastInteractiveKey='hidden';return}
     var r=el.getBoundingClientRect(),vw=Math.max(1,innerWidth),vh=Math.max(1,innerHeight);
     var key=mode+'|'+Math.round(r.left)+'|'+Math.round(r.top)+'|'+Math.round(r.width)+'|'+Math.round(r.height);
     if(key===lastInteractiveKey)return;
     lastInteractiveKey=key;
     post({command:'set_interactive_bounds',mode:mode,
-        x:Math.max(0,Math.min(1,r.left/vw)),y:Math.max(0,Math.min(1,r.top/vh)),
-        w:Math.max(0,Math.min(1,r.width/vw)),h:Math.max(0,Math.min(1,r.height/vh))});
+        xr:Math.max(0,Math.min(1,r.left/vw)),yr:Math.max(0,Math.min(1,r.top/vh)),
+        wr:Math.max(0,Math.min(1,r.width/vw)),hr:Math.max(0,Math.min(1,r.height/vh))});
 }
 var qnPressedTarget=null,qnHoverTarget=null,qnHostBound=false,qnLastHostLogAt=0;
 function qnParseHostData(data){
@@ -193,12 +193,16 @@ function qnClickableTarget(el){
 }
 function qnIsAllowedPointTarget(target){
     if(!target||!pagePaused)return false;
-    if(collapsed){
+    if(collapsed&&!inventoryOpen){
         var tab=$('questTab');
         return !!tab&&(target===tab||tab.contains(target));
     }
-    var app=$('questApp');
-    return !!app&&(target===app||app.contains(target));
+    if(inventoryOpen){
+        var iw=$('inventoryWindow');
+        return !!iw&&(target===iw||iw.contains(target));
+    }
+    var qw=$('questWindow');
+    return !!qw&&(target===qw||qw.contains(target));
 }
 function qnMouseEvent(type,x,y,button,buttons,detail){
     return new MouseEvent(type,{view:window,bubbles:true,cancelable:true,
@@ -402,7 +406,7 @@ function pointOutsideDistance(rect,x,y){
 }
 function cursorSurfaceAlpha(x,y){
     if(!pagePaused)return 0;
-    var root=collapsed?$('questTab'):$('questWindow');
+    var root=inventoryOpen?$('inventoryWindow'):(collapsed?$('questTab'):$('questWindow'));
     if(!root)return 0;
     var rr=root.getBoundingClientRect();
     if(x>=rr.left&&x<=rr.right&&y>=rr.top&&y<=rr.bottom){
@@ -474,7 +478,7 @@ function placeCursor(x,y){
 }
 
 function trackCursorFromEvent(e){
-    if(!pagePaused||collapsed)return;
+    if(!pagePaused||(!inventoryOpen&&collapsed))return;
     placeCursor(e.clientX,e.clientY);
 }
 
@@ -550,7 +554,7 @@ function applyCursorLayer(){
        её не рисует, она не будет дублировать нашу. */
     var app=$('questApp');
     if(app)app.style.cursor=pagePaused?'none':'';
-    var active=pagePaused&&!collapsed;
+    var active=pagePaused&&(!collapsed||inventoryOpen);
     /* Системная стрелка не является курсором квестов. ETS2 удерживает её
        возле центра; наличие этой стрелки поверх страницы даёт дрожание.
        Видимый курсор теперь только #cursorDot. */
