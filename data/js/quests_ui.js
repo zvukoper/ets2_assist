@@ -10,6 +10,7 @@
 (function(){
 'use strict';
 var ws=null,model=null,currentQuest='',currentInteraction='',wasPaused=false,collapsed=false,questDetailPinned=false,inventoryOpen=false,archiveVisible=false,interactiveReady=false;
+var locallySeenInventoryItems=Object.create(null);
 var pagePaused=false,hasInteractive=false,lastDialogueKey='',lastOptionsKey='',lastInteractionsKey='',lastQuestsKey='',typeTimer=null,fadeTimer=null;
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
    переключать вид дважды: двойной клик по кнопке или по прозрачной области
@@ -773,11 +774,45 @@ function renderQuests(){
     var ab=$('archiveToggle');if(ab)ab.onclick=function(e){e.stopPropagation();archiveVisible=!archiveVisible;lastQuestsKey='';renderQuests()}
 }
 function questButton(q,kind){var selected=questDetailPinned&&!currentInteraction&&currentQuest===q.id;return'<button class="questItem '+kind+(selected?' selected':'')+'" data-q="'+esc(q.id)+'"><strong>'+esc(q.title)+'</strong><span>'+esc(q.status||'')+'</span>'+((q.stepDescription||q.description)?'<em>'+esc(q.stepDescription||q.description)+'</em>':'')+'</button>'}
+function inventoryHasNewItems(){
+    return !!((model&&model.inventory)||[]).some(function(x){
+        return x&&x.new_item===true&&!locallySeenInventoryItems[String(x.id||'')];
+    });
+}
+function setInventoryTabPulse(on){
+    var tab=$('inventoryTab');
+    if(tab)tab.classList.toggle('pulse',!!on);
+}
 function renderInventory(){
     var el=$('inventoryList');if(!el||!model)return;
     var items=model.inventory||[];
-    el.innerHTML=items.map(function(x){return'<button class="inventoryItem" data-item="'+esc(x.id)+'"><span>'+esc(x.name||x.id)+'</span><small>×'+esc(x.amount||1)+'</small></button>'}).join('')||'<div class="muted">пусто</div>';
-    el.querySelectorAll('.inventoryItem').forEach(function(btn){btn.onclick=function(e){e.stopPropagation();showError('В разработке')}})
+    items.forEach(function(x){
+        var id=String(x&&x.id||'');
+        if(x&&x.new_item!==true)delete locallySeenInventoryItems[id];
+    });
+    el.innerHTML=items.map(function(x){
+        var id=String(x&&x.id||'');
+        var isNew=x&&x.new_item===true&&!locallySeenInventoryItems[id];
+        return'<button class="inventoryItem" data-item="'+esc(id)+'">'
+            +'<span class="inventoryItemName">'
+            +(isNew?'<span class="inventoryNewDot" aria-hidden="true"></span>':'')
+            +'<span>'+esc(x.name||id)+'</span>'
+            +'</span><small>×'+esc(x.amount||1)+'</small></button>';
+    }).join('')||'<div class="muted">пусто</div>';
+    setInventoryTabPulse(inventoryHasNewItems());
+    el.querySelectorAll('.inventoryItem').forEach(function(btn){
+        btn.onclick=function(e){
+            e.stopPropagation();
+            var id=String(btn.dataset.item||'');
+            if(!id)return;
+            var item=(model.inventory||[]).find(function(x){return String(x&&x.id||'')===id});
+            if(item&&item.new_item===true){
+                locallySeenInventoryItems[id]=true;
+                renderInventory();
+                send({command:'inventory_item_seen',id:id});
+            }
+        };
+    });
 }
 function showQuestDetail(id){
     var q=questById(id);if(!q)return;
@@ -805,7 +840,8 @@ function setTabPulse(on){
     hasInteractive=!!on;
     var tab=$('questTab');
     if(tab)tab.classList.toggle('pulse',hasInteractive);
-  }
+    setInventoryTabPulse(inventoryHasNewItems());
+}
 function setQuestInteractiveVisible(visible,ready,pulse){
     pagePaused=!!visible;interactiveReady=!!ready;
     var app=$('questApp');if(app)app.classList.toggle('interactiveVisible',pagePaused);
@@ -834,6 +870,7 @@ function toggleInventory(){
 }
 function applyState(data){
     if(!$('questApp'))return;model=data;
+    setInventoryTabPulse(inventoryHasNewItems());
     var paused=data.paused===true,interactive=data.interactive===true;
     /* interactive из quest_state — пост-валидатор. Видимость UI меняется
        только явной командой quest_pause_ui от приложения. */
@@ -882,9 +919,6 @@ window.onEts2Command=function(d){
         if(e.target!==app)return;
         collapseWindow();
     });
-    /* Закладка выезжает за 220 мс, а её кликабельная область считается по
-       текущему прямоугольнику. Пока анимация идёт, прямоугольник ещё смещён,
-       поэтому область пересчитывается по завершении перехода. */
     if(tab)tab.addEventListener('transitionend',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     window.addEventListener('resize',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     var style=document.createElement('style');
