@@ -205,10 +205,10 @@ function qnClickableTarget(el){
 function qnIsAllowedPointTarget(target){
     if(!target||!pagePaused)return false;
     if(collapsed){
-        var tab=$(\'questTab\');
+        var tab=$('questTab');
         return !!tab&&(target===tab||tab.contains(target));
     }
-    var app=$(\'questApp\');
+    var app=$('questApp');
     return !!app&&(target===app||app.contains(target));
 }
 function qnMouseEvent(type,x,y,button,buttons,detail){
