@@ -198,10 +198,10 @@ namespace ETS2_Assist_GUI
         private bool _questTabHookKeyDown;
         private const int WH_KEYBOARD_LL = 13;
         private const int HC_ACTION = 0;
-        private const int WM_KEYDOWN = 0x0100;
-        private const int WM_KEYUP = 0x0101;
-        private const int WM_SYSKEYDOWN = 0x0104;
-        private const int WM_SYSKEYUP = 0x0105;
+        private const int QUEST_HOOK_WM_KEYDOWN = 0x0100;
+        private const int QUEST_HOOK_WM_KEYUP = 0x0101;
+        private const int QUEST_HOOK_WM_SYSKEYDOWN = 0x0104;
+        private const int QUEST_HOOK_WM_SYSKEYUP = 0x0105;
         private const int LLKHF_UP = 0x0080;
 
         [StructLayout(LayoutKind.Sequential)]
@@ -524,8 +524,8 @@ RegisterHotKeyChecked(
             if (nCode != HC_ACTION)
                 return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
 
-            bool keyDown = wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN;
-            bool keyUp = wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP;
+            bool keyDown = wParam == (IntPtr)QUEST_HOOK_WM_KEYDOWN || wParam == (IntPtr)QUEST_HOOK_WM_SYSKEYDOWN;
+            bool keyUp = wParam == (IntPtr)QUEST_HOOK_WM_KEYUP || wParam == (IntPtr)QUEST_HOOK_WM_SYSKEYUP;
 
             KBDLLHOOKSTRUCT k;
             try { k = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam); }
