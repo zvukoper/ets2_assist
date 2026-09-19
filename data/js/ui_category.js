@@ -70,7 +70,9 @@
         set_quest_tab_state:true,
         set_quest_collapsed:true,
         quest_toggle_collapse:true,
-        quest_toggle_inventory:true
+        quest_toggle_inventory:true,
+        quest_bookmark_beacon:true,
+        inventory_bookmark_beacon:true
     };
 
     function flushPendingEts2Commands() {
