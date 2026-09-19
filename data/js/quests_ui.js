@@ -17,7 +17,7 @@ var pendingQuestBeacon=false,pendingInventoryBeacon=false;
 /* Защита от гонки выбора: после клика короткое время локальный выбор имеет
    приоритет над запаздывающим quest_state со старым selectedQuest. */
 var pendingSelectionKey='',pendingSelectionAt=0,pendingSelectionTimeoutMs=2000;
-var inventoryBeaconSeen=Object.create(null),inventoryKnown=Object.create(null),inventoryKnownInitialized=false,lastNearbyInteractive=false;
+var inventoryBeaconSeen=Object.create(null),inventoryKnown=Object.create(null),inventoryKnownInitialized=false,lastNearbyInteractive=false,inventoryPulseState=false,lastInventoryRenderKey='';
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
    переключать вид дважды: двойной клик по кнопке или по прозрачной области
    давал пару «свёрнуто → развёрнуто» в одну миллисекунду, и окно визуально
@@ -27,7 +27,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R16-2026-09-19';
+var QUEST_UI_DIAG_BUILD='QCONTENT-PULSE-R18-2026-09-19';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -385,7 +385,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R16 1.0.40.86</strong>',
+        '<strong>SOFT CURSOR R18 1.0.40.88</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -707,10 +707,9 @@ function clearBookmarkBeacon(kind){
 }
 function startBookmarkBeacon(kind){
     var isQuest=kind==='quest';
-    if(pagePaused){
-        if(isQuest)pendingQuestBeacon=true;else pendingInventoryBeacon=true;
-        return;
-    }
+    /* Закладки должны пульсировать и ВНУТРИ паузы. Раньше pagePaused делал
+       early-return и оставлял только статичную закладку, поэтому факт доступного
+       интерактива/нового предмета терялся именно тогда, когда игрок открывал паузу. */
     if(isQuest){
         if(activeInterface==='quest'||questBeaconVisible)return;
         pendingQuestBeacon=false;questBeaconVisible=true;
@@ -824,7 +823,10 @@ function blockToggle(){
 }
 
 function setTabPulse(value){
-    hasInteractive=!!value;
+    var next=!!value,was=hasInteractive;
+    hasInteractive=next;
+    if(next&&!was)startBookmarkBeacon('quest');
+    else if(!next&&was)clearBookmarkBeacon('quest');
     syncTabVisibility();
 }
 
@@ -983,7 +985,13 @@ function inventoryHasNewItems(){
         return x&&x.new_item===true&&!locallySeenInventoryItems[String(x.id||'')];
     });
 }
-function setInventoryTabPulse(on){syncTabVisibility()}
+function setInventoryTabPulse(on){
+    var next=!!on,was=inventoryPulseState;
+    inventoryPulseState=next;
+    if(next&&!was)startBookmarkBeacon('inventory');
+    else if(!next&&was)clearBookmarkBeacon('inventory');
+    syncTabVisibility();
+}
 function renderInventory(){
     var el=$('inventoryList');
     if(!el){qdLog('[CONTENT-RENDER] inventoryList element MISSING');return}
@@ -996,31 +1004,51 @@ function renderInventory(){
     var currentId=selectedInventoryItem;
     if(currentId && !items.some(function(x){return String(x&&x.id||'')===currentId}))selectedInventoryItem='';
     currentId=selectedInventoryItem;
-    el.innerHTML=items.map(function(x){
-        var id=String(x&&x.id||'');
-        var isNew=x&&x.new_item===true&&!locallySeenInventoryItems[id];
-        var selected=id===currentId;
-        return'<button class="inventoryItem'+(selected?' selected':'')+'" data-item="'+esc(id)+'">'
-            +'<span class="inventoryItemName">'
-            +'<span class="inventoryItemLabel">'+esc(x.name||id)+'</span>'
-            +(isNew?'<span class="inventoryNewDot" aria-hidden="true">*</span>':'')
-            +'</span><small>×'+esc(x.amount||1)+'</small></button>';
-    }).join('')||'<div class="muted">пусто</div>';
+
+    /* Не пересоздаём DOM нового предмета на каждом quest_state: состояние
+       автомобиля/расстояния приходит часто, и повторный innerHTML иначе
+       каждый тик заново запускал бы CSS-анимацию кружка. */
+    var renderKey=JSON.stringify([
+        currentId,
+        items.map(function(x){
+            var id=String(x&&x.id||'');
+            return[
+                id,
+                String(x&&x.name||id),
+                Number(x&&x.amount||0),
+                x&&x.new_item===true&&!locallySeenInventoryItems[id]
+            ];
+        })
+    ]);
+    if(renderKey!==lastInventoryRenderKey){
+        lastInventoryRenderKey=renderKey;
+        el.innerHTML=items.map(function(x){
+            var id=String(x&&x.id||'');
+            var isNew=x&&x.new_item===true&&!locallySeenInventoryItems[id];
+            var selected=id===currentId;
+            return'<button class="inventoryItem'+(selected?' selected':'')+'" data-item="'+esc(id)+'">'
+                +'<span class="inventoryItemName">'
+                +'<span class="inventoryItemLabel">'+esc(x.name||id)+'</span>'
+                +(isNew?'<span class="inventoryNewDot" aria-hidden="true"></span>':'')
+                +'</span><small>×'+esc(x.amount||1)+'</small></button>';
+        }).join('')||'<div class="muted">пусто</div>';
+
+        el.querySelectorAll('.inventoryItem').forEach(function(btn){
+            btn.onclick=function(e){
+                e.stopPropagation();
+                var id=String(btn.dataset.item||'');
+                if(!id)return;
+                selectedInventoryItem=id;
+                var item=(model.inventory||[]).find(function(x){return String(x&&x.id||'')===id});
+                if(item&&item.new_item===true){
+                    locallySeenInventoryItems[id]=true;
+                    send({command:'inventory_item_seen',id:id});
+                }
+                renderInventory();
+            };
+        });
+    }
     setInventoryTabPulse(inventoryHasNewItems()&&activeInterface==='none');
-    el.querySelectorAll('.inventoryItem').forEach(function(btn){
-        btn.onclick=function(e){
-            e.stopPropagation();
-            var id=String(btn.dataset.item||'');
-            if(!id)return;
-            selectedInventoryItem=id;
-            var item=(model.inventory||[]).find(function(x){return String(x&&x.id||'')===id});
-            if(item&&item.new_item===true){
-                locallySeenInventoryItems[id]=true;
-                send({command:'inventory_item_seen',id:id});
-            }
-            renderInventory();
-        };
-    });
 }
 function showQuestDetail(id){
     var q=questById(id);if(!q)return;
@@ -1082,7 +1110,8 @@ function setQuestInteractiveVisible(visible,ready,pulse){
         if(deferredInventoryBeacon)startBookmarkBeacon('inventory');
     }else{
         syncInterfaceState('none',false,false);
-        setTabPulse(pulse===true);
+        var nearbyInteractiveOnPause=!!((model&&model.nearby)||[]).some(function(p){return p&&p.Marker&&p.Marker!=='none'});
+        setTabPulse(pulse===true||nearbyInteractiveOnPause);
         /* Содержимое строим сразу, не ожидая отдельного «правильного»
            порядка quest_pause_ui/quest_state. Если model уже получена,
            пользователь видит данные без дополнительного тика WS. */
@@ -1112,8 +1141,9 @@ function applyState(data){
     var nearbyNow=!!((data.nearby)||[]).some(function(p){return p&&p.Marker&&p.Marker!=='none'});
 
     /* Если backend уже подтвердил паузу, квестовый beacon не должен
-       появиться поверх AR до прихода quest_pause_ui. Старый beacon здесь
-       тоже немедленно убираем. */
+       остаться поверх AR до прихода quest_pause_ui. Но сам признак
+       доступного интерактива сохраняем: при выходе из паузы beacon
+       запускается автоматически. */
     if(pausedByState){
         if(questBeaconVisible){
             if(questBeaconTimer){clearTimeout(questBeaconTimer);questBeaconTimer=0}
@@ -1125,10 +1155,9 @@ function applyState(data){
             inventoryBeaconVisible=false;
             var ibt=$('inventoryTab');if(ibt)ibt.classList.remove('beacon');
         }
-    }else if(nearbyNow&&!lastNearbyInteractive&&!pagePaused){
-        startBookmarkBeacon('quest');
     }
     lastNearbyInteractive=nearbyNow;
+    setTabPulse(nearbyNow);
 
     var presentInventory=Object.create(null);
     var currentInventory=Object.create(null);
