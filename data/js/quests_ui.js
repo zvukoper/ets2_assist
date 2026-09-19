@@ -27,7 +27,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R15-2026-09-19';
+var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R16-2026-09-19';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -385,7 +385,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R15 1.0.40.85</strong>',
+        '<strong>SOFT CURSOR R16 1.0.40.86</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -875,7 +875,7 @@ function renderDialogue(node){
                 return'<button class="dialogOption" data-index="'+i+'" '+(o.enabled===false?'disabled':'')+'><span class="optionText">'+esc(o.text)+'</span>'+svc+req+reason+'</button>';
             }).join('');
             opts.querySelectorAll('.dialogOption').forEach(function(btn){btn.onclick=function(){
-                send({command:'quest_dialog_option',questId:currentQuest,interaction:currentInteraction,index:Number(btn.dataset.index)});
+                sendCriticalQuestCommand({command:'quest_dialog_option',questId:currentQuest,interaction:currentInteraction,index:Number(btn.dataset.index)});
             }});
         }
     }
@@ -1040,12 +1040,22 @@ function clearDialogue(){
     var s=$('dialogSpeaker'),t=$('dialogText'),svc=$('dialogService'),o=$('dialogOptions'),i=$('dialogImage');
     if(s)s.textContent='';if(t){t.classList.remove('fading');t.textContent=EmptyHint}if(svc)svc.innerHTML='';if(o)o.innerHTML='';if(i){i.removeAttribute('src');i.style.display='none'}
 }
+function sendCriticalQuestCommand(payload){
+    var sharedSent=false;
+    try{
+        if(typeof window.ets2SendCommand==='function')
+            sharedSent=window.ets2SendCommand(payload)===true;
+    }catch(e){}
+    if(!sharedSent)send(payload);
+    qdLog('[QUEST-CMD-OUT] command='+payload.command+' shared8084='+sharedSent+' fallback8085='+(!sharedSent));
+    return sharedSent;
+}
 function selectInteraction(qid,iid){
     if(!pagePaused||!interactiveReady||!model||model.paused!==true)return;
     questDetailPinned=false;currentQuest=qid;currentInteraction=iid;
     pendingSelectionKey=String(qid||'')+':'+String(iid||'');pendingSelectionAt=Date.now();
     qdLog('[SELECTION-REQUEST] key='+pendingSelectionKey+' local-selection-set');
-    send({command:'quest_select_interaction',questId:qid,id:iid});
+    sendCriticalQuestCommand({command:'quest_select_interaction',questId:qid,id:iid});
     renderQuests();
 }
 
