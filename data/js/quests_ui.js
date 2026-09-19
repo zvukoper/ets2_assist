@@ -1047,6 +1047,14 @@ function applyState(data){
     else if(!questDetailPinned&&!data.selectedQuest&&!data.selectedInteraction)clearDialogue();
     renderQuests();renderInventory();publishInteractiveBounds();
 }
+var stateRequestTimer=0,stateRequestAttempts=0;
+function requestQuestState(){
+    if(stateRequestAttempts>=8)return;
+    stateRequestAttempts++;
+    send({command:'quest_state_request'});
+    if(stateRequestTimer)clearTimeout(stateRequestTimer);
+    stateRequestTimer=setTimeout(requestQuestState,500);
+}
 function connect(){try{ws=new WebSocket('ws://localhost:8085/');ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state')applyState(d);else if(d.command==='quest_error')showError(d.text)}catch(e){}};ws.onclose=function(){setTimeout(connect,1500)};ws.onerror=function(){try{ws.close()}catch(e){}}}catch(e){setTimeout(connect,1500)}}
 function showError(text){var e=$('overlayError');if(!e)return;e.textContent=text||'Ошибка';e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2500)}
 
@@ -1110,7 +1118,7 @@ document.addEventListener('DOMContentLoaded',function(){
     setTabPulse(false);
     setQuestInteractiveVisible(false,false,false);
     connect();
-    setTimeout(function(){send({command:'quest_state_request'})},250);
+    setTimeout(requestQuestState,100);
     /* Первый отчёт о геометрии input-окна (initial render). */
     publishInteractiveBounds();
     setInterval(publishInteractiveBounds,1000);
