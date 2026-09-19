@@ -900,7 +900,7 @@ function firstNearbyForQuest(id){return (model&&model.nearby||[]).find(function(
    полного массива points. Поэтому клик по «Доступные/Активные/Архив» тоже
    открывает диалог/изображение/служебные блоки, а не только карточку. */
 function firstInteractionPointForQuest(id){
-    return (model&&model.points||[]).find(function(p){return p&&p.QuestId===id&&p.InteractionId})||null;
+    return (model&&model.points||[]).find(function(p){return p&&p.QuestId===id&&p.InteractionId&&p.Interactive===true})||null;
 }
 function renderQuests(){
     var el=$('questList');
