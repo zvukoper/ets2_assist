@@ -76,6 +76,7 @@ namespace ETS2_Assist_GUI.Quests
         {
             _host = host;
             _store = new QuestStore();
+            MarkAllInventoryItemsNewForDebug();
             _resolver = new QuestPointResolver(_store);
             InstallMenu();
             EnforceArPointDebugMode();
@@ -103,6 +104,14 @@ namespace ETS2_Assist_GUI.Quests
 
         internal static QuestRuntime? Current { get { lock (Sync) return _current; } }
         internal bool DebugShowAllPoints => _store.Settings.DebugShowAllPoints;
+
+        // TEMP DEBUG: каждое существующее состояние инвентаря снова считается новым
+        // при каждом старте QuestRuntime. Позже этот вызов удалим.
+        private void MarkAllInventoryItemsNewForDebug()
+        {
+            foreach (string id in _store.State.Inventory.Keys.ToArray())
+                _store.State.NewItems[id] = true;
+        }
 
         private void InstallMenu()
         {
@@ -591,9 +600,9 @@ namespace ETS2_Assist_GUI.Quests
 
             // Тестовые предметы только для UI: сохранённое состояние игры не меняем.
             if (!inventory.Any(x => x["id"]?.Value<string>() == "driver_license"))
-                inventory.Add(new JObject { ["id"] = "driver_license", ["name"] = "Водительские права", ["amount"] = 1, ["test"] = true });
+                inventory.Add(new JObject { ["id"] = "driver_license", ["name"] = "Водительские права", ["amount"] = 1, ["test"] = true, ["new_item"] = true });
             if (!inventory.Any(x => x["id"]?.Value<string>() == "pts"))
-                inventory.Add(new JObject { ["id"] = "pts", ["name"] = "ПТС", ["amount"] = 1, ["test"] = true });
+                inventory.Add(new JObject { ["id"] = "pts", ["name"] = "ПТС", ["amount"] = 1, ["test"] = true, ["new_item"] = true });
 
             var nearby = new JArray();
             foreach (var p in _nearby)
