@@ -103,6 +103,9 @@ namespace ETS2_Assist_GUI
         private CheckBox chkWebDebug = null!;   // v1.0.40.28: debugShow для веб-контента
 
         private RichTextBox logConsole = null!;
+        // v1.0.40.65: ВРЕМЕННАЯ кнопка под консолью — сбор диагностических логов
+        // (publish\Logs + %APPDATA%\WebOverlay) в MemoryAI\LOGS репозитория.
+        private Button btnCollectLogs = null!;
         private Panel indicatorsPanel = null!;
         private Panel trackActionsPanel = null!;
         private ListBox listTracks = null!;
@@ -1237,6 +1240,19 @@ RegisterHotKeyChecked(
             };
             logConsole.DoubleClick += (s, e) => OpenLogFolder();
 
+            // v1.0.40.65 (ВРЕМЕННО): кнопка ПОД окном консоли логов. По нажатию
+            // собирает runtime-логи приложения и логи хоста оверлея в MemoryAI\LOGS
+            // рабочей копии репозитория (перезапись принудительно) и отчитывается
+            // в консоль о каждой выполненной операции.
+            btnCollectLogs = new Button
+            {
+                Text = "Собрать логи",
+                Location = new Point(consoleLeft, this.ClientSize.Height - 34),
+                Size = new Size(consoleWidth, 26),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
+            };
+            btnCollectLogs.Click += (s, e) => CollectDiagnosticLogs();
+
             int listLeft = consoleLeft + consoleWidth + 10;
             int actionsWidth = 120;
             int indicatorsWidth = 190;
@@ -1350,7 +1366,7 @@ RegisterHotKeyChecked(
                        this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
                 btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnLaunchAR, btnAr2, chkAr2Grid, chkWebDebug,
-                logConsole, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu
+                logConsole, btnCollectLogs, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu
             });
             PositionBuildLabel();
             ApplyDarkTheme();
@@ -5275,6 +5291,129 @@ RegisterHotKeyChecked(
             string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
             if (Directory.Exists(logDir))
                 Process.Start("explorer.exe", logDir);
+        }
+
+        // ================================================================
+        // v1.0.40.65 (ВРЕМЕННО): СБОР ДИАГНОСТИЧЕСКИХ ЛОГОВ ПО КНОПКЕ.
+        //
+        // Источники:
+        //   • <ets2_assist>\bin\Release\net10.0-windows\win-x64\publish\Logs\** —
+        //     app_workflow.log, app_data.log и пр.;
+        //   • %APPDATA%\WebOverlay\quest-input-diagnostic.log;
+        //   • %APPDATA%\WebOverlay\debug.log.
+        //
+        // Назначение: MemoryAI\LOGS рабочей копии репозитория (эта папка служит
+        // drop-зоной для передачи логов на анализ; после успешной сборки
+        // compile.ps1 её временное содержимое удаляет, README.md остаётся).
+        // Существующие файлы перезаписываются принудительно.
+        // ================================================================
+        private void CollectDiagnosticLogs()
+        {
+            AppendLog("[LOGS] Сбор диагностических логов...");
+
+            // Логи приложения: publish\Logs — рядом с publish\ETS2_Assist.exe.
+            // Приложение обычно запускается именно из publish; если запущено из
+            // bin\Release\...\win-x64, всё равно берём publish\Logs.
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\', '/');
+            string sourceLogs = Path.Combine(baseDir, "Logs");
+            if (baseDir.EndsWith("win-x64", StringComparison.OrdinalIgnoreCase))
+            {
+                string publishLogs = Path.Combine(baseDir, "publish", "Logs");
+                if (Directory.Exists(publishLogs)) sourceLogs = publishLogs;
+            }
+
+            string dest = ResolveLogsDropFolder();
+            if (dest == null)
+            {
+                LogConsoleError("[LOGS] Папка выгрузки не найдена: MemoryAI\\LOGS (ожидается в рабочей копии репозитория).");
+                return;
+            }
+            AppendLog($"[LOGS] Источник: {sourceLogs}");
+            AppendLog($"[LOGS] Назначение: {dest}");
+
+            var copied = new List<string>();
+            var notFound = new List<string>();
+
+            // 1. Все логи приложения (с сохранением относительной структуры Logs).
+            if (Directory.Exists(sourceLogs))
+            {
+                string[] files;
+                try { files = Directory.GetFiles(sourceLogs, "*", SearchOption.AllDirectories); }
+                catch (Exception ex)
+                {
+                    files = Array.Empty<string>();
+                    LogConsoleError($"[LOGS] Ошибка чтения {sourceLogs}: {ex.Message}");
+                }
+                if (files.Length == 0) notFound.Add(sourceLogs + " (нет файлов)");
+                foreach (string file in files)
+                {
+                    string rel = file.Substring(sourceLogs.Length).TrimStart('\\', '/');
+                    CopyLogFile(file, Path.Combine(dest, rel), copied);
+                }
+            }
+            else
+            {
+                notFound.Add(sourceLogs + " (папка не найдена)");
+            }
+
+            // 2. Логи хоста оверлея WebOverlay из %APPDATA%.
+            string webOverlayDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WebOverlay");
+            foreach (string name in new[] { "quest-input-diagnostic.log", "debug.log" })
+            {
+                string file = Path.Combine(webOverlayDir, name);
+                if (File.Exists(file)) CopyLogFile(file, Path.Combine(dest, name), copied);
+                else notFound.Add(file);
+            }
+
+            // 3. Отчёт в консоль: что скопировано и что не найдено.
+            foreach (string line in copied) AppendLog("[LOGS] Скопирован: " + line);
+            foreach (string line in notFound) LogConsoleWarn("[LOGS] Не найден: " + line);
+            if (copied.Count == 0)
+                LogConsoleError("[LOGS] Готово: ни один лог не скопирован.");
+            else
+                LogConsoleOk($"[LOGS] Готово: скопировано файлов — {copied.Count}, в {dest}");
+        }
+
+        /// <summary>
+        /// Копирует один лог с принудительной перезаписью и добавляет в список
+        /// описание выполненной операции для отчёта в консоль.
+        /// </summary>
+        private void CopyLogFile(string sourceFile, string targetFile, List<string> copied)
+        {
+            try
+            {
+                string? dir = Path.GetDirectoryName(targetFile);
+                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+                var info = new FileInfo(sourceFile);
+                File.Copy(sourceFile, targetFile, overwrite: true);   // перезапись принудительно
+                copied.Add($"{Path.GetFileName(sourceFile)} -> {targetFile} " +
+                           $"({info.Length} байт, изменён {info.LastWriteTime:yyyy-MM-dd HH:mm:ss})");
+            }
+            catch (Exception ex)
+            {
+                LogConsoleError($"[LOGS] Ошибка копирования {sourceFile}: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Находит MemoryAI\LOGS рабочей копии репозитория: поднимается по
+        /// родительским каталогам от папки exe и от текущего каталога.
+        /// </summary>
+        private static string? ResolveLogsDropFolder()
+        {
+            foreach (string start in new[] { AppDomain.CurrentDomain.BaseDirectory, Environment.CurrentDirectory })
+            {
+                if (string.IsNullOrWhiteSpace(start)) continue;
+                DirectoryInfo? dir;
+                try { dir = new DirectoryInfo(start); } catch { continue; }
+                for (int depth = 0; dir != null && depth < 10; depth++, dir = dir.Parent)
+                {
+                    string candidate = Path.Combine(dir.FullName, "MemoryAI", "LOGS");
+                    if (Directory.Exists(candidate)) return candidate;
+                }
+            }
+            return null;
         }
 
         private void AppendLog(string msg, bool persistWorkflow = true)
