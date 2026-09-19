@@ -448,3 +448,44 @@ git show b34b75f:MemoryAI/WORKLOG.md > WORKLOG_full_until_17.09.26.md
   ВНЕ РЕПО: `F:\repo\weboverlay\Program.cs` (off-by-one пульса курсора).
 - **ПЕНДИНГ:** проверка пользователем (видна ли собственная стрелка над окном;
   подсказка TAB на закладке).
+
+---
+
+## 19.09.2026 — 1.0.40.65-LOGS-COLLECT-BTN-09.19-1043 — ВРЕМЕННАЯ КНОПКА «Собрать логи»
+
+- **Задача:** временная кнопка ПОД окном консоли логов в основной форме: собрать
+  `publish\Logs\**` + `%APPDATA%\WebOverlay\quest-input-diagnostic.log` +
+  `%APPDATA%\WebOverlay\debug.log` в `MemoryAI\LOGS`, с принудительной перезаписью
+  и отчётом в консоль о выполненных операциях.
+- **РЕАЛИЗАЦИЯ (`MainForm.cs`):** поле `btnCollectLogs` (120x26, `consoleLeft`,
+  `Bottom|Left` anchor), создаётся сразу после `logConsole`, добавлено в
+  `Controls.AddRange`. Обработчик `CollectDiagnosticLogs()` + хелперы
+  `CopyLogFile()` (пишет строку отчёта) и `ResolveLogsDropFolder()`.
+- **ИСТОЧНИК ЛОГОВ приложения:** `AppDomain.CurrentDomain.BaseDirectory\Logs`.
+  Если exe запущен из `bin\Release\net10.0-windows\win-x64` (не из publish),
+  подставляется `<...>\win-x64\publish\Logs` — это и есть затребованная папка.
+  Обход `SearchOption.AllDirectories` с сохранением относительной структуры.
+- **ПОИСК ПАПКИ-ПРИЁМНИКА:** `ResolveLogsDropFolder()` поднимается по родителям
+  на 10 уровней от `BaseDirectory` и от `Environment.CurrentDirectory`, ища
+  `MemoryAI\LOGS` — путь не хардкодится, работает и в рабочей копии, и в worktree.
+- **ПОВЕДЕНИЕ:** `File.Copy(..., overwrite: true)` — перезапись принудительно.
+  Отчёт: cyan/обычные строки `[LOGS] Скопирован: файл -> путь (N байт, изменён …)`,
+  оранжевые `[LOGS] Не найден: …` для отсутствующих источников, зелёный итог
+  `[LOGS] Готово: скопировано файлов — N`, красный при нуле копий. Ошибки доступа
+  ловятся пофайлово и не роняют обработчик.
+- **ФАЙЛЫ КОПИРУЮТСЯ ПЛОСКО** для `%APPDATA%`-источников (по именам) и с
+  относительными подпутями для `Logs\**`.
+- **ПРОВЕРЕНО:** `dotnet build` 0 ошибок; `compile.ps1` as-is — delivery check OK
+  (422 файла hashed), WebView2 cache cleared, `MemoryAI\LOGS` чист (только
+  README.md). Версии синхронизированы: exe `1.0.40.65-LOGS-COLLECT-BTN-09.19-1043`
+  = `build.txt` = `manifest` (штамп `Hmm` в exe генерируется при сборке — 1043
+  против 1041, это норма).
+- **Изменённые файлы:** `MainForm.cs`, `ETS2_Assist_GUI.csproj` (`VersionIter` 65,
+  `VersionDesc=LOGS-COLLECT-BTN`), `BuildInfo.cs`, `АРХИТЕКТУРА ПРОЕКТА.md`,
+  `data/ets2_assist_build.txt`, `data/web_runtime_manifest.json`.
+- **⛔ КНОПКА ВРЕМЕННАЯ:** после отладки кейса «quest input» её нужно УДАЛИТЬ
+  (`btnCollectLogs`, `CollectDiagnosticLogs`, `CopyLogFile`, `ResolveLogsDropFolder`
+  и позиция в `Controls.AddRange`). В `АРХИТЕКТУРА ПРОЕКТА.md` помечена как
+  `temporary_logs_collect_button`.
+- **ПЕНДИНГ:** проверка пользователем — что кнопка не перекрывает нижнюю часть
+  консоли/`BUILD`-бейдж и что все три источника реально копируются.
