@@ -604,9 +604,28 @@ namespace ETS2_Assist_GUI
         {
             try
             {
+                bool rising = !_questHasInteractive && hasInteractive;
                 if (_questHasInteractive == hasInteractive) return;
                 _questHasInteractive = hasInteractive;
-                PushQuestInteractiveSignal();
+                if (rising)
+                    SendCommandToMap("quest_bookmark_beacon");
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Одноразовый маяк закладки инвентаря при появлении нового предмета.
+        /// Несколько добавлений в пределах одной короткой выдачи объединяются
+        /// в один двухимпульсный beacon.
+        /// </summary>
+        internal void TriggerInventoryBookmarkBeacon()
+        {
+            try
+            {
+                long now = Environment.TickCount64;
+                if (now < _inventoryBookmarkBeaconUntil) return;
+                _inventoryBookmarkBeaconUntil = now + 1600;
+                SendCommandToMap("inventory_bookmark_beacon");
             }
             catch { }
         }
@@ -663,6 +682,7 @@ namespace ETS2_Assist_GUI
         private bool _questCollapsed;
         private bool _questHasInteractive;
         private bool _gameUiForce;
+        private long _inventoryBookmarkBeaconUntil;
 
         /// <summary>
         /// Загружает сохранённый вид окна квестов. Вызывается один раз при старте
