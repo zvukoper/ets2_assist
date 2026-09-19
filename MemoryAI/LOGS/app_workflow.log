@@ -8883,3 +8883,657 @@ BUILD_VERSION=1.0.40.86-QUEST-CONTENT-R16-09.19-2305
 2026-09-19 23:07:18.588 [INFO] [LOGS] Сбор диагностических логов...
 2026-09-19 23:07:18.591 [INFO] [LOGS] Источник: F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\Logs
 2026-09-19 23:07:18.593 [INFO] [LOGS] Назначение: F:\repo\ets2_assist\MemoryAI\LOGS
+2026-09-19 23:07:18.615 [INFO] [LOGS] Скопирован: app_data.log -> F:\repo\ets2_assist\MemoryAI\LOGS\app_data.log (16176829 байт, изменён 2026-09-19 23:07:18)
+2026-09-19 23:07:18.617 [INFO] [LOGS] Скопирован: app_workflow.log -> F:\repo\ets2_assist\MemoryAI\LOGS\app_workflow.log (1017275 байт, изменён 2026-09-19 23:07:18)
+2026-09-19 23:07:18.621 [INFO] [LOGS] Скопирован: quest-input-diagnostic.log -> F:\repo\ets2_assist\MemoryAI\LOGS\quest-input-diagnostic.log (6651645 байт, изменён 2026-09-19 23:07:18)
+2026-09-19 23:07:18.623 [INFO] [LOGS] Скопирован: debug.log -> F:\repo\ets2_assist\MemoryAI\LOGS\debug.log (29724 байт, изменён 2026-09-19 23:07:17)
+2026-09-19 23:07:18.627 [INFO] [LOGS] Готово: скопировано файлов — 4, в F:\repo\ets2_assist\MemoryAI\LOGS
+2026-09-19 23:07:20.175 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:07:21.946 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:07:22.002 [INFO] Exit: показываю диалог подтверждения выхода.
+2026-09-19 23:07:25.510 [INFO] Exit: подтверждено, выполняю остановку системы.
+2026-09-19 23:07:25.521 [INFO] [CONTROL] Сервер внешнего управления остановлен.
+2026-09-19 23:07:25.537 [INFO] Stopping system...
+2026-09-19 23:07:25.572 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 23:07:25.602 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:07:25.748 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 23:07:25.753 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 23:07:25.774 [INFO] Command 'show_ui' sent to map.
+2026-09-19 23:07:25.798 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 23:07:25.823 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 23:07:25.866 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 23:07:25.898 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 23:07:25.899 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:07:25.922 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 23:07:25.971 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 23:07:26.002 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 23:07:26.044 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 23:07:26.049 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 23:07:26.278 [INFO] [AR] AR HUD закрывается.
+2026-09-19 23:07:26.300 [INFO] System stopped
+2026-09-19 23:07:26.368 [INFO] Trigger HTTP server stopped.
+2026-09-19 23:07:26.440 [INFO] WebSocket save server stopped.
+2026-09-19 23:07:26.539 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-19 23:07:26.660 [INFO] Процесс WebOverlay (PID 5752) убит.
+2026-09-19 23:07:27.145 [INFO] KillChildProcesses завершён.
+2026-09-19 23:07:27.269 [INFO] [CONTROL] Пульт управления остаётся доступен: http://localhost:8086/start
+2026-09-19 23:07:27.270 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:07:27.276 [INFO] [SCS] Controller disposed.
+2026-09-19 23:07:27.401 [INFO] System stopped.
+2026-09-19 23:07:27.972 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-19 23:07:28.016 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-19 23:07:28.017 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-19 23:11:38.498 =======
+BUILD_VERSION=1.0.40.88-QUEST-CONTENT-R18-09.19-2310
+2026-09-19 23:11:38.498 [INFO] ETS2 Assist logger initialized.
+2026-09-19 23:11:38.533 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-19 23:11:38.535 [INFO] [DEV-MODE] config.cfg: uset g_developer "2", uset g_console "1".
+2026-09-19 23:11:38.661 [INFO] [WEBOVERLAY] Версия WebOverlay: 1.0.40.81
+2026-09-19 23:11:38.661 [INFO] [WEBOVERLAY] path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe; fileVersion=1.0.40.80; informational=1.0.40.81+eb00b6fe46beba36f14e069c99c6f96d2712ee62; size=174142962 байт
+2026-09-19 23:11:38.697 [INFO] [CONTROL] Внешнее управление запуском: http://localhost:8086/start
+2026-09-19 23:11:38.760 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-19 23:11:39.861 [INFO] Cannot send command 'quest_bookmark_beacon': WebSocket save server is not running.
+2026-09-19 23:11:39.872 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:11:41.380 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:11:43.111 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:11:43.113 [INFO] Starting system...
+2026-09-19 23:11:43.114 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-19 23:11:43.115 [INFO] Checking ETS2 plugins...
+2026-09-19 23:11:43.116 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-19 23:11:43.116 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-19 23:11:43.117 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-19 23:11:43.117 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-19 23:11:43.118 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-19 23:11:43.119 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-19 23:11:43.119 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-19 23:11:43.120 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-19 23:11:43.122 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789841498).
+2026-09-19 23:11:43.124 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6187, lastWrite=2026-09-19 18:29:19
+2026-09-19 23:11:43.125 [INFO] [WEB] web_ui_hybrid.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=4707, lastWrite=2026-09-18 19:36:46
+2026-09-19 23:11:43.125 [INFO] [WEB] web_quests.html: build=1.0.40.88, bytes=12709, lastWrite=2026-09-19 23:10:16 htmlMarker=MISSING
+2026-09-19 23:11:43.126 [INFO] [WEB] js/quests_ui.js: build=1.0.40.63, bytes=77945, lastWrite=2026-09-19 23:10:16 jsMarker=MISSING
+2026-09-19 23:11:43.127 [INFO] Trigger HTTP server started on port 8083.
+2026-09-19 23:11:43.129 [INFO] WebSocket save server started on port 8084.
+2026-09-19 23:11:43.135 [INFO] Script started with PID 21880
+2026-09-19 23:11:43.358 [INFO] [OVERLAY-DIAG][START] overlayExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe exists=True sha256=258EE9D79891B95A52D5421AD7F122BDDA718B9B28FA54A149E2D0175CEF3DF8 lastWriteUtc=2026-09-19T18:10:22.9819389Z size=174142962
+2026-09-19 23:11:43.597 [INFO] [OVERLAY-DIAG][START] ownExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe version=1.0.40.88-QUEST-CONTENT-R18-09.19-2310 sha256=FD0E14B3541C7A02D7E7AF67BEFEEF07BA21A317A81CD9314F359020BC7B95DB lastWriteUtc=2026-09-19T18:11:22.9930605Z size=197541196
+2026-09-19 23:11:43.605 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-19 23:11:44.773 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-19 23:11:44.901 [INFO] [AR] Геометрия AR HUD: экран '\\.\DISPLAY1' 1920x1080 @(0,0).
+2026-09-19 23:11:44.926 [INFO] Command 'ar_fov' sent to map.
+2026-09-19 23:11:44.934 [INFO] Command 'ar_view' sent to map.
+2026-09-19 23:11:44.937 [INFO] [AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).
+2026-09-19 23:11:44.957 [INFO] [AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).
+2026-09-19 23:11:44.969 [INFO] Command 'ar_layer_visible' sent to map.
+2026-09-19 23:11:46.534 [INFO] [TruckTel] Найден порт через активные соединения: 8080
+2026-09-19 23:11:46.546 [INFO] [TruckTel] web_data.json обновлён, wsPort = 8080
+2026-09-19 23:11:46.558 [INFO] [UI] Политика ESC/паузы запущена: опрос 50 мс, ESC — единственный триггер интерактива.
+2026-09-19 23:11:46.593 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-19 23:11:46.595 [INFO] SCS SDK input controller initialized successfully.
+2026-09-19 23:11:46.616 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 23:11:46.640 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 23:11:46.661 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:11:46.662 [INFO] Command 'ar_target' sent to map.
+2026-09-19 23:11:46.692 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 23:11:46.698 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 23:11:46.732 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 23:11:46.765 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:11:47.736 [INFO] [WebSocket] Получено сообщение: {"command":"ar_view_request"}...
+2026-09-19 23:11:47.848 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-19 23:11:47.855 [INFO] [WebSocket] Команда от клиента: ar_view_request
+2026-09-19 23:11:47.857 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-19 23:11:47.859 [INFO] [WS Command] ar_view_request
+2026-09-19 23:11:47.861 [INFO] [WS Command] map_ready
+2026-09-19 23:11:47.864 [INFO] Command 'ar_view' sent to map.
+2026-09-19 23:11:47.864 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-19 23:11:48.369 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-19 23:11:48.402 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:11:48.413 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5674 (переопр=5, custom=4), targets=0
+2026-09-19 23:11:50.102 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:11:51.851 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:11:51.852 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-19 23:11:51.869 [INFO] [WebSocket] Команда звука: icon
+2026-09-19 23:11:53.572 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:11:55.108 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:11:56.849 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:11:58.583 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:00.323 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:01.846 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:03.564 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:05.066 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:06.593 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:08.094 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:08.924 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 23:12:09.086 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 23:12:09.099 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 23:12:09.128 [INFO] Command 'show_ui_first' sent to map.
+2026-09-19 23:12:09.145 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 23:12:09.161 [INFO] [UI] Игровые интерфейсы показаны впервые: гибрид + миникарта + уведомления.
+2026-09-19 23:12:09.175 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 23:12:09.194 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 23:12:09.194 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:12:09.200 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 23:12:09.814 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:12:11.324 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:12.230 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 23:12:12.248 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 23:12:12.748 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3342 force=True
+2026-09-19 23:12:12.750 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 23:12:12.755 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 23:12:12.758 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:12:12.760 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 23:12:12.832 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 23:12:12.834 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 23:12:12.839 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 23:12:12.843 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:12:12.851 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 23:12:12.852 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:12:12.859 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 23:12:12.860 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 23:12:12.862 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 23:12:12.862 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:12:12.865 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:12:12.865 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3341
+2026-09-19 23:12:12.865 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.76953619808999}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:12:12.866 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:12:12.868 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 23:12:12.869 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 23:12:12.872 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 23:12:12.874 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 23:12:12.875 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:12:12.877 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3341
+2026-09-19 23:12:12.877 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.76953619808999}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:12:12.878 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:12:12.880 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 23:12:12.881 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:12:12.883 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 23:12:12.883 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 23:12:12.885 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 23:12:12.886 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 23:12:12.889 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 23:12:13.892 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:12:13.893 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:12:14.589 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:12:15.608 [INFO] [WebSocket] Получено сообщение: {"command":"quest_select_interaction","questId":"special_marinated_shashlik","id":"ruslan"}...
+2026-09-19 23:12:15.659 [INFO] [WebSocket] Команда от клиента: quest_select_interaction
+2026-09-19 23:12:15.663 [INFO] [WS Command] quest_select_interaction
+2026-09-19 23:12:15.716 [INFO] [QUEST-DIAG][WS8084-IN] command=quest_select_interaction paused=True interactive=True raw={"command":"quest_select_interaction","questId":"special_marinated_shashlik","id":"ruslan"}
+2026-09-19 23:12:15.731 [INFO] [QUEST-DIAG][WS-IN] select_interaction questId=special_marinated_shashlik id=ruslan paused=True
+2026-09-19 23:12:15.731 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=True dialogueOptions=3 jsonBytes=4158 force=True
+2026-09-19 23:12:15.844 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:17.286 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:12:17.287 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:12:17.345 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:19.087 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:20.848 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:21.707 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:12:21.707 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:12:22.575 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:22.699 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:12:22.700 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:12:24.085 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:25.851 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:27.582 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:29.341 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:31.078 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:32.590 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:33.320 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:12:33.321 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:12:34.317 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:35.334 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:12:35.335 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:12:35.826 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:37.366 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:12:37.367 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:12:37.566 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:39.312 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:39.968 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 23:12:39.976 [INFO] Command 'quest_collapse_interfaces' sent to map.
+2026-09-19 23:12:39.979 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3373
+2026-09-19 23:12:39.979 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.76953619808999}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"special_marinated_shashlik","selectedInteraction":"ruslan"}
+2026-09-19 23:12:39.981 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:12:39.982 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 23:12:40.839 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3373 force=True
+2026-09-19 23:12:42.053 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=special_marinated_shashlik/ruslan dialogue=False dialogueOptions=0 jsonBytes=3374 force=True
+2026-09-19 23:12:42.178 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 23:12:42.179 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:12:42.183 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:42.184 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 23:12:42.200 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 23:12:42.207 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 23:12:42.560 [INFO] Command 'show_ui' sent to map.
+2026-09-19 23:12:42.565 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 23:12:42.567 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 23:12:42.570 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 23:12:42.582 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 23:12:42.583 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:12:43.846 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:12:44.938 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 23:12:44.941 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 23:12:44.965 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 23:12:44.986 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 23:12:44.992 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:12:44.996 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 23:12:45.003 [INFO] [UI] Фокус игры=False (фокус на постороннем окне ('ETS2_Assist'))
+2026-09-19 23:12:45.623 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:12:47.336 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:49.091 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:50.764 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:50.776 [INFO] Exit: показываю диалог подтверждения выхода.
+2026-09-19 23:12:51.924 [INFO] Exit: подтверждено, выполняю остановку системы.
+2026-09-19 23:12:51.953 [INFO] [CONTROL] Сервер внешнего управления остановлен.
+2026-09-19 23:12:51.962 [INFO] Stopping system...
+2026-09-19 23:12:52.002 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 23:12:52.035 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 23:12:52.063 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 23:12:52.067 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 23:12:52.098 [INFO] Command 'show_ui' sent to map.
+2026-09-19 23:12:52.126 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 23:12:52.153 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 23:12:52.180 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 23:12:52.211 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 23:12:52.213 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:12:52.241 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 23:12:52.277 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 23:12:52.310 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:12:52.313 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 23:12:52.325 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 23:12:52.494 [INFO] [AR] AR HUD закрывается.
+2026-09-19 23:12:52.517 [INFO] System stopped
+2026-09-19 23:12:52.567 [INFO] Trigger HTTP server stopped.
+2026-09-19 23:12:52.582 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 23:12:52.597 [INFO] WebSocket save server stopped.
+2026-09-19 23:12:52.653 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-19 23:12:52.786 [INFO] Процесс WebOverlay (PID 19268) убит.
+2026-09-19 23:12:53.241 [INFO] KillChildProcesses завершён.
+2026-09-19 23:12:53.330 [INFO] [CONTROL] Пульт управления остаётся доступен: http://localhost:8086/start
+2026-09-19 23:12:53.334 [INFO] [SCS] Controller disposed.
+2026-09-19 23:12:53.396 [INFO] System stopped.
+2026-09-19 23:12:54.085 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-19 23:12:54.120 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:12:54.143 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-19 23:12:54.143 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-19 23:14:54.113 =======
+BUILD_VERSION=1.0.40.89-QUEST-CONTENT-R19-09.19-2313
+2026-09-19 23:14:54.113 [INFO] ETS2 Assist logger initialized.
+2026-09-19 23:14:54.151 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-19 23:14:54.152 [INFO] [DEV-MODE] config.cfg: uset g_developer "2", uset g_console "1".
+2026-09-19 23:14:54.391 [INFO] [WEBOVERLAY] Версия WebOverlay: 1.0.40.81
+2026-09-19 23:14:54.392 [INFO] [WEBOVERLAY] path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe; fileVersion=1.0.40.80; informational=1.0.40.81+eb00b6fe46beba36f14e069c99c6f96d2712ee62; size=174142962 байт
+2026-09-19 23:14:54.426 [INFO] [CONTROL] Внешнее управление запуском: http://localhost:8086/start
+2026-09-19 23:14:54.490 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-19 23:14:55.702 [INFO] Cannot send command 'quest_bookmark_beacon': WebSocket save server is not running.
+2026-09-19 23:14:55.714 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:14:57.316 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:14:59.074 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:00.579 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:02.322 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:04.090 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:05.823 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:07.564 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:09.328 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:11.078 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:12.584 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:14.297 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:15.814 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:17.557 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:19.323 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:20.834 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:22.572 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:24.323 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:26.065 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:27.835 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:29.571 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:31.320 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:33.064 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:34.577 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:36.341 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:38.063 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:39.573 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:41.081 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:42.807 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:44.314 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:46.061 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:47.820 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:49.584 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:51.375 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:53.051 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:54.559 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:15:56.359 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:58.078 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:15:59.826 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:01.384 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:03.051 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:04.555 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:06.059 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:07.567 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:09.082 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:10.808 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:12.314 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:13.824 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:15.561 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:17.076 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:18.823 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:20.324 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:22.053 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:23.582 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:25.320 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:26.834 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:28.569 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:30.077 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:31.803 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:33.322 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:34.824 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:36.578 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:38.337 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:40.062 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:16:41.574 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:43.324 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:16:43.508 [INFO] Exit: получен сигнал graceful shutdown — останавливаю систему.
+2026-09-19 23:16:43.515 [INFO] [CONTROL] Сервер внешнего управления остановлен.
+2026-09-19 23:16:43.516 [INFO] Stopping system...
+2026-09-19 23:16:43.518 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 23:16:43.519 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 23:16:43.523 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 23:16:43.579 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 23:16:43.579 [INFO] [AR] AR HUD закрывается.
+2026-09-19 23:16:43.580 [INFO] System stopped
+2026-09-19 23:16:43.586 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-19 23:16:43.660 [INFO] Процесс WebOverlay (PID 23336) убит.
+2026-09-19 23:16:44.118 [INFO] KillChildProcesses завершён.
+2026-09-19 23:16:44.154 [INFO] System stopped.
+2026-09-19 23:16:44.288 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-19 23:16:44.333 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-19 23:16:44.334 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-19 23:17:56.002 =======
+BUILD_VERSION=1.0.40.89-QUEST-CONTENT-R19-09.19-2316
+2026-09-19 23:17:56.002 [INFO] ETS2 Assist logger initialized.
+2026-09-19 23:17:56.039 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-19 23:17:56.040 [INFO] [DEV-MODE] config.cfg: uset g_developer "2", uset g_console "1".
+2026-09-19 23:17:56.066 [INFO] [WEBOVERLAY] Версия WebOverlay: 1.0.40.81
+2026-09-19 23:17:56.067 [INFO] [WEBOVERLAY] path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe; fileVersion=1.0.40.80; informational=1.0.40.81+eb00b6fe46beba36f14e069c99c6f96d2712ee62; size=174142962 байт
+2026-09-19 23:17:56.103 [INFO] [CONTROL] Внешнее управление запуском: http://localhost:8086/start
+2026-09-19 23:17:56.159 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-19 23:17:57.233 [INFO] Cannot send command 'quest_bookmark_beacon': WebSocket save server is not running.
+2026-09-19 23:17:57.272 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:17:59.006 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:17:59.987 [INFO] Starting system...
+2026-09-19 23:17:59.989 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-19 23:17:59.989 [INFO] Checking ETS2 plugins...
+2026-09-19 23:17:59.990 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-19 23:17:59.991 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-19 23:17:59.991 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-19 23:17:59.992 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-19 23:17:59.993 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-19 23:17:59.993 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-19 23:17:59.994 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-19 23:17:59.994 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-19 23:17:59.996 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789841875).
+2026-09-19 23:17:59.998 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6187, lastWrite=2026-09-19 18:29:19
+2026-09-19 23:17:59.999 [INFO] [WEB] web_ui_hybrid.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=4707, lastWrite=2026-09-18 19:36:46
+2026-09-19 23:18:00.000 [INFO] [WEB] web_quests.html: build=1.0.40.89, bytes=12710, lastWrite=2026-09-19 23:13:33 htmlMarker=MISSING
+2026-09-19 23:18:00.000 [INFO] [WEB] js/quests_ui.js: build=1.0.40.63, bytes=78936, lastWrite=2026-09-19 23:13:33 jsMarker=MISSING
+2026-09-19 23:18:00.002 [INFO] Trigger HTTP server started on port 8083.
+2026-09-19 23:18:00.003 [INFO] WebSocket save server started on port 8084.
+2026-09-19 23:18:00.009 [INFO] Script started with PID 13064
+2026-09-19 23:18:00.258 [INFO] [OVERLAY-DIAG][START] overlayExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe exists=True sha256=258EE9D79891B95A52D5421AD7F122BDDA718B9B28FA54A149E2D0175CEF3DF8 lastWriteUtc=2026-09-19T18:16:46.1132889Z size=174142962
+2026-09-19 23:18:00.513 [INFO] [OVERLAY-DIAG][START] ownExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe version=1.0.40.89-QUEST-CONTENT-R19-09.19-2316 sha256=06CD091EE7248D9DEEFD5092F9F4F92536E7758C1F0BE31FB0AA05EA1B8CC4CD lastWriteUtc=2026-09-19T18:17:41.9381344Z size=197541196
+2026-09-19 23:18:00.523 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-19 23:18:01.698 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-19 23:18:01.750 [INFO] [AR] Геометрия AR HUD: экран '\\.\DISPLAY1' 1920x1080 @(0,0).
+2026-09-19 23:18:01.805 [INFO] Command 'ar_fov' sent to map.
+2026-09-19 23:18:01.822 [INFO] Command 'ar_view' sent to map.
+2026-09-19 23:18:01.867 [INFO] [AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).
+2026-09-19 23:18:01.970 [INFO] [AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).
+2026-09-19 23:18:01.979 [INFO] Command 'ar_layer_visible' sent to map.
+2026-09-19 23:18:03.357 [INFO] [TruckTel] Найден порт через активные соединения: 8080
+2026-09-19 23:18:03.363 [INFO] [TruckTel] web_data.json обновлён, wsPort = 8080
+2026-09-19 23:18:03.373 [INFO] [UI] Политика ESC/паузы запущена: опрос 50 мс, ESC — единственный триггер интерактива.
+2026-09-19 23:18:03.392 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-19 23:18:03.403 [INFO] SCS SDK input controller initialized successfully.
+2026-09-19 23:18:03.449 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 23:18:03.475 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 23:18:03.491 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=0 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:18:03.492 [INFO] Command 'ar_target' sent to map.
+2026-09-19 23:18:03.509 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 23:18:03.512 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 23:18:03.523 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 23:18:03.566 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:18:04.660 [INFO] [WebSocket] Получено сообщение: {"command":"ar_view_request"}...
+2026-09-19 23:18:04.991 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-19 23:18:05.618 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:18:05.858 [INFO] [WebSocket] Команда от клиента: ar_view_request
+2026-09-19 23:18:05.860 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-19 23:18:05.862 [INFO] [WS Command] ar_view_request
+2026-09-19 23:18:05.865 [INFO] [WS Command] map_ready
+2026-09-19 23:18:05.869 [INFO] Command 'ar_view' sent to map.
+2026-09-19 23:18:05.870 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-19 23:18:06.334 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-19 23:18:06.364 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5674 (переопр=5, custom=4), targets=0
+2026-09-19 23:18:07.112 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 23:18:07.118 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:18:07.194 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 23:18:07.200 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 23:18:07.226 [INFO] Command 'show_ui_first' sent to map.
+2026-09-19 23:18:07.236 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 23:18:07.243 [INFO] [UI] Игровые интерфейсы показаны впервые: гибрид + миникарта + уведомления.
+2026-09-19 23:18:07.275 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 23:18:07.288 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 23:18:07.289 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:18:07.292 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 23:18:08.739 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:18:09.503 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-19 23:18:09.562 [INFO] [WebSocket] Команда звука: icon
+2026-09-19 23:18:10.251 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:18:11.334 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 23:18:11.343 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 23:18:11.474 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:18:11.476 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 23:18:11.488 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 23:18:11.492 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:18:11.495 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 23:18:11.603 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 23:18:11.650 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 23:18:11.658 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 23:18:11.666 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:18:11.670 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 23:18:11.671 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:18:11.675 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 23:18:11.675 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 23:18:11.680 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 23:18:11.680 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:18:11.688 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:11.689 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3341
+2026-09-19 23:18:11.690 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.76953619808999}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:18:11.691 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:18:11.694 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 23:18:11.695 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 23:18:11.697 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 23:18:11.704 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 23:18:11.706 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:18:11.709 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3341
+2026-09-19 23:18:11.710 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.76953619808999}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:18:11.711 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:18:11.714 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 23:18:11.715 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:18:11.720 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 23:18:11.720 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 23:18:11.722 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 23:18:11.723 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 23:18:11.725 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 23:18:12.356 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:18:12.356 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:18:13.279 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:15.006 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:16.733 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:18.240 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:19.973 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:20.429 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 23:18:20.430 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 23:18:21.483 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:23.227 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:23.868 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 23:18:23.868 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 23:18:24.923 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:18:24.924 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:18:24.988 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:26.734 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:27.254 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 23:18:27.257 [INFO] Command 'quest_collapse_interfaces' sent to map.
+2026-09-19 23:18:27.260 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3341
+2026-09-19 23:18:27.260 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.76953619808999}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:18:27.262 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:18:27.273 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 23:18:28.491 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:29.377 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3342 force=True
+2026-09-19 23:18:29.442 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 23:18:29.443 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:18:29.446 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:18:29.446 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 23:18:29.459 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 23:18:29.477 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 23:18:29.769 [INFO] Command 'show_ui' sent to map.
+2026-09-19 23:18:29.779 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 23:18:29.782 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 23:18:29.795 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 23:18:29.797 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 23:18:29.797 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:18:30.994 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:18:31.797 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 23:18:31.802 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 23:18:32.066 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3342 force=True
+2026-09-19 23:18:32.067 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 23:18:32.071 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 23:18:32.076 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:18:32.078 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 23:18:32.171 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 23:18:32.176 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 23:18:32.178 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 23:18:32.181 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:18:32.186 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 23:18:32.187 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:18:32.190 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 23:18:32.190 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 23:18:32.192 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 23:18:32.193 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:18:32.195 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:32.196 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3341
+2026-09-19 23:18:32.196 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.76953619808999}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:18:32.197 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:18:32.209 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 23:18:32.211 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 23:18:32.214 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 23:18:32.220 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 23:18:32.221 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:18:32.224 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3341
+2026-09-19 23:18:32.224 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.76953619808999}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:18:32.225 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:18:32.227 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 23:18:32.227 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:18:32.229 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 23:18:32.230 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 23:18:32.237 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 23:18:32.238 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 23:18:32.240 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 23:18:33.747 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:33.750 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:18:33.751 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:18:35.249 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:35.305 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:18:35.306 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:18:36.027 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 23:18:36.031 [INFO] Command 'quest_collapse_interfaces' sent to map.
+2026-09-19 23:18:36.040 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3341
+2026-09-19 23:18:36.040 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.76953619808999}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:18:36.042 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:18:36.044 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 23:18:36.985 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3341 force=True
+2026-09-19 23:18:38.150 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3342 force=True
+2026-09-19 23:18:38.217 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 23:18:38.218 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:18:38.227 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:18:38.228 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 23:18:38.243 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 23:18:38.246 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 23:18:38.552 [INFO] Command 'show_ui' sent to map.
+2026-09-19 23:18:38.562 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 23:18:38.564 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 23:18:38.578 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 23:18:38.580 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 23:18:38.583 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:18:39.728 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:18:39.971 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 23:18:39.978 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 23:18:40.112 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:18:40.113 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 23:18:40.121 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 23:18:40.124 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:18:40.126 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 23:18:40.222 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 23:18:40.226 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 23:18:40.230 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 23:18:40.236 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:18:40.239 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 23:18:40.241 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:18:40.246 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 23:18:40.247 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 23:18:40.257 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 23:18:40.258 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:18:40.261 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3342 force=True
+2026-09-19 23:18:40.262 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3342
+2026-09-19 23:18:40.262 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.769536199083042}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:18:40.264 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:18:40.270 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 23:18:40.271 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 23:18:40.274 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 23:18:40.276 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 23:18:40.276 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:18:40.279 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3342
+2026-09-19 23:18:40.280 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.769536199083042}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:18:40.280 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:18:40.283 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 23:18:40.284 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:18:40.288 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 23:18:40.289 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 23:18:40.291 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 23:18:40.292 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 23:18:40.293 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 23:18:41.608 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 23:18:41.608 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 23:18:41.992 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3342 force=True
+2026-09-19 23:18:42.945 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 23:18:42.953 [INFO] Command 'quest_collapse_interfaces' sent to map.
+2026-09-19 23:18:42.955 [INFO] [QUEST][DIAG][WS8084] relay reason=interactive-visible bytes=3342
+2026-09-19 23:18:42.956 [INFO] [QUEST-DIAG][POST] to page command=quest_state payload={"command":"quest_state","paused":true,"interactive":true,"enabled":true,"points":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0}],"editorPoints":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Uid":"0x4566ef6403400000","OriginalUid":"0x4566ef6403400000","Category":"shashlik","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","X":146529.0,"Y":111.602,"Z":-60981.0,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":false,"IsGenerated":false,"ArOffscreenPointer":false,"TriggerWhenNoMarker":true,"TriggerRadiusM":35.0},{"QuestId":"special_marinated_shashlik","InteractionId":"gosha","Uid":"quest_special_marinated_shashlik_gosha_e2ca86b5f0d84c89893c2aad242ceeb0","OriginalUid":"0x457291ccaec00001","Category":"village_house_5","Name":"Мясник Гоша","Marker":"yellow_exclamation","X":146307.0,"Y":107.629,"Z":-62607.9,"MinimapVisible":true,"ArVisible":true,"Interactive":true,"PermanentName":true,"IsGenerated":true,"ArOffscreenPointer":true,"TriggerWhenNoMarker":false,"TriggerRadiusM":35.0}],"nearby":[{"QuestId":"special_marinated_shashlik","InteractionId":"ruslan","Name":"Шашлычник Руслан","Marker":"yellow_exclamation","ArVisible":true,"ArOffscreenPointer":false,"distance":17.769536199083042}],"availableQuests":[{"id":"special_marinated_shashlik","title":"Спецмаринад для Руслана","description":"Руслан — шашлычник. Он готов угостить тебя особой версией шашлыка, если ты принесёшь ему лучшее свежее мясо в секретном маринаде от знакомого мясника.","status":"Available","step":"available","stepDescription":"Поговорить с Русланом.","rewards":[{"Type":"item","Id":"legendary_shashlik","Amount":1,"Display":"Легендарный шашлык от Руслана","ServiceText":"[+1 выносливость, +1 сила]","Color":"#b7ff46"},{"Type":"reputation","Id":"Шашлычник Руслан","Amount":100,"Display":"Шашлычник Руслан","ServiceText":"","Color":""},{"Type":"reputation","Id":"Мясник Гоша","Amount":25,"Display":"Мясник Гоша","ServiceText":"","Color":""}],"returnOffer":false}],"activeQuests":[],"archiveQuests":[],"inventory":[{"id":"driver_license","name":"Водительские права","amount":1,"test":true,"new_item":false},{"id":"pts","name":"ПТС","amount":1,"test":true,"new_item":true}],"settings":{"Enabled":true,"DebugShowAllPoints":false,"DebugRadiusM":50.0,"TriggerRadiusM":35.0,"ArSizeMaxDistanceM":10.0,"ArSizeMinDistanceM":500.0,"ArFadeStartDistanceM":500.0,"ArFadeEndDistanceM":1500.0,"ArMaxPointSizePx":10.0,"ArMinPointSizePx":3.0,"ArNearOutlinePx":3.0,"ArFarOutlinePx":1.0,"NotificationWidthPercent":32.4074,"NotificationHeightPercent":3.7037,"PollIntervalMs":250},"selectedQuest":"","selectedInteraction":""}
+2026-09-19 23:18:42.957 [INFO] Command 'quest_state' sent to map.
+2026-09-19 23:18:42.959 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 23:18:43.752 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=True interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3342 force=True
+2026-09-19 23:18:45.007 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=True counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3342 force=True
+2026-09-19 23:18:45.083 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 23:18:45.084 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 23:18:45.094 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:18:45.094 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 23:18:45.096 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 23:18:45.109 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 23:18:45.406 [INFO] Command 'show_ui' sent to map.
+2026-09-19 23:18:45.411 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 23:18:45.414 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 23:18:45.417 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 23:18:45.419 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 23:18:45.420 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 23:18:46.141 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 23:18:46.144 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 23:18:46.168 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 23:18:46.201 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 23:18:46.213 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 23:18:46.219 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 23:18:46.228 [INFO] [UI] Фокус игры=False (фокус на постороннем окне ('ETS2_Assist'))
+2026-09-19 23:18:46.728 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:18:48.236 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3344 force=True
+2026-09-19 23:18:49.744 [INFO] [QUEST][DIAG][WS-OUT] reason=broadcast-force clients=3 paused=False interactive=False counts=available:1,active:0,archive:0,inventory:2,nearby:1 points=1 selected=/ dialogue=False dialogueOptions=0 jsonBytes=3343 force=True
+2026-09-19 23:18:50.284 [INFO] [LOGS] Сбор диагностических логов...
+2026-09-19 23:18:50.288 [INFO] [LOGS] Источник: F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\Logs
+2026-09-19 23:18:50.289 [INFO] [LOGS] Назначение: F:\repo\ets2_assist\MemoryAI\LOGS
