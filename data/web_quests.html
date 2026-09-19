@@ -129,16 +129,16 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     border-radius:0 7px 7px 0;
     color:#ffd45a;font:700 14px/1 'Segoe UI',Arial,sans-serif;
     letter-spacing:1px;cursor:pointer;box-sizing:content-box;
-    opacity:0;pointer-events:none;z-index:40;
+    opacity:1;pointer-events:none;z-index:40;
     transform:translate(-115%,-50%);
-    transition:transform 220ms ease,opacity 160ms ease 160ms;
-    will-change:transform,opacity;
+    transition:transform 220ms ease;
+    will-change:transform;
 }
 #questTab{top:50%}
 #inventoryTab{top:calc(50% + 149px)}
 #questTab.visible,#inventoryTab.visible{
     transform:translate(0,-50%);opacity:1;pointer-events:none;
-    transition:transform 220ms ease,opacity 160ms ease;
+    transition:transform 220ms ease;
 }
 #questTab.visible.interactive,#inventoryTab.visible.interactive{pointer-events:auto}
 #questTab.active,#inventoryTab.active{
