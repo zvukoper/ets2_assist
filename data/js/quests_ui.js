@@ -505,7 +505,7 @@ function startCursorTrack(){
        physical cursor. The first Raw Input packet may arrive a little later,
        so initialize immediately instead of briefly showing the old position. */
     placeCursor(0,0);
-    /* Host synchronizes the physical cursor to client=(0,0). */
+    /* Host synchronizes the physical cursor to client=(0,0).
        The hidden WebOverlay Raw Input sink owns the physical-mouse bridge and
        sends the current client position as quest-native-input. The first packet
        is initialized from GetCursorPos when the window becomes active. */
