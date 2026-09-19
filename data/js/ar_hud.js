@@ -499,6 +499,7 @@
         camSmoothView.projectionCenterX = ar.projectionCenterX;
         camSmoothView.projectionCenterY = ar.projectionCenterY;
         camSmoothView.groundPlane = ar.groundPlane;
+        camSmoothView.updatedAt = camSmooth.lastAt;
         return camSmoothView;
     }
 
@@ -513,7 +514,9 @@
         fovDegVertical: 65,
         projectionCenterX: 0.5,
         projectionCenterY: 0.5,
-        groundPlane: null
+        groundPlane: null,
+        // Время последнего реально обновлённого shared view.
+        updatedAt: 0
     };
 
     // ================================================================
@@ -532,6 +535,10 @@
         camSmooth.valid = false;
         camSmooth.vx = camSmooth.vy = camSmooth.vz = 0;
         camPrev.valid = false;
+        // Инвалидируем и опубликованный view: quest-маркеры не держат
+        // старую сглаженную позицию после OFF/перенастройки.
+        camSmoothView.cameraValid = false;
+        camSmoothView.updatedAt = 0;
     }
 
     // ================================================================
@@ -684,18 +691,28 @@
             const r = Number(data.radiusM);
             if (Number.isFinite(r) && r > 0) ar.displayRadiusM = r;
         }
-        // v1.0.40.44: ПЛАВНОСТЬ — приложение владелец настройки.
+        // ПЛАВНОСТЬ — приложение владелец настройки.
+        // При изменении режима/tau сбрасываем фильтр от текущей позы, чтобы
+        // старое состояние не продолжало «тащить» точку после выбора меню.
+        let smoothingReset = false;
         if (data.smooth !== undefined) {
-            SMOOTH.enabled = data.smooth === true;
-            if (!SMOOTH.enabled) resetCameraSmoothing();
+            const enabled = data.smooth === true;
+            if (SMOOTH.enabled !== enabled) {
+                SMOOTH.enabled = enabled;
+                smoothingReset = true;
+            }
         }
         if (data.smoothTau !== undefined) {
             const t = Number(data.smoothTau);
             if (Number.isFinite(t) && t >= 0.005 && t <= 0.5) {
-                SMOOTH.posTau = t;
-                SMOOTH.rotTau = t * 1.15;   // ориентация чуть мягче позиции
+                if (Math.abs(SMOOTH.posTau - t) > 1e-9) {
+                    SMOOTH.posTau = t;
+                    SMOOTH.rotTau = t * 1.15;
+                    smoothingReset = true;
+                }
             }
         }
+        if (smoothingReset) resetCameraSmoothing();
         statusFromState();
     }
 
