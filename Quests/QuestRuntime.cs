@@ -44,6 +44,14 @@ namespace ETS2_Assist_GUI.Quests
         private int _tickBusy;
         private bool _disposed;
         private bool _paused;
+
+        // UI-состояние интерактива и текущее выделение принадлежат QuestRuntime.
+        // Они должны существовать независимо от наличия dialogue в конкретном
+        // quest_state, иначе следующий периодический тик не может сохранить выбор.
+        private bool _interactiveVisible;
+        private string _selectedQuestId = "";
+        private string _selectedInteractionId = "";
+
         private DateTime _lastStateSentUtc = DateTime.MinValue;
         private JObject? _lastState;
         private double _lastTruckX, _lastTruckY, _lastTruckZ;
