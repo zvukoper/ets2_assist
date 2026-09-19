@@ -965,6 +965,7 @@ function renderQuests(){
             var near=firstNearbyForQuest(btn.dataset.q);
             var point=near||firstInteractionPointForQuest(btn.dataset.q);
             if(point)selectInteraction(point.QuestId,point.InteractionId);
+            else showQuestDetail(btn.dataset.q);
         };
     });
 
