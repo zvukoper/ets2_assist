@@ -503,6 +503,9 @@ RegisterHotKeyChecked(
                 _questTabHookKeyDown = false;
                 _questInventoryKeyDown = false;
                 _questEscKeyDown = false;
+                _questNonEscMenuGuard = false;
+                _questNonEscMenuGuardVk = 0;
+                _questNonEscMenuTriggerVk = 0;
                 if (_questTabKeyboardHook != IntPtr.Zero)
                 {
                     try { UnhookWindowsHookEx(_questTabKeyboardHook); } catch { }
@@ -608,8 +611,18 @@ RegisterHotKeyChecked(
                             try
                             {
                                 if (!IsDisposed && IsHandleCreated)
-                                    BeginInvoke((Action)(() => AppendLog(
-                                        $"[QUEST] menu-key VK={k.vkCode}: non-ESC menu guard ON")));
+                                    BeginInvoke((Action)(() =>
+                                    {
+                                        /* F1-F12/PAUSE имеют приоритет над нашим
+                                           интерактивом: при открытии такого режима
+                                           немедленно прячем наш shell. */
+                                        if (_questInteractiveShellVisible)
+                                        {
+                                            HideQuestPauseShell();
+                                            _questPauseFlow = QuestPauseFlowState.Running;
+                                        }
+                                        AppendLog($"[QUEST] menu-key VK={k.vkCode}: non-ESC menu guard ON");
+                                    }));
                             }
                             catch { }
                         }
