@@ -869,7 +869,10 @@ function setQuestInteractiveVisible(visible,ready,pulse){
         inventoryOpen=false;collapsed=true;
         var qw=$('questWindow'),iw=$('inventoryWindow'),tab=$('questTab'),itab=$('inventoryTab');
         if(qw){qw.classList.add('collapsed');qw.classList.remove('visible')}if(iw)iw.classList.remove('visible');
-        if(tab)tab.classList.add('visible');if(itab)itab.classList.add('visible');if(pulse)setTabPulse(true);
+        if(tab)tab.classList.add('visible');if(itab)itab.classList.add('visible');
+        // pulse приходит от приложения как авторитетное состояние; false тоже
+        // обязательно должен снимать старый класс после выхода из радиуса.
+        setTabPulse(pulse===true);
         syncInput(false);
     }
     publishInteractiveBounds();
