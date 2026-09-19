@@ -187,8 +187,6 @@ namespace ETS2_Assist_GUI
         // Хоткей регистрируется ТОЛЬКО пока на экране интерактивная категория
         // (пауза + фокус на игре): всё остальное время TAB принадлежит системе,
         // иначе он был бы перехвачен глобально во всех приложениях.
-        private const int HOTKEY_QUEST_TOGGLE = 9022;
-        private bool _questToggleHotkeyRegistered;
         // v1.0.40.79: запасной/основной TAB-путь через WH_KEYBOARD_LL.
         // RegisterHotKey у некоторых конфигураций окна/оверлея может не доходить
         // до WndProc, хотя старый TAB работал. Low-level hook видит физический
@@ -441,8 +439,6 @@ RegisterHotKeyChecked(
             {
                 ApplyStartupMonitorPreference();
                 EnsureStartupForeground();
-                // v1.0.40.79: гарантируем наличие low-level TAB hook после создания HWND.
-                try { InstallQuestTabKeyboardHookIfNeeded(); } catch { }
             };
             _ = Task.Run(WaitForInstanceSignal);
             _ = Task.Run(WaitForStartSignal);
@@ -511,33 +507,6 @@ RegisterHotKeyChecked(
             catch (Exception ex)
             {
                 AppendLog($"[HOTKEY] Ошибка установки TAB hook: {ex.Message}");
-            }
-        }
-
-        private void InstallQuestTabKeyboardHookIfNeeded()
-        {
-            if (_questTabKeyboardHook != IntPtr.Zero) return;
-            _questTabKeyboardProc ??= QuestTabKeyboardHookCallback;
-            try
-            {
-                _questTabKeyboardHook = SetWindowsHookEx(
-                    WH_KEYBOARD_LL,
-                    _questTabKeyboardProc,
-                    GetModuleHandle(null),
-                    0);
-                if (_questTabKeyboardHook == IntPtr.Zero)
-                {
-                    int err = Marshal.GetLastWin32Error();
-                    AppendLog($"[HOTKEY] Не удалось установить TAB hook при старте — код {err}");
-                }
-                else
-                {
-                    AppendLog("[HOTKEY] TAB hook установлен.");
-                }
-            }
-            catch (Exception ex)
-            {
-                AppendLog($"[HOTKEY] Ошибка установки TAB hook при старте: {ex.Message}");
             }
         }
 
@@ -4218,12 +4187,6 @@ RegisterHotKeyChecked(
                     case HOTKEY_AR1_FOV_DOWN:
                         // v1.0.40.27: CTRL+PGDN — FOV AR1 −1° (шаг 1 градус, автоповтор).
                         SetAr1Fov(AR.ArBridge.FovDegreesAr1 - 1.0, "Ctrl+PGDN");
-                        break;
-                    case HOTKEY_QUEST_TOGGLE:
-                        // v1.0.40.59: TAB — то же, что стрелочка сворачивания окна
-                        // квестов: развёрнуто → свернуть и оставить закладку,
-                        // свёрнуто (видна закладка) → развернуть.
-                        SendCommandToMap("quest_toggle_collapse");
                         break;
                     case HOTKEY_AR1_VFOV_UP:
                         // v1.0.40.34: CTRL+SHIFT+PGUP — вертикальный FOV AR1 +0.2° (было 0.5°).
