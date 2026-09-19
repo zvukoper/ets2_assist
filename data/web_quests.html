@@ -41,12 +41,14 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     position:absolute;
     box-sizing:border-box;
     opacity:0;
+    visibility:hidden;
     transform:var(--interface-closed-transform);
     pointer-events:none;
     will-change:transform,opacity;
 }
 .interfaceWindow.interfaceActive{
     opacity:1;
+    visibility:visible;
     transform:translateX(0);
     pointer-events:auto;
 }
@@ -57,16 +59,16 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 }
 .interfaceWindow.interfaceMotionExit{
     animation:
-        interfaceSlideOut 320ms cubic-bezier(.22,.8,.2,1) both,
+        interfaceSlideOut 320ms ease-in both,
         interfaceFadeOut 100ms ease-in 220ms both;
 }
 @keyframes interfaceSlideIn{
-    from{transform:var(--interface-closed-transform)}
-    to{transform:translateX(0)}
+    from{transform:var(--interface-closed-transform);visibility:visible}
+    to{transform:translateX(0);visibility:visible}
 }
 @keyframes interfaceSlideOut{
-    from{transform:translateX(0)}
-    to{transform:var(--interface-closed-transform)}
+    from{transform:translateX(0);visibility:visible}
+    to{transform:var(--interface-closed-transform);visibility:hidden}
 }
 @keyframes interfaceFadeIn{
     from{opacity:0}
