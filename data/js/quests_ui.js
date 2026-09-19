@@ -705,6 +705,12 @@ function syncInterfaceState(name,notify,report){
     }
     syncTabVisibility();
     applyCursorLayer();
+    /* Открытие интерфейса сразу перестраивает его контент из последнего
+       полученного quest_state, не ожидая следующего телеметрического тика. */
+    if(model){
+        renderQuests();
+        renderInventory();
+    }
     publishInteractiveBounds();
     if(report)send({command:'quest_window_state',collapsed:name!=='quest'});
     if(notify)post({command:'return_focus'});
@@ -718,7 +724,10 @@ function toggleInterface(name){
 }
 function toggleQuestInterface(){toggleInterface('quest')}
 function toggleInventory(){toggleInterface('inventory')}
-function collapseWindow(){if(activeInterface==='quest')toggleQuestInterface()}
+function collapseWindow(){
+    if(activeInterface==='quest')toggleQuestInterface();
+    else if(activeInterface==='inventory')toggleInventory();
+}
 function expandWindow(){if(activeInterface!=='quest')syncInterfaceState('quest',false,true)}
 function blockToggle(){
     var now=Date.now();
@@ -971,8 +980,26 @@ function applyState(data){
     if(!$('questApp'))return;
     model=data;
 
+    var pausedByState=data.paused===true;
     var nearbyNow=!!((data.nearby)||[]).some(function(p){return p&&p.Marker&&p.Marker!=='none'});
-    if(nearbyNow&&!lastNearbyInteractive&&!pagePaused)startBookmarkBeacon('quest');
+
+    /* Если backend уже подтвердил паузу, квестовый beacon не должен
+       появиться поверх AR до прихода quest_pause_ui. Старый beacon здесь
+       тоже немедленно убираем. */
+    if(pausedByState){
+        if(questBeaconVisible){
+            if(questBeaconTimer){clearTimeout(questBeaconTimer);questBeaconTimer=0}
+            questBeaconVisible=false;
+            var qbt=$('questTab');if(qbt)qbt.classList.remove('beacon');
+        }
+        if(inventoryBeaconVisible){
+            if(inventoryBeaconTimer){clearTimeout(inventoryBeaconTimer);inventoryBeaconTimer=0}
+            inventoryBeaconVisible=false;
+            var ibt=$('inventoryTab');if(ibt)ibt.classList.remove('beacon');
+        }
+    }else if(nearbyNow&&!lastNearbyInteractive&&!pagePaused){
+        startBookmarkBeacon('quest');
+    }
     lastNearbyInteractive=nearbyNow;
 
     var presentInventory=Object.create(null);
