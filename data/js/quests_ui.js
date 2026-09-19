@@ -916,6 +916,10 @@ function setQuestInteractiveVisible(visible,ready,pulse){
     }else{
         syncInterfaceState('none',false,false);
         setTabPulse(pulse===true);
+        /* Содержимое строим сразу, не ожидая отдельного «правильного»
+           порядка quest_pause_ui/quest_state. Если model уже получена,
+           пользователь видит данные без дополнительного тика WS. */
+        renderQuests();
         renderInventory();
     }
     publishInteractiveBounds();
@@ -950,7 +954,15 @@ function applyState(data){
        только явной командой quest_pause_ui от приложения. */
     var stateKey=interactive+'|'+paused+'|'+(data.selectedQuest||'')+'|'+(data.selectedInteraction||'')+'|'+(data.dialogue?'1':'0');
     if(stateKey!==qdLastQuestStateKey){qdLastQuestStateKey=stateKey;qdLog('WS-IN(8085) quest_state paused='+paused+' interactive='+interactive+' selected='+(data.selectedInteraction||''))}
-    if(!interactive)return;
+    /* Рендер не зависит от флага interactive в конкретном пакете:
+       backend может прислать состояние на границе перехода паузы.
+       Само отображение всё равно контролирует quest_pause_ui/category. */
+    renderQuests();
+    renderInventory();
+    if(!interactive){
+        publishInteractiveBounds();
+        return;
+    }
     if(questDetailPinned){
         /* Локально открытая карточка квеста не должна заменяться backend-blank
            состоянием: у карточки нет selectedInteraction по протоколу. */
