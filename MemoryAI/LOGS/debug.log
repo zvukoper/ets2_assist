@@ -1,119 +1,159 @@
-2026-09-19 23:24:30.295 - === ПРИЛОЖЕНИЕ ЗАПУЩЕНО (из F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe) ===
-2026-09-19 23:24:30.438 - [OVERLAY-DIAG][STATE #1] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
-2026-09-19 23:24:30.444 - [OVERLAY-DIAG][START] pid=21764 processPath=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe assemblyVersion=1.0.40.80 fileVersion=1.0.40.80 informational=1.0.40.81+eb00b6fe46beba36f14e069c99c6f96d2712ee62 lastWriteUtc=2026-09-19T18:22:50.1163740Z size=174142962
-2026-09-19 23:24:30.446 - [OVERLAY-DIAG][START] args=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe http://localhost:8082/web_ui_hybrid.html
-2026-09-19 23:24:30.452 - WindowManager: SetActive(0)
-2026-09-19 23:24:30.653 - WindowManager: создано окно http://localhost:8082/web_ui_hybrid.html, active=True, всего окон 1
-2026-09-19 23:24:30.657 - Hotkey id=1 binding=Ctrl+Shift+Alt+O registered=True
-2026-09-19 23:24:30.658 - Hotkey id=2 binding=Ctrl+Shift+Alt+P registered=True
-2026-09-19 23:24:30.658 - Hotkey id=3 binding=Ctrl+Shift+Alt+PageUp registered=True
-2026-09-19 23:24:30.658 - Hotkey id=4 binding=Ctrl+Shift+Alt+PageDown registered=True
-2026-09-19 23:24:30.658 - Hotkey id=5 binding=Ctrl+Shift+Alt+U registered=True
-2026-09-19 23:24:30.685 - [OVERLAY-DIAG][START] exeSha256=258EE9D79891B95A52D5421AD7F122BDDA718B9B28FA54A149E2D0175CEF3DF8 path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe
-2026-09-19 23:24:30.727 - === ПРИЛОЖЕНИЕ ЗАПУЩЕНО (из F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe) ===
-2026-09-19 23:24:30.737 - [OVERLAY-DIAG][STATE #2] ApplyClickability source=Shown clickable=False needsClickThrough=True
-2026-09-19 23:24:30.738 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_ui_hybrid.html
-2026-09-19 23:24:30.754 - [OVERLAY-DIAG][STYLE] source=SetClickThrough enable=True hwnd=0x1E1A86 before=0x08090088 desired=0x080900A8 actual=0x080900A8 applied=True
-2026-09-19 23:24:30.754 - [OVERLAY-DIAG][EXSTYLE] hwnd=0x1E1A86 before=0x08090088 after=0x080900A8 actual=0x080900A8 WS_EX_TRANSPARENT=True WS_EX_LAYERED=True WS_EX_NOACTIVATE=True WS_EX_TOOLWINDOW=True
-2026-09-19 23:24:30.756 - OverlayForm: SetClickThrough: True
-2026-09-19 23:24:30.769 - [OVERLAY-DIAG][STATE #3] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
-2026-09-19 23:24:30.873 - WindowManager: создано окно http://localhost:8082/web_pda_map.html, active=False, всего окон 2
-2026-09-19 23:24:30.874 - Создано новое окно с URL: http://localhost:8082/web_pda_map.html (не активное)
-2026-09-19 23:24:30.903 - [OVERLAY-DIAG][STATE #4] ApplyClickability source=Shown clickable=False needsClickThrough=True
-2026-09-19 23:24:30.903 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_pda_map.html
-2026-09-19 23:24:30.931 - [OVERLAY-DIAG][STYLE] source=SetClickThrough enable=True hwnd=0x23132C before=0x08090088 desired=0x080900A8 actual=0x080900A8 applied=True
-2026-09-19 23:24:30.931 - [OVERLAY-DIAG][EXSTYLE] hwnd=0x23132C before=0x08090088 after=0x080900A8 actual=0x080900A8 WS_EX_TRANSPARENT=True WS_EX_LAYERED=True WS_EX_NOACTIVATE=True WS_EX_TOOLWINDOW=True
-2026-09-19 23:24:30.943 - OverlayForm: SetClickThrough: True
-2026-09-19 23:24:30.972 - === ПРИЛОЖЕНИЕ ЗАПУЩЕНО (из F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe) ===
-2026-09-19 23:24:31.009 - [OVERLAY-DIAG][STATE #5] ApplyClickability source=ApplyClickability FORCED click-through (quest visual layer is visual-only)
-2026-09-19 23:24:31.153 - [OVERLAY-DIAG][LAYERED] url=localhost/web_quests.html hwnd=0x3001670 layered=True colorKey=0x0000FF00 alpha=0 flags=0x00000001 hasColorKey=True lwaColorKey=True lwaAlpha=False formTransparencyKey=0x0000FF00 formBackColor=0x0000FF00 expectedLimeKey=0x0000FF00
-2026-09-19 23:24:31.148 - === ПРИЛОЖЕНИЕ ЗАПУЩЕНО (из F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe) ===
-2026-09-19 23:24:31.172 - [GAME-DIAG] note=initial pid=6868 hwnd=0xC01FEC class=prism3d title=Euro Truck Simulator 2 IsWindow=True visible=True enabled=True windowRect=0,0,1920,1080 (1920x1080) extendedFrameBounds=0,0,1920,1080 (1920x1080) foreground=0x3F71B50(class=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1,pid=22272)
-2026-09-19 23:24:31.174 - [OVERLAY-DIAG][GAME-BOUND] url=localhost/web_quests.html hwnd=0x3001670 current=0,0,1920x1080 game=0,0,1920x1080 sameGeometry=True
-2026-09-19 23:24:31.201 - WindowManager: создано окно http://localhost:8082/web_quests.html, active=False, всего окон 3
-2026-09-19 23:24:31.261 - WindowManager: создана интерактивная input-поверхность квестов url=http://localhost:8082/web_quests.html
-2026-09-19 23:24:31.262 - Создано новое окно с URL: http://localhost:8082/web_quests.html (не активное)
-2026-09-19 23:24:31.399 - === ПРИЛОЖЕНИЕ ЗАПУЩЕНО (из F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe) ===
-2026-09-19 23:24:31.534 - [OVERLAY-DIAG][STATE #6] ApplyClickability source=Shown FORCED click-through (quest visual layer is visual-only)
-2026-09-19 23:24:31.535 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_quests.html
-2026-09-19 23:24:31.551 - [OVERLAY-DIAG][STYLE] source=SetClickThrough enable=True hwnd=0x3001670 before=0x08090088 desired=0x080900A8 actual=0x080900A8 applied=True
-2026-09-19 23:24:31.551 - [OVERLAY-DIAG][EXSTYLE] hwnd=0x3001670 before=0x08090088 after=0x080900A8 actual=0x080900A8 WS_EX_TRANSPARENT=True WS_EX_LAYERED=True WS_EX_NOACTIVATE=True WS_EX_TOOLWINDOW=True
-2026-09-19 23:24:31.552 - OverlayForm: SetClickThrough: True
-2026-09-19 23:24:31.573 - [OVERLAY-DIAG][STATE #7] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
-2026-09-19 23:24:31.712 - WindowManager: создано окно http://localhost:8082/web_notifications.html, active=False, всего окон 4
-2026-09-19 23:24:31.713 - Создано новое окно с URL: http://localhost:8082/web_notifications.html (не активное)
-2026-09-19 23:24:31.911 - [OVERLAY-DIAG][STATE #8] ApplyClickability source=Shown clickable=False needsClickThrough=True
-2026-09-19 23:24:31.912 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_notifications.html
-2026-09-19 23:24:31.921 - [OVERLAY-DIAG][STYLE] source=SetClickThrough enable=True hwnd=0x62B0F14 before=0x08090088 desired=0x080900A8 actual=0x080900A8 applied=True
-2026-09-19 23:24:31.921 - [OVERLAY-DIAG][EXSTYLE] hwnd=0x62B0F14 before=0x08090088 after=0x080900A8 actual=0x080900A8 WS_EX_TRANSPARENT=True WS_EX_LAYERED=True WS_EX_NOACTIVATE=True WS_EX_TOOLWINDOW=True
-2026-09-19 23:24:31.922 - OverlayForm: SetClickThrough: True
-2026-09-19 23:24:31.929 - [OVERLAY-DIAG][STATE #9] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
-2026-09-19 23:24:32.056 - WindowManager: создано окно http://localhost:8082/web_ar_hud.html, active=False, всего окон 5
-2026-09-19 23:24:32.057 - Создано новое окно с URL: http://localhost:8082/web_ar_hud.html (не активное)
-2026-09-19 23:24:32.172 - [OVERLAY-DIAG][STATE #10] ApplyClickability source=Shown clickable=False needsClickThrough=True
-2026-09-19 23:24:32.173 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_ar_hud.html
-2026-09-19 23:24:32.184 - [OVERLAY-DIAG][STYLE] source=SetClickThrough enable=True hwnd=0x1C81A6A before=0x08090088 desired=0x080900A8 actual=0x080900A8 applied=True
-2026-09-19 23:24:32.185 - [OVERLAY-DIAG][EXSTYLE] hwnd=0x1C81A6A before=0x08090088 after=0x080900A8 actual=0x080900A8 WS_EX_TRANSPARENT=True WS_EX_LAYERED=True WS_EX_NOACTIVATE=True WS_EX_TOOLWINDOW=True
-2026-09-19 23:24:32.209 - OverlayForm: SetClickThrough: True
-2026-09-19 23:24:32.340 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=1466,1079 hwnd=0xC01FEC windowClass=prism3d windowTitle=Euro Truck Simulator 2 pid=6868 root=0xC01FEC rootClass=prism3d overlayTopHwnd=0x3001670 webViewHwnd=0x760E10 isOverlayWindow=False isWebViewChild=False changed=True
-2026-09-19 23:24:33.197 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=964,533 hwnd=0x3F71B50 windowClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 windowTitle=ETS2 Assist v1.0.40.90-QUEST-CONTENT-R20-09.19-2322 pid=22272 root=0x3F71B50 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x3001670 webViewHwnd=0x760E10 isOverlayWindow=False isWebViewChild=False changed=True
-2026-09-19 23:24:33.676 - WindowManager: SetAllLayersHidden(True) окон=5
-2026-09-19 23:24:33.777 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=980,508 hwnd=0x7E16F2 windowClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 windowTitle= pid=22272 root=0x3F71B50 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x3001670 webViewHwnd=0x760E10 isOverlayWindow=False isWebViewChild=False changed=True
-2026-09-19 23:24:33.853 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=1182,548 hwnd=0xC01FEC windowClass=prism3d windowTitle=Euro Truck Simulator 2 pid=6868 root=0xC01FEC rootClass=prism3d overlayTopHwnd=0x3001670 webViewHwnd=0x760E10 isOverlayWindow=False isWebViewChild=False changed=True
-2026-09-19 23:24:34.355 - WindowManager: SetAllLayersHidden(False) окон=5
-2026-09-19 23:24:34.391 - [OVERLAY-DIAG][STATE #11] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
-2026-09-19 23:24:34.392 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_ui_hybrid.html
-2026-09-19 23:24:34.451 - [OVERLAY-DIAG][STATE #12] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
-2026-09-19 23:24:34.452 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_pda_map.html
-2026-09-19 23:24:34.495 - [OVERLAY-DIAG][STATE #13] ApplyClickability source=ApplyClickability FORCED click-through (quest visual layer is visual-only)
-2026-09-19 23:24:34.496 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_quests.html
-2026-09-19 23:24:34.540 - [OVERLAY-DIAG][STATE #14] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
-2026-09-19 23:24:34.541 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_notifications.html
-2026-09-19 23:24:34.618 - [OVERLAY-DIAG][STATE #15] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
-2026-09-19 23:24:34.618 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_ar_hud.html
-2026-09-19 23:24:34.623 - [OVERLAY-DIAG][NAV] url=http://localhost:8082/web_ar_hud.html success=True http=200 webViewReady=True
-2026-09-19 23:24:34.625 - [OVERLAY-DIAG][NAV] url=http://localhost:8082/web_notifications.html success=True http=200 webViewReady=True
-2026-09-19 23:24:34.627 - [OVERLAY-DIAG][NAV] url=http://localhost:8082/web_ui_hybrid.html success=True http=200 webViewReady=True
-2026-09-19 23:24:34.628 - [OVERLAY-DIAG][NAV] url=http://localhost:8082/web_pda_map.html success=True http=200 webViewReady=True
-2026-09-19 23:24:34.665 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=2 countersChars=4 diagObject=False
-2026-09-19 23:24:34.667 - [OVERLAY-DIAG][NAV] url=http://localhost:8082/web_quests.html success=True http=200 webViewReady=True
-2026-09-19 23:24:34.669 - [OVERLAY-DIAG][WEBVIEW] url=localhost/web_quests.html formHwnd=0x3001670 webViewHwnd=0x760E10 webViewHandleCreated=True visible=True enabled=True bounds=0,0,1920,1080
-2026-09-19 23:24:34.929 - [OVERLAY-DIAG] POST set_cursor value=False cursorOwned=False showCursorCalls=0 url=http://localhost:8082/web_quests.html
-2026-09-19 23:24:36.024 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=1409892 countersChars=392 diagObject=True
-2026-09-19 23:24:37.123 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=53111 countersChars=392 diagObject=True
-2026-09-19 23:24:38.346 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=30706 countersChars=392 diagObject=True
-2026-09-19 23:24:39.571 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=53847 countersChars=383 diagObject=True
-2026-09-19 23:24:40.373 - [QUEST-DIAG][DOM-SUMMARY] mousemove=1 mousedown=0 mouseup=0 click=0 last=0,0 target=div#questLayout.quest-native-hover paused=True collapsed=True
-2026-09-19 23:24:40.777 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=47024 countersChars=417 diagObject=True
-2026-09-19 23:24:41.596 - [QUEST-DIAG][DOM-SUMMARY] mousemove=17 mousedown=0 mouseup=0 click=0 last=87,182 target=div#questLayout.quest-native-hover paused=True collapsed=False
-2026-09-19 23:24:42.004 - [QUEST-DIAG][DOM-SUMMARY] mousemove=30 mousedown=0 mouseup=0 click=0 last=239,146 target=button.questItem.nearby.quest-native-hover paused=True collapsed=False
-2026-09-19 23:24:42.004 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=51867 countersChars=441 diagObject=True
-2026-09-19 23:24:42.403 - [QUEST-DIAG][DOM-SUMMARY] mousemove=31 mousedown=1 mouseup=1 click=1 last=239,144 target=button.questItem.nearby.quest-native-hover paused=True collapsed=False
-2026-09-19 23:24:43.218 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=55572 countersChars=441 diagObject=True
-2026-09-19 23:24:44.433 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=47026 countersChars=441 diagObject=True
-2026-09-19 23:24:45.655 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=51300 countersChars=441 diagObject=True
-2026-09-19 23:24:46.873 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=51300 countersChars=441 diagObject=True
-2026-09-19 23:24:48.091 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=47025 countersChars=441 diagObject=True
-2026-09-19 23:24:48.497 - [QUEST-DIAG][DOM-SUMMARY] mousemove=32 mousedown=1 mouseup=1 click=1 last=239,144 target=div#questApp.interactiveVisible.quest-native-hover paused=True collapsed=True
-2026-09-19 23:24:49.313 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=51299 countersChars=449 diagObject=True
-2026-09-19 23:24:50.528 - [QUEST-DIAG][DOM-SUMMARY] mousemove=38 mousedown=1 mouseup=1 click=1 last=193,106 target=button.inventoryItem.quest-native-hover paused=True collapsed=True
-2026-09-19 23:24:50.529 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=51727 countersChars=438 diagObject=True
-2026-09-19 23:24:50.938 - [QUEST-DIAG][DOM-SUMMARY] mousemove=43 mousedown=1 mouseup=1 click=1 last=222,157 target=button.inventoryItem.quest-native-hover paused=True collapsed=True
-2026-09-19 23:24:51.343 - [QUEST-DIAG][DOM-SUMMARY] mousemove=43 mousedown=2 mouseup=2 click=2 last=222,157 target=button.inventoryItem.quest-native-hover paused=True collapsed=True
-2026-09-19 23:24:51.754 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=55575 countersChars=438 diagObject=True
-2026-09-19 23:24:52.151 - [QUEST-DIAG][DOM-SUMMARY] mousemove=54 mousedown=2 mouseup=2 click=2 last=325,325 target=div#inventoryList.quest-native-hover paused=True collapsed=True
-2026-09-19 23:24:52.967 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=47186 countersChars=436 diagObject=True
-2026-09-19 23:24:54.190 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=55574 countersChars=436 diagObject=True
-2026-09-19 23:24:55.410 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=48563 countersChars=438 diagObject=True
-2026-09-19 23:24:55.851 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=960,540 hwnd=0x5C1604 windowClass=#32771 windowTitle= pid=900 root=0x5C1604 rootClass=#32771 overlayTopHwnd=0x3001670 webViewHwnd=0x760E10 isOverlayWindow=False isWebViewChild=False changed=True
-2026-09-19 23:24:56.188 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=960,540 hwnd=0x14B11C8 windowClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 windowTitle= pid=22272 root=0x3F71B50 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x3001670 webViewHwnd=0x760E10 isOverlayWindow=False isWebViewChild=False changed=True
-2026-09-19 23:24:56.312 - WindowManager: SetAllLayersHidden(True) окон=5
-2026-09-19 23:24:56.654 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=27033 countersChars=438 diagObject=True
-2026-09-19 23:24:56.838 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=670,604 hwnd=0x3F71B50 windowClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 windowTitle=ETS2 Assist v1.0.40.90-QUEST-CONTENT-R20-09.19-2322 pid=22272 root=0x3F71B50 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x3001670 webViewHwnd=0x760E10 isOverlayWindow=False isWebViewChild=False changed=True
-2026-09-19 23:24:56.944 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=590,604 hwnd=0x1CD10E4 windowClass=WindowsForms10.RICHEDIT50W.app.0.1bf1917_r3_ad1 windowTitle= pid=22272 root=0x3F71B50 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x3001670 webViewHwnd=0x760E10 isOverlayWindow=False isWebViewChild=False changed=True
-2026-09-19 23:24:57.885 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=62006 countersChars=438 diagObject=True
-2026-09-19 23:24:58.045 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=488,757 hwnd=0x3F71B50 windowClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 windowTitle=ETS2 Assist v1.0.40.90-QUEST-CONTENT-R20-09.19-2322 pid=22272 root=0x3F71B50 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x3001670 webViewHwnd=0x760E10 isOverlayWindow=False isWebViewChild=False changed=True
-2026-09-19 23:24:58.147 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=485,759 hwnd=0xA30F68 windowClass=WindowsForms10.Button.app.0.1bf1917_r3_ad1 windowTitle=Собрать логи pid=22272 root=0x3F71B50 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x3001670 webViewHwnd=0x760E10 isOverlayWindow=False isWebViewChild=False changed=True
-2026-09-19 23:24:59.091 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=52968 countersChars=438 diagObject=True
-2026-09-19 23:25:00.311 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=48785 countersChars=438 diagObject=True
-2026-09-19 23:25:01.530 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=53134 countersChars=438 diagObject=True
+2026-09-19 23:32:26.990 - === ПРИЛОЖЕНИЕ ЗАПУЩЕНО (из F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe) ===
+2026-09-19 23:32:27.113 - [OVERLAY-DIAG][STATE #1] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
+2026-09-19 23:32:27.118 - [OVERLAY-DIAG][START] pid=17484 processPath=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe assemblyVersion=1.0.40.80 fileVersion=1.0.40.80 informational=1.0.40.81+eb00b6fe46beba36f14e069c99c6f96d2712ee62 lastWriteUtc=2026-09-19T18:29:00.3312288Z size=174142962
+2026-09-19 23:32:27.119 - [OVERLAY-DIAG][START] args=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe http://localhost:8082/web_ui_hybrid.html
+2026-09-19 23:32:27.126 - WindowManager: SetActive(0)
+2026-09-19 23:32:27.341 - [OVERLAY-DIAG][START] exeSha256=258EE9D79891B95A52D5421AD7F122BDDA718B9B28FA54A149E2D0175CEF3DF8 path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe
+2026-09-19 23:32:27.348 - WindowManager: создано окно http://localhost:8082/web_ui_hybrid.html, active=True, всего окон 1
+2026-09-19 23:32:27.351 - Hotkey id=1 binding=Ctrl+Shift+Alt+O registered=True
+2026-09-19 23:32:27.352 - Hotkey id=2 binding=Ctrl+Shift+Alt+P registered=True
+2026-09-19 23:32:27.352 - Hotkey id=3 binding=Ctrl+Shift+Alt+PageUp registered=True
+2026-09-19 23:32:27.353 - Hotkey id=4 binding=Ctrl+Shift+Alt+PageDown registered=True
+2026-09-19 23:32:27.353 - Hotkey id=5 binding=Ctrl+Shift+Alt+U registered=True
+2026-09-19 23:32:27.406 - === ПРИЛОЖЕНИЕ ЗАПУЩЕНО (из F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe) ===
+2026-09-19 23:32:27.427 - [OVERLAY-DIAG][STATE #2] ApplyClickability source=Shown clickable=False needsClickThrough=True
+2026-09-19 23:32:27.428 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_ui_hybrid.html
+2026-09-19 23:32:27.441 - [OVERLAY-DIAG][STYLE] source=SetClickThrough enable=True hwnd=0xB50F68 before=0x08090088 desired=0x080900A8 actual=0x080900A8 applied=True
+2026-09-19 23:32:27.441 - [OVERLAY-DIAG][EXSTYLE] hwnd=0xB50F68 before=0x08090088 after=0x080900A8 actual=0x080900A8 WS_EX_TRANSPARENT=True WS_EX_LAYERED=True WS_EX_NOACTIVATE=True WS_EX_TOOLWINDOW=True
+2026-09-19 23:32:27.445 - OverlayForm: SetClickThrough: True
+2026-09-19 23:32:27.460 - [OVERLAY-DIAG][STATE #3] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
+2026-09-19 23:32:27.609 - WindowManager: создано окно http://localhost:8082/web_pda_map.html, active=False, всего окон 2
+2026-09-19 23:32:27.610 - Создано новое окно с URL: http://localhost:8082/web_pda_map.html (не активное)
+2026-09-19 23:32:27.628 - === ПРИЛОЖЕНИЕ ЗАПУЩЕНО (из F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe) ===
+2026-09-19 23:32:27.646 - [OVERLAY-DIAG][STATE #4] ApplyClickability source=Shown clickable=False needsClickThrough=True
+2026-09-19 23:32:27.647 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_pda_map.html
+2026-09-19 23:32:27.685 - [OVERLAY-DIAG][STYLE] source=SetClickThrough enable=True hwnd=0x16311C8 before=0x08090088 desired=0x080900A8 actual=0x080900A8 applied=True
+2026-09-19 23:32:27.686 - [OVERLAY-DIAG][EXSTYLE] hwnd=0x16311C8 before=0x08090088 after=0x080900A8 actual=0x080900A8 WS_EX_TRANSPARENT=True WS_EX_LAYERED=True WS_EX_NOACTIVATE=True WS_EX_TOOLWINDOW=True
+2026-09-19 23:32:27.734 - OverlayForm: SetClickThrough: True
+2026-09-19 23:32:27.764 - [OVERLAY-DIAG][STATE #5] ApplyClickability source=ApplyClickability FORCED click-through (quest visual layer is visual-only)
+2026-09-19 23:32:27.858 - === ПРИЛОЖЕНИЕ ЗАПУЩЕНО (из F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe) ===
+2026-09-19 23:32:27.955 - [OVERLAY-DIAG][LAYERED] url=localhost/web_quests.html hwnd=0x63C1B40 layered=True colorKey=0x0000FF00 alpha=0 flags=0x00000001 hasColorKey=True lwaColorKey=True lwaAlpha=False formTransparencyKey=0x0000FF00 formBackColor=0x0000FF00 expectedLimeKey=0x0000FF00
+2026-09-19 23:32:27.963 - [GAME-DIAG] note=initial pid=6868 hwnd=0xC01FEC class=prism3d title=Euro Truck Simulator 2 IsWindow=True visible=True enabled=True windowRect=0,0,1920,1080 (1920x1080) extendedFrameBounds=0,0,1920,1080 (1920x1080) foreground=0x1961AD6(class=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1,pid=21992)
+2026-09-19 23:32:27.965 - [OVERLAY-DIAG][GAME-BOUND] url=localhost/web_quests.html hwnd=0x63C1B40 current=0,0,1920x1080 game=0,0,1920x1080 sameGeometry=True
+2026-09-19 23:32:27.991 - WindowManager: создано окно http://localhost:8082/web_quests.html, active=False, всего окон 3
+2026-09-19 23:32:28.105 - === ПРИЛОЖЕНИЕ ЗАПУЩЕНО (из F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe) ===
+2026-09-19 23:32:28.115 - WindowManager: создана интерактивная input-поверхность квестов url=http://localhost:8082/web_quests.html
+2026-09-19 23:32:28.116 - Создано новое окно с URL: http://localhost:8082/web_quests.html (не активное)
+2026-09-19 23:32:28.390 - [OVERLAY-DIAG][STATE #6] ApplyClickability source=Shown FORCED click-through (quest visual layer is visual-only)
+2026-09-19 23:32:28.390 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_quests.html
+2026-09-19 23:32:28.407 - [OVERLAY-DIAG][STYLE] source=SetClickThrough enable=True hwnd=0x63C1B40 before=0x08090088 desired=0x080900A8 actual=0x080900A8 applied=True
+2026-09-19 23:32:28.408 - [OVERLAY-DIAG][EXSTYLE] hwnd=0x63C1B40 before=0x08090088 after=0x080900A8 actual=0x080900A8 WS_EX_TRANSPARENT=True WS_EX_LAYERED=True WS_EX_NOACTIVATE=True WS_EX_TOOLWINDOW=True
+2026-09-19 23:32:28.412 - OverlayForm: SetClickThrough: True
+2026-09-19 23:32:28.443 - [OVERLAY-DIAG][STATE #7] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
+2026-09-19 23:32:28.579 - WindowManager: создано окно http://localhost:8082/web_notifications.html, active=False, всего окон 4
+2026-09-19 23:32:28.580 - Создано новое окно с URL: http://localhost:8082/web_notifications.html (не активное)
+2026-09-19 23:32:28.828 - [OVERLAY-DIAG][STATE #8] ApplyClickability source=Shown clickable=False needsClickThrough=True
+2026-09-19 23:32:28.828 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_notifications.html
+2026-09-19 23:32:28.840 - [OVERLAY-DIAG][STYLE] source=SetClickThrough enable=True hwnd=0x2F61B0E before=0x08090088 desired=0x080900A8 actual=0x080900A8 applied=True
+2026-09-19 23:32:28.840 - [OVERLAY-DIAG][EXSTYLE] hwnd=0x2F61B0E before=0x08090088 after=0x080900A8 actual=0x080900A8 WS_EX_TRANSPARENT=True WS_EX_LAYERED=True WS_EX_NOACTIVATE=True WS_EX_TOOLWINDOW=True
+2026-09-19 23:32:28.842 - OverlayForm: SetClickThrough: True
+2026-09-19 23:32:28.851 - [OVERLAY-DIAG][STATE #9] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
+2026-09-19 23:32:29.021 - WindowManager: создано окно http://localhost:8082/web_ar_hud.html, active=False, всего окон 5
+2026-09-19 23:32:29.021 - Создано новое окно с URL: http://localhost:8082/web_ar_hud.html (не активное)
+2026-09-19 23:32:29.190 - [OVERLAY-DIAG][STATE #10] ApplyClickability source=Shown clickable=False needsClickThrough=True
+2026-09-19 23:32:29.190 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_ar_hud.html
+2026-09-19 23:32:29.200 - [OVERLAY-DIAG][STYLE] source=SetClickThrough enable=True hwnd=0x23D1144 before=0x08090088 desired=0x080900A8 actual=0x080900A8 applied=True
+2026-09-19 23:32:29.200 - [OVERLAY-DIAG][EXSTYLE] hwnd=0x23D1144 before=0x08090088 after=0x080900A8 actual=0x080900A8 WS_EX_TRANSPARENT=True WS_EX_LAYERED=True WS_EX_NOACTIVATE=True WS_EX_TOOLWINDOW=True
+2026-09-19 23:32:29.201 - OverlayForm: SetClickThrough: True
+2026-09-19 23:32:29.273 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=1491,785 hwnd=0x19A06A8 windowClass=Chrome_RenderWidgetHostHWND windowTitle=Chrome Legacy Window pid=15340 root=0x20524 rootClass=Chrome_WidgetWin_1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:32:29.877 - WindowManager: SetAllLayersHidden(True) окон=5
+2026-09-19 23:32:30.676 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=2 countersChars=4 diagObject=False
+2026-09-19 23:32:30.684 - [OVERLAY-DIAG][NAV] url=http://localhost:8082/web_notifications.html success=True http=200 webViewReady=True
+2026-09-19 23:32:30.698 - [OVERLAY-DIAG][NAV] url=http://localhost:8082/web_quests.html success=True http=200 webViewReady=True
+2026-09-19 23:32:30.701 - [OVERLAY-DIAG][WEBVIEW] url=localhost/web_quests.html formHwnd=0x63C1B40 webViewHwnd=0xA509FC webViewHandleCreated=True visible=False enabled=True bounds=0,0,1920,1080
+2026-09-19 23:32:30.715 - [OVERLAY-DIAG] POST set_cursor value=False cursorOwned=False showCursorCalls=0 url=http://localhost:8082/web_quests.html
+2026-09-19 23:32:30.717 - [OVERLAY-DIAG][NAV] url=http://localhost:8082/web_ar_hud.html success=True http=200 webViewReady=True
+2026-09-19 23:32:30.747 - [OVERLAY-DIAG][NAV] url=http://localhost:8082/web_ui_hybrid.html success=True http=200 webViewReady=True
+2026-09-19 23:32:30.757 - [OVERLAY-DIAG][NAV] url=http://localhost:8082/web_pda_map.html success=True http=200 webViewReady=True
+2026-09-19 23:32:31.943 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=1405561 countersChars=391 diagObject=True
+2026-09-19 23:32:33.080 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=53130 countersChars=391 diagObject=True
+2026-09-19 23:32:34.279 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=57618 countersChars=391 diagObject=True
+2026-09-19 23:32:35.503 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=48777 countersChars=391 diagObject=True
+2026-09-19 23:32:36.728 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=57694 countersChars=391 diagObject=True
+2026-09-19 23:32:37.935 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=44178 countersChars=391 diagObject=True
+2026-09-19 23:32:39.157 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=57588 countersChars=391 diagObject=True
+2026-09-19 23:32:40.023 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=1481,1073 hwnd=0x2014A windowClass=MSTaskListWClass windowTitle=Работающие приложения pid=8880 root=0x100D2 rootClass=Shell_TrayWnd overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:32:40.373 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=48838 countersChars=391 diagObject=True
+2026-09-19 23:32:40.679 - WindowManager: SetAllLayersHidden(False) окон=5
+2026-09-19 23:32:40.712 - [OVERLAY-DIAG][STATE #11] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
+2026-09-19 23:32:40.712 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_ui_hybrid.html
+2026-09-19 23:32:40.760 - [OVERLAY-DIAG][STATE #12] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
+2026-09-19 23:32:40.760 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_pda_map.html
+2026-09-19 23:32:40.795 - [OVERLAY-DIAG][STATE #13] ApplyClickability source=ApplyClickability FORCED click-through (quest visual layer is visual-only)
+2026-09-19 23:32:40.795 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_quests.html
+2026-09-19 23:32:40.833 - [OVERLAY-DIAG][STATE #14] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
+2026-09-19 23:32:40.834 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_notifications.html
+2026-09-19 23:32:40.868 - [OVERLAY-DIAG][STATE #15] ApplyClickability source=ApplyClickability clickable=False needsClickThrough=True
+2026-09-19 23:32:40.869 - [OVERLAY-DIAG] POST set_clickthrough enable=True url=http://localhost:8082/web_ar_hud.html
+2026-09-19 23:32:40.873 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=960,540 hwnd=0xC01FEC windowClass=prism3d windowTitle=Euro Truck Simulator 2 pid=6868 root=0xC01FEC rootClass=prism3d overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:32:41.596 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=44321 countersChars=391 diagObject=True
+2026-09-19 23:32:42.814 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=62119 countersChars=392 diagObject=True
+2026-09-19 23:32:44.036 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=51911 countersChars=392 diagObject=True
+2026-09-19 23:32:44.436 - [QUEST-DIAG][DOM-SUMMARY] mousemove=1 mousedown=0 mouseup=0 click=0 last=67,215 target=div#questApp.interactiveVisible.quest-native-hover paused=True collapsed=True
+2026-09-19 23:32:44.850 - [QUEST-DIAG][DOM-SUMMARY] mousemove=16 mousedown=0 mouseup=0 click=0 last=173,111 target=button.questItem.nearby.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:45.262 - [QUEST-DIAG][DOM-SUMMARY] mousemove=27 mousedown=0 mouseup=0 click=0 last=225,71 target=div#questLayout.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:45.262 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=43474 countersChars=429 diagObject=True
+2026-09-19 23:32:45.652 - [QUEST-DIAG][DOM-SUMMARY] mousemove=40 mousedown=0 mouseup=0 click=0 last=230,178 target=div.questDivider.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:46.061 - [QUEST-DIAG][DOM-SUMMARY] mousemove=56 mousedown=0 mouseup=0 click=0 last=229,430 target=section#questSidebar.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:46.465 - [QUEST-DIAG][DOM-SUMMARY] mousemove=72 mousedown=0 mouseup=0 click=0 last=0,201 target=div#questLayout.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:46.465 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=52070 countersChars=427 diagObject=True
+2026-09-19 23:32:46.876 - [QUEST-DIAG][DOM-SUMMARY] mousemove=75 mousedown=0 mouseup=0 click=0 last=0,0 target=div#questLayout.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:47.278 - [QUEST-DIAG][DOM-SUMMARY] mousemove=77 mousedown=0 mouseup=0 click=0 last=35,45 target=div#questApp.interactiveVisible.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:47.685 - [QUEST-DIAG][DOM-SUMMARY] mousemove=90 mousedown=0 mouseup=0 click=0 last=280,284 target=section#questSidebar.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:47.685 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=51903 countersChars=441 diagObject=True
+2026-09-19 23:32:48.102 - [QUEST-DIAG][DOM-SUMMARY] mousemove=106 mousedown=0 mouseup=0 click=0 last=263,110 target=button.questItem.nearby.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:48.504 - [QUEST-DIAG][DOM-SUMMARY] mousemove=106 mousedown=1 mouseup=1 click=1 last=263,110 target=button.questItem.nearby.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:48.904 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=51503 countersChars=445 diagObject=True
+2026-09-19 23:32:49.315 - [QUEST-DIAG][DOM-SUMMARY] mousemove=116 mousedown=2 mouseup=2 click=2 last=240,142 target=button.questItem.nearby.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:49.714 - [QUEST-DIAG][DOM-SUMMARY] mousemove=126 mousedown=2 mouseup=2 click=2 last=167,152 target=button.questItem.nearby.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:50.123 - [QUEST-DIAG][DOM-SUMMARY] mousemove=131 mousedown=3 mouseup=2 click=2 last=129,149 target=button.questItem.nearby.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:50.123 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=52101 countersChars=445 diagObject=True
+2026-09-19 23:32:50.528 - [QUEST-DIAG][DOM-SUMMARY] mousemove=138 mousedown=3 mouseup=3 click=3 last=259,152 target=button.questItem.nearby.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:50.938 - [QUEST-DIAG][DOM-SUMMARY] mousemove=139 mousedown=4 mouseup=4 click=3 last=260,152 target=button.questItem.nearby.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:51.347 - [QUEST-DIAG][DOM-SUMMARY] mousemove=147 mousedown=5 mouseup=4 click=3 last=241,291 target=section#questSidebar.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:51.348 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=52243 countersChars=442 diagObject=True
+2026-09-19 23:32:51.750 - [QUEST-DIAG][DOM-SUMMARY] mousemove=160 mousedown=5 mouseup=5 click=4 last=93,623 target=div#questLayout.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:52.163 - [QUEST-DIAG][DOM-SUMMARY] mousemove=174 mousedown=5 mouseup=5 click=4 last=133,587 target=section#questSidebar.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:52.573 - [QUEST-DIAG][DOM-SUMMARY] mousemove=180 mousedown=5 mouseup=5 click=4 last=135,580 target=section#questSidebar.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:52.574 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=55903 countersChars=442 diagObject=True
+2026-09-19 23:32:52.966 - [QUEST-DIAG][DOM-SUMMARY] mousemove=184 mousedown=5 mouseup=5 click=4 last=135,575 target=div#inventoryList.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:53.376 - [QUEST-DIAG][DOM-SUMMARY] mousemove=189 mousedown=5 mouseup=5 click=4 last=228,513 target=div#inventoryList.quest-native-hover paused=True collapsed=True
+2026-09-19 23:32:53.778 - [QUEST-DIAG][DOM-SUMMARY] mousemove=202 mousedown=5 mouseup=5 click=4 last=237,218 target=div#inventoryList.quest-native-hover paused=True collapsed=True
+2026-09-19 23:32:53.778 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=47604 countersChars=440 diagObject=True
+2026-09-19 23:32:54.186 - [QUEST-DIAG][DOM-SUMMARY] mousemove=211 mousedown=6 mouseup=5 click=4 last=208,142 target=button.inventoryItem.quest-native-hover paused=True collapsed=True
+2026-09-19 23:32:54.591 - [QUEST-DIAG][DOM-SUMMARY] mousemove=219 mousedown=6 mouseup=6 click=5 last=199,297 target=div#inventoryList.quest-native-hover paused=True collapsed=True
+2026-09-19 23:32:55.002 - [QUEST-DIAG][DOM-SUMMARY] mousemove=222 mousedown=6 mouseup=6 click=5 last=199,304 target=div#inventoryList.quest-native-hover paused=True collapsed=True
+2026-09-19 23:32:55.002 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=52156 countersChars=436 diagObject=True
+2026-09-19 23:32:56.215 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=47466 countersChars=440 diagObject=True
+2026-09-19 23:32:57.029 - [QUEST-DIAG][DOM-SUMMARY] mousemove=223 mousedown=6 mouseup=6 click=5 last=191,451 target=div#questApp.interactiveVisible.quest-native-hover paused=True collapsed=True
+2026-09-19 23:32:57.433 - [QUEST-DIAG][DOM-SUMMARY] mousemove=236 mousedown=6 mouseup=6 click=5 last=107,256 target=section#questSidebar.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:57.433 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=52079 countersChars=444 diagObject=True
+2026-09-19 23:32:57.842 - [QUEST-DIAG][DOM-SUMMARY] mousemove=252 mousedown=6 mouseup=6 click=5 last=176,135 target=button.questItem.nearby.selected.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:58.248 - [QUEST-DIAG][DOM-SUMMARY] mousemove=255 mousedown=7 mouseup=7 click=6 last=185,127 target=button.questItem.nearby.selected.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:58.657 - [QUEST-DIAG][DOM-SUMMARY] mousemove=258 mousedown=8 mouseup=7 click=6 last=221,126 target=button.questItem.nearby.selected.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:58.658 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=47646 countersChars=456 diagObject=True
+2026-09-19 23:32:59.064 - [QUEST-DIAG][DOM-SUMMARY] mousemove=259 mousedown=8 mouseup=8 click=7 last=223,126 target=button.questItem.nearby.selected.quest-native-hover paused=True collapsed=False
+2026-09-19 23:32:59.872 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=51501 countersChars=456 diagObject=True
+2026-09-19 23:33:01.097 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=56033 countersChars=455 diagObject=True
+2026-09-19 23:33:02.308 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=39881 countersChars=456 diagObject=True
+2026-09-19 23:33:03.429 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=960,540 hwnd=0x5571AC4 windowClass=#32771 windowTitle= pid=900 root=0x5571AC4 rootClass=#32771 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:03.528 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=35386 countersChars=457 diagObject=True
+2026-09-19 23:33:03.758 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=960,540 hwnd=0xC51790 windowClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 windowTitle= pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:03.871 - WindowManager: SetAllLayersHidden(True) окон=5
+2026-09-19 23:33:04.413 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=809,776 hwnd=0x1961AD6 windowClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 windowTitle=ETS2 Assist v1.0.40.91-QUEST-CONTENT-R21-09.19-2329 pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:04.523 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=477,589 hwnd=0x2CA135E windowClass=WindowsForms10.RICHEDIT50W.app.0.1bf1917_r3_ad1 windowTitle= pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:04.634 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=238,416 hwnd=0x961320 windowClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 windowTitle= pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:04.748 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=61828 countersChars=457 diagObject=True
+2026-09-19 23:33:04.854 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=193,522 hwnd=0x8D13C6 windowClass=WindowsForms10.Button.app.0.1bf1917_r3_ad1 windowTitle=Показать карту ✖ pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:05.179 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=214,469 hwnd=0x2522292 windowClass=WindowsForms10.Button.app.0.1bf1917_r3_ad1 windowTitle=Проверка точек pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:05.296 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=219,369 hwnd=0x25416F4 windowClass=WindowsForms10.Button.app.0.1bf1917_r3_ad1 windowTitle=Тайник 2 200м т30 pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:05.400 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=225,319 hwnd=0x367196E windowClass=WindowsForms10.Button.app.0.1bf1917_r3_ad1 windowTitle=Курьер 100 POI дорога т50 а.у. pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:05.515 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=230,305 hwnd=0x311D60 windowClass=WindowsForms10.Button.app.0.1bf1917_r3_ad1 windowTitle=Обновить список pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:05.731 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=245,253 hwnd=0x6E11354 windowClass=WindowsForms10.Button.app.0.1bf1917_r3_ad1 windowTitle=Exit pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:05.843 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=258,235 hwnd=0x3FB1B50 windowClass=WindowsForms10.Button.app.0.1bf1917_r3_ad1 windowTitle=Minimize pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:05.967 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=62024 countersChars=457 diagObject=True
+2026-09-19 23:33:06.284 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=233,257 hwnd=0x6E11354 windowClass=WindowsForms10.Button.app.0.1bf1917_r3_ad1 windowTitle=Exit pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:06.829 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=380,529 hwnd=0x2CA135E windowClass=WindowsForms10.RICHEDIT50W.app.0.1bf1917_r3_ad1 windowTitle= pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:06.931 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=517,823 hwnd=0xC01FEC windowClass=prism3d windowTitle=Euro Truck Simulator 2 pid=6868 root=0xC01FEC rootClass=prism3d overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
+2026-09-19 23:33:07.182 - [OVERLAY-DIAG][JS-PULL] url=http://localhost:8082/web_quests.html drainChars=53112 countersChars=457 diagObject=True
+2026-09-19 23:33:07.269 - [OVERLAY-DIAG][WINDOW-UNDER-CURSOR] cursor=518,799 hwnd=0xD4177E windowClass=WindowsForms10.Button.app.0.1bf1917_r3_ad1 windowTitle=Собрать логи pid=21992 root=0x1961AD6 rootClass=WindowsForms10.Window.8.app.0.1bf1917_r3_ad1 overlayTopHwnd=0x63C1B40 webViewHwnd=0xA509FC isOverlayWindow=False isWebViewChild=False changed=True
