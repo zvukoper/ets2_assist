@@ -18,6 +18,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 #miniLogoVersion{display:flex;flex-direction:column;gap:1px;margin-top:2px;font-size:9px;line-height:1.15;color:#b8c1cc;word-break:break-all}
 #miniLogoVersion span:first-child{color:#e7edf4}
 #questLayout{position:absolute;left:0;right:0;top:104px;bottom:0;display:grid;grid-template-columns:minmax(215px,24%) minmax(0,1fr) minmax(245px,28%);grid-template-rows:minmax(0,1fr) minmax(0,.56fr);gap:12px}
+#questWindow{position:absolute;left:0;right:0;top:104px;bottom:0;opacity:1;transform:translateX(0);pointer-events:auto;transition:transform 320ms ease-out,opacity 96ms ease-out}
+#questWindow.collapsed{opacity:0;transform:translateX(calc(-100% - 40px));pointer-events:none;transition:transform 320ms ease-in,opacity 92ms ease-in 224ms}
 #questSidebar{grid-column:1;grid-row:1/3;display:flex;flex-direction:column}
 #questList,.scroll{padding:6px;overflow:auto;min-height:0}
 .questSectionTitle{padding:7px 6px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.55px}
@@ -74,13 +76,13 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   <div id="miniLogo"><img src="ets2a_logo.png" alt="ETS2 Assist"><div id="miniLogoVersion"><span id="versionNumber">1.0.40.82</span><span id="versionText">CURSOR-CAL-TAB-QUEST-R12</span></div></div>
   <button id="questTab" type="button">Квесты</button>
   <button id="inventoryTab" type="button">Инвентарь<br><small>I</small></button>
-  <div id="questLayout">
+  <div id="questWindow"><div id="questLayout">
    <section id="questSidebar" class="panel"><div id="questList"></div></section>
    <section id="eventPanel" class="panel"><div id="dialog" class="panelInner"><div id="dialogSpeaker"></div><div id="dialogText"></div></div></section>
    <section id="responsePanel" class="panel"><div class="panelInner"><div class="panelTitle">Ответы</div><div id="dialogOptions"></div></div></section>
    <section id="imagePanel" class="panel"><img id="dialogImage" alt=""></section>
    <section id="servicePanel" class="panel"><div class="panelInner"><div class="panelTitle">Служебная информация</div><div id="dialogService"></div></div></section>
-  </div>
+  </div></div>
   <section id="inventoryWindow" class="panel"><div id="inventoryList"></div></section>
   <div id="overlayError" aria-live="polite"></div>
   <div id="rawInputDebug"></div>
