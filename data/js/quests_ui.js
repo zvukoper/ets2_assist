@@ -802,21 +802,75 @@ function questById(id){
 function firstNearbyForQuest(id){return (model&&model.nearby||[]).find(function(p){return p.QuestId===id&&p.Marker&&p.Marker!=='none'})||null}
 function renderQuests(){
     var el=$('questList');if(!el||!model)return;
+
     var seen={},nearIds=[];
-    (model.nearby||[]).forEach(function(p){if(p&&p.QuestId&&p.Marker&&p.Marker!=='none'&&!seen[p.QuestId]){seen[p.QuestId]=true;nearIds.push(p.QuestId)}});
-    var all=[].concat(model.availableQuests||[],model.activeQuests||[],model.archiveQuests||[]),byId={};
-    all.forEach(function(q){byId[q.id]=q});
-    var nearby=nearIds.map(function(id){return byId[id]}).filter(Boolean);
-    var active=(model.activeQuests||[]).filter(function(q){return !seen[q.id]});
+    (model.nearby||[]).forEach(function(p){
+        if(p&&p.QuestId&&p.Marker&&p.Marker!=='none'&&!seen[p.QuestId]){
+            seen[p.QuestId]=true;nearIds.push(p.QuestId);
+        }
+    });
+
+    var available=model.availableQuests||[];
+    var active=model.activeQuests||[];
     var archive=model.archiveQuests||[];
+    var all=available.concat(active,archive),byId={};
+    all.forEach(function(q){byId[q.id]=q});
+
+    var nearby=nearIds.map(function(id){return byId[id]}).filter(Boolean);
+    var activeNotNearby=active.filter(function(q){return !seen[q.id]});
+    var availableNotNearby=available.filter(function(q){return !seen[q.id]});
+
+    var key=JSON.stringify([
+        currentQuest,currentInteraction,archiveVisible,
+        nearby.map(function(q){return[q.id,q.status,q.stepDescription]}),
+        availableNotNearby.map(function(q){return[q.id,q.status,q.stepDescription]}),
+        activeNotNearby.map(function(q){return[q.id,q.status,q.stepDescription]}),
+        archive.map(function(q){return[q.id,q.status,q.stepDescription]})
+    ]);
+    if(key===lastQuestsKey)return;
+    lastQuestsKey=key;
+
     var html='';
-    if(nearby.length){html+='<div class="questSectionTitle">Рядом</div>'+nearby.map(function(q){return questButton(q,'nearby')}).join('');html+='<div class="questDivider"></div>'}
-    html+='<div class="questSectionTitle">Активные</div>'+active.map(function(q){return questButton(q,'active')}).join('');
-    html+='<button id="archiveToggle" class="archiveToggle" type="button">'+(archiveVisible?'архив ▲':'архив ▼')+'</button>';
-    if(archiveVisible)html+='<div class="questDivider"></div><div class="questSectionTitle">Архив</div>'+archive.map(function(q){return questButton(q,'archive')}).join('');
+    if(nearby.length){
+        html+='<div class="questSectionTitle">Рядом</div>'+
+            nearby.map(function(q){return questButton(q,'nearby')}).join('')+
+            '<div class="questDivider"></div>';
+    }
+    if(availableNotNearby.length){
+        html+='<div class="questSectionTitle">Доступные</div>'+
+            availableNotNearby.map(function(q){return questButton(q,'available')}).join('');
+    }
+    if(activeNotNearby.length){
+        html+='<div class="questSectionTitle">Активные</div>'+
+            activeNotNearby.map(function(q){return questButton(q,'active')}).join('');
+    }
+
+    html+='<button id="archiveToggle" class="archiveToggle" type="button">'+
+        (archiveVisible?'архив ▲':'архив ▼')+'</button>';
+
+    if(archiveVisible){
+        html+='<div class="questDivider"></div><div class="questSectionTitle">Архив</div>'+
+            archive.map(function(q){return questButton(q,'archive')}).join('');
+    }
+
     el.innerHTML=html||'<div class="muted">Нет квестов</div>';
-    el.querySelectorAll('.questItem').forEach(function(btn){btn.onclick=function(e){e.stopPropagation();var near=firstNearbyForQuest(btn.dataset.q);if(near)selectInteraction(near.QuestId,near.InteractionId);else showQuestDetail(btn.dataset.q)}});
-    var ab=$('archiveToggle');if(ab)ab.onclick=function(e){e.stopPropagation();archiveVisible=!archiveVisible;lastQuestsKey='';renderQuests()}
+
+    el.querySelectorAll('.questItem').forEach(function(btn){
+        btn.onclick=function(e){
+            e.stopPropagation();
+            var near=firstNearbyForQuest(btn.dataset.q);
+            if(near)selectInteraction(near.QuestId,near.InteractionId);
+            else showQuestDetail(btn.dataset.q);
+        };
+    });
+
+    var ab=$('archiveToggle');
+    if(ab)ab.onclick=function(e){
+        e.stopPropagation();
+        archiveVisible=!archiveVisible;
+        lastQuestsKey='';
+        renderQuests();
+    };
 }
 function questButton(q,kind){var selected=questDetailPinned&&!currentInteraction&&currentQuest===q.id;return'<button class="questItem '+kind+(selected?' selected':'')+'" data-q="'+esc(q.id)+'"><strong>'+esc(q.title)+'</strong><span>'+esc(q.status||'')+'</span>'+((q.stepDescription||q.description)?'<em>'+esc(q.stepDescription||q.description)+'</em>':'')+'</button>'}
 function inventoryHasNewItems(){
