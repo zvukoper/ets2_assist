@@ -654,11 +654,11 @@ function syncInputLegacy(notify){
 /* ================================================================ ИНТЕРФЕЙСЫ
  * Единый state machine для всех интерактивных экранов.
  * Состояния:
- *   none      — оба интерфейса закрыты, закладки видимы;
- *   quest     — виден только «Квесты», обе закладки за экраном;
- *   inventory — виден только «Инвентарь», обе закладки за экраном.
- * Новые интерфейсы должны подключаться к этой же схеме: один экран открыт,
- * остальные панели и закладки закрыты.
+ *   none      — оба интерфейса закрыты; обе закладки видимы в паузе;
+ *   quest     — открыты Квесты; уезжает только закладка Квестов;
+ *   inventory — открыт Инвентарь; уезжает только закладка Инвентаря.
+ * Вне паузы интерфейсы закрыты, а закладки появляются только как
+ * одноразовые двухимпульсные маяки.
  * ================================================================ */
 function clearBookmarkBeacon(kind){
     var isQuest=kind==='quest',tab=$(isQuest?'questTab':'inventoryTab');
@@ -679,17 +679,21 @@ function startBookmarkBeacon(kind){
         return;
     }
     if(isQuest){
-        if(activeInterface==='quest')return;
+        if(activeInterface==='quest'||questBeaconVisible)return;
         pendingQuestBeacon=false;questBeaconVisible=true;
         if(questBeaconTimer)clearTimeout(questBeaconTimer);
         questBeaconTimer=setTimeout(function(){clearBookmarkBeacon('quest')},1550);
         var qt=$('questTab');
         if(qt){qt.classList.remove('beacon');void qt.offsetWidth;qt.classList.add('beacon')}
     }else{
-        if(activeInterface==='inventory')return;
+        if(activeInterface==='inventory'||inventoryBeaconVisible)return;
         pendingInventoryBeacon=false;inventoryBeaconVisible=true;
         if(inventoryBeaconTimer)clearTimeout(inventoryBeaconTimer);
         inventoryBeaconTimer=setTimeout(function(){clearBookmarkBeacon('inventory')},1550);
+        (model&&model.inventory||[]).forEach(function(x){
+            var id=String(x&&x.id||'');
+            if(id&&x.new_item===true)inventoryBeaconSeen[id]=true;
+        });
         var it=$('inventoryTab');
         if(it){it.classList.remove('beacon');void it.offsetWidth;it.classList.add('beacon')}
     }
@@ -936,7 +940,6 @@ function setQuestInteractiveVisible(visible,ready,pulse){
 }
 function applyState(data){
     if(!$('questApp'))return;
-    var previousModel=model;
     model=data;
 
     var nearbyNow=!!((data.nearby)||[]).some(function(p){return p&&p.Marker&&p.Marker!=='none'});
