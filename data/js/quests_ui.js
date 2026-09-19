@@ -465,7 +465,7 @@ function startCursorTrack(){
     if(!cursorEl)return;
     cancelCursorHideTimer();
     cursorUiBlock=false;
-    cursorEl.style.opacity='1';
+    cursorEl.style.opacity='0';
     cursorEl.style.display='block';
     cursorShown=true;
     /* v1.0.40.79: the visual cursor starts at the same corner as the host-side
@@ -519,28 +519,17 @@ function markerIcon(m){
    остаются частью того же слоя. Чтобы игра не получала клики «сквозь» окно,
    контейнер перехватывает клик по прозрачной области (сворачивание). */
 function applyCursorLayer(){
-    /* v1.0.40.61: КУРСОР РИСУЕТ СТРАНИЦА.
-       ⛔ Почему не системный/игровой курсор: ETS2 прячет систему и рисует СВОЙ
-       курсор прямо в игровой кадр. Игровой кадр лежит НИЖЕ нашего окна, поэтому
-       его стрелка «двигается под окном» и никакие ShowCursor/SetCursor/WM_SETCURSOR
-       это не исправят — слой всегда выше. Системный курсор в игре к тому же
-       уведён счётчиком ShowCursor глубоко в минус.
-       РЕШЕНИЕ: скрываем курсор во всём слое (CSS `cursor:none`) и рисуем
-       СОБСТВЕННУЮ стрелку (<img id="cursorDot">) по виртуальной позиции мыши.
-       Изображение — реальный игровой cursor.png 27x44 для базового 1080p.
-       Прозрачность стрелки вычисляется по видимому контенту/тени под ней:
-       в прозрачной области стрелка исчезает, на тени становится полупрозрачной.
-       Скрытие системной стрелки оставлено как дополнительная мера: если игра
-       её не рисует, она не будет дублировать нашу. */
+    /* Курсор нужен только над открытым интерфейсом либо над видимой закладкой.
+       В режиме «обе закладки» он скрыт по всему экрану и появляется только
+       когда весь бокс 27x44 px пересекает закладку. */
     var app=$('questApp');
     if(app)app.style.cursor=pagePaused?'none':'';
-    /* Собственный курсор должен быть видимым и над закладкой, и над
-       развёрнутым окном, и над инвентарём. Раньше active зависел от collapsed,
-       из-за чего курсор принудительно скрывался именно в состоянии закладки. */
-    var active=pagePaused;
-    /* Системная стрелка не является курсором квестов. ETS2 удерживает её
-       возле центра; наличие этой стрелки поверх страницы даёт дрожание.
-       Видимый курсор теперь только #cursorDot. */
+
+    var tabVisible=
+        !!(($('questTab')&&$('questTab').classList.contains('visible')) ||
+           ($('inventoryTab')&&$('inventoryTab').classList.contains('visible')));
+    var active=pagePaused && (activeInterface!=='none' || tabVisible);
+
     if(!cursorSystemReleased){
         post({command:'set_cursor',value:false});
         cursorSystemReleased=true;
@@ -1015,9 +1004,14 @@ window.onEts2Command=function(d){
        закладку «Квесты»; клики по содержимому окна всплывают от его элементов
        и не должны сворачивать окно. */
     if(app)app.addEventListener('click',function(e){
-        if(collapsed)return;
-        if(e.target!==app)return;
-        collapseWindow();
+        if(!pagePaused||activeInterface==='none')return;
+        var t=e.target,insideManagedTarget=false;
+        try{
+            insideManagedTarget=!!(t&&t.closest&&t.closest(
+                '#questWindow,#inventoryWindow,#questTab,#inventoryTab'
+            ));
+        }catch(_){}
+        if(!insideManagedTarget)collapseWindow();
     });
     if(tab)tab.addEventListener('transitionend',function(){syncTabVisibility();if(pagePaused)syncInput(false);publishInteractiveBounds()});
     if(itab)itab.addEventListener('transitionend',function(){syncTabVisibility();if(pagePaused)syncInput(false);publishInteractiveBounds()});
