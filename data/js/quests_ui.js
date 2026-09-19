@@ -478,7 +478,9 @@ function placeCursor(x,y){
 }
 
 function trackCursorFromEvent(e){
-    if(!pagePaused||(!inventoryOpen&&collapsed))return;
+    /* Курсор живёт во всём интерактивном режиме, включая свернутую закладку.
+       Не отключаем его только потому, что окно сейчас свернуто. */
+    if(!pagePaused)return;
     placeCursor(e.clientX,e.clientY);
 }
 
@@ -554,7 +556,10 @@ function applyCursorLayer(){
        её не рисует, она не будет дублировать нашу. */
     var app=$('questApp');
     if(app)app.style.cursor=pagePaused?'none':'';
-    var active=pagePaused&&(!collapsed||inventoryOpen);
+    /* Собственный курсор должен быть видимым и над закладкой, и над
+       развёрнутым окном, и над инвентарём. Раньше active зависел от collapsed,
+       из-за чего курсор принудительно скрывался именно в состоянии закладки. */
+    var active=pagePaused;
     /* Системная стрелка не является курсором квестов. ETS2 удерживает её
        возле центра; наличие этой стрелки поверх страницы даёт дрожание.
        Видимый курсор теперь только #cursorDot. */
@@ -831,14 +836,23 @@ function toggleInventory(){
 function applyState(data){
     if(!$('questApp'))return;model=data;
     var paused=data.paused===true,interactive=data.interactive===true;
-    if(interactive!==pagePaused)setQuestInteractiveVisible(interactive,false,false);
-    var stateKey=interactive+'|'+paused+'|'+(data.selectedInteraction||'')+'|'+(data.dialogue?'1':'0');
+    /* interactive из quest_state — пост-валидатор. Видимость UI меняется
+       только явной командой quest_pause_ui от приложения. */
+    var stateKey=interactive+'|'+paused+'|'+(data.selectedQuest||'')+'|'+(data.selectedInteraction||'')+'|'+(data.dialogue?'1':'0');
     if(stateKey!==qdLastQuestStateKey){qdLastQuestStateKey=stateKey;qdLog('WS-IN(8085) quest_state paused='+paused+' interactive='+interactive+' selected='+(data.selectedInteraction||''))}
     if(!interactive)return;
-    if(questDetailPinned){currentInteraction=''}
-    else if(data.selectedInteraction){currentQuest=data.selectedQuest||currentQuest;currentInteraction=data.selectedInteraction}
-    else if(data.selectedQuest){currentQuest=data.selectedQuest;currentInteraction=''}
+    if(questDetailPinned){
+        /* Локально открытая карточка квеста не должна заменяться backend-blank
+           состоянием: у карточки нет selectedInteraction по протоколу. */
+        currentInteraction='';
+    }else{
+        /* Backend selection теперь передаётся КАЖДЫМ quest_state, поэтому
+           можно безопасно считать его авторитетным состоянием выбора. */
+        currentQuest=data.selectedQuest||'';
+        currentInteraction=data.selectedInteraction||'';
+    }
     if(data.dialogue&&!questDetailPinned)renderDialogue(data.dialogue);
+    else if(!questDetailPinned&&!data.selectedQuest&&!data.selectedInteraction)clearDialogue();
     renderQuests();renderInventory();publishInteractiveBounds();
 }
 function connect(){try{ws=new WebSocket('ws://localhost:8085/');ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state')applyState(d);else if(d.command==='quest_error')showError(d.text)}catch(e){}};ws.onclose=function(){setTimeout(connect,1500)};ws.onerror=function(){try{ws.close()}catch(e){}}}catch(e){setTimeout(connect,1500)}}
