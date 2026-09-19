@@ -96,6 +96,10 @@ namespace ETS2_Assist_GUI
         public static bool Ar1SmoothCamera { get; set; } = true;
         public static double Ar1SmoothTau { get; set; } = 0.035;
 
+        // Одноразово возвращаем проверенное рабочее состояние v1.0.40.44:
+        // включено + 35 мс. После миграции пользовательский выбор снова сохраняется.
+        private const int Ar1SmoothingConfigRevision = 1;
+
         static AppSettings()
         {
             AppDataPaths.EnsureUserData();
@@ -147,9 +151,20 @@ namespace ETS2_Assist_GUI
                     // v1.0.40.50: сохранённый вид окна квестов (свёрнуто/развёрнуто).
                     QuestWindowCollapsed = settings.QuestWindowCollapsed;
                     // v1.0.40.44: плавность движения точек.
-                    Ar1SmoothCamera = settings.Ar1SmoothCamera;
-                    Ar1SmoothTau = settings.Ar1SmoothTau is >= 0.005 and <= 0.5
-                        ? settings.Ar1SmoothTau : 0.035;
+                    // Первый запуск после квестовой ветки принудительно возвращает
+                    // проверенную рабочую конфигурацию 35 мс; далее настройки пользователя
+                    // снова уважаются.
+                    if (settings.Ar1SmoothingConfigRevision < Ar1SmoothingConfigRevision)
+                    {
+                        Ar1SmoothCamera = true;
+                        Ar1SmoothTau = 0.035;
+                    }
+                    else
+                    {
+                        Ar1SmoothCamera = settings.Ar1SmoothCamera;
+                        Ar1SmoothTau = settings.Ar1SmoothTau is >= 0.005 and <= 0.5
+                            ? settings.Ar1SmoothTau : 0.035;
+                    }
                 }
                 ApplyExternalControlDefault();
             }
@@ -204,7 +219,8 @@ namespace ETS2_Assist_GUI
                     QuestWindowCollapsed = QuestWindowCollapsed,
                     // v1.0.40.44: плавность движения точек.
                     Ar1SmoothCamera = Ar1SmoothCamera,
-                    Ar1SmoothTau = Ar1SmoothTau
+                    Ar1SmoothTau = Ar1SmoothTau,
+                    Ar1SmoothingConfigRevision = Ar1SmoothingConfigRevision
                 };
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(SettingsFile, json);
@@ -249,6 +265,7 @@ namespace ETS2_Assist_GUI
             // v1.0.40.44: сглаживание позы камеры (плавность точек).
             public bool Ar1SmoothCamera { get; set; }
             public double Ar1SmoothTau { get; set; }
+            public int Ar1SmoothingConfigRevision { get; set; }
         }
     }
 }
