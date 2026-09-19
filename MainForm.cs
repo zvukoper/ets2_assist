@@ -128,6 +128,9 @@ namespace ETS2_Assist_GUI
         private Label indicatorWebOverlay = null!;
         private Label indicatorArduino = null!;
         private Label buildVersionLabel = null!;
+        // v1.0.40.68: вторая строка в правом нижнем углу — версия хоста оверлея
+        // (data\bin\WebOverlay.exe). Собирается один раз при старте.
+        private Label webOverlayVersionLabel = null!;
 
         private System.Windows.Forms.Timer statusTimer = null!;
 
@@ -320,6 +323,9 @@ namespace ETS2_Assist_GUI
             RefreshUI();
             // Старт: выставить галочку developer mode по config.cfg (без записи в файл).
             InitDevModeFromConfig();
+            // v1.0.40.68: версия хоста оверлея — в консоль и в окно формы (вторая
+            // строка под версией приложения). Только чтение метаданных exe.
+            try { CheckWebOverlayVersion(); } catch (Exception ex) { AppendLog($"[WEBOVERLAY] Ошибка проверки версии: {ex.Message}"); }
 
             try
             {
@@ -564,8 +570,96 @@ RegisterHotKeyChecked(
         private void PositionBuildLabel()
         {
             if (buildVersionLabel == null) return;
-            buildVersionLabel.Location = new Point(Math.Max(0, ClientSize.Width - buildVersionLabel.Width - 10), Math.Max(0, ClientSize.Height - buildVersionLabel.Height - 8));
+            const int bottomMargin = 6;                  // отступ нижней строки от края формы
+            const int lineGap = 2;                       // зазор между строками
+            const int rightMargin = 10;
+            int webOverlayTop = ClientSize.Height;       // строка WebOverlay — самая нижняя
+            if (webOverlayVersionLabel != null)
+            {
+                webOverlayTop = Math.Max(0, ClientSize.Height - webOverlayVersionLabel.Height - bottomMargin);
+                webOverlayVersionLabel.Location = new Point(
+                    Math.Max(0, ClientSize.Width - webOverlayVersionLabel.Width - rightMargin),
+                    webOverlayTop);
+            }
+            // Строка версии приложения — ровно над строкой WebOverlay, вплотную.
+            buildVersionLabel.Location = new Point(
+                Math.Max(0, ClientSize.Width - buildVersionLabel.Width - rightMargin),
+                Math.Max(0, webOverlayTop - buildVersionLabel.Height - lineGap));
             buildVersionLabel.BringToFront();
+            webOverlayVersionLabel?.BringToFront();
+        }
+
+        // ================================================================
+        // v1.0.40.68: ПРОВЕРКА ВЕРСИИ WEBOVERLAY ПРИ СТАРТЕ.
+        //
+        // Читаем версию файла data\bin\WebOverlay.exe (хост оверлея, собирается
+        // из соседнего репозитория ..\weboverlay в compile.ps1) и выводим её:
+        //   • в консоль формы (журнал app_workflow.log) — одной строкой `[WEBOVERLAY]`;
+        //   • в правый нижний угол окна, строкой ПОД версией приложения.
+        //
+        // Версия читается ТОЛЬКО из файла (FileVersionInfo), процесс не запускается.
+        // Ориентир для ручной сверки: AssemblyInformationalVersion = «1.0.40.67-RAW-INPUT-TEST».
+        // Раньше (v1.0.40.66) WebOverlay.exe имел AssemblyVersion/FileVersion = 1.0.0.0 —
+        // если такая версия снова появится, значит exe пересобран без версии в csproj.
+        // ================================================================
+        private void CheckWebOverlayVersion()
+        {
+            string overlayExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "bin", "WebOverlay.exe");
+            string overlayVersion;
+            string overlayDetail;
+
+            if (File.Exists(overlayExe))
+            {
+                try
+                {
+                    var vi = FileVersionInfo.GetVersionInfo(overlayExe);
+                    // ProductVersion несёт полную информационную строку (AssemblyInformationalVersion),
+                    // FileVersion — числовой A.B.C.D. У SDK-сборок ProductVersion заканчивается
+                    // «+<scm hash>» — для показа его отбрасываем.
+                    string fileVer = string.IsNullOrWhiteSpace(vi.FileVersion) ? "n/a" : vi.FileVersion!;
+                    string prodVer = string.IsNullOrWhiteSpace(vi.ProductVersion) ? "n/a" : vi.ProductVersion!;
+                    string display = prodVer;
+                    int plus = display.IndexOf('+');
+                    if (plus > 0) display = display.Substring(0, plus);
+
+                    overlayVersion = display == "n/a" ? "версия не указана" : display;
+                    overlayDetail =
+                        $"path={overlayExe}; fileVersion={fileVer}; informational={prodVer}; " +
+                        $"size={(new FileInfo(overlayExe)).Length} байт";
+                    // 1.0.0.x — признак сборки без версии в csproj (было в v1.0.40.66).
+                    if (fileVer.StartsWith("1.0.0.", StringComparison.Ordinal) ||
+                        prodVer.StartsWith("1.0.0", StringComparison.Ordinal))
+                    {
+                        LogConsoleWarn("[WEBOVERLAY] ВНИМАНИЕ: версия exe = 1.0.0.x — сборка без версии в csproj.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    overlayVersion = "ошибка чтения версии";
+                    overlayDetail = $"path={overlayExe}; ошибка: {ex.Message}";
+                    LogConsoleError($"[WEBOVERLAY] Не удалось прочитать версию: {ex.Message}");
+                }
+            }
+            else
+            {
+                overlayVersion = "НЕ НАЙДЕН";
+                overlayDetail = $"path={overlayExe}; файл отсутствует";
+                LogConsoleError($"[WEBOVERLAY] Файл не найден: {overlayExe}");
+            }
+
+            // Окно формы: вторая строка в правом нижнем углу.
+            if (webOverlayVersionLabel != null)
+            {
+                webOverlayVersionLabel.Text = $"WebOverlay: {overlayVersion}";
+                webOverlayVersionLabel.ForeColor = overlayVersion == "НЕ НАЙДЕН"
+                    ? Color.FromArgb(255, 90, 90)
+                    : Color.DarkGray;
+                PositionBuildLabel();
+            }
+
+            // Лог и окно формы.
+            AppendLog($"[WEBOVERLAY] Версия WebOverlay: {overlayVersion}");
+            AppendLog($"[WEBOVERLAY] {overlayDetail}");
         }
 
         // ================================================================
@@ -1363,10 +1457,24 @@ RegisterHotKeyChecked(
                 Location = new Point(this.ClientSize.Width - 210, this.ClientSize.Height - 25)
             };
 
+            // v1.0.40.68: ВТОРАЯ строка под версией приложения — версия WebOverlay.
+            // Значение подставляется в CheckWebOverlayVersion() при старте
+            // (только чтение версии exe, без запуска процесса).
+            webOverlayVersionLabel = new Label
+            {
+                Text = "WebOverlay: проверка...",
+                AutoSize = true,
+                Font = new Font("Consolas", 8.5f, FontStyle.Bold),
+                ForeColor = Color.DarkGray,
+                BackColor = Color.Transparent,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                Location = new Point(this.ClientSize.Width - 210, this.ClientSize.Height - 13)
+            };
+
                        this.Controls.AddRange(new Control[] {
                 btnStart, btnStop, btnRestartOverlay, btnMinimize, btnExit, btnRefreshTracks, btnRandomTarget,
                 btnRandomTarget2, btnRandomTarget3, btnRandomTarget4, btnCheckTargets, btnShowMap, btnShowHybrid, btnTestPause, btnResetRecordingOrigin, btnLaunchAR, btnAr2, chkAr2Grid, chkWebDebug,
-                logConsole, btnCollectLogs, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, mainMenu
+                logConsole, btnCollectLogs, listTracks, trackActionsPanel, indicatorsPanel, buildVersionLabel, webOverlayVersionLabel, mainMenu
             });
             PositionBuildLabel();
             ApplyDarkTheme();

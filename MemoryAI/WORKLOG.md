@@ -489,3 +489,47 @@ git show b34b75f:MemoryAI/WORKLOG.md > WORKLOG_full_until_17.09.26.md
   `temporary_logs_collect_button`.
 - **ПЕНДИНГ:** проверка пользователем — что кнопка не перекрывает нижнюю часть
   консоли/`BUILD`-бейдж и что все три источника реально копируются.
+
+---
+
+## 19.09.2026 — 1.0.40.68-WEBOVERLAY-VERSION-09.19-1154 — Версия WebOverlay второй строкой + лог при старте
+
+- **Задача:** в правом нижнем углу основной формы (там уже выводится `BUILD <версия
+  приложения>`) добавить высоты на одну строку и во ВТОРОЙ строке, ПОД версией
+  приложения, выводить версию WebOverlay. При запуске приложения проверять версию
+  WebOverlay и писать её в лог и в окно формы.
+- **РЕАЛИЗАЦИЯ (`MainForm.cs`):** новое поле `webOverlayVersionLabel` (Label,
+  `Consolas 8.5 Bold`, `DarkGray`, `AutoSize`, anchor `Bottom|Right`), создаётся
+  рядом с `buildVersionLabel` и добавлено в `Controls.AddRange`.
+  `PositionBuildLabel()` переписана на укладку СТРОК ОТ НИЗА ВВЕРХ: сначала
+  вычисляется верх WebOverlay-строки (`ClientSize.Height - h - 6`), затем строка
+  версии приложения ставится ровно над ней (`webOverlayTop - h - 2`); обе
+  вызывают `BringToFront()`. Так порядок строк не зависит от порядка добавления
+  контролов и не даёт наложения.
+- **`CheckWebOverlayVersion()`** (вызывается в конструкторе сразу после
+  `InitDevModeFromConfig()`, обёрнута в try/catch): читает
+  `<BaseDirectory>\data\bin\WebOverlay.exe` через `FileVersionInfo` — **процесс НЕ
+  запускается**. В окно идёт `ProductVersion` (= `AssemblyInformationalVersion`)
+  с отрезанным суффиксом `+<scm hash>`, т.к. `FileVersion` у SDK-сборки — только
+  числовая часть `1.0.40.67` и теряет описательный суффикс.
+- **ВЫВОД:** в окно — `WebOverlay: 1.0.40.67` (красный `WebOverlay: НЕ НАЙДЕН`,
+  если файла нет); в `Logs\app_workflow.log` и консоль — две строки:
+  `[WEBOVERLAY] Версия WebOverlay: 1.0.40.67` и
+  `[WEBOVERLAY] path=…; fileVersion=1.0.40.67; informational=1.0.40.67+e1f0deb…; size=174130674 байт`.
+  Если версия начинается с `1.0.0` — оранжевое предупреждение «сборка без версии
+  в csproj» (именно так было в v1.0.40.66: `assemblyVersion=1.0.0.0`).
+- **ПРОВЕРЕНО:** `compile.ps1` as-is, 0 ошибок; publish delivery OK (422 файла
+  hashed); WebView2 cache cleared; `MemoryAI\LOGS` чист. Лог старта новой сборки
+  подтверждён: `BUILD_VERSION=1.0.40.68-WEBOVERLAY-VERSION-09.19-1152` +
+  обе строки `[WEBOVERLAY]` (WebOverlay = `1.0.40.67`). Версии приложения
+  синхронизированы: exe = `build.txt` = `manifest` = `1.0.40.68-WEBOVERLAY-VERSION`.
+- **Изменённые файлы:** `MainForm.cs`, `ETS2_Assist_GUI.csproj` (`VersionIter` 68,
+  `VersionDesc=WEBOVERLAY-VERSION`), `BuildInfo.cs`, `АРХИТЕКТУРА ПРОЕКТА.md`,
+  `data/ets2_assist_build.txt`, `data/web_runtime_manifest.json`.
+- **ЗАМЕЧАНИЕ:** `compile.ps1` уже собирает соседний `..\weboverlay` и печатает
+  `WebOverlay delivered: version=1.0.40.67+e1f0deb…` — теперь это же значение
+  видно из приложения, сверять вручную не нужно. Строку версии задаёт
+  `F:\repo\weboverlay\WebOverlay.csproj` (`AssemblyInformationalVersion` =
+  `1.0.40.67-RAW-INPUT-TEST`) — она в СВОЁМ репозитории.
+- **ПЕНДИНГ:** визуальная проверка пользователем — что две строки в правом нижнем
+  углу не накладываются и не перекрываются нижним краем окна.
