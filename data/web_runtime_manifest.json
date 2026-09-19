@@ -6,7 +6,7 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build":  "1.0.40.79-CURSOR-CAL-TAB-QUEST-R9",
+    "build":  "1.0.40.80-CURSOR-CAL-TAB-QUEST-R10",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }
