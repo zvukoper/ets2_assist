@@ -497,6 +497,13 @@ namespace ETS2_Assist_GUI.Quests
             }
             ForceArRebuild();
             BroadcastState(true, option.Close ? null : questId, option.Close ? null : interactionId, option.Close ? null : option.Next);
+            try
+            {
+                _host.PushQuestStateToOverlay(
+                    BuildStatePayload(option.Close ? null : questId, option.Close ? null : interactionId, option.Close ? null : option.Next),
+                    "dialog-option");
+            }
+            catch { }
         }
 
         private void ApplyEffects(QuestDefinition def, IEnumerable<QuestEffect> effects)
@@ -729,6 +736,10 @@ namespace ETS2_Assist_GUI.Quests
                 _activeDialogue.Clear();
             }
             BroadcastState(true);
+            if (visible)
+            {
+                try { _host.PushQuestStateToOverlay(BuildStatePayload(), "interactive-visible"); } catch { }
+            }
         }
         private void BroadcastState(bool force,string? selectedQuest=null,string? selectedInteraction=null,string? explicitDialogue=null)
         {
