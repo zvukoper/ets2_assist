@@ -374,14 +374,32 @@ var cursorEl=null,cursorTimer=null,cursorShown=false,cursorSystemReleased=false,
 function isCursorOnUiBlock(x,y){
     if(!pagePaused)return false;
     try{
-        var el=document.elementFromPoint(x,y);
-        if(!el)return false;
-        var block=el.closest&&el.closest(
-            '#questSidebar,#eventPanel,#responsePanel,#imagePanel,#servicePanel,'+
-            '#inventoryWindow,#questTab,#inventoryTab,.panelInner,'+
-            'button,.archiveToggle,.questItem,.sideItem,.inventoryItem'
-        );
-        return !!block;
+        /* Проверяем ВЕСЬ бокс изображения курсора, а не только его верхнюю точку.
+           Координаты курсора — client X/Y, поэтому DOMRect уже в той же системе. */
+        var cursorRect={
+            left:Number(x)||0,
+            top:Number(y)||0,
+            right:(Number(x)||0)+27,
+            bottom:(Number(y)||0)+44
+        };
+        var selectors=[
+            '#questSidebar','#eventPanel','#responsePanel','#imagePanel','#servicePanel',
+            '#inventoryWindow','#questTab','#inventoryTab',
+            '.panelInner','.archiveToggle','.questItem','.sideItem','.inventoryItem',
+            '.dialogOption'
+        ];
+        var nodes=document.querySelectorAll(selectors.join(','));
+        for(var i=0;i<nodes.length;i++){
+            var node=nodes[i];
+            if(!node)continue;
+            var cs=window.getComputedStyle(node);
+            if(cs.display==='none'||cs.visibility==='hidden')continue;
+            var rect=node.getBoundingClientRect();
+            if(rect.width<=0||rect.height<=0)continue;
+            if(cursorRect.left<rect.right&&cursorRect.right>rect.left&&
+               cursorRect.top<rect.bottom&&cursorRect.bottom>rect.top)return true;
+        }
+        return false;
     }catch(e){return false}
 }
 function cancelCursorHideTimer(){
@@ -658,8 +676,16 @@ function syncTabVisibility(){
         it.classList.remove('active');
     }
 }
+function playInterfaceMotion(el,entering){
+    if(!el)return;
+    el.classList.remove('interfaceMotionEnter','interfaceMotionExit');
+    void el.offsetWidth;
+    el.classList.add(entering?'interfaceMotionEnter':'interfaceMotionExit');
+}
+
 function syncInterfaceState(name,notify,report){
     if(name!=='quest'&&name!=='inventory')name='none';
+    var previousInterface=activeInterface;
     activeInterface=name;
     inventoryOpen=name==='inventory';
     collapsed=name!=='quest';
@@ -667,10 +693,18 @@ function syncInterfaceState(name,notify,report){
 
     var qw=$('questWindow'),iw=$('inventoryWindow');
     if(qw){
-        qw.classList.toggle('collapsed',name!=='quest');
-        qw.classList.toggle('interfaceActive',name==='quest');
+        var questWasActive=previousInterface==='quest';
+        var questNowActive=name==='quest';
+        qw.classList.toggle('collapsed',!questNowActive);
+        qw.classList.toggle('interfaceActive',questNowActive);
+        if(questWasActive!==questNowActive)playInterfaceMotion(qw,questNowActive);
     }
-    if(iw)iw.classList.toggle('interfaceActive',name==='inventory');
+    if(iw){
+        var inventoryWasActive=previousInterface==='inventory';
+        var inventoryNowActive=name==='inventory';
+        iw.classList.toggle('interfaceActive',inventoryNowActive);
+        if(inventoryWasActive!==inventoryNowActive)playInterfaceMotion(iw,inventoryNowActive);
+    }
 
     // При открытии уезжает только собственная закладка.
     if(name==='quest'){
@@ -866,10 +900,19 @@ function setQuestInteractiveVisible(visible,ready,pulse){
     var app=$('questApp');if(app)app.classList.toggle('interactiveVisible',pagePaused);
     if(!pagePaused){
         archiveVisible=false;currentQuest='';currentInteraction='';questDetailPinned=false;
-        activeInterface='none';inventoryOpen=false;collapsed=true;
         clearDialogue();stopCursorTrack('interactive-hidden');
+
+        /* Всё, что уже было показано в паузе, обязано исчезнуть.
+           Маяки, накопленные ВО ВРЕМЯ паузы, сохраняем и запускаем
+           только после очистки старого состояния. */
+        var deferredQuestBeacon=pendingQuestBeacon;
+        var deferredInventoryBeacon=pendingInventoryBeacon;
+        clearBookmarkBeacon('quest');
+        clearBookmarkBeacon('inventory');
+
         syncInterfaceState('none',false,false);
-        flushPendingBookmarkBeacons();
+        if(deferredQuestBeacon)startBookmarkBeacon('quest');
+        if(deferredInventoryBeacon)startBookmarkBeacon('inventory');
     }else{
         syncInterfaceState('none',false,false);
         setTabPulse(pulse===true);
