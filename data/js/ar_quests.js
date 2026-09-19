@@ -310,7 +310,7 @@
             // v1.0.40.54: та же техника, что и для точек AR1 — экстраполяция цели
             // + экспоненциальный фильтр. Сначала пробуем готовую сглаженную позу
             // ar_hud.js (оба слоя смотрят из ОДНОЙ точки), иначе считаем сами.
-            var camPos=smoothView() || smoothQuestCamera(performance.now());
+            var camPos=smoothQuestCamera(performance.now());
             var vp=viewPos(camPos);
             var vpx=vp.x, vpy=vp.y, vpz=vp.z;   // скаляры: не держим ссылку на общий буфер
             var eyeH=eyeHeightAboveGroundAt(vpx,vpy,vpz);
@@ -344,7 +344,7 @@
     function connectQuest(){
         try{
             ws=new WebSocket('ws://localhost:8085/');
-            ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state'){questState=d;applyPauseFade(d.paused===true);}}catch(e){}};
+            ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state'){questState=d;applyPauseFade(d.interactive===true);}}catch(e){}};
             ws.onclose=function(){setTimeout(connectQuest,1500)};
             ws.onerror=function(){try{ws.close()}catch(e){}};
         }catch(e){setTimeout(connectQuest,1500)}
