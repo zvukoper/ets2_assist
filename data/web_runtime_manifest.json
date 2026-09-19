@@ -6,7 +6,7 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build":  "1.0.40.83-ESC-SAFEZONE-QUEST-R13",
+    "build":  "1.0.40.84-PAUSE-CURSOR-SMOOTH-R14",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }
