@@ -38,7 +38,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){retur
 var qdEvents=[],qdEventsMax=400;
 var qdCounters={mouseMove:0,mouseDown:0,mouseUp:0,click:0,place:0,posts:0,wsOut:0,cursorStart:0,cursorStop:0,hostMessages:0,nativeMessages:0,nativeIgnored:0,nativeClicks:0};
 var qdLastMove={x:null,y:null,target:'',at:0};
-var qdLastPlace={x:null,y:null,shown:false};
+var qdLastPlace={x:null,y:null,shown:false,hostX:null,hostY:null};
 var qdLastState={paused:null,collapsed:null};
 var qdMouseLog={lastAt:0,lastX:null,lastY:null};
 var qdPlaceLogAt=0,qdMouseBound=false,qdTracking=false,qdLastQuestStateKey='';
@@ -118,6 +118,9 @@ window.__questDiag={
         paused:pagePaused,collapsed:collapsed,
         cursorDotShown:!!(cursorEl&&cursorEl.style.display==='block'),
         cursorDotX:qdLastPlace.x===null?-1:qdLastPlace.x,cursorDotY:qdLastPlace.y===null?-1:qdLastPlace.y,
+        hostCursorX:qdLastPlace.hostX===undefined?-1:qdLastPlace.hostX,
+        hostCursorY:qdLastPlace.hostY===undefined?-1:qdLastPlace.hostY,
+        softCursorMessages:softCursorMessages,
         cursorElExists:!!(cursorEl||$('cursorDot'))
     }},
     state:function(){return{paused:pagePaused,collapsed:collapsed}}
@@ -274,6 +277,7 @@ function dispatchNativeMouse(msg){
     }
 }
 var rawInputDiagEl=null;
+var softCursorMessages=0;
 function rawInputFmt(value){
     var n=Number(value);
     if(!Number.isFinite(n))return '?';
@@ -309,6 +313,10 @@ function bindQuestNativeInput(){
             }
             if(!msg||msg.source!=='quest-native-input')return;
             qdCounters.nativeMessages++;
+            softCursorMessages++;
+            if(msg.type==='mousemove' && Number.isFinite(Number(msg.x)) && Number.isFinite(Number(msg.y))){
+                qdLastPlace.hostX=Number(msg.x);qdLastPlace.hostY=Number(msg.y);
+            }
             dispatchNativeMouse(msg);
             var now=Date.now();
             if(qdCounters.nativeMessages<=8||now-qnLastHostLogAt>=500){
@@ -325,7 +333,7 @@ function bindQuestNativeInput(){
 bindQuestNativeInput();
 
 /* ================================================================ КУРСОР
- * v1.0.40.61: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ.
+ * v1.0.40.71: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ.
  *
  * ETS2 прячет системный курсор и рисует свой прямо в ИГРОВОЙ КАДР. Игровой кадр
  * лежит НИЖЕ окна оверлея, поэтому стрелка игры видна и двигается «под окном»:
@@ -335,8 +343,9 @@ bindQuestNativeInput();
  * Поэтому стрелку рисуем САМИ, внутри страницы: #cursorDot — обычный SVG,
  * позиционируемый по координатам мыши. Он часть нашей разметки, значит всегда
  * выше и игрового кадра, и любого системного курсора.
- * Позиция берётся из события движения мыши (окно оверлея мышь принимает, пока
- * окно развёрнуто), плюс опрос на случай, если событие не пришло.
+ * v1.0.40.71: источник координат больше не DOM-mousemove. Скрытый WebOverlay
+ * Raw Input sink публикует фактическую client-позицию через тот же
+ * quest-native-input bridge; DOM-события остаются допустимым резервным входом.
  * ================================================================ */
 var cursorEl=null,cursorTimer=null,cursorShown=false;
 
@@ -368,10 +377,10 @@ function startCursorTrack(){
         qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
     }
     if(!cursorEl)return;
-    /* One-time visual initialization only. Native mousemove becomes the sole
-       source of truth afterwards; there is deliberately NO timer that can snap
-       the page cursor back to the center. */
-    if(!cursorShown)placeCursor(window.innerWidth/2,window.innerHeight/2);
+    /* v1.0.40.71: no synthetic center position.
+       The hidden WebOverlay Raw Input sink owns the physical-mouse bridge and
+       sends the current client position as quest-native-input. The first packet
+       is initialized from GetCursorPos when the window becomes active. */
 }
 
 function stopCursorTrack(reason){
