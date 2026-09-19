@@ -12,6 +12,15 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 
 /* The page itself fades; the quest panel also slides out when collapsed. */
 #questApp{position:fixed;inset:0;visibility:visible;opacity:1;pointer-events:none;transition:opacity 150ms ease;z-index:100}
+#miniLogo{
+    position:absolute;left:10px;top:1px;width:84px;height:83px;
+    z-index:20;pointer-events:none;overflow:hidden;
+    opacity:0;
+    transition:opacity 150ms ease;
+}
+html.ets2-cat-interactive #miniLogo{visibility:visible!important;opacity:1!important}
+html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
+[data-category~="game"]{transition:opacity 150ms ease}
 #questApp.interactiveVisible{visibility:visible;opacity:1;pointer-events:none}
 
 /* Pixel design space: all supplied measurements are from a 1920x1080 mockup.
@@ -25,10 +34,6 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 }
 
 /* === supplied 1920x1080 geometry === */
-#miniLogo{
-    position:absolute;left:10px;top:1px;width:84px;height:83px;
-    z-index:20;pointer-events:none;overflow:hidden;
-}
 #miniLogo img{display:block;width:84px;height:83px;object-fit:contain}
 #miniLogoVersion{display:none}
 
@@ -161,16 +166,16 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     border-radius:0 7px 7px 0;
     color:#ffd45a;font:700 14px/1 'Segoe UI',Arial,sans-serif;
     letter-spacing:1px;cursor:pointer;box-sizing:content-box;
-    opacity:1;pointer-events:none;z-index:40;
+    opacity:0;pointer-events:none;z-index:40;
     transform:translate(-115%,-50%);
-    transition:transform 320ms cubic-bezier(.22,.8,.2,1);
+    transition:transform 220ms ease,opacity 150ms ease;
     will-change:transform;
 }
 #questTab{top:50%}
 #inventoryTab{top:calc(50% + 149px)}
 #questTab.visible,#inventoryTab.visible{
     transform:translate(0,-50%);opacity:1;pointer-events:none;
-    transition:transform 220ms ease;
+    transition:transform 220ms ease,opacity 150ms ease;
 }
 #questTab.visible.interactive,#inventoryTab.visible.interactive{pointer-events:auto}
 #questTab.active,#inventoryTab.active{
