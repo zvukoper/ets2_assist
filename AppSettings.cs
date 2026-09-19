@@ -158,6 +158,7 @@ namespace ETS2_Assist_GUI
                     {
                         Ar1SmoothCamera = true;
                         Ar1SmoothTau = 0.035;
+                        Save();
                     }
                     else
                     {
