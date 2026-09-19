@@ -13,7 +13,7 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>40</VersionSet>
-    <VersionIter>82</VersionIter>
+    <VersionIter>83</VersionIter>
     <VersionDesc>ESC-SAFEZONE-QUEST-R12</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
