@@ -9,6 +9,24 @@ let minimapAutoOff = false;   // true = ручной тоггл выключил
 let minimapAlwaysOn = false;  // тоггл «Показать карту»: true = карта ВСЕГДА видна (hide игнорируется)
 let minimapShownOnce = false; // первый показ с анимацией — только один раз
 
+// Категория — источник истины для видимости миникарты.
+// Отдельный WS мог подключиться уже после broadcast minimap_show/minimap_hide,
+// поэтому текущая категория всегда восстанавливает видимость.
+window.onEts2Category = function(category) {
+    if (category === 'game') {
+        if (!minimapShownOnce) {
+            showUIWithAnimation();
+            minimapShownOnce = true;
+        } else {
+            showUIFast();
+        }
+    } else {
+        minimapAlwaysOn = false;
+        minimapAutoOff = true;
+        hideUIFast();
+    }
+};
+
 function connectSaveWebSocket() {
     try {
         saveWs = new WebSocket('ws://localhost:8084/');
