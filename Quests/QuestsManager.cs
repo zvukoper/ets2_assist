@@ -295,6 +295,19 @@ namespace ETS2_Assist_GUI
 
             switch (command)
             {
+                case "quest_state_request":
+                case "quest_select_interaction":
+                case "quest_dialog_option":
+                case "inventory_item_seen":
+                    try
+                    {
+                        Quests.QuestRuntime.Current?.HandleSharedChannelCommand(data);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendLog($"[QUEST][WS8084] command forwarding error: {ex.Message}");
+                    }
+                    break;
                 case "ar_view_request":
                     // v1.0.40.40: страница AR1 запрашивает настройки вида (сетка/оси/
                     // горизонты/радиус) при подключении — приложение их владелец.
