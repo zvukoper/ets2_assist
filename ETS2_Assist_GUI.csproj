@@ -13,8 +13,8 @@
     <VersionMajor>1</VersionMajor>
     <VersionStage>0</VersionStage>
     <VersionSet>40</VersionSet>
-    <VersionIter>76</VersionIter>
-    <VersionDesc>SOFT-CURSOR-R6</VersionDesc>
+    <VersionIter>77</VersionIter>
+    <VersionDesc>SOFT-CURSOR-R7</VersionDesc>
     <BuildDate>$([System.DateTime]::Now.ToString('MM.dd'))</BuildDate>
     <BuildTime>$([System.DateTime]::Now.ToString('Hmm'))</BuildTime>
     <DescriptiveVersion>$(VersionMajor).$(VersionStage).$(VersionSet).$(VersionIter)-$(VersionDesc)-$(BuildDate)-$(BuildTime)</DescriptiveVersion>
