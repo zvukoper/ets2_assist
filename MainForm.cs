@@ -3698,14 +3698,12 @@ RegisterHotKeyChecked(
 
                 string urlMain = "http://localhost:8082/web_ui_hybrid.html";
                 string urlPda = "http://localhost:8082/web_pda_map.html";
-                string urlPauseLogo = "http://localhost:8082/web_pause_logo.html";
                 string urlQuests = "http://localhost:8082/web_quests.html";
                 string urlNotifications = "http://localhost:8082/web_notifications.html";
                 string urlHeights = "http://localhost:8082/web_heights.html";
 
                 Process.Start(overlayExe, urlMain); Thread.Sleep(500);
                 Process.Start(overlayExe, $"append {urlPda}"); Thread.Sleep(200);
-                Process.Start(overlayExe, $"append {urlPauseLogo}"); Thread.Sleep(200);
                 Process.Start(overlayExe, $"append {urlQuests}"); Thread.Sleep(200);
                 Process.Start(overlayExe, $"append {urlNotifications}"); Thread.Sleep(200);
                 AppendLog("[OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.");
