@@ -390,6 +390,7 @@ namespace ETS2_Assist_GUI.Quests
                 case "quest_select_interaction": BeginInvokeUi(() => SelectInteraction(data["questId"]?.Value<string>() ?? "", data["id"]?.Value<string>() ?? "")); break;
                 case "quest_window_state": BeginInvokeUi(() => _host.OnQuestWindowCollapsedChanged(data["collapsed"]?.Value<bool>() ?? false)); break;
                 case "quest_dialog_option": BeginInvokeUi(() => ApplyDialogOption(data["questId"]?.Value<string>() ?? "", data["interaction"]?.Value<string>() ?? "", data["index"]?.Value<int>() ?? -1)); break;
+                case "inventory_item_seen": BeginInvokeUi(() => MarkInventoryItemSeen(data["id"]?.Value<string>() ?? "")); break;
                 case "quest_editor_point_save": BeginInvokeUi(() => SaveEditorPoint(data)); break;
                 case "quest_reset": BeginInvokeUi(() => { _store.ResetQuest(data["id"]?.Value<string>() ?? "special_marinated_shashlik", true); _inside.Clear(); _activeDialogue.Clear(); _nearby.Clear(); ForceArRebuild(); BroadcastState(true); }); break;
             }
@@ -496,7 +497,7 @@ namespace ETS2_Assist_GUI.Quests
                     if (status == QuestStatus.Available && old == QuestStatus.Active) { progress.ReturnOffer = true; progress.Flags["returnOffer"] = true; }
                 }
                 if (!string.IsNullOrWhiteSpace(effect.SetStep)) progress.Step = effect.SetStep;
-                if (!string.IsNullOrWhiteSpace(effect.Item)) { if (effect.AddItem != 0) AddAmount(_store.State.Inventory, effect.Item, effect.AddItem); if (effect.RemoveItem != 0) AddAmount(_store.State.Inventory, effect.Item, -effect.RemoveItem); }
+                if (!string.IsNullOrWhiteSpace(effect.Item)) { if (effect.AddItem != 0) AddInventoryAmount(effect.Item, effect.AddItem); if (effect.RemoveItem != 0) AddInventoryAmount(effect.Item, -effect.RemoveItem); }
                 if (!string.IsNullOrWhiteSpace(effect.Reputation) && effect.AddReputation != 0) AddAmount(_store.State.Reputation, effect.Reputation, effect.AddReputation);
                 if (!string.IsNullOrWhiteSpace(effect.Stat) && effect.AddStat != 0) AddAmount(_store.State.Stats, effect.Stat, effect.AddStat);
                 if (!string.IsNullOrWhiteSpace(effect.Flag)) { progress.Flags[effect.Flag] = effect.SetFlag ?? false; if (effect.Flag.Equals("returnOffer", StringComparison.OrdinalIgnoreCase)) progress.ReturnOffer = effect.SetFlag ?? false; }
@@ -524,7 +525,7 @@ namespace ETS2_Assist_GUI.Quests
             {
                 if (reward.Type.Equals("item", StringComparison.OrdinalIgnoreCase))
                 {
-                    AddAmount(_store.State.Inventory, reward.Id, reward.Amount);
+                    AddInventoryAmount(reward.Id, reward.Amount);
                     rewardItems.Add(new JObject { ["display"]=reward.Display, ["amount"]=reward.Amount, ["color"]=reward.Color ?? "" });
                 }
                 else if (reward.Type.Equals("reputation", StringComparison.OrdinalIgnoreCase)) { AddAmount(_store.State.Reputation, reward.Id, reward.Amount); repLines.Add($"{reward.Id}: +{reward.Amount}"); }
@@ -583,7 +584,8 @@ namespace ETS2_Assist_GUI.Quests
                 {
                     ["id"] = item.Key,
                     ["name"] = DisplayItemName(item.Key),
-                    ["amount"] = item.Value
+                    ["amount"] = item.Value,
+                    ["new_item"] = _store.State.NewItems.TryGetValue(item.Key, out bool isNew) && isNew
                 });
             }
 
@@ -754,6 +756,22 @@ namespace ETS2_Assist_GUI.Quests
         private int ActivationCount(string id)=>_store.State.ActivationCounts.TryGetValue(id,out int value)?value:0;
         private static int Amount(Dictionary<string,int> dict,string id)=>dict.TryGetValue(id,out int v)?v:0;
         private static void AddAmount(Dictionary<string,int> dict,string id,int delta){int value=Amount(dict,id)+delta;if(value<=0)dict.Remove(id);else dict[id]=value;}
+        private void AddInventoryAmount(string id,int delta)
+        {
+            if(string.IsNullOrWhiteSpace(id)||delta==0)return;
+            AddAmount(_store.State.Inventory,id,delta);
+            if(delta>0) _store.State.NewItems[id]=true;
+            else if(!_store.State.Inventory.ContainsKey(id)) _store.State.NewItems.Remove(id);
+        }
+        private void MarkInventoryItemSeen(string id)
+        {
+            id=id?.Trim()??"";
+            if(string.IsNullOrWhiteSpace(id))return;
+            if(!_store.State.Inventory.ContainsKey(id))return;
+            if(!_store.State.NewItems.Remove(id))return;
+            _store.SaveState();
+            BroadcastState(true);
+        }
         private static double DistanceSquared(double x,double y,double z,double tx,double ty,double tz){double dx=x-tx,dy=y-ty,dz=z-tz;return dx*dx+dy*dy+dz*dz;}
         private void BeginInvokeUi(Action action){try{if(_host.IsDisposed)return;if(_host.InvokeRequired)_host.BeginInvoke(action);else action();}catch{}}
         public void Dispose(){if(_disposed)return;_disposed=true;try{_tickTimer?.Dispose();}catch{}try{_server?.Stop();}catch{} _server=null;try{TruckTelemetry.Stop();}catch{}}
