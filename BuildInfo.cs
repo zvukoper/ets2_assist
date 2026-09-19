@@ -19,7 +19,7 @@ namespace ETS2_Assist_GUI
                         return attr.InformationalVersion;
                 }
                 catch { }
-                return "1.0.40.69-WEBOVERLAY-VERSION";
+                return "1.0.40.70-RAW-INPUT-TEST-R5";
             }
         }
     }
