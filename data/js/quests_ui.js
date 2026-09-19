@@ -476,68 +476,6 @@ function stopCursorTrack(reason){
     if(cursorEl){cursorEl.style.display='none';cursorEl.style.opacity='0';cursorShown=false}
 }
 
-function placeCursor(x,y){
-    cursorEl=cursorEl||$('cursorDot');   // резолвим лениво: place может вызваться первым
-    if(!cursorEl)return;
-
-    cursorEl.style.transform='translate('+x+'px,'+y+'px)';
-    var alpha=cursorSurfaceAlpha(x,y);
-    if(alpha>0.01)cursorLastVisibleAlpha=alpha;
-    /* При alpha=0 в прозрачном месте курсор оставляем на последней позиции.
-       Полное скрытие выполняется только при закрытии интерактивного shell. */
-    var shownAlpha=alpha>0.01?alpha:Math.max(.18,Math.min(.9,cursorLastVisibleAlpha));
-    cursorEl.style.opacity=String(shownAlpha);
-    if(!cursorShown){cursorShown=true;cursorEl.style.display='block'}
-
-    /* ДИАГНОСТИКА: первые 5 вызовов, затем не чаще 2-3 раз в секунду. */
-    qdCounters.place++;
-    qdLastPlace.x=x;qdLastPlace.y=y;qdLastPlace.shown=!!(cursorEl&&cursorEl.style.display==='block');
-    var now=Date.now();
-    if(qdCounters.place<=5||now-qdPlaceLogAt>=400){
-        qdPlaceLogAt=now;
-        qdLog('[CURSOR-PLACE] x='+x+' y='+y+' alpha='+alpha.toFixed(3)+' shown='+qdLastPlace.shown+' placeCount='+qdCounters.place);
-    }
-}
-
-function trackCursorFromEvent(e){
-    /* Курсор живёт во всём интерактивном режиме, включая свернутую закладку.
-       Не отключаем его только потому, что окно сейчас свернуто. */
-    if(!pagePaused)return;
-    placeCursor(e.clientX,e.clientY);
-}
-
-function startCursorTrack(){
-    cursorEl=cursorEl||$('cursorDot');
-    qdCounters.cursorStart++;
-    if(!qdTracking){
-        qdTracking=true;
-        qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
-    }
-    if(!cursorEl)return;
-    /* v1.0.40.79: the visual cursor starts at the same corner as the host-side
-       physical cursor. The first Raw Input packet may arrive a little later,
-       so initialize immediately instead of briefly showing the old position. */
-    placeCursor(0,0);
-    /* Host synchronizes the physical cursor to client=(0,0).
-       The hidden WebOverlay Raw Input sink owns the physical-mouse bridge and
-       sends the current client position as quest-native-input. The first packet
-       is initialized from GetCursorPos when the window becomes active. */
-}
-
-function stopCursorTrack(reason){
-    qdCounters.cursorStop++;
-    if(qdTracking){
-        qdTracking=false;
-        qdLog('[CURSOR] stop reason='+(reason||'unspecified')+' cursorElementExists='+!!cursorEl+' stopCount='+qdCounters.cursorStop);
-    }
-    window.removeEventListener('mousemove',trackCursorFromEvent);
-    window.removeEventListener('mouseover',trackCursorFromEvent);
-    if(cursorTimer){clearInterval(cursorTimer);cursorTimer=null}
-    qnSetHoverTarget(null);
-    qnPressedTarget=null;
-    if(cursorEl){cursorEl.style.display='none';cursorEl.style.opacity='0';cursorShown=false;cursorLastVisibleAlpha=.72}
-}
-
 /* Диагностика курсора из консоли страницы (аналог debugShow для этой части):
    window.__questCursor.place(300,200) — поставить стрелку принудительно. */
 window.__questCursor={
