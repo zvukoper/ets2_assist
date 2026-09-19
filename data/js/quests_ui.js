@@ -1107,6 +1107,7 @@ document.addEventListener('DOMContentLoaded',function(){
     setTabPulse(false);
     setQuestInteractiveVisible(false,false,false);
     connect();
+    setTimeout(function(){send({command:'quest_state_request'})},250);
     /* Первый отчёт о геометрии input-окна (initial render). */
     publishInteractiveBounds();
     setInterval(publishInteractiveBounds,1000);
