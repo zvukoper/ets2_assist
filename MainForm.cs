@@ -189,6 +189,48 @@ namespace ETS2_Assist_GUI
         // иначе он был бы перехвачен глобально во всех приложениях.
         private const int HOTKEY_QUEST_TOGGLE = 9022;
         private bool _questToggleHotkeyRegistered;
+        // v1.0.40.79: запасной/основной TAB-путь через WH_KEYBOARD_LL.
+        // RegisterHotKey у некоторых конфигураций окна/оверлея может не доходить
+        // до WndProc, хотя старый TAB работал. Low-level hook видит физический
+        // TAB до передачи его активному приложению и активен ТОЛЬКО пока показана
+        // интерактивная категория квестов.
+        private IntPtr _questTabKeyboardHook = IntPtr.Zero;
+        private LowLevelKeyboardProc? _questTabKeyboardProc;
+        private int _questTabHookEnabled;
+        private bool _questTabHookKeyDown;
+        private const int WH_KEYBOARD_LL = 13;
+        private const int HC_ACTION = 0;
+        private const int WM_KEYDOWN = 0x0100;
+        private const int WM_KEYUP = 0x0101;
+        private const int WM_SYSKEYDOWN = 0x0104;
+        private const int WM_SYSKEYUP = 0x0105;
+        private const int LLKHF_UP = 0x0080;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KBDLLHOOKSTRUCT
+        {
+            public uint vkCode;
+            public uint scanCode;
+            public uint flags;
+            public uint time;
+            public UIntPtr dwExtraInfo;
+        }
+
+        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr GetModuleHandle(string? lpModuleName);
+
         // v1.0.40.18: камера редактора при телепорте (Ctrl+Shift+T) ставится С ЮГА от цели,
         // на 7 м дальше и на 5 м выше точки, чтобы объект оставался в поле зрения.
         internal const double EditorCamDistanceM = 7.0;   // дистанция от цели (по оси Z, юг)
@@ -399,6 +441,8 @@ RegisterHotKeyChecked(
             {
                 ApplyStartupMonitorPreference();
                 EnsureStartupForeground();
+                // v1.0.40.79: гарантируем наличие low-level TAB hook после создания HWND.
+                try { InstallQuestTabKeyboardHookIfNeeded(); } catch { }
             };
             _ = Task.Run(WaitForInstanceSignal);
             _ = Task.Run(WaitForStartSignal);
@@ -436,30 +480,135 @@ RegisterHotKeyChecked(
         /// </summary>
         private void SetQuestToggleHotkeyActive(bool active)
         {
-            if (!active || !hotKeyRegistered || IsDisposed || !IsHandleCreated)
+            Volatile.Write(ref _questTabHookEnabled, active ? 1 : 0);
+            if (!active)
             {
-                if (!_questToggleHotkeyRegistered) return;
-                try { UnregisterHotKey(this.Handle, HOTKEY_QUEST_TOGGLE); } catch { }
-                _questToggleHotkeyRegistered = false;
+                _questTabHookKeyDown = false;
                 return;
             }
 
-            if (_questToggleHotkeyRegistered) return;
+            if (_questTabKeyboardHook != IntPtr.Zero) return;
+
             try
             {
-                // MOD_NOREPEAT: удержание TAB не должно переключать окно повторно.
-                bool ok = RegisterHotKey(this.Handle, HOTKEY_QUEST_TOGGLE, MOD_NOREPEAT, (uint)Keys.Tab);
-                _questToggleHotkeyRegistered = ok;
-                if (!ok)
+                _questTabKeyboardProc ??= QuestTabKeyboardHookCallback;
+                _questTabKeyboardHook = SetWindowsHookEx(
+                    WH_KEYBOARD_LL,
+                    _questTabKeyboardProc,
+                    GetModuleHandle(null),
+                    0);
+
+                if (_questTabKeyboardHook == IntPtr.Zero)
                 {
-                    int err = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
-                    AppendLog($"[HOTKEY] Не удалось зарегистрировать Tab (переключение окна квестов) — код {err}");
+                    int err = Marshal.GetLastWin32Error();
+                    AppendLog($"[HOTKEY] Не удалось установить low-level TAB hook — код {err}");
+                }
+                else
+                {
+                    AppendLog("[HOTKEY] TAB hook активирован для окна квестов.");
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"[HOTKEY] Ошибка регистрации Tab: {ex.Message}");
+                AppendLog($"[HOTKEY] Ошибка установки TAB hook: {ex.Message}");
             }
+        }
+
+        private void InstallQuestTabKeyboardHookIfNeeded()
+        {
+            if (_questTabKeyboardHook != IntPtr.Zero) return;
+            _questTabKeyboardProc ??= QuestTabKeyboardHookCallback;
+            try
+            {
+                _questTabKeyboardHook = SetWindowsHookEx(
+                    WH_KEYBOARD_LL,
+                    _questTabKeyboardProc,
+                    GetModuleHandle(null),
+                    0);
+                if (_questTabKeyboardHook == IntPtr.Zero)
+                {
+                    int err = Marshal.GetLastWin32Error();
+                    AppendLog($"[HOTKEY] Не удалось установить TAB hook при старте — код {err}");
+                }
+                else
+                {
+                    AppendLog("[HOTKEY] TAB hook установлен.");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[HOTKEY] Ошибка установки TAB hook при старте: {ex.Message}");
+            }
+        }
+
+        private void UninstallQuestTabKeyboardHook()
+        {
+            Volatile.Write(ref _questTabHookEnabled, 0);
+            _questTabHookKeyDown = false;
+
+            if (_questTabKeyboardHook == IntPtr.Zero) return;
+            try { UnhookWindowsHookEx(_questTabKeyboardHook); } catch { }
+            _questTabKeyboardHook = IntPtr.Zero;
+        }
+
+        private IntPtr QuestTabKeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode != HC_ACTION)
+                return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
+
+            bool keyDown = wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN;
+            bool keyUp = wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP;
+
+            KBDLLHOOKSTRUCT k;
+            try { k = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam); }
+            catch
+            {
+                return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
+            }
+
+            if (k.vkCode != (uint)Keys.Tab)
+                return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
+
+            bool enabled = Volatile.Read(ref _questTabHookEnabled) != 0;
+            if (!enabled)
+                return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
+
+            if (keyDown && !((k.flags & LLKHF_UP) != 0))
+            {
+                if (_questTabHookKeyDown)
+                    return (IntPtr)1;
+
+                _questTabHookKeyDown = true;
+                try
+                {
+                    if (!IsDisposed && IsHandleCreated)
+                    {
+                        BeginInvoke((Action)(() =>
+                        {
+                            try
+                            {
+                                if (Volatile.Read(ref _questTabHookEnabled) == 0) return;
+                                SendCommandToMap("quest_toggle_collapse");
+                            }
+                            catch { }
+                        }));
+                    }
+                }
+                catch { }
+
+                // TAB принадлежит окну квестов только когда оно реально показано.
+                // Не отдаём его ETS2/другому приложению и не допускаем двойное
+                // переключение из autorepeat.
+                return (IntPtr)1;
+            }
+
+            if (keyUp)
+            {
+                _questTabHookKeyDown = false;
+                return (IntPtr)1;
+            }
+
+            return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
         }
 
         private void WaitForInstanceSignal()
@@ -3699,6 +3848,7 @@ RegisterHotKeyChecked(
             // v1.0.40.59: TAB (переключение окна квестов) держим только пока видна
             // интерактивная категория — при остановке системы снимаем гарантированно.
             SetQuestToggleHotkeyActive(false);
+            UninstallQuestTabKeyboardHook();
             StopTriggerServer();
             StopWebSocketSaveServer();
             StopStaticWebServer();
@@ -5228,8 +5378,8 @@ RegisterHotKeyChecked(
                 UnregisterHotKey(this.Handle, HOTKEY_AR1_PLANEMODE);
                 UnregisterHotKey(this.Handle, HOTKEY_AR1_ROLLFACTOR_UP);
                 UnregisterHotKey(this.Handle, HOTKEY_AR1_ROLLFACTOR_DOWN);
-                UnregisterHotKey(this.Handle, HOTKEY_QUEST_TOGGLE);
-                _questToggleHotkeyRegistered = false;
+                // v1.0.40.79: TAB переведён на low-level hook; старую регистрацию
+                // RegisterHotKey не используем, чтобы не было двойного toggling.
                 UnregisterHotKey(this.Handle, HOTKEY_TELEPORT);
             }
             catch (Exception ex)
