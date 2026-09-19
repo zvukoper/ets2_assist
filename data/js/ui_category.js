@@ -157,7 +157,11 @@
         /* quests_ui.js is loaded at the end of web_quests.html. Commands may
            have arrived through this earlier WebSocket before its handler existed;
            replay them in the original order once the DOM/page handler is ready. */
-        flushPendingEts2Commands();
+        /* Сначала должны завершиться DOMContentLoaded-инициализаторы
+           страниц, в частности quests_ui.js. Иначе накопленный quest_pause_ui
+           применяется, а следующий DOMContentLoaded-хендлер страницы сразу
+           сбрасывает pagePaused/activeInterface и визуальное состояние. */
+        setTimeout(flushPendingEts2Commands, 0);
     });
 
     function connect() {
