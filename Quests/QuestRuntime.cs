@@ -769,7 +769,11 @@ namespace ETS2_Assist_GUI.Quests
         {
             if(string.IsNullOrWhiteSpace(id)||delta==0)return;
             AddAmount(_store.State.Inventory,id,delta);
-            if(delta>0) _store.State.NewItems[id]=true;
+            if(delta>0)
+            {
+                _store.State.NewItems[id]=true;
+                _host.TriggerInventoryBookmarkBeacon();
+            }
             else if(!_store.State.Inventory.ContainsKey(id)) _store.State.NewItems.Remove(id);
         }
         private void MarkInventoryItemSeen(string id)
