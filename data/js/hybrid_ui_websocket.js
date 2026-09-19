@@ -103,6 +103,14 @@ function connectCommandWebSocket() {
     commandWs.onopen = function() {
         commandWsConnected = true;
         console.log('[WS Hybrid] Connected to command server');
+        // Команда show_ui могла прийти ДО подключения этого отдельного WS.
+        // Категория — авторитетный текущий state, поэтому восстанавливаем
+        // внутренний content сразу после подключения.
+        try {
+            if (typeof window.ets2Category === 'function' && window.ets2Category() === 'game') {
+                showHybridUIFast();
+            }
+        } catch (_) {}
     };
     commandWs.onmessage = function(e) {
         try {
@@ -126,6 +134,13 @@ function connectCommandWebSocket() {
         console.warn('[WS Hybrid] Command WebSocket error:', e);
     };
 }
+
+// Категория управляет всем игровым контентом независимо от момента
+// подключения command WS. Это устраняет пропущенный show_ui_first/show_ui.
+window.onEts2Category = function(category) {
+    if (category === 'game') showHybridUIFast();
+    else hideHybridUIFast();
+};
 
 function showHybridUIFirst() {
     const content = document.querySelector('.dashboard-content');
