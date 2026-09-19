@@ -678,8 +678,13 @@ function syncInterfaceState(name,notify,report){
 
 function toggleInterface(name){
     if(!pagePaused||!interactiveReady||blockToggle())return;
-    var next=activeInterface===name?'none':name;
-    syncInterfaceState(next,false,true);
+    var current=activeInterface;
+    var next=current===name?'none':name;
+    // Только состояние «Квестов» синхронизируется с C# как quest_window_state.
+    // Открытие/закрытие Инвентаря не должно эхо-возвращаться через
+    // set_quest_collapsed и тем самым открывать/закрывать Квесты.
+    var reportQuestState=(name==='quest'||current==='quest');
+    syncInterfaceState(next,false,reportQuestState);
 }
 
 function toggleQuestInterface(){toggleInterface('quest')}
@@ -860,8 +865,8 @@ function selectInteraction(qid,iid){
 function setTabPulse(value){
     hasInteractive=!!value;
     var tab=$('questTab');
-    if(tab)tab.classList.toggle('pulse',hasInteractive);
-    setInventoryTabPulse(inventoryHasNewItems());
+    if(tab)tab.classList.toggle('pulse',hasInteractive&&activeInterface==='none');
+    setInventoryTabPulse(inventoryHasNewItems()&&activeInterface==='none');
 }
 function setQuestInteractiveVisible(visible,ready,pulse){
     pagePaused=!!visible;interactiveReady=!!ready;
@@ -942,7 +947,7 @@ window.onEts2Command=function(d){
     if(tab)tab.addEventListener('transitionend',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     window.addEventListener('resize',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     var style=document.createElement('style');
-    style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#768497;font-size:10px}.questSectionTitle{padding:8px 10px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:#8c9aad;font-size:10px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid #ffd21f;background:rgba(255,210,31,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:#ffd45a;font-weight:700}.rewardLine{padding:3px 0;font-weight:600}.dialogOption.quest-native-hover{border-color:rgba(255,211,77,.65);background:#333c49;box-shadow:inset 0 0 0 1px rgba(255,211,77,.18)}.sideItem.quest-native-hover,.questItem.quest-native-hover{background:rgba(255,205,85,.10)}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.optionReason{font-size:10px;color:#7e8a98;font-weight:400}.dialogTextRole{font-family:Roboto,"Roboto Regular","Segoe UI",Arial,sans-serif}.dialogTextService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:12px}.optionRequirements{font-family:"Courier New",Courier,monospace;color:#0048ff;font-size:12px}.optionRequirements.unmet{color:#0048ff;opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:13px}';
+    style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}.#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#768497;font-size:10px}.questSectionTitle{padding:8px 10px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:#8c9aad;font-size:10px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid #ffd21f;background:rgba(255,210,31,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:#ffd45a;font-weight:700}.rewardLine{padding:3px 0;font-weight:600}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}#questApp button:not(#questTab):not(#inventoryTab){border:1px solid rgba(255,255,255,.12);background:rgb(19,20,21);color:#e7edf4;transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease}#questApp button:not(#questTab):not(#inventoryTab):hover,#questApp button:not(#questTab):not(#inventoryTab).quest-native-hover{border-color:rgba(255,211,77,.65);background:rgb(33,34,35)}#questApp button:not(#questTab):not(#inventoryTab):disabled{opacity:.38;cursor:not-allowed}#questApp .questItem.selected,#questApp .inventoryItem.selected{border-color:rgba(255,211,77,.65);background:rgb(33,34,35)}#questApp .sideItem.quest-native-hover,#questApp .questItem.quest-native-hover,#questApp .archiveToggle.quest-native-hover,#questApp .inventoryItem.quest-native-hover{border-color:rgba(255,211,77,.65);background:rgb(33,34,35)}.optionReason{font-size:10px;color:#7e8a98;font-weight:400}.dialogTextRole{font-family:Roboto,"Roboto Regular","Segoe UI",Arial,sans-serif}.dialogTextService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:12px}.optionRequirements{font-family:"Courier New",Courier,monospace;color:#0048ff;font-size:12px}.optionRequirements.unmet{color:#0048ff;opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:13px}';
     document.head.appendChild(style);
 })();
 
