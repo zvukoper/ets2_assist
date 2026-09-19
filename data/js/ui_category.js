@@ -116,15 +116,12 @@
 
     ensureStyle();
 
-    // Никакого «game по умолчанию»: до явной команды приложения страница
-    // остаётся display:none. Это устраняет стартовую вспышку и позволяет
-    // централизованной политике решить, что показывать — game или interactive.
+    // До явной команды приложения КАТЕГОРИЯ НЕ ВЫБРАНА.
+    // Никакого автоматического game при загрузке: overlay остаётся display:none,
+    // пока C# не присылает реальное состояние политики.
     document.addEventListener('DOMContentLoaded', function () {
-        if (!category) return;
-        try {
-            if (typeof window.onEts2Category === 'function') window.onEts2Category(category);
-        } catch (_) { }
-        revealSelectedCategory();
+        // Ничего не показываем. Явная команда set_overlay_category вызовет apply()
+        // и только тогда снимет startup display:none.
     });
 
     function connect() {
