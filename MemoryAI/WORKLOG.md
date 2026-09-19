@@ -617,3 +617,14 @@ git show b34b75f:MemoryAI/WORKLOG.md > WORKLOG_full_until_17.09.26.md
 - **ЗАМЕЧАНИЕ:** в `compile.ps1` уже были 4 не-ASCII символа (`—`, тире в старых
   комментариях строк 27/84/130/145) — парсер их терпит, т.к. они не ломают
   лексику; НОВЫЕ комментарии писать ASCII-only (правило из записи про `pull.ps1`).
+
+## v1.0.40.82 — ESC-only interactive pause flow / safezone UI / cursor persistence
+
+- Интерактивная категория больше не следует за любым `paused=true`. Только наблюдаемый ESC из foreground ETS2 запускает flow; REST/telemetry `paused` используется как валидатор.
+- F1–F12 и PAUSE не показывают наши интерактивные интерфейсы. В такой паузе наши игровые и интерактивные оверлеи скрыты.
+- Тайминг главной ESC-паузы: shell начинает выезжать через 4000 мс после ESC, закладка имеет 150 мс анимацию; пауза подтверждается двумя сэмплами. Второй ESC в подтверждённой интерактивной паузе скрывает интерфейс за 150 мс, затем ожидается подтверждённый resume.
+- Удалён старый QuestPauseBridge с reflection-записью `QuestRuntime._paused`; выбор квеста хранится в QuestRuntime, поэтому периодический broadcast не снимает выделение.
+- `web_quests.html` перестроен внутри safe-zone: левый список квестов, event text, responses, thematic image, service/rewards, mini-logo/version, Inventory tab + test items.
+- Курсор не исчезает при уходе в прозрачную область: сохраняется последняя alpha/позиция и скрывается только при закрытии interactive shell.
+- Quest AR использует локальную кадровую интерполяцию вместо потенциально stale shared smoothed view.
+- Версия: `1.0.40.82-ESC-SAFEZONE-QUEST-R12`.
