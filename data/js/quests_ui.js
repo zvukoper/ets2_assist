@@ -288,7 +288,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R6 1.0.40.76</strong>',
+        '<strong>SOFT CURSOR R7 1.0.40.77</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -336,7 +336,7 @@ function bindQuestNativeInput(){
 bindQuestNativeInput();
 
 /* ================================================================ КУРСОР
- * v1.0.40.76: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ.
+ * v1.0.40.77: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ.
  *
  * ETS2 прячет системный курсор и рисует свой прямо в ИГРОВОЙ КАДР. Игровой кадр
  * лежит НИЖЕ окна оверлея, поэтому стрелка игры видна и двигается «под окном»:
@@ -346,11 +346,10 @@ bindQuestNativeInput();
  * Поэтому стрелку рисуем САМИ, внутри страницы: #cursorDot — реальный PNG cursor.png,
  * позиционируемый по виртуальным координатам. Он часть нашей разметки, значит всегда
  * выше игрового кадра и системной стрелки.
- * R6: при каждом входе в паузу host считывает текущую экранную позицию
- * игрового/системного курсора, переводит её в client coordinates Quest-окна
- * и ставит cursor.png ровно туда. Hotspot изображения = (0,0), поэтому дополнительная
- * нулевая калибровка и перемещение системного курсора не нужны. После синхронизации
- * движение ведётся Raw Input dx/dy.
+ * R7: ETS2 не даёт нам надёжно прочитать координату своей отрисованной стрелки.
+ * Поэтому при входе в паузу host принудительно ставит физический курсор в центр
+ * игрового экрана, а virtual cursor.png получает тот же центр. После этого оба
+ * курсора движутся по одному Raw Input dx/dy без дополнительной калибровки.
  * Прозрачность cursorDot зависит от визуального alpha текущего Quest-контента
  * и его CSS box-shadow.
  * ================================================================ */
@@ -494,7 +493,7 @@ function startCursorTrack(){
         qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
     }
     if(!cursorEl)return;
-    /* v1.0.40.76: no synthetic center position.
+    /* v1.0.40.77: no synthetic center position.
        The hidden WebOverlay Raw Input sink owns the physical-mouse bridge and
        sends the current client position as quest-native-input. The first packet
        is initialized from GetCursorPos when the window becomes active. */
