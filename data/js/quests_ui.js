@@ -175,6 +175,482 @@ function publishInteractiveBounds(){
         x:Math.max(0,Math.min(1,r.left/vw)),y:Math.max(0,Math.min(1,r.top/vh)),
         w:Math.max(0,Math.min(1,r.width/vw)),h:Math.max(0,Math.min(1,r.height/vh))});
 }
+var qnPressedTarget=null,qnHoverTarget=null,qnHostBound=false,qnLastHostLogAt=0;
+function qnParseHostData(data){
+    if(data&&typeof data==='object')return data;
+    if(typeof data==='string'){try{return JSON.parse(data)}catch(e){return null}}
+    return null;
+}
+function qnClickableTarget(el){
+    if(!el)return null;
+    try{
+        if(el.closest){
+            var c=el.closest('button,a,input,select,textarea,summary,[role="button"],[onclick]');
+            if(c)return c;
+        }
+    }catch(e){}
+    return el;
+}
+function qnIsAllowedPointTarget(target){
+    if(!target||!pagePaused)return false;
+    if(collapsed){
+        var tab=$('questTab');
+        return !!tab&&(target===tab||tab.contains(target));
+    }
+    var app=$('questApp');
+    return !!app&&(target===app||app.contains(target));
+}
+function qnMouseEvent(type,x,y,button,buttons,detail){
+    return new MouseEvent(type,{view:window,bubbles:true,cancelable:true,
+        clientX:x,clientY:y,screenX:0,screenY:0,button:button||0,buttons:buttons||0,detail:detail||0});
+}
+function qnWheelEvent(x,y,delta,buttons){
+    try{return new WheelEvent('wheel',{view:window,bubbles:true,cancelable:true,clientX:x,clientY:y,
+        deltaX:0,deltaY:-Number(delta||0),deltaZ:0,deltaMode:0,button:0,buttons:buttons||0})}
+    catch(e){return new MouseEvent('wheel',{view:window,bubbles:true,cancelable:true,clientX:x,clientY:y,button:0,buttons:buttons||0})}
+}
+function qnSetHoverTarget(target){
+    if(qnHoverTarget===target)return;
+    if(qnHoverTarget&&qnHoverTarget.classList)qnHoverTarget.classList.remove('quest-native-hover');
+    qnHoverTarget=target||null;
+    if(qnHoverTarget&&qnHoverTarget.classList)qnHoverTarget.classList.add('quest-native-hover');
+}
+function dispatchNativeMouse(msg){
+    var x=Number(msg.x),y=Number(msg.y);
+    if(!Number.isFinite(x)||!Number.isFinite(y)){
+        qdCounters.nativeIgnored++;
+        return;
+    }
+    var type=String(msg.type||'');
+    var button=Number.isFinite(Number(msg.button))?Number(msg.button):0;
+    var buttons=Number.isFinite(Number(msg.buttons))?Number(msg.buttons):0;
+    if(type==='mousemove')placeCursor(x,y);
+
+    var raw=document.elementFromPoint(x,y);
+    var target=qnClickableTarget(raw);
+    if(!qnIsAllowedPointTarget(target)){
+        qdCounters.nativeIgnored++;
+        if(type==='mousemove')qnSetHoverTarget(null);
+        if(type==='mouseup')qnPressedTarget=null;
+        return;
+    }
+    if(type==='mousemove'){
+        qnSetHoverTarget(target);
+        target.dispatchEvent(qnMouseEvent('mousemove',x,y,0,buttons,0));
+        return;
+    }
+    if(type==='mousedown'){
+        if(target.disabled){qnPressedTarget=null;return;}
+        qnPressedTarget=target;
+        target.dispatchEvent(qnMouseEvent('mousedown',x,y,button,buttons,1));
+        return;
+    }
+    if(type==='mouseup'){
+        target.dispatchEvent(qnMouseEvent('mouseup',x,y,button,buttons,1));
+        var pressed=qnPressedTarget;
+        qnPressedTarget=null;
+        if(button===0&&pressed===target&&!target.disabled){
+            // dispatchEvent(mouseup) does not synthesize the browser's click event.
+            // Use element.click() for native controls so their EXISTING onclick handlers run.
+            if(typeof target.click==='function')target.click();
+            else target.dispatchEvent(qnMouseEvent('click',x,y,0,0,1));
+            qdCounters.nativeClicks++;
+        }
+        return;
+    }
+    if(type==='wheel'){
+        target.dispatchEvent(qnWheelEvent(x,y,Number(msg.wheelDelta||0),buttons));
+    }
+}
+var rawInputDiagEl=null;
+var softCursorMessages=0;
+function rawInputFmt(value){
+    var n=Number(value);
+    if(!Number.isFinite(n))return '?';
+    return (n>=0?'+':'')+n;
+}
+function updateRawInputDiagnostics(msg){
+    rawInputDiagEl=rawInputDiagEl||$('rawInputDebug');
+    if(!rawInputDiagEl)return;
+    rawInputDiagEl.style.display='block';
+    rawInputDiagEl.innerHTML=[
+        '<strong>SOFT CURSOR R12 1.0.40.82</strong>',
+        'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
+        'packets: '+(msg.packets??0),
+        'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
+        'sum dx: '+rawInputFmt(msg.totalDx)+'   dy: '+rawInputFmt(msg.totalDy),
+        '<strong>soft cursor: '+(Number(msg.cursorX)>=0?Number(msg.cursorX)+','+Number(msg.cursorY):'NO POSITION')+'</strong>',
+        'sync corner: '+(Number(msg.syncCursorX)>=0?Number(msg.syncCursorX)+','+Number(msg.syncCursorY):'NOT SET'),
+        'flags: 0x'+Number(msg.flags||0).toString(16).padStart(4,'0'),
+        'buttons: 0x'+Number(msg.buttonFlags||0).toString(16).padStart(4,'0')+' data='+Number(msg.buttonData||0),
+        'device: '+(msg.device||'0x0'),
+        'last: '+(msg.lastRawUtc||'-')
+    ].join('<br>');
+}
+
+function bindQuestNativeInput(){
+    if(qnHostBound)return;
+    try{
+        if(!(window.chrome&&window.chrome.webview&&window.chrome.webview.addEventListener))return;
+        qnHostBound=true;
+        window.chrome.webview.addEventListener('message',function(ev){
+            qdCounters.hostMessages++;
+            var msg=qnParseHostData(ev&&ev.data);
+            if(msg&&msg.source==='quest-raw-input-test'){
+                updateRawInputDiagnostics(msg);
+                return;
+            }
+            if(!msg||msg.source!=='quest-native-input')return;
+            qdCounters.nativeMessages++;
+            softCursorMessages++;
+            /* v1.0.40.79: TAB больше не переключается из native-input host.
+               Единственный источник TAB — MainForm low-level keyboard hook.
+               Так исключаем двойное переключение, когда host и приложение
+               одновременно видят одну физическую клавишу. */
+            if(msg.type==='mousemove' && Number.isFinite(Number(msg.x)) && Number.isFinite(Number(msg.y))){
+                qdLastPlace.hostX=Number(msg.x);qdLastPlace.hostY=Number(msg.y);
+            }
+            dispatchNativeMouse(msg);
+            var now=Date.now();
+            if(qdCounters.nativeMessages<=8||now-qnLastHostLogAt>=500){
+                qnLastHostLogAt=now;
+                qdLog('[NATIVE-IN] type='+msg.type+' x='+msg.x+' y='+msg.y+' button='+(msg.button??0)+' buttons='+(msg.buttons??0)+' target='+(qnHoverTarget?qdElementName(qnHoverTarget):'(none)')+' '+qdStateText());
+            }
+        });
+        qdLog('[NATIVE-IN] bridge bound');
+    }catch(e){
+        qnHostBound=false;
+        qdLog('[NATIVE-IN] bridge bind error='+e.message);
+    }
+}
+bindQuestNativeInput();
+
+/* ================================================================ КУРСОР
+ * v1.0.40.77: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ.
+ *
+ * ETS2 прячет системный курсор и рисует свой прямо в ИГРОВОЙ КАДР. Игровой кадр
+ * лежит НИЖЕ окна оверлея, поэтому стрелка игры видна и двигается «под окном»:
+ * ни ShowCursor, ни SetCursor, ни WM_SETCURSOR это не исправят — наш слой в
+ * любом случае выше. К тому же игра уводит счётчик ShowCursor глубоко в минус.
+ *
+ * Поэтому стрелку рисуем САМИ, внутри страницы: #cursorDot — реальный PNG cursor.png,
+ * позиционируемый по виртуальным координатам. Он часть нашей разметки, значит всегда
+ * выше игрового кадра и системной стрелки.
+ * R8: ETS2 не даёт нам надёжно прочитать координату своей отрисованной стрелки.
+ * Поэтому при входе в паузу host принудительно ведёт физический курсор в нулевой
+ * угол через относительный SendInput, а virtual cursor.png получает client=(0,0). После этого оба
+ * курсора движутся по одному Raw Input dx/dy без дополнительной калибровки.
+ * Прозрачность cursorDot зависит от визуального alpha текущего Quest-контента
+ * и его CSS box-shadow.
+ * ================================================================ */
+var cursorEl=null,cursorTimer=null,cursorShown=false,cursorSystemReleased=false,cursorLastVisibleAlpha=.72;
+
+function cssAlpha(value){
+    try{
+        if(!value||value==='transparent')return 0;
+        var m=value.match(/rgba?\(([^)]+)\)/i);
+        if(!m)return 1;
+        var parts=m[1].split(',').map(function(v){return v.trim()});
+        if(parts.length===4){
+            var a=parseFloat(parts[3]);
+            return Number.isFinite(a)?Math.max(0,Math.min(1,a)):1;
+        }
+        return 1;
+    }catch(e){return 1}
+}
+function elementVisualAlpha(el){
+    try{
+        if(!el||el===cursorEl)return 0;
+        var cs=getComputedStyle(el);
+        var opacity=parseFloat(cs.opacity);
+        if(!Number.isFinite(opacity)||opacity<=0)return 0;
+        var bg=cssAlpha(cs.backgroundColor);
+        if(bg>0)return opacity*bg;
+        var border=Math.max(
+            cssAlpha(cs.borderTopColor),
+            cssAlpha(cs.borderRightColor),
+            cssAlpha(cs.borderBottomColor),
+            cssAlpha(cs.borderLeftColor)
+        );
+        if(border>0)return opacity*border;
+        var tag=String(el.tagName||'').toLowerCase();
+        if(tag==='img'||tag==='svg'||tag==='canvas'||tag==='video')return opacity;
+        return 0;
+    }catch(e){return 0}
+}
+function parseBoxShadow(value){
+    try{
+        if(!value||value==='none')return null;
+        var colorMatch=value.match(/rgba?\([^)]*\)/i);
+        var colorAlpha=colorMatch?cssAlpha(colorMatch[0]):1;
+        var rest=colorMatch?value.replace(colorMatch[0],' '):value;
+        var nums=rest.match(/-?\d+(?:\.\d+)?px/g)||[];
+        if(nums.length<3)return null;
+        return{
+            dx:parseFloat(nums[0])||0,
+            dy:parseFloat(nums[1])||0,
+            blur:Math.max(0,parseFloat(nums[2])||0),
+            spread:nums.length>=4?parseFloat(nums[3])||0:0,
+            alpha:colorAlpha
+        };
+    }catch(e){return null}
+}
+function pointOutsideDistance(rect,x,y){
+    var dx=Math.max(rect.left-x,0,x-rect.right);
+    var dy=Math.max(rect.top-y,0,y-rect.bottom);
+    return Math.sqrt(dx*dx+dy*dy);
+}
+function cursorSurfaceAlpha(x,y){
+    if(!pagePaused)return 0;
+    var root=collapsed?$('questTab'):$('questWindow');
+    if(!root)return 0;
+    var rr=root.getBoundingClientRect();
+    if(x>=rr.left&&x<=rr.right&&y>=rr.top&&y<=rr.bottom){
+        var els=[];
+        try{
+            if(document.elementsFromPoint)els=document.elementsFromPoint(x,y);
+            else{
+                var one=document.elementFromPoint(x,y);
+                if(one)els=[one];
+            }
+        }catch(e){}
+        var alpha=0;
+        for(var i=0;i<els.length;i++){
+            var el=els[i];
+            if(!el||el===cursorEl)continue;
+            alpha=Math.max(alpha,elementVisualAlpha(el));
+            if(alpha>=0.995)break;
+        }
+        /* #questWindow/#questTab themselves are the visible opaque surface, so
+           transparent child hit-test regions still retain the real surface alpha. */
+        alpha=Math.max(alpha,elementVisualAlpha(root));
+        return Math.max(0,Math.min(1,alpha));
+    }
+
+    /* За пределами окна оставляем курсор только там, где реально есть его тень.
+       Используем текущий CSS box-shadow, чтобы и полупрозрачная тень под cursor
+       не превращалась в резкое появление/исчезновение. */
+    var shadow=null;
+    try{shadow=parseBoxShadow(getComputedStyle(root).boxShadow)}catch(e){}
+    if(!shadow||shadow.blur<=0||shadow.alpha<=0)return 0;
+
+    var shadowRect={
+        left:rr.left-shadow.spread,
+        top:rr.top-shadow.spread,
+        right:rr.right+shadow.spread,
+        bottom:rr.bottom+shadow.spread
+    };
+    var d=pointOutsideDistance(shadowRect,x-shadow.dx,y-shadow.dy);
+    /* v1.0.40.78: курсор не должен тускнеть сразу на первых пикселях тени.
+       Даём 50 px запаса: внутри этого буфера сохраняем текущую alpha тени,
+       затем запускаем прежнюю плавную quadratic-кривую затухания. */
+    var fadeDistance=Math.max(0,d-50);
+    if(fadeDistance>=shadow.blur)return 0;
+    var t=1-fadeDistance/shadow.blur;
+    return Math.max(0,Math.min(1,shadow.alpha*t*t));
+}
+
+function placeCursor(x,y){
+    cursorEl=cursorEl||$('cursorDot');   // резолвим лениво: place может вызваться первым
+    if(!cursorEl)return;
+
+    cursorEl.style.transform='translate('+x+'px,'+y+'px)';
+    var alpha=cursorSurfaceAlpha(x,y);
+    if(alpha>0.01)cursorLastVisibleAlpha=alpha;
+    /* При alpha=0 в прозрачном месте курсор оставляем на последней позиции.
+       Полное скрытие выполняется только при закрытии интерактивного shell. */
+    var shownAlpha=alpha>0.01?alpha:Math.max(.18,Math.min(.9,cursorLastVisibleAlpha));
+    cursorEl.style.opacity=String(shownAlpha);
+    if(!cursorShown){cursorShown=true;cursorEl.style.display='block'}
+
+    /* ДИАГНОСТИКА: первые 5 вызовов, затем не чаще 2-3 раз в секунду. */
+    qdCounters.place++;
+    qdLastPlace.x=x;qdLastPlace.y=y;qdLastPlace.shown=!!(cursorEl&&cursorEl.style.display==='block');
+    var now=Date.now();
+    if(qdCounters.place<=5||now-qdPlaceLogAt>=400){
+        qdPlaceLogAt=now;
+        qdLog('[CURSOR-PLACE] x='+x+' y='+y+' alpha='+alpha.toFixed(3)+' shown='+qdLastPlace.shown+' placeCount='+qdCounters.place);
+    }
+}
+
+function trackCursorFromEvent(e){
+    if(!pagePaused||collapsed)return;
+    placeCursor(e.clientX,e.clientY);
+}
+
+function startCursorTrack(){
+    cursorEl=cursorEl||$('cursorDot');
+    qdCounters.cursorStart++;
+    if(!qdTracking){
+        qdTracking=true;
+        qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
+    }
+    if(!cursorEl)return;
+    /* v1.0.40.79: the visual cursor starts at the same corner as the host-side
+       physical cursor. The first Raw Input packet may arrive a little later,
+       so initialize immediately instead of briefly showing the old position. */
+    placeCursor(0,0);
+    /* Host synchronizes the physical cursor to client=(0,0).
+       The hidden WebOverlay Raw Input sink owns the physical-mouse bridge and
+       sends the current client position as quest-native-input. The first packet
+       is initialized from GetCursorPos when the window becomes active. */
+}
+
+function stopCursorTrack(reason){
+    qdCounters.cursorStop++;
+    if(qdTracking){
+        qdTracking=false;
+        qdLog('[CURSOR] stop reason='+(reason||'unspecified')+' cursorElementExists='+!!cursorEl+' stopCount='+qdCounters.cursorStop);
+    }
+    window.removeEventListener('mousemove',trackCursorFromEvent);
+    window.removeEventListener('mouseover',trackCursorFromEvent);
+    if(cursorTimer){clearInterval(cursorTimer);cursorTimer=null}
+    qnSetHoverTarget(null);
+    qnPressedTarget=null;
+    if(cursorEl){cursorEl.style.display='none';cursorEl.style.opacity='0';cursorShown=false;cursorLastVisibleAlpha=.72}
+}
+
+/* Диагностика курсора из консоли страницы (аналог debugShow для этой части):
+   window.__questCursor.place(300,200) — поставить стрелку принудительно. */
+window.__questCursor={
+    place:function(x,y){placeCursor(x,y);return !!cursorEl&&cursorEl.style.display},
+    start:startCursorTrack,
+    stop:stopCursorTrack,
+    state:function(){return{shown:cursorShown,paused:pagePaused,collapsed:collapsed}}
+};
+function markerIcon(m){
+    /* v1.0.40.56: иконки квестов — новые растровые Pointer_*.png (32x32).
+       Соответствие: quest = «!», questdone = «?»; _on = жёлтый, _off = серый.
+       Прежние SVG из editor_static_data/icons оставлены запасным вариантом
+       через onerror, чтобы список не остался без иконки. */
+    if(m==='yellow_exclamation')return{src:'quests/images/Pointer_quest_on_32x32.png',fb:'editor_static_data/icons/quest_exclamation_yellow.svg'};
+    if(m==='yellow_question')return{src:'quests/images/Pointer_questdone_on_32x32.png',fb:'editor_static_data/icons/quest_question_yellow.svg'};
+    if(m==='gray_question')return{src:'quests/images/Pointer_questdone_off_32x32.png',fb:'editor_static_data/icons/quest_question_gray.svg'};
+    return null;
+}
+
+/* ---------------------------------------------------------------- сворачивание */
+/* Полноэкранный оверлей квестов НЕ должен пропускать мышь иначе, чем к окну:
+   в развёрнутом состоянии окно занимает центр, но прозрачные поля вокруг него
+   остаются частью того же слоя. Чтобы игра не получала клики «сквозь» окно,
+   контейнер перехватывает клик по прозрачной области (сворачивание). */
+function applyCursorLayer(){
+    /* v1.0.40.61: КУРСОР РИСУЕТ СТРАНИЦА.
+       ⛔ Почему не системный/игровой курсор: ETS2 прячет систему и рисует СВОЙ
+       курсор прямо в игровой кадр. Игровой кадр лежит НИЖЕ нашего окна, поэтому
+       его стрелка «двигается под окном» и никакие ShowCursor/SetCursor/WM_SETCURSOR
+       это не исправят — слой всегда выше. Системный курсор в игре к тому же
+       уведён счётчиком ShowCursor глубоко в минус.
+       РЕШЕНИЕ: скрываем курсор во всём слое (CSS `cursor:none`) и рисуем
+       СОБСТВЕННУЮ стрелку (<img id="cursorDot">) по виртуальной позиции мыши.
+       Изображение — реальный игровой cursor.png 27x44 для базового 1080p.
+       Прозрачность стрелки вычисляется по видимому контенту/тени под ней:
+       в прозрачной области стрелка исчезает, на тени становится полупрозрачной.
+       Скрытие системной стрелки оставлено как дополнительная мера: если игра
+       её не рисует, она не будет дублировать нашу. */
+    var app=$('questApp');
+    if(app)app.style.cursor=pagePaused?'none':'';
+    var active=pagePaused&&!collapsed;
+    /* Системная стрелка не является курсором квестов. ETS2 удерживает её
+       возле центра; наличие этой стрелки поверх страницы даёт дрожание.
+       Видимый курсор теперь только #cursorDot. */
+    if(!cursorSystemReleased){
+        post({command:'set_cursor',value:false});
+        cursorSystemReleased=true;
+    }
+    if(active)startCursorTrack();else stopCursorTrack('applyCursorLayer:inactive');
+}
+
+/* Мышь окна управляется из двух состояний: активна ли пауза и свёрнуто ли окно.
+   Развёрнутое окно кликабельно целиком; свёрнутое отдаёт мыши только область
+   закладки у левой границы экрана; скрытое окно прозрачно для мыши. */
+function syncInput(notify){
+    qdLog('syncInput '+qdStateText());
+    /* Софтовый курсор включается/выключается вместе с состоянием страницы.
+       Внутри WebView2 не полагаемся на DOM mousemove: ETS2 может удерживать
+       системный курсор в центре. Raw Input host является источником позиции. */
+    applyCursorLayer();
+    /* FIX v3: native-кликабельность больше НЕ переключается. Мышь принимает
+       отдельное голое native-окно (без color-key), а странице нужно только
+       сообщить ему, где лежит UI. */
+    publishInteractiveBounds();
+    if(notify)post({command:'return_focus'});
+}
+/* Старый native clickability-путь оставлен для справки, но НЕ вызывается:
+   для web_quests.html он бесполезен (color-key исключает окно из hit-test). */
+function syncInputLegacy(notify){
+    qdLog('syncInputLegacy '+qdStateText());
+    applyCursorLayer();
+    if(pagePaused&&!collapsed){
+        setNativeClickable(true);
+        post({command:'set_clickable_hotspot',xr:0,yr:0,wr:0,hr:0});
+    }else if(pagePaused&&collapsed){
+        setNativeClickable(false);
+        var tab=$('questTab');
+        if(tab){
+            /* Доли клиентской области, а не CSS-пиксели: окно-хост не объявляет
+               DPI-манифест и при масштабе экрана пиксели страницы не совпадают
+               с пикселями окна. */
+            var r=tab.getBoundingClientRect();
+            var vw=Math.max(1,window.innerWidth),vh=Math.max(1,window.innerHeight);
+            var pad=6;
+            /* ⛔ ПОРЯДОК КОМАНД КРИТИЧЕН (корень «на закладку нельзя нажать»).
+               В хосте кликабельность ВЫВОДИТСЯ из двух полей:
+                 _clickable   — разрешена ли странице принимать мышь ВООБЩЕ;
+                 _hotspot     — ЕДИНСТВЕННАЯ принимающая область внутри окна.
+               `set_clickable(false)` в хосте СБРАСЫВАЕТ _hotspot (Rectangle.Empty)
+               и снова делает окно прозрачным для мыши. Раньше он отправлялся
+               ПЕРВЫМ, поэтому следующий set_clickable_hotspot задавал область,
+               но решение NeedsClickThroughStyle = (!_clickable || _hotspot.IsEmpty)
+               всё равно было true ⇒ мышь шла «сквозь» закладку.
+               Поэтому: СНАЧАЛА задаём горячую область, и только ПОТОМ разрешаем
+               странице принимать мышь. */
+            post({command:'set_clickable_hotspot',
+                xr:0,
+                yr:Math.max(0,(r.top-pad)/vh),
+                wr:Math.min(1,(r.width+8)/vw),
+                hr:Math.min(1,(r.height+pad*2)/vh)});
+            setNativeClickable(true);
+        }else{
+            post({command:'set_clickable_hotspot',xr:0,yr:0,wr:0,hr:0});
+            setNativeClickable(false);
+        }
+    }else{
+        setNativeClickable(false);
+        post({command:'set_clickable_hotspot',xr:0,yr:0,wr:0,hr:0});
+    }
+    if(notify)post({command:'return_focus'});
+}
+function applyCollapsed(value,notify,report){
+    collapsed=!!value;
+    qdStateChanged();
+    var w=$('questWindow'),tab=$('questTab');
+    if(w)w.classList.toggle('collapsed',collapsed);
+    if(tab)tab.classList.toggle('visible',collapsed);
+    if(collapsed)lastDialogueKey='';
+    syncInput(notify);
+    /* Геометрия input-окна зависит от вида окна: пересчитаем ПОСЛЕ смены
+       классов/анимации — и сразу, и по завершении перехода. */
+    publishInteractiveBounds();
+    setTimeout(publishInteractiveBounds,360);
+    /* Приложение запоминает вид окна (свёрнуто/развёрнуто). Сообщаем только о
+       действиях игрока: состояние, пришедшее ОТ приложения, а также стартовое
+       состояние страницы повторно отправлять нельзя — иначе окно при загрузке
+       перезапишет сохранённый вид. */
+    if(report)send({command:'quest_window_state',collapsed:collapsed});
+}
+function collapseWindow(){if(collapsed||blockToggle())return;applyCollapsed(true,true,true)}
+function expandWindow(){if(!collapsed||blockToggle())return;applyCollapsed(false,true,true)}
+/* Один жест — одно переключение: повторное событие того же жеста (двойной клик,
+   всплытие клика от кнопки к контейнеру) не должно отменять только что
+   применённое состояние. */
+function blockToggle(){var now=Date.now();if(now-lastToggleAt<250)return true;lastToggleAt=now;return false}
+function setTabPulse(value){hasInteractive=!!value;var tab=$('questTab');if(tab)tab.classList.toggle('pulse',hasInteractive)}
+
+/* ------------------------------------------------------------ набор текста */
+function stopTyping(){if(typeTimer){clearInterval(typeTimer);typeTimer=null}if(fadeTimer){clearTimeout(fadeTimer);fadeTimer=null}}
+
+
 function applyCollapsed(value,notify,report){
     collapsed=!!value;
     qdStateChanged();
