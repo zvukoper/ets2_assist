@@ -46,7 +46,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 #questSidebar,#eventPanel,#responsePanel,#imagePanel,#servicePanel{
     position:absolute;box-sizing:border-box;
     border:0;border-radius:10px;
-    background:rgba(0,0,0,.760);
+    background:rgba(23,24,25,.13);
+    box-shadow:none;
     overflow:hidden;
 }
 #questSidebar{left:104px;top:74px;width:278px;height:829px;display:flex;flex-direction:column}
@@ -104,8 +105,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     transform:translate(0,-50%);opacity:1;pointer-events:auto;
 }
 #questTab.active,#inventoryTab.active{
-    border-color:rgba(255,205,85,.8);
-    box-shadow:0 0 10px rgba(255,205,85,.22);
+    border-color:rgba(255,205,85,.45);
+    box-shadow:none;
 }
 .questTabText,.inventoryTabText{writing-mode:vertical-rl}
 .questTabHint,.inventoryTabHint{
@@ -113,16 +114,28 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     text-align:center;writing-mode:horizontal-tb;
     color:#5c646e;font:400 9px/1 'Segoe UI',Arial,sans-serif;letter-spacing:0;
 }
-#questTab.pulse{animation:questTabPulse 2s ease-in-out infinite}
+#questTab.pulse,#inventoryTab.pulse{animation:questTabPulse 2s ease-in-out infinite}
 @keyframes questTabPulse{
-    0%,100%{box-shadow:0 0 2px rgba(255,205,85,.25);border-color:rgba(255,205,85,.45);background:rgba(13,17,22,.96)}
-    50%{box-shadow:0 0 22px rgba(255,205,85,.95);border-color:#ffd45a;background:rgba(58,46,12,.96)}
+    0%,100%{box-shadow:0 0 2px rgba(255,205,85,.25)}
+    50%{box-shadow:0 0 22px rgba(255,205,85,.95)}
 }
+
+/* Новые предметы: такая же мягкая жёлтая пульсация, но только у точки. */
+.inventoryNewDot{
+    flex:0 0 7px;width:7px;height:7px;margin-right:7px;
+    margin-top:5px;border-radius:50%;
+    background:#ffd45a;
+    box-shadow:0 0 2px rgba(255,205,85,.25);
+    animation:questTabPulse 2s ease-in-out infinite;
+}
+.inventoryItemName{display:flex;align-items:flex-start;min-width:0}
+.inventoryItemName span:last-child{min-width:0}
 
 /* Inventory panel uses the same 150ms opacity fade, never display/slide animation. */
 #inventoryWindow{
     position:absolute;left:104px;top:74px;width:278px;height:829px;
     box-sizing:border-box;display:block;visibility:hidden;opacity:0;
+    background:rgba(23,24,25,.13);box-shadow:none;
     pointer-events:none;transition:opacity 150ms ease;
 }
 #inventoryWindow.visible{visibility:visible;opacity:1;pointer-events:auto}
