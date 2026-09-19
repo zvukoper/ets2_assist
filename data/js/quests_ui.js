@@ -14,7 +14,7 @@ var locallySeenInventoryItems=Object.create(null);
 var pagePaused=false,hasInteractive=false,lastDialogueKey='',lastOptionsKey='',lastInteractionsKey='',lastQuestsKey='',typeTimer=null,fadeTimer=null;
 var questBeaconVisible=false,inventoryBeaconVisible=false,questBeaconTimer=0,inventoryBeaconTimer=0;
 var pendingQuestBeacon=false,pendingInventoryBeacon=false;
-var inventoryBeaconSeen=Object.create(null),lastNearbyInteractive=false;
+var inventoryBeaconSeen=Object.create(null),inventoryKnown=Object.create(null),inventoryKnownInitialized=false,lastNearbyInteractive=false;
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
    переключать вид дважды: двойной клик по кнопке или по прозрачной области
    давал пару «свёрнуто → развёрнуто» в одну миллисекунду, и окно визуально
@@ -1003,21 +1003,45 @@ function applyState(data){
     lastNearbyInteractive=nearbyNow;
 
     var presentInventory=Object.create(null);
+    var currentInventory=Object.create(null);
+    var inventoryReady=!inventoryKnownInitialized;
+
     (data.inventory||[]).forEach(function(x){
         var id=String(x&&x.id||'');
         if(!id)return;
+
+        var amount=Number(x&&x.amount||0);
+        if(!Number.isFinite(amount))amount=0;
+
         presentInventory[id]=true;
-        if(x.new_item===true&&!inventoryBeaconSeen[id]){
-            if(pagePaused)pendingInventoryBeacon=true;
-            else{
+        currentInventory[id]=amount;
+
+        /* Beacon только при ФАКТИЧЕСКОМ появлении/увеличении предмета
+           после уже полученного базового снимка. Стартовая загрузка и
+           повторные quest_state с тем же new_item beacon не запускают. */
+        var previousAmount=inventoryKnown[id];
+        var appeared=inventoryKnownInitialized &&
+            (previousAmount===undefined || amount>previousAmount);
+
+        if(appeared && x.new_item===true && !inventoryBeaconSeen[id]){
+            if(pagePaused){
+                pendingInventoryBeacon=true;
+            }else{
                 inventoryBeaconSeen[id]=true;
                 startBookmarkBeacon('inventory');
             }
         }
     });
+
+    Object.keys(inventoryKnown).forEach(function(id){
+        if(!presentInventory[id])delete inventoryKnown[id];
+    });
     Object.keys(inventoryBeaconSeen).forEach(function(id){
         if(!presentInventory[id])delete inventoryBeaconSeen[id];
     });
+
+    inventoryKnown=currentInventory;
+    inventoryKnownInitialized=true;
     setInventoryTabPulse(inventoryHasNewItems());
     var paused=data.paused===true,interactive=data.interactive===true;
     /* interactive из quest_state — пост-валидатор. Видимость UI меняется
