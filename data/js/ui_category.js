@@ -75,7 +75,8 @@
         quest_toggle_collapse:true,
         quest_toggle_inventory:true,
         quest_bookmark_beacon:true,
-        inventory_bookmark_beacon:true
+        inventory_bookmark_beacon:true,
+        quest_collapse_interfaces:true
     };
 
     function flushPendingEts2Commands() {
