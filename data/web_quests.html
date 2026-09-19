@@ -9,18 +9,52 @@
 <style>
 :root{font-family:'Segoe UI',Arial,sans-serif;color:#e7edf4;background:transparent;user-select:none}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
+
+/* The page itself fades; there is no slide/zoom entrance animation. */
 #questApp{position:fixed;inset:0;visibility:hidden;opacity:0;pointer-events:none;transition:opacity 150ms ease;z-index:100}
 #questApp.interactiveVisible{visibility:visible;opacity:1;pointer-events:none}
-#safeZone{position:fixed;left:5vw;right:5vw;top:5vh;bottom:5vh;pointer-events:none}
-.panel{position:relative;min-width:0;min-height:0;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;box-sizing:border-box}
-#miniLogo{position:absolute;left:0;top:0;width:104px;z-index:20;pointer-events:none}
-#miniLogo img{display:block;width:86px;height:86px;object-fit:contain}
-#miniLogoVersion{display:flex;flex-direction:column;gap:1px;margin-top:2px;font-size:9px;line-height:1.15;color:#b8c1cc;word-break:break-all}
-#miniLogoVersion span:first-child{color:#e7edf4}
-#questLayout{position:absolute;left:0;right:0;top:104px;bottom:0;display:grid;grid-template-columns:minmax(215px,24%) minmax(0,1fr) minmax(245px,28%);grid-template-rows:minmax(0,1fr) minmax(0,.56fr);gap:12px}
-#questWindow{position:absolute;left:0;right:0;top:104px;bottom:0;opacity:1;transform:translateX(0);pointer-events:auto;transition:transform 320ms ease-out,opacity 96ms ease-out}
-#questWindow.collapsed{opacity:0;transform:translateX(calc(-100% - 40px));pointer-events:none;transition:transform 320ms ease-in,opacity 92ms ease-in 224ms}
-#questSidebar{grid-column:1;grid-row:1/3;display:flex;flex-direction:column}
+
+/* Pixel design space: all supplied measurements are from a 1920x1080 mockup.
+   JS applies one uniform scale to this canvas so proportions never distort. */
+#designCanvas{
+    position:absolute;left:0;top:0;width:1920px;height:1080px;
+    transform-origin:0 0;
+    transform:scale(var(--design-scale,1));
+    overflow:visible;
+    pointer-events:none;
+}
+
+/* === supplied 1920x1080 geometry === */
+#miniLogo{
+    position:absolute;left:10px;top:1px;width:84px;height:83px;
+    z-index:20;pointer-events:none;overflow:hidden;
+}
+#miniLogo img{display:block;width:84px;height:83px;object-fit:contain}
+#miniLogoVersion{display:none}
+
+#questWindow{
+    position:absolute;left:0;top:0;width:1410px;height:906px;
+    opacity:1;transform:none;pointer-events:auto;
+    transition:opacity 150ms ease-out;
+}
+#questWindow.collapsed{
+    opacity:0;transform:none;pointer-events:none;
+}
+
+#questLayout{position:absolute;left:0;top:0;width:1410px;height:906px;display:block}
+
+#questSidebar,#eventPanel,#responsePanel,#imagePanel,#servicePanel{
+    position:absolute;box-sizing:border-box;
+    border:0;border-radius:10px;
+    background:rgba(0,0,0,.760);
+    overflow:hidden;
+}
+#questSidebar{left:104px;top:74px;width:278px;height:829px;display:flex;flex-direction:column}
+#eventPanel{left:392px;top:75px;width:722px;height:278px}
+#responsePanel{left:392px;top:365px;width:722px;height:540px}
+#imagePanel{left:1124px;top:75px;width:286px;height:278px}
+#servicePanel{left:1124px;top:365px;width:286px;height:540px}
+
 #questList,.scroll{padding:6px;overflow:auto;min-height:0}
 .questSectionTitle{padding:7px 6px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.55px}
 .questDivider{height:1px;background:rgba(255,255,255,.14);margin:6px 0}
@@ -30,65 +64,130 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .questItem span{display:block;color:#8794a5;font-size:10px;margin-top:3px}
 .questItem em{display:block;margin-top:4px;color:#8794a5;font-size:9px;font-style:normal;line-height:1.3}
 .archiveToggle{margin:8px 6px 0;padding:8px;border:1px solid rgba(255,205,85,.22);background:rgba(0,0,0,.15);color:#ffd45a;border-radius:7px;cursor:pointer;text-transform:lowercase}
-#eventPanel{grid-column:2;grid-row:1}
-#responsePanel{grid-column:2;grid-row:2}
-#imagePanel{grid-column:3;grid-row:1}
-#servicePanel{grid-column:3;grid-row:2}
+
 .panelInner{height:100%;padding:6px;box-sizing:border-box;overflow:auto}
 .panelTitle{padding:6px;color:#ffd45a;font-weight:700;font-size:12px}
 #dialog{height:100%;display:flex;flex-direction:column}
 #dialogSpeaker{padding:0 6px 6px;color:#fff;font-size:17px;font-weight:700}
-#dialogText{padding:0 6px;color:#fff;font-size:14px;line-height:1.45;white-space:pre-wrap;overflow:auto;flex:1}
+#dialogText{padding:0 6px;color:#fff;font-size:14px;line-height:1.45;white-space:pre-wrap;overflow:auto;flex:1;transition:opacity 150ms ease}
+#dialogText.fading{opacity:0}
 #dialogService{padding:6px;color:#c4ccd6;font:12px/1.4 'Courier New',monospace}
-#dialogText.fading{opacity:0;transition:opacity 150ms ease}
-#dialogText{transition:opacity 150ms ease}
 #dialogOptions{height:100%;display:flex;flex-direction:column;gap:7px;overflow:auto}
 .dialogOption{padding:9px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:#e7edf4;border-radius:7px;text-align:left;cursor:pointer;font:inherit}
 .dialogOption:hover{border-color:rgba(255,211,77,.65);background:rgba(255,255,255,.06)}
 .dialogOption:disabled{opacity:.38;cursor:not-allowed}
-#dialogImage{width:calc(100% - 12px);height:calc(100% - 12px);margin:6px;object-fit:cover;border-radius:10px;background:rgba(0,0,0,.14);display:block}
+#dialogImage{
+    width:100%;height:100%;margin:0;object-fit:cover;
+    border-radius:10px;background:rgba(0,0,0,.14);display:none;
+}
 .serviceBlock{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)}
 .questRewardTitle{margin-top:9px;margin-bottom:4px;color:#ffd45a;font-weight:700}
 .rewardLine{padding:3px 0}
-#questTab,#inventoryTab{position:absolute;left:0;width:94px;min-height:34px;padding:7px 10px;border-radius:0 9px 9px 0;border:1px solid rgba(255,205,85,.28);background:rgba(0,0,0,.55);color:#e7edf4;cursor:pointer;text-align:left;transition:transform 150ms ease,opacity 150ms ease;transform:translateX(-105%);opacity:0;pointer-events:auto;z-index:30}
-#questTab{top:46%}
-#inventoryTab{top:calc(46% + 45px)}
-#questTab.visible,#inventoryTab.visible{transform:translateX(0);opacity:1}
-#questTab.active,#inventoryTab.active{border-color:rgba(255,205,85,.7);color:#ffd45a}
-#questTab.pulse{animation:questTabPulse 900ms ease-in-out 1}
-@keyframes questTabPulse{0%,100%{transform:translateX(0) scale(1)}45%{transform:translateX(0) scale(1.045)}}
-#inventoryWindow{position:absolute;left:0;top:104px;bottom:0;width:26%;display:none}
-#inventoryWindow.visible{display:block}
+
+/* Old quest bookmark design restored verbatim in shape/visual language.
+   Entrance/exit is opacity-only; the original continuous pulse remains. */
+#questTab,#inventoryTab{
+    position:absolute;left:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    width:34px;padding:18px 6px;
+    background:rgba(13,17,22,.96);
+    border:1px solid rgba(255,205,85,.45);border-left:0;
+    border-radius:0 7px 7px 0;
+    color:#ffd45a;font:700 14px/1 'Segoe UI',Arial,sans-serif;
+    letter-spacing:1px;cursor:pointer;box-sizing:content-box;
+    opacity:0;pointer-events:none;z-index:30;
+    transition:opacity 150ms ease;
+}
+#questTab{top:50%;transform:translate(-115%,-50%)}
+#inventoryTab{top:calc(50% + 149px);transform:translate(-115%,-50%)}
+#questTab.visible,#inventoryTab.visible{
+    transform:translate(0,-50%);opacity:1;pointer-events:auto;
+}
+#questTab.active,#inventoryTab.active{
+    border-color:rgba(255,205,85,.8);
+    box-shadow:0 0 10px rgba(255,205,85,.22);
+}
+.questTabText,.inventoryTabText{writing-mode:vertical-rl}
+.questTabHint,.inventoryTabHint{
+    position:absolute;left:0;right:0;bottom:2px;
+    text-align:center;writing-mode:horizontal-tb;
+    color:#5c646e;font:400 9px/1 'Segoe UI',Arial,sans-serif;letter-spacing:0;
+}
+#questTab.pulse{animation:questTabPulse 2s ease-in-out infinite}
+@keyframes questTabPulse{
+    0%,100%{box-shadow:0 0 2px rgba(255,205,85,.25);border-color:rgba(255,205,85,.45);background:rgba(13,17,22,.96)}
+    50%{box-shadow:0 0 22px rgba(255,205,85,.95);border-color:#ffd45a;background:rgba(58,46,12,.96)}
+}
+
+/* Inventory panel uses the same 150ms opacity fade, never display/slide animation. */
+#inventoryWindow{
+    position:absolute;left:104px;top:74px;width:278px;height:829px;
+    box-sizing:border-box;display:block;visibility:hidden;opacity:0;
+    pointer-events:none;transition:opacity 150ms ease;
+}
+#inventoryWindow.visible{visibility:visible;opacity:1;pointer-events:auto}
 #inventoryList{height:100%;padding:6px;overflow:auto;box-sizing:border-box}
-.inventoryItem{width:100%;display:flex;justify-content:space-between;gap:8px;padding:9px 7px;margin-bottom:2px;border:0;border-bottom:1px solid rgba(255,255,255,.06);border-radius:6px;background:transparent;color:#dce3eb;text-align:left;cursor:pointer}
+.inventoryItem{
+    width:100%;display:flex;justify-content:space-between;gap:8px;
+    padding:9px 7px;margin-bottom:2px;border:0;
+    border-bottom:1px solid rgba(255,255,255,.06);border-radius:6px;
+    background:transparent;color:#dce3eb;text-align:left;cursor:pointer
+}
 .inventoryItem:hover{background:rgba(255,205,85,.11)}
 .inventoryItem small{color:#8c98a9}
-#overlayError{position:fixed;left:50%;top:5vh;transform:translateX(-50%);background:rgba(80,28,28,.92);color:#fff;padding:8px 14px;border-radius:8px;opacity:0;transition:opacity 150ms;z-index:2147483646}
+
+#overlayError{
+    position:fixed;left:50%;top:5vh;transform:translateX(-50%);
+    background:rgba(80,28,28,.92);color:#fff;padding:8px 14px;border-radius:8px;
+    opacity:0;transition:opacity 150ms ease;z-index:2147483646
+}
 #overlayError.show{opacity:1}
-#cursorDot{position:fixed;left:0;top:0;width:27px;height:44px;display:none;z-index:2147483647;pointer-events:none;will-change:transform,opacity;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.82))}
 #rawInputDebug{display:none!important}
-@media(max-width:1050px){#questLayout{grid-template-columns:210px minmax(0,1fr) 220px}.questItem strong{font-size:11px}}
+#cursorDot{
+    position:fixed;left:0;top:0;width:27px;height:44px;display:none;
+    z-index:2147483647;pointer-events:none;will-change:transform,opacity;
+    filter:drop-shadow(2px 3px 2px rgba(0,0,0,.82))
+}
 </style>
 </head>
 <body data-category="interactive">
 <div id="questApp">
- <div id="safeZone">
-  <div id="miniLogo"><img src="ets2a_logo.png" alt="ETS2 Assist"><div id="miniLogoVersion"><span id="versionNumber">1.0.40.83</span><span id="versionText">CURSOR-CAL-TAB-QUEST-R13</span></div></div>
-  <button id="questTab" type="button">Квесты</button>
-  <button id="inventoryTab" type="button">Инвентарь<br><small>I</small></button>
+ <div id="designCanvas">
+  <div id="miniLogo"><img src="ets2a_logo.png" alt="ETS2 Assist"></div>
+  <button id="questTab" type="button"><span class="questTabText">Квесты</span><span class="questTabHint">TAB</span></button>
+  <button id="inventoryTab" type="button"><span class="inventoryTabText">Инвентарь</span><span class="inventoryTabHint">I</span></button>
+
   <div id="questWindow"><div id="questLayout">
-   <section id="questSidebar" class="panel"><div id="questList"></div></section>
-   <section id="eventPanel" class="panel"><div id="dialog" class="panelInner"><div id="dialogSpeaker"></div><div id="dialogText"></div></div></section>
-   <section id="responsePanel" class="panel"><div class="panelInner"><div class="panelTitle">Ответы</div><div id="dialogOptions"></div></div></section>
-   <section id="imagePanel" class="panel"><img id="dialogImage" alt=""></section>
-   <section id="servicePanel" class="panel"><div class="panelInner"><div class="panelTitle">Служебная информация</div><div id="dialogService"></div></div></section>
+   <section id="questSidebar"><div id="questList"></div></section>
+   <section id="eventPanel"><div id="dialog" class="panelInner"><div id="dialogSpeaker"></div><div id="dialogText"></div></div></section>
+   <section id="responsePanel"><div class="panelInner"><div class="panelTitle">Ответы</div><div id="dialogOptions"></div></div></section>
+   <section id="imagePanel"><img id="dialogImage" alt=""></section>
+   <section id="servicePanel"><div class="panelInner"><div class="panelTitle">Служебная информация</div><div id="dialogService"></div></div></section>
   </div></div>
-  <section id="inventoryWindow" class="panel"><div id="inventoryList"></div></section>
-  <div id="overlayError" aria-live="polite"></div>
-  <div id="rawInputDebug"></div>
-  <img id="cursorDot" src="cursor.png" alt="">
+
+  <section id="inventoryWindow"><div id="inventoryList"></div></section>
  </div>
-</div>
+
+ <div id="overlayError" aria-live="polite"></div>
+ <div id="rawInputDebug"></div>
+ <img id="cursorDot" src="quests/images/cursor.png" alt="">
+
+<script>
+(function(){
+    'use strict';
+    var W=1920,H=1080;
+    function applyDesignScale(){
+        var c=document.getElementById('designCanvas');
+        if(!c)return;
+        var vw=Math.max(1,window.innerWidth),vh=Math.max(1,window.innerHeight);
+        var s=Math.min(vw/W,vh/H);
+        c.style.setProperty('--design-scale',String(s));
+        c.style.transform='scale('+s+')';
+    }
+    window.addEventListener('resize',applyDesignScale);
+    applyDesignScale();
+})();
+</script>
 <script src="js/quests_ui.js"></script>
 </body>
 </html>
