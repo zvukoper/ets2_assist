@@ -2881,6 +2881,8 @@ RegisterHotKeyChecked(
             command == "set_clickable_hotspot" ||
             command == "set_quest_collapsed" ||
             command == "quest_toggle_collapse" ||
+            command == "quest_toggle_inventory" ||
+            command == "quest_pause_ui" ||
             command == "set_quest_tab_state" ||
             command == "set_overlay_category";
 
