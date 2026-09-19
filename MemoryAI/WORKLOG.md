@@ -568,3 +568,13 @@ git show b34b75f:MemoryAI/WORKLOG.md > WORKLOG_full_until_17.09.26.md
   `build_scripts`). Версия приложения НЕ менялась (изменение вне исходников C#).
 - **ПРАВИЛО НА БУДУЩЕЕ:** любые `.ps1` в репозитории писать ТОЛЬКО ASCII
   (кириллица допустима лишь с BOM, но безопаснее ASCII).
+
+
+## 19.09.2026 — v1.0.40.79 CURSOR-CAL-TAB-QUEST-R9
+
+- **Курсор:** Raw Input и обычный Windows relative mouse input — разные уровни. `SendInput` использует relative `MOUSEINPUT.dx/dy`, причём Windows может применять mouse speed и thresholds; это не доказательство, что конкретная игра увидит те же данные как свой физический Raw Input. Поэтому host-side калибровка ведёт физический курсор к `(0,0)`, а web-курсор сразу стартует из `(0,0)`. Источник: Microsoft MOUSEINPUT/Raw Input docs.
+- **Курсор fade grace:** сохранён расчёт затухания тени и добавлен буфер **50 px** перед началом quadratic fade.
+- **TAB:** старый `RegisterHotKey(TAB)` был воспроизведён по v1.0.40.59, но в runtime TAB больше не реагировал. В v1.0.40.79 оставлен один источник: `WH_KEYBOARD_LL` в `MainForm`, активный только при видимом интерактивном UI; key-down переключает квестовое окно, autorepeat блокируется, TAB проглатывается на время жеста.
+- **Клик по квесту:** введён локальный `questDetailPinned`. Пока карточка квеста открыта из списка, устаревшие `selectedInteraction/selectedQuest/dialogue` от backend не могут через следующий секундный `quest_state` сбросить выбор. Выбор интерактива явно снимает pin.
+- **Анимация:** исходные пользовательские фазы НЕ изменены: движение 320 ms `ease-in`, opacity держится 0 до 224 ms, fade 224→316 ms, expand зеркальный `ease-out` + 96 ms fade с начала.
+- **Версия:** приложение и quest web UI подняты с 1.0.40.78 до **1.0.40.79-CURSOR-CAL-TAB-QUEST-R9**; build.txt и web manifest синхронизированы.
