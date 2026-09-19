@@ -385,7 +385,9 @@ namespace ETS2_Assist_GUI
                 ["ready"] = false,
                 ["pulse"] = false
             });
-            try { Quests.QuestRuntime.Current?.SetInteractiveVisible(false, false); } catch { }
+            /* Подтверждённый выход из паузы всегда сбрасывает выбор/диалог
+               backend тоже, чтобы следующий pause-cycle начинался чистым. */
+            try { Quests.QuestRuntime.Current?.SetInteractiveVisible(false, true); } catch { }
             if (changed) AppendLog("[QUEST] Интерактивный shell скрыт.");
         }
 
