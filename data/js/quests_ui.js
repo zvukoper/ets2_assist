@@ -66,6 +66,50 @@ function qdElementName(el){
     }catch(e){return'(?)'}
 }
 function qdStateText(){return'paused='+pagePaused+' collapsed='+collapsed}
+function qdCssSnapshot(el){
+    try{
+        if(!el)return'none';
+        var cs=getComputedStyle(el),r=el.getBoundingClientRect();
+        return'display='+cs.display+' visibility='+cs.visibility+' opacity='+cs.opacity+
+            ' pointerEvents='+cs.pointerEvents+' rect='+Math.round(r.left)+','+Math.round(r.top)+','+
+            Math.round(r.width)+'x'+Math.round(r.height);
+    }catch(e){return'css-error='+e.message}
+}
+function qdContentSnapshot(reason,force){
+    try{
+        var now=Date.now();
+        var q=$('questList'),i=$('inventoryList'),qw=$('questWindow'),iw=$('inventoryWindow'),app=$('questApp');
+        var root=document.documentElement;
+        var counts=model?[
+            (model.availableQuests||[]).length,
+            (model.activeQuests||[]).length,
+            (model.archiveQuests||[]).length,
+            (model.inventory||[]).length,
+            (model.nearby||[]).length
+        ].join('/'):'-/-/-/-/-';
+        var key=[
+            reason,pagePaused,interactiveReady,activeInterface,collapsed,counts,
+            q?q.innerHTML.length:-1,i?i.innerHTML.length:-1,
+            qw?qw.className:'',iw?iw.className:'',root.className,
+            root.getAttribute('data-ets2-ui-ready')
+        ].join('|');
+        if(!force && key===qdContentLastKey && now-qdContentLastAt<500)return;
+        qdContentLastKey=key;qdContentLastAt=now;
+        qdLog('[CONTENT-DOM] reason='+reason+
+            ' ws='+(ws?ws.readyState:'none')+
+            ' model='+(!!model)+
+            ' counts='+counts+
+            ' selected='+currentQuest+'/'+currentInteraction+
+            ' app='+qdCssSnapshot(app)+
+            ' questWindow='+qdCssSnapshot(qw)+
+            ' questListLen='+(q?q.innerHTML.length:-1)+' questTextLen='+(q?q.textContent.length:-1)+
+            ' inventoryLen='+(i?i.innerHTML.length:-1)+' inventoryTextLen='+(i?i.textContent.length:-1)+
+            ' inventoryWindow='+qdCssSnapshot(iw)+
+            ' category='+root.className+
+            ' ready='+root.getAttribute('data-ets2-ui-ready'));
+    }catch(e){qdLog('[CONTENT-DOM] snapshot error='+e.message)}
+}
+var qdContentLastAt=0,qdContentLastKey='';
 /* Состояние окна логируем только при реальном изменении — иначе поток спама. */
 function qdStateChanged(){
     if(qdLastState.paused===pagePaused&&qdLastState.collapsed===collapsed)return;
@@ -138,8 +182,12 @@ setInterval(function(){
 
 function send(o){
     var sent=false;
+    var ready=ws?ws.readyState:-1;
     if(ws&&ws.readyState===WebSocket.OPEN){ws.send(JSON.stringify(o));sent=true}
-    if(o&&typeof o.command==='string'&&o.command.indexOf('quest_')===0){qdCounters.wsOut++;qdLog('[WS-OUT] command='+o.command+' sent='+sent)}
+    if(o&&typeof o.command==='string'&&o.command.indexOf('quest_')===0){
+        qdCounters.wsOut++;
+        qdLog('[WS-OUT] command='+o.command+' sent='+sent+' readyState='+ready);
+    }
 }
 function post(o){
     var sent=false;
@@ -253,7 +301,16 @@ function dispatchNativeMouse(msg){
 
     var raw=document.elementFromPoint(x,y);
     var target=qnClickableTarget(raw);
-    if(!qnIsAllowedPointTarget(target)){
+    var managed=qnIsAllowedPointTarget(target);
+    if(!managed && pagePaused && activeInterface!=='none'){
+        /* Fullscreen questApp is the synthetic backdrop target. The native RAW
+           input sink receives the whole desktop, so transparent areas never hit
+           the DOM naturally; route them to questApp so its click handler can
+           collapse the open interface. */
+        var app=$('questApp');
+        if(app){target=app;managed=true}
+    }
+    if(!managed){
         qdCounters.nativeIgnored++;
         if(type==='mousemove')qnSetHoverTarget(null);
         if(type==='mouseup')qnPressedTarget=null;
@@ -343,6 +400,7 @@ function bindQuestNativeInput(){
             }
         });
         qdLog('[NATIVE-IN] bridge bound');
+        qdContentSnapshot('native-bridge-bound',true);
     }catch(e){
         qnHostBound=false;
         qdLog('[NATIVE-IN] bridge bind error='+e.message);
@@ -810,7 +868,9 @@ function questById(id){
 }
 function firstNearbyForQuest(id){return (model&&model.nearby||[]).find(function(p){return p.QuestId===id&&p.Marker&&p.Marker!=='none'})||null}
 function renderQuests(){
-    var el=$('questList');if(!el||!model)return;
+    var el=$('questList');
+    if(!el){qdLog('[CONTENT-RENDER] questList element MISSING');return}
+    if(!model){qdLog('[CONTENT-RENDER] renderQuests skipped: model=null');return}
 
     var seen={},nearIds=[];
     (model.nearby||[]).forEach(function(p){
@@ -889,7 +949,9 @@ function inventoryHasNewItems(){
 }
 function setInventoryTabPulse(on){syncTabVisibility()}
 function renderInventory(){
-    var el=$('inventoryList');if(!el||!model)return;
+    var el=$('inventoryList');
+    if(!el){qdLog('[CONTENT-RENDER] inventoryList element MISSING');return}
+    if(!model){qdLog('[CONTENT-RENDER] renderInventory skipped: model=null');return}
     var items=model.inventory||[];
     items.forEach(function(x){
         var id=String(x&&x.id||'');
@@ -948,6 +1010,8 @@ function selectInteraction(qid,iid){
 }
 
 function setQuestInteractiveVisible(visible,ready,pulse){
+    qdLog('[CONTENT-VISIBILITY] visible='+!!visible+' ready='+!!ready+' pulse='+!!pulse+
+        ' before pagePaused='+pagePaused+' activeInterface='+activeInterface+' collapsed='+collapsed);
     pagePaused=!!visible;interactiveReady=!!ready;
     var app=$('questApp');if(app)app.classList.toggle('interactiveVisible',pagePaused);
     if(!pagePaused){
@@ -975,10 +1039,23 @@ function setQuestInteractiveVisible(visible,ready,pulse){
         renderInventory();
     }
     publishInteractiveBounds();
+    qdContentSnapshot('setQuestInteractiveVisible',true);
 }
 function applyState(data){
-    if(!$('questApp'))return;
+    if(!$('questApp')){qdLog('[CONTENT-STATE] applyState skipped: questApp MISSING');return}
     model=data;
+    qdLog('[CONTENT-STATE] applyState bytes='+
+        (function(){try{return JSON.stringify(data).length}catch(e){return-1}})()+
+        ' paused='+ (data.paused===true)+
+        ' interactive='+(data.interactive===true)+
+        ' counts='+
+        (data.availableQuests||[]).length+'/'+
+        (data.activeQuests||[]).length+'/'+
+        (data.archiveQuests||[]).length+'/'+
+        (data.inventory||[]).length+'/'+
+        (data.nearby||[]).length+
+        ' selected='+(data.selectedQuest||'')+'/'+(data.selectedInteraction||'')+
+        ' dialogue='+(!!data.dialogue));
 
     var pausedByState=data.paused===true;
     var nearbyNow=!!((data.nearby)||[]).some(function(p){return p&&p.Marker&&p.Marker!=='none'});
@@ -1055,6 +1132,7 @@ function applyState(data){
     renderInventory();
     if(!interactive){
         publishInteractiveBounds();
+        qdContentSnapshot('applyState-noninteractive',true);
         return;
     }
     if(questDetailPinned){
@@ -1070,6 +1148,7 @@ function applyState(data){
     if(data.dialogue&&!questDetailPinned)renderDialogue(data.dialogue);
     else if(!questDetailPinned&&!data.selectedQuest&&!data.selectedInteraction)clearDialogue();
     renderQuests();renderInventory();publishInteractiveBounds();
+    qdContentSnapshot('applyState-interactive',true);
 }
 var stateRequestTimer=0,stateRequestAttempts=0;
 function requestQuestState(){
@@ -1083,11 +1162,12 @@ function connect(){
     try{
         ws=new WebSocket('ws://localhost:8085/');
         ws.onopen=function(){
-            qdLog('[CONTENT] quest WS connected');
+            qdLog('[CONTENT] quest WS connected url=ws://localhost:8085 readyState='+ws.readyState);
             stateRequestAttempts=0;
             requestQuestState();
         };
         ws.onmessage=function(ev){
+            qdLog('[CONTENT] quest WS message bytes='+(ev&&ev.data?String(ev.data).length:0));
             try{
                 var d=JSON.parse(ev.data);
                 if(d.command==='quest_state'){
@@ -1106,12 +1186,12 @@ function connect(){
                 qdLog('[CONTENT] quest WS parse error='+e.message);
             }
         };
-        ws.onclose=function(){
-            qdLog('[CONTENT] quest WS closed');
+        ws.onclose=function(ev){
+            qdLog('[CONTENT] quest WS closed code='+(ev&&ev.code)+' reason='+(ev&&ev.reason||'')+' clean='+(ev&&ev.wasClean));
             setTimeout(connect,1500);
         };
-        ws.onerror=function(){
-            qdLog('[CONTENT] quest WS error');
+        ws.onerror=function(ev){
+            qdLog('[CONTENT] quest WS error type='+(ev&&ev.type||'unknown')+' readyState='+(ws?ws.readyState:'none'));
             try{ws.close()}catch(e){}
         };
     }catch(e){
@@ -1119,6 +1199,26 @@ function connect(){
         setTimeout(connect,1500);
     }
 }
+window.onEts2Category=function(next){
+    qdLog('[CATEGORY-IN] next='+next+' pagePaused='+pagePaused+' activeInterface='+activeInterface+' collapsed='+collapsed);
+    if(next==='game'){
+        /* C# category=game is authoritative proof that pause UI must no longer
+           remain visually/clickably active, even if quest_pause_ui was lost or
+           arrived out of order. Keep legitimate non-pause beacon timers intact. */
+        if(pagePaused || activeInterface!=='none'){
+            setQuestInteractiveVisible(false,false,false);
+        }else{
+            syncTabVisibility();
+            applyCursorLayer();
+            publishInteractiveBounds();
+        }
+    }else{
+        syncTabVisibility();
+        applyCursorLayer();
+        publishInteractiveBounds();
+    }
+    qdContentSnapshot('category-'+next,true);
+};
 function showError(text){var e=$('overlayError');if(!e)return;e.textContent=text||'Ошибка';e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2500)}
 
 /* Команды приложения, адресованные именно окну квестов. */
@@ -1177,6 +1277,9 @@ window.onEts2Command=function(d){
 })();
 
 document.addEventListener('DOMContentLoaded',function(){
+    qdLog('[CONTENT-BOOT] DOMContentLoaded readyState='+document.readyState+
+        ' body='+(!!document.body)+' questApp='+(!!$('questApp'))+
+        ' questList='+(!!$('questList'))+' inventoryList='+(!!$('inventoryList')));
     clearDialogue();
     setTabPulse(false);
     setQuestInteractiveVisible(false,false,false);
@@ -1185,5 +1288,9 @@ document.addEventListener('DOMContentLoaded',function(){
     /* Первый отчёт о геометрии input-окна (initial render). */
     publishInteractiveBounds();
     setInterval(publishInteractiveBounds,1000);
+    qdContentSnapshot('DOMContentLoaded',true);
+    setInterval(function(){
+        qdContentSnapshot('periodic',false);
+    },2000);
 });
 })();
