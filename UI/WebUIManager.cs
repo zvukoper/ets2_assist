@@ -360,7 +360,7 @@ namespace ETS2_Assist_GUI
             {
                 ["visible"] = true,
                 ["ready"] = false,
-                ["pulse"] = !_questHasInteractive,
+                ["pulse"] = _questHasInteractive,
                 ["hasInteractive"] = _questHasInteractive
             });
             try { Quests.QuestRuntime.Current?.SetInteractiveVisible(true, true); } catch { }
