@@ -68,6 +68,7 @@
     var hideAllWanted = false;
     var revealRaf = 0;
     var pendingEts2Commands = [];
+    var sharedCommandWs = null;
     var pendingEts2CommandNames = {
         quest_pause_ui:true,
         set_quest_tab_state:true,
@@ -140,6 +141,19 @@
 
     window.ets2Category = function () { return category; };
     window.ets2ApplyCategory = apply;
+    /* Двусторонний канал 8084 уже нужен странице для входящих команд.
+       Используем его же для критичных интерактивных команд обратно в MainForm,
+       чтобы выбор квеста не зависел от отдельного WS состояния 8085. */
+    window.ets2SendCommand = function (payload) {
+        try {
+            if (!payload || !payload.command || !sharedCommandWs) return false;
+            if (sharedCommandWs.readyState !== WebSocket.OPEN) return false;
+            sharedCommandWs.send(JSON.stringify(payload));
+            return true;
+        } catch (_) {
+            return false;
+        }
+    };
 
     ensureStyle();
 
@@ -168,6 +182,7 @@
     function connect() {
         try {
             var ws = new WebSocket('ws://localhost:8084/');
+            sharedCommandWs = ws;
             ws.onmessage = function (ev) {
                 try {
                     var d = JSON.parse(ev.data);
@@ -182,7 +197,7 @@
                     }
                 } catch (_) { }
             };
-            ws.onclose = function () { setTimeout(connect, 1000); };
+            ws.onclose = function () { if (sharedCommandWs === ws) sharedCommandWs = null; setTimeout(connect, 1000); };
             ws.onerror = function () { try { ws.close(); } catch (_) { } };
         } catch (_) {
             setTimeout(connect, 1000);
