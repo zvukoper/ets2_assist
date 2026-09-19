@@ -355,7 +355,7 @@ var cursorEl=null,cursorTimer=null,cursorShown=false,cursorSystemReleased=false;
 function cssAlpha(value){
     try{
         if(!value||value==='transparent')return 0;
-        var m=value.match(/rgba?\\(([^)]+)\\)/i);
+        var m=value.match(/rgba?\(([^)]+)\)/i);
         if(!m)return 1;
         var parts=m[1].split(',').map(function(v){return v.trim()});
         if(parts.length===4){
@@ -388,10 +388,10 @@ function elementVisualAlpha(el){
 function parseBoxShadow(value){
     try{
         if(!value||value==='none')return null;
-        var colorMatch=value.match(/rgba?\\([^)]*\\)/i);
+        var colorMatch=value.match(/rgba?\([^)]*\)/i);
         var colorAlpha=colorMatch?cssAlpha(colorMatch[0]):1;
         var rest=colorMatch?value.replace(colorMatch[0],' '):value;
-        var nums=rest.match(/-?\\d+(?:\\.\\d+)?px/g)||[];
+        var nums=rest.match(/-?\d+(?:\.\d+)?px/g)||[];
         if(nums.length<3)return null;
         return{
             dx:parseFloat(nums[0])||0,
