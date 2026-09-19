@@ -365,114 +365,115 @@ bindQuestNativeInput();
  * Поэтому при входе в паузу host принудительно ведёт физический курсор в нулевой
  * угол через относительный SendInput, а virtual cursor.png получает client=(0,0). После этого оба
  * курсора движутся по одному Raw Input dx/dy без дополнительной калибровки.
- * Прозрачность cursorDot зависит от визуального alpha текущего Quest-контента
- * и его CSS box-shadow.
+ * Прозрачность cursorDot НЕ зависит от alpha DOM-элементов.
+ * Полностью видим над реальными блоками интерфейса; через 50 мс после
+ * выхода за их пределы становится прозрачным.
  * ================================================================ */
-var cursorEl=null,cursorTimer=null,cursorShown=false,cursorSystemReleased=false,cursorLastVisibleAlpha=.72;
+var cursorEl=null,cursorTimer=null,cursorShown=false,cursorSystemReleased=false,cursorUiBlock=false,cursorHideTimer=null;
 
-function cssAlpha(value){
+function isCursorOnUiBlock(x,y){
+    if(!pagePaused)return false;
     try{
-        if(!value||value==='transparent')return 0;
-        var m=value.match(/rgba?\(([^)]+)\)/i);
-        if(!m)return 1;
-        var parts=m[1].split(',').map(function(v){return v.trim()});
-        if(parts.length===4){
-            var a=parseFloat(parts[3]);
-            return Number.isFinite(a)?Math.max(0,Math.min(1,a)):1;
-        }
-        return 1;
-    }catch(e){return 1}
-}
-function elementVisualAlpha(el){
-    try{
-        if(!el||el===cursorEl)return 0;
-        var cs=getComputedStyle(el);
-        var opacity=parseFloat(cs.opacity);
-        if(!Number.isFinite(opacity)||opacity<=0)return 0;
-        var bg=cssAlpha(cs.backgroundColor);
-        if(bg>0)return opacity*bg;
-        var border=Math.max(
-            cssAlpha(cs.borderTopColor),
-            cssAlpha(cs.borderRightColor),
-            cssAlpha(cs.borderBottomColor),
-            cssAlpha(cs.borderLeftColor)
+        var el=document.elementFromPoint(x,y);
+        if(!el)return false;
+        var block=el.closest&&el.closest(
+            '#questSidebar,#eventPanel,#responsePanel,#imagePanel,#servicePanel,'+
+            '#inventoryWindow,#questTab,#inventoryTab,.panelInner,'+
+            'button,.archiveToggle,.questItem,.sideItem,.inventoryItem'
         );
-        if(border>0)return opacity*border;
-        var tag=String(el.tagName||'').toLowerCase();
-        if(tag==='img'||tag==='svg'||tag==='canvas'||tag==='video')return opacity;
-        return 0;
-    }catch(e){return 0}
+        return !!block;
+    }catch(e){return false}
 }
-function parseBoxShadow(value){
-    try{
-        if(!value||value==='none')return null;
-        var colorMatch=value.match(/rgba?\([^)]*\)/i);
-        var colorAlpha=colorMatch?cssAlpha(colorMatch[0]):1;
-        var rest=colorMatch?value.replace(colorMatch[0],' '):value;
-        var nums=rest.match(/-?\d+(?:\.\d+)?px/g)||[];
-        if(nums.length<3)return null;
-        return{
-            dx:parseFloat(nums[0])||0,
-            dy:parseFloat(nums[1])||0,
-            blur:Math.max(0,parseFloat(nums[2])||0),
-            spread:nums.length>=4?parseFloat(nums[3])||0:0,
-            alpha:colorAlpha
-        };
-    }catch(e){return null}
+function cancelCursorHideTimer(){
+    if(cursorHideTimer){clearTimeout(cursorHideTimer);cursorHideTimer=null}
 }
-function pointOutsideDistance(rect,x,y){
-    var dx=Math.max(rect.left-x,0,x-rect.right);
-    var dy=Math.max(rect.top-y,0,y-rect.bottom);
-    return Math.sqrt(dx*dx+dy*dy);
-}
-function cursorSurfaceAlpha(x,y){
-    if(!pagePaused)return 0;
-    var root=inventoryOpen?$('inventoryWindow'):(collapsed?$('questTab'):$('questWindow'));
-    if(!root)return 0;
-    var rr=root.getBoundingClientRect();
-    if(x>=rr.left&&x<=rr.right&&y>=rr.top&&y<=rr.bottom){
-        var els=[];
-        try{
-            if(document.elementsFromPoint)els=document.elementsFromPoint(x,y);
-            else{
-                var one=document.elementFromPoint(x,y);
-                if(one)els=[one];
-            }
-        }catch(e){}
-        var alpha=0;
-        for(var i=0;i<els.length;i++){
-            var el=els[i];
-            if(!el||el===cursorEl)continue;
-            alpha=Math.max(alpha,elementVisualAlpha(el));
-            if(alpha>=0.995)break;
+function scheduleCursorHide(){
+    cancelCursorHideTimer();
+    cursorHideTimer=setTimeout(function(){
+        cursorHideTimer=null;
+        if(pagePaused&&!cursorUiBlock&&cursorEl){
+            cursorEl.style.opacity='0';
         }
-        /* #questWindow/#questTab themselves are the visible opaque surface, so
-           transparent child hit-test regions still retain the real surface alpha. */
-        alpha=Math.max(alpha,elementVisualAlpha(root));
-        return Math.max(0,Math.min(1,alpha));
+    },50);
+}
+function placeCursor(x,y){
+    cursorEl=cursorEl||$('cursorDot');   // резолвим лениво: place может вызваться первым
+    if(!cursorEl)return;
+
+    cursorEl.style.transform='translate('+x+'px,'+y+'px)';
+    var onBlock=isCursorOnUiBlock(x,y);
+
+    if(onBlock){
+        cursorUiBlock=true;
+        cancelCursorHideTimer();
+        cursorEl.style.opacity='1';
+    }else{
+        if(cursorUiBlock){
+            cursorUiBlock=false;
+            scheduleCursorHide();
+        }else if(!cursorShown){
+            scheduleCursorHide();
+        }
     }
 
-    /* За пределами окна оставляем курсор только там, где реально есть его тень.
-       Используем текущий CSS box-shadow, чтобы и полупрозрачная тень под cursor
-       не превращалась в резкое появление/исчезновение. */
-    var shadow=null;
-    try{shadow=parseBoxShadow(getComputedStyle(root).boxShadow)}catch(e){}
-    if(!shadow||shadow.blur<=0||shadow.alpha<=0)return 0;
+    if(!cursorShown){
+        cursorShown=true;
+        cursorEl.style.display='block';
+    }
 
-    var shadowRect={
-        left:rr.left-shadow.spread,
-        top:rr.top-shadow.spread,
-        right:rr.right+shadow.spread,
-        bottom:rr.bottom+shadow.spread
-    };
-    var d=pointOutsideDistance(shadowRect,x-shadow.dx,y-shadow.dy);
-    /* v1.0.40.78: курсор не должен тускнеть сразу на первых пикселях тени.
-       Даём 50 px запаса: внутри этого буфера сохраняем текущую alpha тени,
-       затем запускаем прежнюю плавную quadratic-кривую затухания. */
-    var fadeDistance=Math.max(0,d-50);
-    if(fadeDistance>=shadow.blur)return 0;
-    var t=1-fadeDistance/shadow.blur;
-    return Math.max(0,Math.min(1,shadow.alpha*t*t));
+    qdCounters.place++;
+    qdLastPlace.x=x;qdLastPlace.y=y;qdLastPlace.shown=!!(cursorEl&&cursorEl.style.display==='block');
+    var now=Date.now();
+    if(qdCounters.place<=5||now-qdPlaceLogAt>=400){
+        qdPlaceLogAt=now;
+        qdLog('[CURSOR-PLACE] x='+x+' y='+y+' onUiBlock='+onBlock+' shown='+qdLastPlace.shown+' placeCount='+qdCounters.place);
+    }
+}
+
+function trackCursorFromEvent(e){
+    /* Курсор живёт во всём интерактивном режиме, включая свернутые закладки.
+       Вне визуальных блоков он исчезает с задержкой ровно 50 мс. */
+    if(!pagePaused)return;
+    placeCursor(e.clientX,e.clientY);
+}
+
+function startCursorTrack(){
+    cursorEl=cursorEl||$('cursorDot');
+    qdCounters.cursorStart++;
+    if(!qdTracking){
+        qdTracking=true;
+        qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
+    }
+    if(!cursorEl)return;
+    cancelCursorHideTimer();
+    cursorUiBlock=false;
+    cursorEl.style.opacity='1';
+    cursorEl.style.display='block';
+    cursorShown=true;
+    /* v1.0.40.79: the visual cursor starts at the same corner as the host-side
+       physical cursor. The first Raw Input packet may arrive a little later,
+       so initialize immediately instead of briefly showing the old position. */
+    placeCursor(0,0);
+    /* Host synchronizes the physical cursor to client=(0,0).
+       The hidden WebOverlay Raw Input sink owns the physical-mouse bridge and
+       sends the current client position as quest-native-input. The first packet
+       is initialized from GetCursorPos when the window becomes active. */
+}
+
+function stopCursorTrack(reason){
+    qdCounters.cursorStop++;
+    if(qdTracking){
+        qdTracking=false;
+        qdLog('[CURSOR] stop reason='+(reason||'unspecified')+' cursorElementExists='+!!cursorEl+' stopCount='+qdCounters.cursorStop);
+    }
+    window.removeEventListener('mousemove',trackCursorFromEvent);
+    window.removeEventListener('mouseover',trackCursorFromEvent);
+    if(cursorTimer){clearInterval(cursorTimer);cursorTimer=null}
+    cancelCursorHideTimer();
+    qnSetHoverTarget(null);
+    qnPressedTarget=null;
+    cursorUiBlock=false;
+    if(cursorEl){cursorEl.style.display='none';cursorEl.style.opacity='0';cursorShown=false}
 }
 
 function placeCursor(x,y){
