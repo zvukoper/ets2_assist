@@ -57,6 +57,24 @@ foreach ($root in @($publishRoot, $binRoot)) {
         }
     }
 }
+# Stage 1d: JavaScript syntax guard. Fail before build if the Quest page contains
+# a syntax error; otherwise WebView2 would silently render a blank/non-functional page.
+$questJs = Join-Path $PSScriptRoot 'data\\js\\quests_ui.js'
+if (Test-Path $questJs) {
+    $node = Get-Command node -ErrorAction SilentlyContinue
+    if ($node) {
+        Write-Host "Checking Quest JavaScript syntax: $questJs"
+        & $node.Source --check $questJs
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Quest JavaScript syntax check FAILED." -ForegroundColor Red
+            exit $LASTEXITCODE
+        }
+        Write-Host "Quest JavaScript syntax check OK." -ForegroundColor Green
+    } else {
+        Write-Host "Node.js not found; Quest JavaScript syntax check skipped." -ForegroundColor Yellow
+    }
+}
+
 # Stage 2: build
 # WebOverlay is maintained in the sibling repository f:\repo\weboverlay in the
 # standard development layout. Build it first so data\bin\WebOverlay.exe used by
