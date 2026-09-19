@@ -287,18 +287,18 @@ function updateRawInputDiagnostics(msg){
     rawInputDiagEl=rawInputDiagEl||$('rawInputDebug');
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
-    rawInputDiagEl.textContent=
-        'RAW INPUT TEST\\n'+
-        'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / ACTIVE\\n'+
-        'packets: '+(msg.packets??0)+'\\n'+
-        'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy)+'\\n'+
-        'sum  dx: '+rawInputFmt(msg.totalDx)+'   dy: '+rawInputFmt(msg.totalDy)+'\\n'+
-        'soft cursor: '+(Number(msg.cursorX)>=0?Number(msg.cursorX)+','+Number(msg.cursorY):'NO POSITION')+
-            ' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE')+'\\n'+
-        'flags: 0x'+Number(msg.flags||0).toString(16).padStart(4,'0')+'\\n'+
-        'buttons: 0x'+Number(msg.buttonFlags||0).toString(16).padStart(4,'0')+' data='+Number(msg.buttonData||0)+'\\n'+
-        'device: '+(msg.device||'0x0')+'\\n'+
-        'last: '+(msg.lastRawUtc||'-');
+    rawInputDiagEl.innerHTML=[
+        '<strong>SOFT CURSOR R3 1.0.40.73</strong>',
+        'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
+        'packets: '+(msg.packets??0),
+        'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
+        'sum dx: '+rawInputFmt(msg.totalDx)+'   dy: '+rawInputFmt(msg.totalDy),
+        '<strong>soft cursor: '+(Number(msg.cursorX)>=0?Number(msg.cursorX)+','+Number(msg.cursorY):'NO POSITION')+'</strong>',
+        'flags: 0x'+Number(msg.flags||0).toString(16).padStart(4,'0'),
+        'buttons: 0x'+Number(msg.buttonFlags||0).toString(16).padStart(4,'0')+' data='+Number(msg.buttonData||0),
+        'device: '+(msg.device||'0x0'),
+        'last: '+(msg.lastRawUtc||'-')
+    ].join('<br>');
 }
 
 function bindQuestNativeInput(){
