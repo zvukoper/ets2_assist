@@ -14,6 +14,9 @@ var locallySeenInventoryItems=Object.create(null);
 var pagePaused=false,hasInteractive=false,lastDialogueKey='',lastOptionsKey='',lastInteractionsKey='',lastQuestsKey='',typeTimer=null,fadeTimer=null;
 var questBeaconVisible=false,inventoryBeaconVisible=false,questBeaconTimer=0,inventoryBeaconTimer=0;
 var pendingQuestBeacon=false,pendingInventoryBeacon=false;
+/* Защита от гонки выбора: после клика короткое время локальный выбор имеет
+   приоритет над запаздывающим quest_state со старым selectedQuest. */
+var pendingSelectionKey='',pendingSelectionAt=0,pendingSelectionTimeoutMs=2000;
 var inventoryBeaconSeen=Object.create(null),inventoryKnown=Object.create(null),inventoryKnownInitialized=false,lastNearbyInteractive=false;
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
    переключать вид дважды: двойной клик по кнопке или по прозрачной области
@@ -24,7 +27,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-DIAG-2026-09-19-2227';
+var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R15-2026-09-19';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -382,7 +385,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R13 1.0.40.83</strong>',
+        '<strong>SOFT CURSOR R15 1.0.40.85</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -893,6 +896,12 @@ function questById(id){
     return [].concat((model&&model.availableQuests)||[],(model&&model.activeQuests)||[],(model&&model.archiveQuests)||[]).find(function(q){return q.id===id})||null;
 }
 function firstNearbyForQuest(id){return (model&&model.nearby||[]).find(function(p){return p.QuestId===id&&p.Marker&&p.Marker!=='none'})||null}
+/* Для квестов вне радиуса берём первую разрешённую интерактивную точку из
+   полного массива points. Поэтому клик по «Доступные/Активные/Архив» тоже
+   открывает диалог/изображение/служебные блоки, а не только карточку. */
+function firstInteractionPointForQuest(id){
+    return (model&&model.points||[]).find(function(p){return p&&p.QuestId===id&&p.InteractionId})||null;
+}
 function renderQuests(){
     var el=$('questList');
     if(!el){qdLog('[CONTENT-RENDER] questList element MISSING');return}
@@ -954,8 +963,8 @@ function renderQuests(){
         btn.onclick=function(e){
             e.stopPropagation();
             var near=firstNearbyForQuest(btn.dataset.q);
-            if(near)selectInteraction(near.QuestId,near.InteractionId);
-            else showQuestDetail(btn.dataset.q);
+            var point=near||firstInteractionPointForQuest(btn.dataset.q);
+            if(point)selectInteraction(point.QuestId,point.InteractionId);
         };
     });
 
@@ -967,7 +976,7 @@ function renderQuests(){
         renderQuests();
     };
 }
-function questButton(q,kind){var selected=questDetailPinned&&!currentInteraction&&currentQuest===q.id;return'<button class="questItem '+kind+(selected?' selected':'')+'" data-q="'+esc(q.id)+'"><strong>'+esc(q.title)+'</strong><span>'+esc(q.status||'')+'</span>'+((q.stepDescription||q.description)?'<em>'+esc(q.stepDescription||q.description)+'</em>':'')+'</button>'}
+function questButton(q,kind){var selected=currentQuest===q.id;return'<button class="questItem '+kind+(selected?' selected':'')+'" data-q="'+esc(q.id)+'"><strong>'+esc(q.title)+'</strong><span>'+esc(q.status||'')+'</span>'+((q.stepDescription||q.description)?'<em>'+esc(q.stepDescription||q.description)+'</em>':'')+'</button>'}
 function inventoryHasNewItems(){
     return !!((model&&model.inventory)||[]).some(function(x){
         return x&&x.new_item===true&&!locallySeenInventoryItems[String(x.id||'')];
@@ -1014,6 +1023,7 @@ function renderInventory(){
 }
 function showQuestDetail(id){
     var q=questById(id);if(!q)return;
+    pendingSelectionKey='';pendingSelectionAt=0;
     questDetailPinned=true;currentQuest=id;currentInteraction='';
     var speaker=$('dialogSpeaker'),text=$('dialogText'),service=$('dialogService'),opts=$('dialogOptions'),img=$('dialogImage');
     if(speaker)speaker.textContent=q.title;
@@ -1032,7 +1042,10 @@ function clearDialogue(){
 function selectInteraction(qid,iid){
     if(!pagePaused||!interactiveReady||!model||model.paused!==true)return;
     questDetailPinned=false;currentQuest=qid;currentInteraction=iid;
-    send({command:'quest_select_interaction',questId:qid,id:iid});renderQuests()
+    pendingSelectionKey=String(qid||'')+':'+String(iid||'');pendingSelectionAt=Date.now();
+    qdLog('[SELECTION-REQUEST] key='+pendingSelectionKey+' local-selection-set');
+    send({command:'quest_select_interaction',questId:qid,id:iid});
+    renderQuests();
 }
 
 function setQuestInteractiveVisible(visible,ready,pulse){
@@ -1150,7 +1163,7 @@ function applyState(data){
     /* interactive из quest_state — пост-валидатор. Видимость UI меняется
        только явной командой quest_pause_ui от приложения. */
     var stateKey=interactive+'|'+paused+'|'+(data.selectedQuest||'')+'|'+(data.selectedInteraction||'')+'|'+(data.dialogue?'1':'0');
-    if(stateKey!==qdLastQuestStateKey){qdLastQuestStateKey=stateKey;qdLog('WS-IN(8085) quest_state paused='+paused+' interactive='+interactive+' selected='+(data.selectedInteraction||''))}
+    if(stateKey!==qdLastQuestStateKey){qdLastQuestStateKey=stateKey;qdLog('WS-IN(8085) quest_state paused='+paused+' interactive='+interactive+' selected='+(data.selectedQuest||'')+'/'+(data.selectedInteraction||''))}
     /* Рендер не зависит от флага interactive в конкретном пакете:
        backend может прислать состояние на границе перехода паузы.
        Само отображение всё равно контролирует quest_pause_ui/category. */
@@ -1161,16 +1174,32 @@ function applyState(data){
         qdContentSnapshot('applyState-noninteractive',true);
         return;
     }
+    var keepPendingSelection=false;
     if(questDetailPinned){
         /* Локально открытая карточка квеста не должна заменяться backend-blank
            состоянием: у карточки нет selectedInteraction по протоколу. */
         currentInteraction='';
     }else{
-        /* Backend selection теперь передаётся КАЖДЫМ quest_state, поэтому
-           можно безопасно считать его авторитетным состоянием выбора. */
-        currentQuest=data.selectedQuest||'';
-        currentInteraction=data.selectedInteraction||'';
+        var serverSelectionKey=String(data.selectedQuest||'')+':'+String(data.selectedInteraction||'');
+        if(pendingSelectionKey){
+            if(serverSelectionKey===pendingSelectionKey){
+                qdLog('[SELECTION-ACK] key='+serverSelectionKey+' server-selection-confirmed');
+                pendingSelectionKey='';pendingSelectionAt=0;
+            }else if(Date.now()-pendingSelectionAt<pendingSelectionTimeoutMs){
+                keepPendingSelection=true;
+                qdLog('[SELECTION-RACE] keep local='+pendingSelectionKey+' server='+serverSelectionKey);
+            }else{
+                qdLog('[SELECTION-TIMEOUT] local='+pendingSelectionKey+' server='+serverSelectionKey);
+                pendingSelectionKey='';pendingSelectionAt=0;
+            }
+        }
+        if(!keepPendingSelection){
+            currentQuest=data.selectedQuest||'';
+            currentInteraction=data.selectedInteraction||'';
+        }
     }
+    if(data.dialogue&&!questDetailPinned&&!keepPendingSelection)renderDialogue(data.dialogue);
+    else if(!questDetailPinned&&!keepPendingSelection&&!data.selectedQuest&&!data.selectedInteraction)clearDialogue();
     if(data.dialogue&&!questDetailPinned)renderDialogue(data.dialogue);
     else if(!questDetailPinned&&!data.selectedQuest&&!data.selectedInteraction)clearDialogue();
     renderQuests();renderInventory();publishInteractiveBounds();
