@@ -488,7 +488,15 @@ namespace ETS2_Assist_GUI.Quests
             _selectedQuestId = questId;
             _selectedInteractionId = interactionId;
             _activeDialogue.Remove(key);
-            BroadcastState(true, questId, interactionId, ResolveEntryDialogue(def, interaction));
+            string entryDialogue = ResolveEntryDialogue(def, interaction);
+            BroadcastState(true, questId, interactionId, entryDialogue);
+            try
+            {
+                _host.PushQuestStateToOverlay(
+                    BuildStatePayload(questId, interactionId, entryDialogue),
+                    "select-interaction");
+            }
+            catch { }
         }
 
         private string ResolveEntryDialogue(QuestDefinition def, QuestInteractionDefinition interaction)
