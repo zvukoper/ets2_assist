@@ -69,11 +69,17 @@
         var vp=viewPos(camPos);
         var py=(typeof yOverride==='number' && Number.isFinite(yOverride)) ? yOverride : readNumber(p.Y,0);
         var rel={x:readNumber(p.X,0)-vp.x,y:py-vp.y,z:readNumber(p.Z,0)-vp.z};
-        var depth=dot(rel,cam.fwd);
+        var basis=camPos && camPos.fwd && camPos.right && camPos.up ? camPos : cam;
+        var fwd=basis.fwd || basis.cameraForward || cam.fwd;
+        var right=basis.right || basis.cameraRight || cam.right;
+        var up=basis.up || basis.cameraUp || cam.up;
+        // Shared AR view uses cameraForward/cameraRight/cameraUp; fallback smoothing
+        // above exposes the shorter fwd/right/up names.
+        var depth=dot(rel,fwd);
         if(depth<=0.05) return null;
-        var sx=dot(rel,cam.right), sy=dot(rel,cam.up);
-        var hfov=readNumber(cam.fov,75)*Math.PI/180;
-        var vfov=readNumber(cam.vfov,65)*Math.PI/180;
+        var sx=dot(rel,right), sy=dot(rel,up);
+        var hfov=readNumber((camPos&&camPos.fovDeg!==undefined)?camPos.fovDeg:cam.fov,75)*Math.PI/180;
+        var vfov=readNumber((camPos&&camPos.fovDegVertical!==undefined)?camPos.fovDegVertical:cam.vfov,65)*Math.PI/180;
         return {
             x:innerWidth/2+(sx/depth)/Math.tan(hfov/2)*innerWidth/2,
             y:innerHeight/2-(sy/depth)/Math.tan(vfov/2)*innerHeight/2,
@@ -109,7 +115,8 @@
         var h=window.__arSmooth;
         return (h&&h.cfg)||{enabled:true,posTau:.08,rotTau:.092,snapDistM:25,maxExtrapS:.15};
     }
-    // Если ar_hud.js уже успел посчитать кадр — используем ЕГО сглаженную позу
+    // Если ar_hud.js уже успел посчитать кадр — используем ЕГО сглаженную
+    // позу целиком: позиция И orientation basis должны быть из одного фильтра.
     // (тогда оба слоя смотрят строго из одной точки и не «разъезжаются»).
     function smoothView(){
         var h=window.__arSmooth;
@@ -124,7 +131,14 @@
         return v;
     }
 
-    var camS={x:0,y:0,z:0,vx:0,vy:0,vz:0,valid:false,lastAt:0};
+    var camS={
+        x:0,y:0,z:0,
+        vx:0,vy:0,vz:0,
+        fwd:{x:0,y:0,z:-1},
+        right:{x:1,y:0,z:0},
+        up:{x:0,y:1,z:0},
+        valid:false,lastAt:0
+    };
     var camPrevQ={x:0,y:0,z:0,atMs:0,valid:false};
     var telemetryAtMs=0;
 
@@ -150,7 +164,14 @@
         camPrevQ.atMs=now;camPrevQ.valid=true;
         telemetryAtMs=now;
     }
-    function resetQuestSmoothing(){camS.valid=false;camS.vx=camS.vy=camS.vz=0;camPrevQ.valid=false;}
+    function resetQuestSmoothing(){
+        camS.valid=false;
+        camS.vx=camS.vy=camS.vz=0;
+        camS.fwd.x=0;camS.fwd.y=0;camS.fwd.z=-1;
+        camS.right.x=1;camS.right.y=0;camS.right.z=0;
+        camS.up.x=0;camS.up.y=1;camS.up.z=0;
+        camPrevQ.valid=false;
+    }
 
     // Пересчёт сглаженной позы на КАЖДЫЙ кадр. Возвращает null, если сглаживание
     // выключено или поза ещё не получена — тогда проекция идёт по сырым данным.
@@ -161,6 +182,9 @@
         if(!camS.valid){
             camS.x=cam.x;camS.y=cam.y;camS.z=cam.z;
             camS.vx=camS.vy=camS.vz=0;
+            camS.fwd.x=cam.fwd.x;camS.fwd.y=cam.fwd.y;camS.fwd.z=cam.fwd.z;
+            camS.right.x=cam.right.x;camS.right.y=cam.right.y;camS.right.z=cam.right.z;
+            camS.up.x=cam.up.x;camS.up.y=cam.up.y;camS.up.z=cam.up.z;
             camS.valid=true;camS.lastAt=nowMs;
             return camS;
         }
@@ -173,14 +197,28 @@
         if(jump>(cfg.snapDistM||25)){
             camS.x=cam.x;camS.y=cam.y;camS.z=cam.z;
             camS.vx=camS.vy=camS.vz=0;
+            camS.fwd.x=cam.fwd.x;camS.fwd.y=cam.fwd.y;camS.fwd.z=cam.fwd.z;
+            camS.right.x=cam.right.x;camS.right.y=cam.right.y;camS.right.z=cam.right.z;
+            camS.up.x=cam.up.x;camS.up.y=cam.up.y;camS.up.z=cam.up.z;
             return camS;
         }
 
         var kPos=1-Math.exp(-dt/(cfg.posTau||.08));
+        var kRot=1-Math.exp(-dt/(cfg.rotTau||.092));
         var age=Math.max(0,Math.min((nowMs-(telemetryAtMs||nowMs))/1000,cfg.maxExtrapS||.15));
         camS.x+=((cam.x+camS.vx*age)-camS.x)*kPos;
         camS.y+=((cam.y+camS.vy*age)-camS.y)*kPos;
         camS.z+=((cam.z+camS.vz*age)-camS.z)*kPos;
+
+        function lerpNorm(dst,a,b,k){
+            var x=a.x+(b.x-a.x)*k, y=a.y+(b.y-a.y)*k, z=a.z+(b.z-a.z)*k;
+            var len=Math.hypot(x,y,z);
+            if(!(len>1e-9)) { dst.x=b.x;dst.y=b.y;dst.z=b.z;return; }
+            dst.x=x/len;dst.y=y/len;dst.z=z/len;
+        }
+        lerpNorm(camS.fwd,camS.fwd,cam.fwd,kRot);
+        lerpNorm(camS.right,camS.right,cam.right,kRot);
+        lerpNorm(camS.up,camS.up,cam.up,kRot);
         return camS;
     }
     function markerChar(m){return m==='yellow_exclamation'?'!':(m==='yellow_question'||m==='gray_question'?'?':'');}
@@ -253,7 +291,10 @@
         var py=(typeof yOverride==='number' && Number.isFinite(yOverride)) ? yOverride : readNumber(p.Y,0);
         var vp=viewPos(camPos);
         var rel={x:readNumber(p.X,0)-vp.x,y:py-vp.y,z:readNumber(p.Z,0)-vp.z};
-        var sx=dot(rel,cam.right), sy=dot(rel,cam.up);
+        var basis=camPos && (camPos.cameraRight||camPos.right) ? camPos : cam;
+        var right=basis.cameraRight||basis.right||cam.right;
+        var up=basis.cameraUp||basis.up||cam.up;
+        var sx=dot(rel,right), sy=dot(rel,up);
         var dx=sx,dy=-sy;
         if(Math.abs(dx)+Math.abs(dy)<0.001){dx=0;dy=1;}
         var length=Math.hypot(dx,dy)||1;dx/=length;dy/=length;
