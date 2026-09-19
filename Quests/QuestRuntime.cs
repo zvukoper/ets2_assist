@@ -388,6 +388,36 @@ namespace ETS2_Assist_GUI.Quests
             client.SendJson(payload);
         }
 
+        /* Shared 8084 fallback for commands originating from the interactive quest page.
+           The normal quest-state socket remains 8085; critical user actions are also
+           accepted here so they cannot be lost when the page's state WS is transient. */
+        internal void HandleSharedChannelCommand(JObject data)
+        {
+            string command = data["command"]?.Value<string>() ?? "";
+            Logger.Current?.Workflow(
+                $"[QUEST-DIAG][WS8084-IN] command={command} paused={_paused} interactive={_interactiveVisible} raw={data.ToString(Formatting.None)}");
+            switch (command)
+            {
+                case "quest_state_request":
+                    BeginInvokeUi(() => BroadcastState(true));
+                    break;
+                case "quest_select_interaction":
+                    BeginInvokeUi(() => SelectInteraction(
+                        data["questId"]?.Value<string>() ?? "",
+                        data["id"]?.Value<string>() ?? ""));
+                    break;
+                case "quest_dialog_option":
+                    BeginInvokeUi(() => ApplyDialogOption(
+                        data["questId"]?.Value<string>() ?? "",
+                        data["interaction"]?.Value<string>() ?? "",
+                        data["index"]?.Value<int>() ?? -1));
+                    break;
+                case "inventory_item_seen":
+                    BeginInvokeUi(() => MarkInventoryItemSeen(data["id"]?.Value<string>() ?? ""));
+                    break;
+            }
+        }
+
         private void OnQuestMessage(JObject data)
         {
             string command = data["command"]?.Value<string>() ?? "";
