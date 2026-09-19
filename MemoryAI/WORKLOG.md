@@ -578,3 +578,42 @@ git show b34b75f:MemoryAI/WORKLOG.md > WORKLOG_full_until_17.09.26.md
 - **Клик по квесту:** введён локальный `questDetailPinned`. Пока карточка квеста открыта из списка, устаревшие `selectedInteraction/selectedQuest/dialogue` от backend не могут через следующий секундный `quest_state` сбросить выбор. Выбор интерактива явно снимает pin.
 - **Анимация:** исходные пользовательские фазы НЕ изменены: движение 320 ms `ease-in`, opacity держится 0 до 224 ms, fade 224→316 ms, expand зеркальный `ease-out` + 96 ms fade с начала.
 - **Версия:** приложение и quest web UI подняты с 1.0.40.78 до **1.0.40.79-CURSOR-CAL-TAB-QUEST-R9**; build.txt и web manifest синхронизированы.
+
+---
+
+## 19.09.2026 — compile.ps1 Stage 3e — удаление логов WebOverlay при сборке
+
+- **Задача:** при компиляции удалять также логи хоста оверлея
+  `%APPDATA%\WebOverlay\debug.log` и
+  `%APPDATA%\WebOverlay\quest-input-diagnostic.log`.
+- **РЕАЛИЗАЦИЯ (`compile.ps1`, новый **Stage 3e** сразу после Stage 3d):** список
+  `$overlayLogs = @('debug.log','quest-input-diagnostic.log')` в
+  `Join-Path $env:APPDATA 'WebOverlay'`. Для каждого файла: если есть — пишется
+  размер, делается `Remove-Item -Force`, затем **проверяется факт удаления**
+  (`Test-Path` после удаления). Не удалилось (файл залочен) — жёлтое
+  предупреждение `WebOverlay log NOT removed (locked?)`, а не молчаливый провал.
+  Итог: `WebOverlay logs cleaned: N file(s) removed` / `already clean`.
+- **ПОРЯДОК ГАРАНТИРУЕТ ОТСУТСТВИЕ ЛОКОВ:** хост WebOverlay убивается в Stage 1,
+  wipe идёт ПОСЛЕ `dotnet publish` и ДО запуска в Stage 4 — держать файлы в этот
+  момент некому.
+- **⛔ ГЕЙТ $deliveryOk:** блок пропускается при провале delivery check
+  (`WebOverlay log cleanup SKIPPED … keep the logs for diagnosis`) — сломанная
+  сборка не должна уничтожать логи, которые нужны для её диагностики. Та же
+  защита, что у Stage 3d.
+- **ПОЧЕМУ УДАЛЯЕМ:** устаревший лог от прошлой сборки хуже отсутствующего — его
+  отдают на анализ, и записи ошибочно приписывают НОВОЙ сборке.
+- **ИЗМЕРЕНО:** `quest-input-diagnostic.log` разросся до **141 066 606 байт
+  (~141 МБ)**, `debug.log` — 519 653 байта. За одну сборку освободилось ~141 МБ.
+- **ПРОВЕРЕНО:** dry-run блока (без удаления) — оба файла найдены и помечены к
+  удалению; затем реальный `.\compile.ps1`: `Removed WebOverlay log:
+  …debug.log (519653 bytes)`, `Removed WebOverlay log:
+  …quest-input-diagnostic.log (141066606 bytes)`, `WebOverlay logs cleaned:
+  2 file(s) removed`. После сборки в `%APPDATA%\WebOverlay` остался только
+  `config.json`. `MemoryAI\LOGS cleaned: 5 temporary file(s)`. Publish delivery OK
+  (423 файла hashed), WebView2 cache cleared, WebOverlay delivered
+  `1.0.40.78+60e6872d…`. Версия приложения не менялась (правка только сборочного
+  скрипта): exe = `1.0.40.81-CURSOR-CAL-TAB-QUEST-R11`.
+- **Изменённые файлы:** `compile.ps1`, `АРХИТЕКТУРА ПРОЕКТА.md` (`publish_cache`).
+- **ЗАМЕЧАНИЕ:** в `compile.ps1` уже были 4 не-ASCII символа (`—`, тире в старых
+  комментариях строк 27/84/130/145) — парсер их терпит, т.к. они не ломают
+  лексику; НОВЫЕ комментарии писать ASCII-only (правило из записи про `pull.ps1`).

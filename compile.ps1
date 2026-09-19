@@ -225,5 +225,43 @@ if (-not $deliveryOk) {
     Write-Host "MemoryAI\LOGS not found, skipping log cleanup." -ForegroundColor Yellow
 }
 
+# Stage 3e: the overlay host's OWN diagnostic logs must not survive a successful
+# build either. They live in %APPDATA%\WebOverlay and are written by WebOverlay.exe
+# (QuestInputDiagnostics / the debug log):
+#   %APPDATA%\WebOverlay\debug.log
+#   %APPDATA%\WebOverlay\quest-input-diagnostic.log
+# Rationale: a stale log from the previous build is worse than no log - it gets
+# handed over for analysis and the entries are attributed to the NEW build. The
+# host is killed in Stage 1, so nothing holds these files open here; the app is
+# launched only in Stage 4, i.e. AFTER this wipe, and recreates fresh files.
+# Gated by $deliveryOk for the same reason as Stage 3d: a failed build must not
+# destroy the very logs needed to diagnose it.
+$overlayLogDir = Join-Path $env:APPDATA 'WebOverlay'
+$overlayLogs = @('debug.log', 'quest-input-diagnostic.log')
+if (-not $deliveryOk) {
+    Write-Host 'WebOverlay log cleanup SKIPPED: publish delivery check failed, keep the logs for diagnosis.' -ForegroundColor Yellow
+} elseif (Test-Path $overlayLogDir) {
+    $removedOverlayLogs = 0
+    foreach ($name in $overlayLogs) {
+        $logFile = Join-Path $overlayLogDir $name
+        if (-not (Test-Path -LiteralPath $logFile)) { continue }
+        $size = (Get-Item -LiteralPath $logFile -ErrorAction SilentlyContinue).Length
+        Remove-Item -LiteralPath $logFile -Force -ErrorAction SilentlyContinue
+        if (Test-Path -LiteralPath $logFile) {
+            Write-Host "WebOverlay log NOT removed (locked?): $logFile" -ForegroundColor Yellow
+        } else {
+            Write-Host "Removed WebOverlay log: $logFile ($size bytes)" -ForegroundColor Green
+            $removedOverlayLogs++
+        }
+    }
+    if ($removedOverlayLogs -gt 0) {
+        Write-Host "WebOverlay logs cleaned: $removedOverlayLogs file(s) removed from $overlayLogDir." -ForegroundColor Green
+    } else {
+        Write-Host "WebOverlay logs already clean (none present in $overlayLogDir)." -ForegroundColor Green
+    }
+} else {
+    Write-Host "WebOverlay log folder not found ($overlayLogDir), skipping overlay log cleanup." -ForegroundColor Yellow
+}
+
 # Stage 4: launch
 Start-Process "$PSScriptRoot\bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe" -Verb RunAs
