@@ -27,7 +27,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R20-2026-09-19';
+var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R21-2026-09-19';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -203,7 +203,7 @@ qdBindMouse();
 setInterval(function(){
     /* Пишем ВСЕГДА (в т.ч. при count=0): именно нулевой счётчик доказывает,
        что цепочка Windows/WebView2 → DOM не работает. */
-    qdLog('[JS-MOUSE-SUMMARY] count='+qdCounters.mouseMove+' last='+qdLastMove.x+','+qdLastMove.y+' lastTarget='+qdLastMove.target+' clicks='+qdCounters.click+' mousedown='+qdCounters.mouseDown+' '+qdStateText());
+    qdLog('[JS-MOUSE-SUMMARY] count='+qdCounters.mouseMove+' last='+qdLastMove.x+','+qdLastMove.y+' lastTarget='+qdLastMove.target+' clicks='+qdCounters.click+' mousedown='+qdCounters.mouseDown+' ready='+interactiveReady+' activeInterface='+activeInterface+' current='+currentQuest+'/'+currentInteraction+' '+qdStateText());
 },5000);
 
 function send(o){
@@ -385,7 +385,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R20 1.0.40.90</strong>',
+        '<strong>SOFT CURSOR R21 1.0.40.91</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -979,6 +979,31 @@ function renderQuests(){
         renderQuests();
     };
 }
+/* Делегированный обработчик: native input вызывает element.click() на кнопке,
+   поэтому выбор перехватывается на capture-фазе раньше любых backdrop-обработчиков.
+   Это также переживает полную перерисовку #questList через innerHTML. */
+document.addEventListener('click',function(e){
+    try{
+        var raw=e.target;
+        var btn=raw&&raw.closest?raw.closest('.questItem'):null;
+        if(!btn)return;
+        if(!pagePaused||!model){
+            qdLog('[QUEST-ITEM-CAPTURE-BLOCKED] paused='+pagePaused+' model='+(!!model)+' ready='+interactiveReady);
+            return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        var near=firstNearbyForQuest(btn.dataset.q);
+        var point=near||firstInteractionPointForQuest(btn.dataset.q);
+        qdLog('[QUEST-ITEM-CAPTURE] qid='+(btn.dataset.q||'')+' point='+(point?String(point.InteractionId||''):'none')+
+            ' paused='+pagePaused+' ready='+interactiveReady+' activeInterface='+activeInterface);
+        if(point)selectInteraction(point.QuestId,point.InteractionId);
+        else showQuestDetail(btn.dataset.q);
+    }catch(err){
+        qdLog('[QUEST-ITEM-CAPTURE-ERROR] '+err.message);
+    }
+},true);
+
 function questButton(q,kind){var selected=currentQuest===q.id;return'<button class="questItem '+kind+(selected?' selected':'')+'" data-q="'+esc(q.id)+'"><strong>'+esc(q.title)+'</strong><span>'+esc(q.status||'')+'</span>'+((q.stepDescription||q.description)?'<em>'+esc(q.stepDescription||q.description)+'</em>':'')+'</button>'}
 function inventoryHasNewItems(){
     return !!((model&&model.inventory)||[]).some(function(x){
@@ -1099,11 +1124,13 @@ function renderQuestSelectionFallback(qid){
     qdLog('[SELECTION-FALLBACK] qid='+qid+' local quest content rendered while waiting for dialogue');
 }
 function selectInteraction(qid,iid){
-    /* pagePaused/interactiveReady — локальное состояние уже показанного UI.
-       model.paused может отставать на один пакет quest_state во время входа
-       в паузу; запрещать клик из-за этого рассинхрона нельзя. Backend всё равно
-       повторно валидирует _paused и _interactiveVisible. */
-    if(!pagePaused||!interactiveReady||!model)return;
+    /* Клик по уже показанному интерактиву не должен зависеть от transient ready:
+       native input/DOM могут догнать quest_pause_ui с небольшим рассинхроном.
+       Backend всё равно повторно валидирует _paused и _interactiveVisible. */
+    if(!pagePaused||!model){
+        qdLog('[SELECTION-BLOCKED] pagePaused='+pagePaused+' model='+(!!model)+' ready='+interactiveReady);
+        return;
+    }
     questDetailPinned=false;currentQuest=qid;currentInteraction=iid;
     renderQuestSelectionFallback(qid);
     pendingSelectionKey=String(qid||'')+':'+String(iid||'');pendingSelectionAt=Date.now();
@@ -1389,7 +1416,10 @@ window.onEts2Command=function(d){
                 '#questWindow,#inventoryWindow,#questTab,#inventoryTab'
             ));
         }catch(_){}
-        if(!insideManagedTarget)collapseWindow();
+        if(!insideManagedTarget){
+            try{ if(t&&t.closest&&t.closest('.questItem')) return; }catch(_){}
+            collapseWindow();
+        }
     });
     if(tab)tab.addEventListener('transitionend',function(){syncTabVisibility();if(pagePaused)syncInput(false);publishInteractiveBounds()});
     if(itab)itab.addEventListener('transitionend',function(){syncTabVisibility();if(pagePaused)syncInput(false);publishInteractiveBounds()});
