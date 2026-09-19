@@ -182,11 +182,14 @@ namespace ETS2_Assist_GUI
             AdvanceQuestPauseFlow(paused);
 
             bool showInteractive = _questInteractiveShellVisible;
-            bool showGameUi = _gameUiForce ||
-                              (gameVisible &&
-                               !paused &&
-                               !_questInteractiveShellVisible &&
-                               _questPauseFlow != QuestPauseFlowState.WaitingForResume);
+            // Категории строго взаимоисключающие: пока игра на паузе,
+            // игровая категория НИКОГДА не может быть принудительно показана
+            // ручным переключателем миникарты. Возврат game-категории выполняется
+            // только после подтверждённого выхода из паузы.
+            bool showGameUi = gameVisible &&
+                              !paused &&
+                              !_questInteractiveShellVisible &&
+                              _questPauseFlow != QuestPauseFlowState.WaitingForResume;
 
             UpdateOverlayLayerFocus(debugShow || _committedActive);
             ApplyOverlayVisibility(showGameUi, showInteractive, gameFocused);
@@ -335,7 +338,10 @@ namespace ETS2_Assist_GUI
             _questInteractiveShellVisible = true;
             SendCommandToMap("hide_ui");
             SendCommandToMap("hide_game_ui");
-            if (!_minimapAutoLogic) SendCommandToMap("minimap_hide");
+            // Пауза всегда имеет приоритет над ручным режимом «Показать карту»:
+            // сначала гасим auto-force, затем непосредственно карту.
+            SendCommandToMap("minimap_auto", new JObject { ["enabled"] = false });
+            SendCommandToMap("minimap_hide");
             SendCommandToMap("set_overlay_category", new JObject { ["category"] = "interactive" });
             SendCommandToMap("set_quest_collapsed", new JObject { ["collapsed"] = true });
             SendCommandToMap("quest_pause_ui", new JObject
@@ -453,7 +459,10 @@ namespace ETS2_Assist_GUI
         /// </summary>
         private void ApplyOverlayVisibility(bool showGameUi, bool showInteractive, bool gameFocused)
         {
-            if (showGameUi != _lastGameUiVisible)
+            bool gameUiChanged = showGameUi != _lastGameUiVisible;
+            bool interactiveChanged = showInteractive != _lastInteractiveVisible;
+
+            if (gameUiChanged)
             {
                 _lastGameUiVisible = showGameUi;
                 _lastUiVisible = showGameUi;
@@ -463,13 +472,23 @@ namespace ETS2_Assist_GUI
                 {
                     SendCommandToMap("hide_ui");
                     SendCommandToMap("hide_game_ui");
-                    if (!_minimapAutoLogic) SendCommandToMap("minimap_hide");
+                    // Критично: ручной режим миникарты не должен переживать паузу.
+                    // Авто-режим будет восстановлен только после выхода из неё.
+                    if (_lastMinimapAuto != false)
+                    {
+                        _lastMinimapAuto = false;
+                        SendCommandToMap("minimap_auto", new JObject { ["enabled"] = false });
+                    }
+                    if (_lastMinimapVisible != false)
+                    {
+                        _lastMinimapVisible = false;
+                        SendCommandToMap("minimap_hide");
+                    }
                     AppendLog("[UI] Игровые интерфейсы скрыты.");
                 }
                 else
                 {
                     SendCommandToMap(_uiShown ? "show_ui" : "show_ui_first");
-                    SendCommandToMap("minimap_show");
                     SendCommandToMap("show_game_ui");
                     AppendLog(_uiShown
                         ? "[UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления."
@@ -478,12 +497,32 @@ namespace ETS2_Assist_GUI
                 }
             }
 
-            if (_minimapAutoLogic)
+            // Миникарта подчиняется только текущей игровой категории.
+            // Во время паузы/WaitingForResume она ВСЕГДА выключена, даже если
+            // пользователь оставил ручной режим «Показать карту» включённым.
+            if (!showGameUi)
             {
+                if (_lastMinimapAuto != false)
+                {
+                    _lastMinimapAuto = false;
+                    SendCommandToMap("minimap_auto", new JObject { ["enabled"] = false });
+                }
+                if (_lastMinimapVisible != false)
+                {
+                    _lastMinimapVisible = false;
+                    SendCommandToMap("minimap_hide");
+                }
+            }
+            else if (_minimapAutoLogic)
+            {
+                if (_lastMinimapAuto != true)
+                {
+                    _lastMinimapAuto = true;
+                    SendCommandToMap("minimap_auto", new JObject { ["enabled"] = true });
+                }
                 if (_lastMinimapVisible != true)
                 {
                     _lastMinimapVisible = true;
-                    SendCommandToMap("minimap_auto", new JObject { ["enabled"] = true });
                     SendCommandToMap("minimap_show");
                 }
             }
@@ -494,27 +533,39 @@ namespace ETS2_Assist_GUI
                     _lastMinimapAuto = false;
                     SendCommandToMap("minimap_auto", new JObject { ["enabled"] = false });
                 }
-                if (_lastMinimapVisible != showGameUi)
+                if (_lastMinimapVisible != true)
                 {
-                    _lastMinimapVisible = showGameUi;
-                    SendCommandToMap(showGameUi ? "minimap_show" : "minimap_hide");
+                    _lastMinimapVisible = true;
+                    SendCommandToMap("minimap_show");
                 }
             }
 
-            if (showInteractive != _lastInteractiveVisible)
+            // Категория отправляется при ЛЮБОМ переходе состояния.
+            // Раньше первый переход false->true мог показать game UI, но не
+            // отправить set_overlay_category, потому что interactive оставался false.
+            if (gameUiChanged || interactiveChanged)
+            {
+                if (showInteractive)
+                {
+                    SendCommandToMap("set_overlay_category",
+                        new JObject { ["category"] = "interactive" });
+                }
+                else if (showGameUi)
+                {
+                    SendCommandToMap("set_overlay_category",
+                        new JObject { ["category"] = "game" });
+                }
+            }
+
+            if (interactiveChanged)
             {
                 _lastInteractiveVisible = showInteractive;
                 _lastPauseLogoVisible = showInteractive;
 
                 if (showInteractive)
                 {
-                    SendCommandToMap("set_overlay_category", new JObject { ["category"] = "interactive" });
                     SendCommandToMap("set_quest_collapsed", new JObject { ["collapsed"] = true });
                     PushQuestInteractiveSignal();
-                }
-                else if (showGameUi)
-                {
-                    SendCommandToMap("set_overlay_category", new JObject { ["category"] = "game" });
                 }
 
                 Logger.Current?.Workflow(
