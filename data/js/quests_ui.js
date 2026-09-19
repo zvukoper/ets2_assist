@@ -16,7 +16,7 @@ var questBeaconVisible=false,inventoryBeaconVisible=false,questBeaconTimer=0,inv
 var pendingQuestBeacon=false,pendingInventoryBeacon=false;
 /* Защита от гонки выбора: после клика короткое время локальный выбор имеет
    приоритет над запаздывающим quest_state со старым selectedQuest. */
-var pendingSelectionKey='',pendingSelectionAt=0,pendingSelectionTimeoutMs=2000;
+var pendingSelectionKey='',pendingSelectionAt=0;
 var inventoryBeaconSeen=Object.create(null),inventoryKnown=Object.create(null),inventoryKnownInitialized=false,lastNearbyInteractive=false,inventoryPulseState=false,lastInventoryRenderKey='';
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
    переключать вид дважды: двойной клик по кнопке или по прозрачной области
@@ -27,7 +27,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R22-2026-09-19';
+var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R23-2026-09-19';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -385,7 +385,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R22 1.0.40.92</strong>',
+        '<strong>SOFT CURSOR R23 1.0.40.93</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -1117,7 +1117,12 @@ function renderQuestSelectionFallback(qid){
         var parts=[];
         if(q.status)parts.push(q.status);
         if(q.stepDescription)parts.push(q.stepDescription);
-        service.innerHTML=parts.length?'<div class="serviceBlock">'+esc(parts.join(' · '))+'</div>':'';
+        parts.push('Ожидание данных интерактива…');
+        service.innerHTML='<div class="serviceBlock">'+esc(parts.join(' · '))+'</div>'+
+            '<div class="questRewardTitle">Награды</div>'+
+            ((q.rewards||[]).map(function(r){
+                return'<div class="rewardLine">'+esc(r.display||r.id)+' ×'+esc(r.amount||1)+'</div>';
+            }).join('')||'<div class="muted">—</div>');
     }
     if(opts)opts.innerHTML='';
     if(img){img.removeAttribute('src');img.style.display='none'}
@@ -1278,12 +1283,9 @@ function applyState(data){
             if(serverSelectionKey===pendingSelectionKey){
                 qdLog('[SELECTION-ACK] key='+serverSelectionKey+' server-selection-confirmed');
                 pendingSelectionKey='';pendingSelectionAt=0;
-            }else if(Date.now()-pendingSelectionAt<pendingSelectionTimeoutMs){
+            }else{
                 keepPendingSelection=true;
                 qdLog('[SELECTION-RACE] keep local='+pendingSelectionKey+' server='+serverSelectionKey);
-            }else{
-                qdLog('[SELECTION-TIMEOUT] local='+pendingSelectionKey+' server='+serverSelectionKey);
-                pendingSelectionKey='';pendingSelectionAt=0;
             }
         }
         if(!keepPendingSelection){
