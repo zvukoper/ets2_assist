@@ -2948,6 +2948,8 @@ RegisterHotKeyChecked(
             command == "quest_toggle_inventory" ||
             command == "quest_pause_ui" ||
             command == "set_quest_tab_state" ||
+            command == "quest_bookmark_beacon" ||
+            command == "inventory_bookmark_beacon" ||
             command == "set_overlay_category";
 
         // ================================================================
