@@ -195,7 +195,10 @@ namespace ETS2_Assist_GUI
         private IntPtr _questTabKeyboardHook = IntPtr.Zero;
         private LowLevelKeyboardProc? _questTabKeyboardProc;
         private int _questTabHookEnabled;
+        private int _questInputHookEnabled;
         private bool _questTabHookKeyDown;
+        private bool _questInventoryKeyDown;
+        private bool _questEscKeyDown;
         private const int WH_KEYBOARD_LL = 13;
         private const int HC_ACTION = 0;
         private const int QUEST_HOOK_WM_KEYDOWN = 0x0100;
@@ -468,17 +471,37 @@ RegisterHotKeyChecked(
         }
 
         /// <summary>
-        /// v1.0.40.79: TAB — свернуть/развернуть окно квестов, пока на экране
-        /// интерактивная категория (то есть видна закладка «Квесты» либо само окно).
-        /// Low-level keyboard hook включается/выключается ДИНАМИЧЕСКИ вместе с
-        /// категорией, поэтому TAB перехватывается только во время интерактивной паузы.
+        /// v1.0.40.82: единый low-level keyboard hook для интерактивных режимов.
+        /// TAB/I перехватываются только когда интерактивный слой видим.
+        /// ESC только наблюдается и всегда проходит дальше в ETS2.
         /// </summary>
         private void SetQuestToggleHotkeyActive(bool active)
         {
             Volatile.Write(ref _questTabHookEnabled, active ? 1 : 0);
-            if (!active)
+            UpdateQuestKeyboardHook();
+        }
+
+        private void SetQuestInputHookActive(bool active)
+        {
+            Volatile.Write(ref _questInputHookEnabled, active ? 1 : 0);
+            UpdateQuestKeyboardHook();
+        }
+
+        private void UpdateQuestKeyboardHook()
+        {
+            bool wanted = Volatile.Read(ref _questTabHookEnabled) != 0 ||
+                          Volatile.Read(ref _questInputHookEnabled) != 0;
+
+            if (!wanted)
             {
                 _questTabHookKeyDown = false;
+                _questInventoryKeyDown = false;
+                _questEscKeyDown = false;
+                if (_questTabKeyboardHook != IntPtr.Zero)
+                {
+                    try { UnhookWindowsHookEx(_questTabKeyboardHook); } catch { }
+                    _questTabKeyboardHook = IntPtr.Zero;
+                }
                 return;
             }
 
@@ -488,35 +511,48 @@ RegisterHotKeyChecked(
             {
                 _questTabKeyboardProc ??= QuestTabKeyboardHookCallback;
                 _questTabKeyboardHook = SetWindowsHookEx(
-                    WH_KEYBOARD_LL,
-                    _questTabKeyboardProc,
-                    GetModuleHandle(null),
-                    0);
+                    WH_KEYBOARD_LL, _questTabKeyboardProc, GetModuleHandle(null), 0);
 
                 if (_questTabKeyboardHook == IntPtr.Zero)
                 {
-                    int err = Marshal.GetLastWin32Error();
-                    AppendLog($"[HOTKEY] Не удалось установить low-level TAB hook — код {err}");
+                    AppendLog($"[HOTKEY] Не удалось установить low-level keyboard hook — код {Marshal.GetLastWin32Error()}");
                 }
                 else
                 {
-                    AppendLog("[HOTKEY] TAB hook активирован для окна квестов.");
+                    AppendLog("[HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).");
                 }
             }
             catch (Exception ex)
             {
-                AppendLog($"[HOTKEY] Ошибка установки TAB hook: {ex.Message}");
+                AppendLog($"[HOTKEY] Ошибка установки low-level keyboard hook: {ex.Message}");
             }
         }
 
         private void UninstallQuestTabKeyboardHook()
         {
             Volatile.Write(ref _questTabHookEnabled, 0);
+            Volatile.Write(ref _questInputHookEnabled, 0);
             _questTabHookKeyDown = false;
-
+            _questInventoryKeyDown = false;
+            _questEscKeyDown = false;
             if (_questTabKeyboardHook == IntPtr.Zero) return;
             try { UnhookWindowsHookEx(_questTabKeyboardHook); } catch { }
             _questTabKeyboardHook = IntPtr.Zero;
+        }
+
+        private bool IsQuestHookGameForeground()
+        {
+            try
+            {
+                IntPtr foreground = GetForegroundWindow();
+                if (foreground == IntPtr.Zero) return false;
+                GetWindowThreadProcessId(foreground, out uint pid);
+                if (pid == 0) return false;
+                using var process = Process.GetProcessById((int)pid);
+                return process.ProcessName.Equals("eurotrucks2", StringComparison.OrdinalIgnoreCase) ||
+                       process.ProcessName.Equals("amtrucks2", StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
         }
 
         private IntPtr QuestTabKeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
@@ -529,51 +565,92 @@ RegisterHotKeyChecked(
 
             KBDLLHOOKSTRUCT k;
             try { k = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam); }
-            catch
+            catch { return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam); }
+
+            bool tabEnabled = Volatile.Read(ref _questTabHookEnabled) != 0;
+            bool inputEnabled = Volatile.Read(ref _questInputHookEnabled) != 0;
+            bool gameForeground = inputEnabled && IsQuestHookGameForeground();
+
+            if (k.vkCode == (uint)Keys.Escape && gameForeground)
             {
-                return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
-            }
-
-            if (k.vkCode != (uint)Keys.Tab)
-                return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
-
-            bool enabled = Volatile.Read(ref _questTabHookEnabled) != 0;
-            if (!enabled)
-                return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
-
-            if (keyDown && !((k.flags & LLKHF_UP) != 0))
-            {
-                if (_questTabHookKeyDown)
-                    return (IntPtr)1;
-
-                _questTabHookKeyDown = true;
-                try
+                if (keyDown && (k.flags & LLKHF_UP) == 0)
                 {
-                    if (!IsDisposed && IsHandleCreated)
+                    if (!_questEscKeyDown)
                     {
-                        BeginInvoke((Action)(() =>
+                        _questEscKeyDown = true;
+                        try
                         {
-                            try
-                            {
-                                if (Volatile.Read(ref _questTabHookEnabled) == 0) return;
-                                SendCommandToMap("quest_toggle_collapse");
-                            }
-                            catch { }
-                        }));
+                            if (!IsDisposed && IsHandleCreated)
+                                BeginInvoke((Action)(() => { try { OnQuestEscapeKeyDetected(); } catch { } }));
+                        }
+                        catch { }
                     }
                 }
-                catch { }
+                else if (keyUp)
+                {
+                    _questEscKeyDown = false;
+                }
 
-                // TAB принадлежит окну квестов только когда оно реально показано.
-                // Не отдаём его ETS2/другому приложению и не допускаем двойное
-                // переключение из autorepeat.
-                return (IntPtr)1;
+                // ESC is observation only; the game must receive the actual key.
+                return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
             }
 
-            if (keyUp)
+            if (k.vkCode == (uint)Keys.Tab && tabEnabled)
             {
-                _questTabHookKeyDown = false;
-                return (IntPtr)1;
+                if (keyDown && (k.flags & LLKHF_UP) == 0)
+                {
+                    if (_questTabHookKeyDown) return (IntPtr)1;
+                    _questTabHookKeyDown = true;
+                    try
+                    {
+                        if (!IsDisposed && IsHandleCreated)
+                            BeginInvoke((Action)(() =>
+                            {
+                                try
+                                {
+                                    if (Volatile.Read(ref _questTabHookEnabled) != 0)
+                                        SendCommandToMap("quest_toggle_collapse");
+                                }
+                                catch { }
+                            }));
+                    }
+                    catch { }
+                    return (IntPtr)1;
+                }
+                if (keyUp)
+                {
+                    _questTabHookKeyDown = false;
+                    return (IntPtr)1;
+                }
+            }
+
+            if (k.vkCode == (uint)Keys.I && tabEnabled)
+            {
+                if (keyDown && (k.flags & LLKHF_UP) == 0)
+                {
+                    if (_questInventoryKeyDown) return (IntPtr)1;
+                    _questInventoryKeyDown = true;
+                    try
+                    {
+                        if (!IsDisposed && IsHandleCreated)
+                            BeginInvoke((Action)(() =>
+                            {
+                                try
+                                {
+                                    if (Volatile.Read(ref _questTabHookEnabled) != 0)
+                                        SendCommandToMap("quest_toggle_inventory");
+                                }
+                                catch { }
+                            }));
+                    }
+                    catch { }
+                    return (IntPtr)1;
+                }
+                if (keyUp)
+                {
+                    _questInventoryKeyDown = false;
+                    return (IntPtr)1;
+                }
             }
 
             return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
