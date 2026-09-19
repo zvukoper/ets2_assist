@@ -166,7 +166,6 @@ namespace ETS2_Assist_GUI.Quests
         private async Task TickAsync()
         {
             if (_disposed) return;
-            _paused = await ReadPauseAsync().ConfigureAwait(true);
             ProcessInstantActivations();
             if (!TruckTelemetry.TryGetSnapshot(out var truck, out _, out bool haveSample) || !haveSample)
             {
@@ -178,19 +177,6 @@ namespace ETS2_Assist_GUI.Quests
             _host.SetQuestInteractiveSignal(_nearby.Any(p => !string.IsNullOrWhiteSpace(p.Marker) && p.Marker != "none"));
             if (_paused || _nearby.Count > 0 || DateTime.UtcNow - _lastStateSentUtc > TimeSpan.FromSeconds(1)) BroadcastState(_paused || _nearby.Count > 0);
             await UpdateOverlayAsync().ConfigureAwait(true); EnforceArPointDebugMode();
-        }
-
-        private async Task<bool> ReadPauseAsync()
-        {
-            try
-            {
-                string text = (await _http.GetStringAsync($"http://localhost:{TruckTelemetry.Port}/api/rest/single/frame/paused").ConfigureAwait(true)).Trim();
-                if (bool.TryParse(text, out bool b)) return b;
-                var token = JToken.Parse(text);
-                if (token.Type == JTokenType.Boolean) return token.Value<bool>();
-                return token["paused"]?.Value<bool>() ?? token["value"]?.Value<bool>() ?? _paused;
-            }
-            catch { return _paused; }
         }
 
         private List<QuestPointSnapshot> GetAvailableInteractions(double x, double y, double z)
@@ -438,13 +424,15 @@ namespace ETS2_Assist_GUI.Quests
         private void SelectInteraction(string questId, string interactionId)
         {
             Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] select_interaction questId={questId} id={interactionId} paused={_paused}");
-            if (!_paused) { SendError("Интерактив доступен только на паузе игры."); return; }
+            if (!_paused || !_interactiveVisible) { SendError("Интерактив доступен только в подтверждённом окне ESC-паузы."); return; }
             if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) return;
             QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));
             if (interaction == null || !TryBuildInteraction(def, interaction, out _)) return;
             // v1.0.41: окно квестов всегда открывается в исходном состоянии —
             // игрок сам выбирает интерактив, ранее открытый диалог не восстанавливается.
             string key = questId + ":" + interactionId;
+            _selectedQuestId = questId;
+            _selectedInteractionId = interactionId;
             _activeDialogue.Remove(key);
             BroadcastState(true, questId, interactionId, ResolveEntryDialogue(def, interaction));
         }
@@ -461,7 +449,7 @@ namespace ETS2_Assist_GUI.Quests
         private void ApplyDialogOption(string questId, string interactionId, int index)
         {
             Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] dialog_option questId={questId} interaction={interactionId} index={index} paused={_paused}");
-            if (!_paused) { SendError("Взаимодействие разрешено только на паузе игры."); return; }
+            if (!_paused || !_interactiveVisible) { SendError("Взаимодействие разрешено только в подтверждённом окне ESC-паузы."); return; }
             if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) return;
             QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));
             if (interaction == null || !TryBuildInteraction(def, interaction, out _)) return;
@@ -473,7 +461,18 @@ namespace ETS2_Assist_GUI.Quests
             if (option.Requirements != null && !EvaluateRequirement(option.Requirements)) { SendError("Условия варианта не выполнены."); return; }
             ApplyEffects(def, option.Effects);
             if (!string.IsNullOrWhiteSpace(option.Next)) _activeDialogue[key] = option.Next; else _activeDialogue.Remove(key);
-            ForceArRebuild(); BroadcastState(true, option.Close ? null : questId, option.Close ? null : interactionId, option.Close ? null : option.Next);
+            if (option.Close)
+            {
+                _selectedQuestId = "";
+                _selectedInteractionId = "";
+            }
+            else
+            {
+                _selectedQuestId = questId;
+                _selectedInteractionId = interactionId;
+            }
+            ForceArRebuild();
+            BroadcastState(true, option.Close ? null : questId, option.Close ? null : interactionId, option.Close ? null : option.Next);
         }
 
         private void ApplyEffects(QuestDefinition def, IEnumerable<QuestEffect> effects)
@@ -528,28 +527,113 @@ namespace ETS2_Assist_GUI.Quests
             if (repLines.Count > 0) Broadcast(new JObject { ["command"]="quest_notify", ["notification"] = new JObject { ["title"]="Получена репутация:", ["text"]=string.Join("\n", repLines), ["icon"]="", ["accent"]="reputation" } });
         }
 
-        private JObject BuildStatePayload(string? selectedQuest=null, string? selectedInteraction=null, string? explicitDialogue=null)
+        private JObject BuildStatePayload(string? selectedQuest = null, string? selectedInteraction = null, string? explicitDialogue = null)
         {
             var points = new JArray();
-            foreach (QuestDefinition def in _store.Definitions.Values) foreach (QuestInteractionDefinition interaction in def.Interactions) if (TryBuildInteraction(def, interaction, out QuestPointSnapshot point)) points.Add(JObject.FromObject(point));
-            var editorPoints = new JArray();
-            foreach (QuestDefinition def in _store.Definitions.Values) foreach (QuestInteractionDefinition interaction in def.Interactions) if (TryBuildEditorInteraction(def, interaction, out QuestPointSnapshot point)) editorPoints.Add(JObject.FromObject(point));
+            foreach (QuestDefinition def in _store.Definitions.Values)
+                foreach (QuestInteractionDefinition interaction in def.Interactions)
+                    if (TryBuildInteraction(def, interaction, out QuestPointSnapshot point))
+                        points.Add(JObject.FromObject(point));
 
-            var active=new JArray(); var archive=new JArray();
+            var editorPoints = new JArray();
+            foreach (QuestDefinition def in _store.Definitions.Values)
+                foreach (QuestInteractionDefinition interaction in def.Interactions)
+                    if (TryBuildEditorInteraction(def, interaction, out QuestPointSnapshot point))
+                        editorPoints.Add(JObject.FromObject(point));
+
+            var available = new JArray();
+            var active = new JArray();
+            var archive = new JArray();
+
             foreach (QuestDefinition def in _store.Definitions.Values)
             {
-                QuestProgress p=GetProgress(def.Id); var q=new JObject { ["id"]=def.Id,["title"]=def.Title,["description"]=def.Description,["status"]=p.Status.ToString(), ["step"]=p.Step,["stepDescription"]=def.Steps.TryGetValue(p.Step ?? "",out QuestStepDefinition? step)?step.Description:"",["rewards"]=JArray.FromObject(def.Rewards),["returnOffer"]=p.ReturnOffer };
-                if(p.Status==QuestStatus.Active) active.Add(q); else if(p.Status!=QuestStatus.Available) archive.Add(q);
+                QuestProgress p = GetProgress(def.Id);
+                var q = new JObject
+                {
+                    ["id"] = def.Id,
+                    ["title"] = def.Title,
+                    ["description"] = def.Description,
+                    ["status"] = p.Status.ToString(),
+                    ["step"] = p.Step,
+                    ["stepDescription"] = def.Steps.TryGetValue(p.Step ?? "", out QuestStepDefinition? step) ? step.Description : "",
+                    ["rewards"] = JArray.FromObject(def.Rewards),
+                    ["returnOffer"] = p.ReturnOffer
+                };
+
+                if (p.Status == QuestStatus.Available && IsQuestAvailable(def))
+                    available.Add(q);
+                else if (p.Status == QuestStatus.Active)
+                    active.Add(q);
+                else if (p.Status != QuestStatus.Available)
+                    archive.Add(q);
             }
-            var inventory=new JArray(); foreach(var item in _store.State.Inventory) inventory.Add(new JObject { ["id"]=item.Key,["name"]=DisplayItemName(item.Key),["amount"]=item.Value });
-            var nearby=new JArray(); foreach(var p in _nearby) nearby.Add(new JObject { ["QuestId"]=p.QuestId,["InteractionId"]=p.InteractionId,["Name"]=p.Name,["Marker"]=p.Marker,["ArVisible"]=p.ArVisible,["ArOffscreenPointer"]=p.ArOffscreenPointer,["distance"]=Math.Sqrt(DistanceSquared(p.X,p.Y,p.Z,_lastTruckX,_lastTruckY,_lastTruckZ)) });
-            var payload=new JObject { ["command"]="quest_state",["paused"]=_paused,["enabled"]=_store.Settings.Enabled,["points"]=points,["editorPoints"]=editorPoints,["nearby"]=nearby,["activeQuests"]=active,["archiveQuests"]=archive,["inventory"]=inventory,["settings"]=JObject.FromObject(_store.Settings) };
-            if(!string.IsNullOrWhiteSpace(selectedQuest)&&!string.IsNullOrWhiteSpace(selectedInteraction))
+
+            var inventory = new JArray();
+            foreach (var item in _store.State.Inventory)
             {
-                if(explicitDialogue==null) _activeDialogue.TryGetValue(selectedQuest+":"+selectedInteraction,out explicitDialogue);
-                if(!string.IsNullOrWhiteSpace(explicitDialogue)&&_store.Definitions.TryGetValue(selectedQuest,out QuestDefinition? def)&&def.Dialogues.TryGetValue(explicitDialogue,out QuestDialogueNode? node))
-                { payload["selectedQuest"]=selectedQuest; payload["selectedInteraction"]=selectedInteraction; payload["dialogue"]=BuildDialoguePayload(def,node); }
+                inventory.Add(new JObject
+                {
+                    ["id"] = item.Key,
+                    ["name"] = DisplayItemName(item.Key),
+                    ["amount"] = item.Value
+                });
             }
+
+            // Тестовые предметы только для UI: сохранённое состояние игры не меняем.
+            if (!inventory.Any(x => x["id"]?.Value<string>() == "driver_license"))
+                inventory.Add(new JObject { ["id"] = "driver_license", ["name"] = "Водительские права", ["amount"] = 1, ["test"] = true });
+            if (!inventory.Any(x => x["id"]?.Value<string>() == "pts"))
+                inventory.Add(new JObject { ["id"] = "pts", ["name"] = "ПТС", ["amount"] = 1, ["test"] = true });
+
+            var nearby = new JArray();
+            foreach (var p in _nearby)
+            {
+                nearby.Add(new JObject
+                {
+                    ["QuestId"] = p.QuestId,
+                    ["InteractionId"] = p.InteractionId,
+                    ["Name"] = p.Name,
+                    ["Marker"] = p.Marker,
+                    ["ArVisible"] = p.ArVisible,
+                    ["ArOffscreenPointer"] = p.ArOffscreenPointer,
+                    ["distance"] = Math.Sqrt(DistanceSquared(p.X, p.Y, p.Z, _lastTruckX, _lastTruckY, _lastTruckZ))
+                });
+            }
+
+            var payload = new JObject
+            {
+                ["command"] = "quest_state",
+                ["paused"] = _paused,
+                ["interactive"] = _interactiveVisible,
+                ["enabled"] = _store.Settings.Enabled,
+                ["points"] = points,
+                ["editorPoints"] = editorPoints,
+                ["nearby"] = nearby,
+                ["availableQuests"] = available,
+                ["activeQuests"] = active,
+                ["archiveQuests"] = archive,
+                ["inventory"] = inventory,
+                ["settings"] = JObject.FromObject(_store.Settings)
+            };
+
+            string? sq = string.IsNullOrWhiteSpace(selectedQuest) ? _selectedQuestId : selectedQuest;
+            string? si = string.IsNullOrWhiteSpace(selectedInteraction) ? _selectedInteractionId : selectedInteraction;
+
+            if (!string.IsNullOrWhiteSpace(sq) && !string.IsNullOrWhiteSpace(si))
+            {
+                if (explicitDialogue == null)
+                    _activeDialogue.TryGetValue(sq + ":" + si, out explicitDialogue);
+
+                if (!string.IsNullOrWhiteSpace(explicitDialogue) &&
+                    _store.Definitions.TryGetValue(sq, out QuestDefinition? def) &&
+                    def.Dialogues.TryGetValue(explicitDialogue, out QuestDialogueNode? node))
+                {
+                    payload["selectedQuest"] = sq;
+                    payload["selectedInteraction"] = si;
+                    payload["dialogue"] = BuildDialoguePayload(def, node);
+                }
+            }
+
             return payload;
         }
 
@@ -588,7 +672,33 @@ namespace ETS2_Assist_GUI.Quests
             return string.Join(" ",parts);
         }
 
-        private string DisplayItemName(string id) => id switch { "special_marinade_meat"=>"Мясо в спецмаринаде", "legendary_shashlik"=>"Легендарный шашлык от Руслана", _=>id };
+        private string DisplayItemName(string id) => id switch
+        {
+            "special_marinade_meat" => "Мясо в спецмаринаде",
+            "legendary_shashlik" => "Легендарный шашлык от Руслана",
+            "driver_license" => "Водительские права",
+            "pts" => "ПТС",
+            _ => id
+        };
+
+        internal void SetHostPauseState(bool paused)
+        {
+            if (_paused == paused) return;
+            _paused = paused;
+            BroadcastState(true);
+        }
+
+        internal void SetInteractiveVisible(bool visible, bool resetSelection)
+        {
+            _interactiveVisible = visible;
+            if (resetSelection)
+            {
+                _selectedQuestId = "";
+                _selectedInteractionId = "";
+                _activeDialogue.Clear();
+            }
+            BroadcastState(true);
+        }
         private void BroadcastState(bool force,string? selectedQuest=null,string? selectedInteraction=null,string? explicitDialogue=null) { JObject payload=BuildStatePayload(selectedQuest,selectedInteraction,explicitDialogue); if(!force&&JToken.DeepEquals(payload,_lastState))return; _lastState=payload;_lastStateSentUtc=DateTime.UtcNow;Broadcast(payload); }
         private void Broadcast(JObject payload){try{_server?.WebSocketServices["/"]?.Sessions.Broadcast(payload.ToString(Formatting.None));}catch{}}
         private void SendError(string text)=>Broadcast(new JObject { ["command"]="quest_error",["text"]=text });
