@@ -478,7 +478,7 @@ namespace ETS2_Assist_GUI.Quests
         private void SelectInteraction(string questId, string interactionId)
         {
             Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] select_interaction questId={questId} id={interactionId} paused={_paused}");
-            if (!_paused || !_interactiveVisible) { SendError("Интерактив доступен только в подтверждённом окне ESC-паузы."); return; }
+            if (!_paused) { SendError("Интерактив доступен только на паузе игры."); return; }
             if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) return;
             QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));
             if (interaction == null || !TryBuildInteraction(def, interaction, out _)) return;
