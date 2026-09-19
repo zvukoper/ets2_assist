@@ -27,7 +27,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-PULSE-R18-2026-09-19';
+var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R19-2026-09-19';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -385,7 +385,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R18 1.0.40.88</strong>',
+        '<strong>SOFT CURSOR R19 1.0.40.89</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -1078,9 +1078,30 @@ function sendCriticalQuestCommand(payload){
     qdLog('[QUEST-CMD-OUT] command='+payload.command+' shared8084='+sharedSent+' fallback8085='+(!sharedSent));
     return sharedSent;
 }
+function renderQuestSelectionFallback(qid){
+    var q=questById(qid);if(!q)return;
+    var speaker=$('dialogSpeaker'),text=$('dialogText'),service=$('dialogService'),opts=$('dialogOptions'),img=$('dialogImage');
+    stopTyping();
+    lastDialogueKey='';lastOptionsKey='';
+    if(speaker)speaker.textContent=q.title||'';
+    if(text){
+        text.classList.remove('fading');
+        text.innerHTML='<span class="dialogTextRole">'+esc(q.description||EmptyHint)+'</span>';
+    }
+    if(service){
+        var parts=[];
+        if(q.status)parts.push(q.status);
+        if(q.stepDescription)parts.push(q.stepDescription);
+        service.innerHTML=parts.length?'<div class="serviceBlock">'+esc(parts.join(' · '))+'</div>':'';
+    }
+    if(opts)opts.innerHTML='';
+    if(img){img.removeAttribute('src');img.style.display='none'}
+    qdLog('[SELECTION-FALLBACK] qid='+qid+' local quest content rendered while waiting for dialogue');
+}
 function selectInteraction(qid,iid){
     if(!pagePaused||!interactiveReady||!model||model.paused!==true)return;
     questDetailPinned=false;currentQuest=qid;currentInteraction=iid;
+    renderQuestSelectionFallback(qid);
     pendingSelectionKey=String(qid||'')+':'+String(iid||'');pendingSelectionAt=Date.now();
     qdLog('[SELECTION-REQUEST] key='+pendingSelectionKey+' local-selection-set');
     sendCriticalQuestCommand({command:'quest_select_interaction',questId:qid,id:iid});
