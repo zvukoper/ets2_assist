@@ -113,8 +113,15 @@
     // (тогда оба слоя смотрят строго из одной точки и не «разъезжаются»).
     function smoothView(){
         var h=window.__arSmooth;
+        var cfg=h&&h.cfg;
+        // При отключённом общем сглаживании shared view может содержать
+        // старую позу, поэтому в этом режиме берём raw/fallback.
+        if(!cfg || cfg.enabled===false) return null;
         var v=h&&h.view;
-        return (v&&v.cameraValid)?v:null;
+        if(!v || !v.cameraValid) return null;
+        // Защита от зависшего shared view при раннем старте/перезапуске AR.
+        if(Number.isFinite(v.updatedAt) && performance.now()-v.updatedAt>250) return null;
+        return v;
     }
 
     var camS={x:0,y:0,z:0,vx:0,vy:0,vz:0,valid:false,lastAt:0};
