@@ -32,9 +32,7 @@
             '{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}' +
             // Взаимоисключение категорий.
             'html.ets2-cat-game [data-category~="interactive"],' +
-            'html.ets2-cat-interactive [data-category~="game"],' +
-            // Скрытие при фокусе вне игры.
-            'html:not([data-debug-show="1"]).ets2-hide-all [data-category]' +
+            'html.ets2-cat-interactive [data-category~="game"]' +
             '{visibility:hidden!important;opacity:0!important;pointer-events:none!important}' +
             // Выбранная категория появляется через общий 150-мс fade.
             'html[data-ets2-ui-ready="1"].ets2-cat-game [data-category~="game"],' +
@@ -43,7 +41,11 @@
             'transition:opacity 150ms ease-out!important}' +
             'html[data-ets2-ui-ready="1"].ets2-ui-reveal-pending.ets2-cat-game [data-category~="game"],' +
             'html[data-ets2-ui-ready="1"].ets2-ui-reveal-pending.ets2-cat-interactive [data-category~="interactive"]' +
-            '{opacity:0!important}';
+            '{opacity:0!important}' +
+            // Скрытие при фокусе вне игры имеет последний приоритет:
+            // никакой выбранный/отладочный слой не может его переопределить.
+            'html:not([data-debug-show="1"]).ets2-hide-all [data-category]' +
+            '{visibility:hidden!important;opacity:0!important;pointer-events:none!important}';
         (document.head || document.documentElement).appendChild(st);
     }
 
@@ -118,7 +120,11 @@
     // остаётся display:none. Это устраняет стартовую вспышку и позволяет
     // централизованной политике решить, что показывать — game или interactive.
     document.addEventListener('DOMContentLoaded', function () {
-        if (category) revealSelectedCategory();
+        if (!category) return;
+        try {
+            if (typeof window.onEts2Category === 'function') window.onEts2Category(category);
+        } catch (_) { }
+        revealSelectedCategory();
     });
 
     function connect() {
