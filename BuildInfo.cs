@@ -19,7 +19,7 @@ namespace ETS2_Assist_GUI
                         return attr.InformationalVersion;
                 }
                 catch { }
-                return "1.0.40.73-SOFT-CURSOR-R3";
+                return "1.0.40.74-SOFT-CURSOR-R4";
             }
         }
     }
