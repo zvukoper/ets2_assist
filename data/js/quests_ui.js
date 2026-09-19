@@ -9,7 +9,7 @@
  */
 (function(){
 'use strict';
-var ws=null,model=null,currentQuest='',currentInteraction='',wasPaused=false,collapsed=false,questDetailPinned=false,inventoryOpen=false,archiveVisible=false,interactiveReady=false;
+var ws=null,model=null,currentQuest='',currentInteraction='',wasPaused=false,collapsed=true,questDetailPinned=false,inventoryOpen=false,archiveVisible=false,interactiveReady=false,activeInterface='none',selectedInventoryItem='';
 var locallySeenInventoryItems=Object.create(null);
 var pagePaused=false,hasInteractive=false,lastDialogueKey='',lastOptionsKey='',lastInteractionsKey='',lastQuestsKey='',typeTimer=null,fadeTimer=null;
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
@@ -631,78 +631,79 @@ function syncInputLegacy(notify){
     }
     if(notify)post({command:'return_focus'});
 }
-function applyCollapsed(value,notify,report){
-    collapsed=!!value;
-    // Явное разворачивание «Квестов» всегда закрывает другой интерфейс.
-    // Но закрытие инвентаря само по себе НИКОГДА не разворачивает квесты.
-    if(!collapsed) inventoryOpen=false;
+/* ================================================================ ИНТЕРФЕЙСЫ
+ * Единый state machine для всех интерактивных экранов.
+ * Состояния:
+ *   none      — оба интерфейса закрыты, закладки видимы;
+ *   quest     — виден только «Квесты», обе закладки за экраном;
+ *   inventory — виден только «Инвентарь», обе закладки за экраном.
+ * Новые интерфейсы должны подключаться к этой же схеме: один экран открыт,
+ * остальные панели и закладки закрыты.
+ * ================================================================ */
+function syncInterfaceState(name,notify,report){
+    if(name!=='quest'&&name!=='inventory')name='none';
+    activeInterface=name;
+    inventoryOpen=name==='inventory';
+    collapsed=name!=='quest';
     qdStateChanged();
-    var w=$('questWindow'),tab=$('questTab'),iw=$('inventoryWindow'),itab=$('inventoryTab');
-    if(w)w.classList.toggle('collapsed',collapsed);
-    if(iw&&!inventoryOpen)iw.classList.remove('visible');
-    if(itab)itab.classList.toggle('active',inventoryOpen);
-    if(tab)tab.classList.toggle('visible',collapsed);
-    if(collapsed)lastDialogueKey='';
-    syncInput(notify);
-    /* Геометрия input-окна зависит от вида окна: пересчитаем ПОСЛЕ смены
-       классов/анимации — и сразу, и по завершении перехода. */
+
+    var qw=$('questWindow'),iw=$('inventoryWindow'),qt=$('questTab'),it=$('inventoryTab');
+
+    if(qw){
+        qw.classList.toggle('collapsed',name!=='quest');
+        qw.classList.toggle('interfaceActive',name==='quest');
+    }
+    if(iw){
+        iw.classList.toggle('visible',name==='inventory');
+        iw.classList.toggle('interfaceActive',name==='inventory');
+    }
+
+    // Закладки существуют только пока НЕ открыт ни один интерфейс.
+    if(qt){
+        qt.classList.toggle('visible',name==='none');
+        qt.classList.remove('active');
+    }
+    if(it){
+        it.classList.toggle('visible',name==='none');
+        it.classList.remove('active');
+    }
+
+    if(name==='quest')lastDialogueKey='';
+    applyCursorLayer();
     publishInteractiveBounds();
-    /* Приложение запоминает вид окна (свёрнуто/развёрнуто). Сообщаем только о
-       действиях игрока: состояние, пришедшее ОТ приложения, а также стартовое
-       состояние страницы повторно отправлять нельзя — иначе окно при загрузке
-       перезапишет сохранённый вид. */
-    if(report)send({command:'quest_window_state',collapsed:collapsed});
+
+    if(report)send({command:'quest_window_state',collapsed:name!=='quest'});
+    if(notify)post({command:'return_focus'});
 }
-function collapseWindow(){if(collapsed||blockToggle())return;applyCollapsed(true,true,true)}
-function expandWindow(){if(!collapsed||blockToggle())return;applyCollapsed(false,true,true)}
-/* Один жест — одно переключение: повторное событие того же жеста (двойной клик,
-   всплытие клика от кнопки к контейнеру) не должно отменять только что
-   применённое состояние. */
-function blockToggle(){var now=Date.now();if(now-lastToggleAt<250)return true;lastToggleAt=now;return false}
+
+function toggleInterface(name){
+    if(!pagePaused||!interactiveReady||blockToggle())return;
+    var next=activeInterface===name?'none':name;
+    syncInterfaceState(next,false,true);
+}
+
+function toggleQuestInterface(){toggleInterface('quest')}
+function toggleInventory(){toggleInterface('inventory')}
+
+/* Старые имена оставлены как единая точка совместимости с существующими
+   обработчиками сворачивания/разворачивания. */
+function collapseWindow(){if(activeInterface==='quest')toggleQuestInterface()}
+function expandWindow(){if(activeInterface!=='quest')syncInterfaceState('quest',false,true)}
+function blockToggle(){
+    var now=Date.now();
+    if(now-lastToggleAt<250)return true;
+    lastToggleAt=now;
+    return false;
+}
+
 function setTabPulse(value){
     hasInteractive=!!value;
     var tab=$('questTab');
-    if(tab)tab.classList.toggle('pulse',hasInteractive);
-    setInventoryTabPulse(inventoryHasNewItems());
+    if(tab)tab.classList.toggle('pulse',hasInteractive&&activeInterface==='none');
+    setInventoryTabPulse(inventoryHasNewItems()&&activeInterface==='none');
 }
 
 /* ------------------------------------------------------------ набор текста */
-function stopTyping(){if(typeTimer){clearInterval(typeTimer);typeTimer=null}if(fadeTimer){clearTimeout(fadeTimer);fadeTimer=null}}
-
-
-function applyCollapsed(value,notify,report){
-    collapsed=!!value;
-    qdStateChanged();
-    var w=$('questWindow'),tab=$('questTab');
-    if(w)w.classList.toggle('collapsed',collapsed);
-    if(tab)tab.classList.toggle('visible',collapsed);
-    if(collapsed)lastDialogueKey='';
-    syncInput(notify);
-    /* Геометрия input-окна зависит от вида окна: пересчитаем ПОСЛЕ смены
-       классов/анимации — и сразу, и по завершении перехода. */
-    publishInteractiveBounds();
-    /* Приложение запоминает вид окна (свёрнуто/развёрнуто). Сообщаем только о
-       действиях игрока: состояние, пришедшее ОТ приложения, а также стартовое
-       состояние страницы повторно отправлять нельзя — иначе окно при загрузке
-       перезапишет сохранённый вид. */
-    if(report)send({command:'quest_window_state',collapsed:collapsed});
-}
-function collapseWindow(){if(collapsed||blockToggle())return;applyCollapsed(true,true,true)}
-function expandWindow(){if(!collapsed||blockToggle())return;applyCollapsed(false,true,true)}
-/* Один жест — одно переключение: повторное событие того же жеста (двойной клик,
-   всплытие клика от кнопки к контейнеру) не должно отменять только что
-   применённое состояние. */
-function blockToggle(){var now=Date.now();if(now-lastToggleAt<250)return true;lastToggleAt=now;return false}
-function setTabPulse(value){
-    hasInteractive=!!value;
-    var tab=$('questTab');
-    if(tab)tab.classList.toggle('pulse',hasInteractive);
-    setInventoryTabPulse(inventoryHasNewItems());
-}
-
-/* ------------------------------------------------------------ набор текста */
-function stopTyping(){if(typeTimer){clearInterval(typeTimer);typeTimer=null}if(fadeTimer){clearTimeout(fadeTimer);fadeTimer=null}}
-
 function typeInto(el,text,service){
     stopTyping();
     if(!el)return;
@@ -796,7 +797,7 @@ function inventoryHasNewItems(){
 }
 function setInventoryTabPulse(on){
     var tab=$('inventoryTab');
-    if(tab)tab.classList.toggle('pulse',!!on);
+    if(tab)tab.classList.toggle('pulse',!!on&&activeInterface==='none');
 }
 function renderInventory(){
     var el=$('inventoryList');if(!el||!model)return;
@@ -805,27 +806,32 @@ function renderInventory(){
         var id=String(x&&x.id||'');
         if(x&&x.new_item!==true)delete locallySeenInventoryItems[id];
     });
+    var currentId=selectedInventoryItem;
+    if(currentId && !items.some(function(x){return String(x&&x.id||'')===currentId}))selectedInventoryItem='';
+    currentId=selectedInventoryItem;
     el.innerHTML=items.map(function(x){
         var id=String(x&&x.id||'');
         var isNew=x&&x.new_item===true&&!locallySeenInventoryItems[id];
-        return'<button class="inventoryItem" data-item="'+esc(id)+'">'
+        var selected=id===currentId;
+        return'<button class="inventoryItem'+(selected?' selected':'')+'" data-item="'+esc(id)+'">'
             +'<span class="inventoryItemName">'
-            +(isNew?'<span class="inventoryNewDot" aria-hidden="true"></span>':'')
-            +'<span>'+esc(x.name||id)+'</span>'
+            +'<span class="inventoryItemLabel">'+esc(x.name||id)+'</span>'
+            +(isNew?'<span class="inventoryNewDot" aria-hidden="true">*</span>':'')
             +'</span><small>×'+esc(x.amount||1)+'</small></button>';
     }).join('')||'<div class="muted">пусто</div>';
-    setInventoryTabPulse(inventoryHasNewItems());
+    setInventoryTabPulse(inventoryHasNewItems()&&activeInterface==='none');
     el.querySelectorAll('.inventoryItem').forEach(function(btn){
         btn.onclick=function(e){
             e.stopPropagation();
             var id=String(btn.dataset.item||'');
             if(!id)return;
+            selectedInventoryItem=id;
             var item=(model.inventory||[]).find(function(x){return String(x&&x.id||'')===id});
             if(item&&item.new_item===true){
                 locallySeenInventoryItems[id]=true;
-                renderInventory();
                 send({command:'inventory_item_seen',id:id});
             }
+            renderInventory();
         };
     });
 }
@@ -861,42 +867,18 @@ function setQuestInteractiveVisible(visible,ready,pulse){
     pagePaused=!!visible;interactiveReady=!!ready;
     var app=$('questApp');if(app)app.classList.toggle('interactiveVisible',pagePaused);
     if(!pagePaused){
-        inventoryOpen=false;archiveVisible=false;collapsed=true;currentQuest='';currentInteraction='';questDetailPinned=false;
+        archiveVisible=false;
+        currentQuest='';currentInteraction='';questDetailPinned=false;
+        activeInterface='none';inventoryOpen=false;collapsed=true;
         clearDialogue();setTabPulse(false);stopCursorTrack('interactive-hidden');
-        var qw=$('questWindow'),iw=$('inventoryWindow'),tab=$('questTab'),itab=$('inventoryTab');
-        if(qw)qw.classList.add('collapsed');if(iw)iw.classList.remove('visible');if(tab)tab.classList.remove('visible');if(itab)itab.classList.remove('visible');
+        syncInterfaceState('none',false,false);
     }else{
-        inventoryOpen=false;collapsed=true;
-        var qw=$('questWindow'),iw=$('inventoryWindow'),tab=$('questTab'),itab=$('inventoryTab');
-        if(qw){qw.classList.add('collapsed');qw.classList.remove('visible')}if(iw)iw.classList.remove('visible');
-        if(tab)tab.classList.add('visible');if(itab)itab.classList.add('visible');
-        // pulse приходит от приложения как авторитетное состояние; false тоже
-        // обязательно должен снимать старый класс после выхода из радиуса.
+        // Вход в ESC-меню всегда начинается с закрытых интерфейсов.
+        syncInterfaceState('none',false,false);
         setTabPulse(pulse===true);
-        syncInput(false);
+        renderInventory();
     }
     publishInteractiveBounds();
-}
-function toggleInventory(){
-    if(!pagePaused||!interactiveReady||blockToggle())return;
-    inventoryOpen=!inventoryOpen;
-    // Инвентарь всегда является отдельным экраном: при его закрытии
-    // «Квесты» остаются свёрнутыми и доступны только через свою закладку/TAB.
-    collapsed=true;
-    qdStateChanged();
-    var qw=$('questWindow'),iw=$('inventoryWindow');
-    if(qw){
-        qw.classList.remove('visible');
-        qw.classList.add('collapsed');
-    }
-    if(iw)iw.classList.toggle('visible',inventoryOpen);
-    var tab=$('questTab'),itab=$('inventoryTab');
-    if(tab)tab.classList.remove('active');
-    if(itab)itab.classList.toggle('active',inventoryOpen);
-    applyCursorLayer();
-    renderInventory();
-    publishInteractiveBounds();
-    send({command:'quest_window_state',collapsed:true});
 }
 function applyState(data){
     if(!$('questApp'))return;model=data;
@@ -933,15 +915,10 @@ window.onEts2Command=function(d){
         if(d.hasInteractive!==undefined)setTabPulse(d.hasInteractive===true);
     }
     else if(d.command==='set_quest_tab_state'){setTabPulse(d.hasInteractive===true);}
-    else if(d.command==='set_quest_collapsed'){if(interactiveReady)applyCollapsed(d.collapsed,false,false);}
-    else if(d.command==='quest_toggle_collapse'){
-        if(interactiveReady){
-            // TAB — явный запрос именно «Квестов»: если открыт инвентарь,
-            // переключаемся на Квесты, а не просто закрываем инвентарь.
-            if(collapsed||inventoryOpen)expandWindow();
-            else collapseWindow();
-        }
+    else if(d.command==='set_quest_collapsed'){
+        if(interactiveReady)syncInterfaceState(d.collapsed?'none':'quest',false,false);
     }
+    else if(d.command==='quest_toggle_collapse')toggleQuestInterface();
     else if(d.command==='quest_toggle_inventory')toggleInventory();
 };
 (function(){
@@ -950,9 +927,7 @@ window.onEts2Command=function(d){
     if(btn)btn.addEventListener('click',function(e){e.stopPropagation();collapseWindow()});
     if(tab)tab.addEventListener('click',function(e){
         e.stopPropagation();
-        if(!interactiveReady)return;
-        // Клик по закладке — явное открытие «Квестов», даже когда открыт инвентарь.
-        expandWindow();
+        toggleQuestInterface();
     });
     var itab=$('inventoryTab');if(itab)itab.addEventListener('click',function(e){e.stopPropagation();toggleInventory()});
     /* Оверлей полноэкранный, поэтому «прозрачная область окна квестов» — это сам
