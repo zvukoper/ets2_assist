@@ -654,7 +654,12 @@ function expandWindow(){if(!collapsed||blockToggle())return;applyCollapsed(false
    всплытие клика от кнопки к контейнеру) не должно отменять только что
    применённое состояние. */
 function blockToggle(){var now=Date.now();if(now-lastToggleAt<250)return true;lastToggleAt=now;return false}
-function setTabPulse(value){hasInteractive=!!value;var tab=$('questTab');if(tab)tab.classList.toggle('pulse',hasInteractive)}
+function setTabPulse(value){
+    hasInteractive=!!value;
+    var tab=$('questTab');
+    if(tab)tab.classList.toggle('pulse',hasInteractive);
+    setInventoryTabPulse(inventoryHasNewItems());
+}
 
 /* ------------------------------------------------------------ набор текста */
 function stopTyping(){if(typeTimer){clearInterval(typeTimer);typeTimer=null}if(fadeTimer){clearTimeout(fadeTimer);fadeTimer=null}}
@@ -683,7 +688,12 @@ function expandWindow(){if(!collapsed||blockToggle())return;applyCollapsed(false
    всплытие клика от кнопки к контейнеру) не должно отменять только что
    применённое состояние. */
 function blockToggle(){var now=Date.now();if(now-lastToggleAt<250)return true;lastToggleAt=now;return false}
-function setTabPulse(value){hasInteractive=!!value;var tab=$('questTab');if(tab)tab.classList.toggle('pulse',hasInteractive)}
+function setTabPulse(value){
+    hasInteractive=!!value;
+    var tab=$('questTab');
+    if(tab)tab.classList.toggle('pulse',hasInteractive);
+    setInventoryTabPulse(inventoryHasNewItems());
+}
 
 /* ------------------------------------------------------------ набор текста */
 function stopTyping(){if(typeTimer){clearInterval(typeTimer);typeTimer=null}if(fadeTimer){clearTimeout(fadeTimer);fadeTimer=null}}
@@ -836,8 +846,8 @@ function selectInteraction(qid,iid){
     questDetailPinned=false;currentQuest=qid;currentInteraction=iid;
     send({command:'quest_select_interaction',questId:qid,id:iid});renderQuests()
 }
-function setTabPulse(on){
-    hasInteractive=!!on;
+function setTabPulse(value){
+    hasInteractive=!!value;
     var tab=$('questTab');
     if(tab)tab.classList.toggle('pulse',hasInteractive);
     setInventoryTabPulse(inventoryHasNewItems());
@@ -860,13 +870,23 @@ function setQuestInteractiveVisible(visible,ready,pulse){
     publishInteractiveBounds();
 }
 function toggleInventory(){
-    if(!pagePaused||!interactiveReady)return;
+    if(!pagePaused||!interactiveReady||blockToggle())return;
     inventoryOpen=!inventoryOpen;
+    collapsed=inventoryOpen;
+    qdStateChanged();
     var qw=$('questWindow'),iw=$('inventoryWindow');
-    if(qw){qw.classList.toggle('visible',!inventoryOpen);qw.classList.toggle('collapsed',inventoryOpen)}
+    if(qw){
+        qw.classList.toggle('visible',!inventoryOpen);
+        qw.classList.toggle('collapsed',inventoryOpen);
+    }
     if(iw)iw.classList.toggle('visible',inventoryOpen);
-    var tab=$('questTab'),itab=$('inventoryTab');if(tab)tab.classList.toggle('active',!inventoryOpen);if(itab)itab.classList.toggle('active',inventoryOpen);
-    renderInventory();publishInteractiveBounds();
+    var tab=$('questTab'),itab=$('inventoryTab');
+    if(tab)tab.classList.toggle('active',!inventoryOpen);
+    if(itab)itab.classList.toggle('active',inventoryOpen);
+    applyCursorLayer();
+    renderInventory();
+    publishInteractiveBounds();
+    send({command:'quest_window_state',collapsed:collapsed});
 }
 function applyState(data){
     if(!$('questApp'))return;model=data;
@@ -901,14 +921,24 @@ window.onEts2Command=function(d){
     if(d.command==='quest_pause_ui')setQuestInteractiveVisible(d.visible===true,d.ready===true,d.pulse===true);
     else if(d.command==='set_quest_tab_state'){hasInteractive=d.hasInteractive===true;}
     else if(d.command==='set_quest_collapsed'){if(interactiveReady)applyCollapsed(d.collapsed,false,false);}
-    else if(d.command==='quest_toggle_collapse'){if(interactiveReady){if(collapsed)expandWindow();else collapseWindow();}}
+    else if(d.command==='quest_toggle_collapse'){
+    if(interactiveReady){
+        if(inventoryOpen)toggleInventory();
+        else if(collapsed)expandWindow();
+        else collapseWindow();
+    }
+}
     else if(d.command==='quest_toggle_inventory')toggleInventory();
 };
 (function(){
     /* Кнопка сворачивания, закладка и клик по прозрачной области окна. */
     var btn=$('collapseBtn'),tab=$('questTab'),app=$('questApp');
     if(btn)btn.addEventListener('click',function(e){e.stopPropagation();collapseWindow()});
-    if(tab)tab.addEventListener('click',function(e){e.stopPropagation();if(interactiveReady)expandWindow()});
+    if(tab)tab.addEventListener('click',function(e){
+        e.stopPropagation();
+        if(!interactiveReady)return;
+        if(inventoryOpen)toggleInventory();else expandWindow();
+    });
     var itab=$('inventoryTab');if(itab)itab.addEventListener('click',function(e){e.stopPropagation();toggleInventory()});
     /* Оверлей полноэкранный, поэтому «прозрачная область окна квестов» — это сам
        контейнер #questApp вне панелей. Клик по ней сворачивает окно и выводит
