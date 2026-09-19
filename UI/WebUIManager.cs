@@ -331,7 +331,7 @@ namespace ETS2_Assist_GUI
                 Logger.Current?.Workflow($"[QUEST-DIAG] state source=policy paused={!showGameUi} collapsed={_questCollapsed} interactive={showInteractive} gameUi={showGameUi} focused={gameFocused}");
             }
 
-            // v1.0.40.59: пока на экране интерактивная категория (а это значит, что
+            // v1.0.40.79: пока на экране интерактивная категория (а это значит, что
             // видна закладка «Квесты» либо само окно), активируем low-level TAB hook.
             // В остальное время TAB полностью проходит к активному приложению.
             SetQuestToggleHotkeyActive(showInteractive);
