@@ -75,11 +75,10 @@ namespace ETS2_Assist_GUI
 
         private const int PauseCheckIntervalMs = 50;
 
-        // Измеренный пользователем тайминг главного ESC-меню:
-        // начало анимации: 4.151 с, полное открытие: 5.664 с.
-        // Закладка выезжает 150 мс и должна завершить выезд ровно к 5.664 с:
-        // 5.664 - 0.150 = 5.514 с после нажатия ESC.
-        private const int QuestPauseUiLeadMs = 5514;
+        // Интерактивный shell не ждёт анимацию стандартного ESC-меню ETS2.
+        // Наша веб-страница сама делает единственный 150-мс fade; большой
+        // 5.5-секундный lead здесь запрещён.
+        private const int QuestPauseUiLeadMs = 150;
         private const int QuestPauseUiTimeoutMs = 6500;
         private const int PauseConfirmSamples = 2;
 
@@ -335,7 +334,7 @@ namespace ETS2_Assist_GUI
                 _pauseTrueStreak = 0;
                 _pauseFalseStreak = 0;
                 _questPauseFlow = QuestPauseFlowState.WaitingForPause;
-                AppendLog($"[QUEST] ESC -> ожидание главной паузы; закладка через {QuestPauseUiLeadMs} мс.");
+                AppendLog($"[QUEST] ESC -> ожидание главной паузы; shell через {QuestPauseUiLeadMs} мс.");
             }
         }
 
