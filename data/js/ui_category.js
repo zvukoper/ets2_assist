@@ -61,6 +61,7 @@
     }
 
     var category = null;
+    var categoryCommandReceived = false;
     var hideAllWanted = false;
     var revealRaf = 0;
 
@@ -94,6 +95,7 @@
         next = next === 'interactive' ? 'interactive' : 'game';
         var changed = category !== next;
         category = next;
+        categoryCommandReceived = true;
 
         var root = document.documentElement;
         root.classList.toggle('ets2-cat-interactive', next === 'interactive');
@@ -120,8 +122,14 @@
     // Никакого автоматического game при загрузке: overlay остаётся display:none,
     // пока C# не присылает реальное состояние политики.
     document.addEventListener('DOMContentLoaded', function () {
-        // Ничего не показываем. Явная команда set_overlay_category вызовет apply()
-        // и только тогда снимет startup display:none.
+        // Показываем только если ДО этого действительно пришла команда приложения.
+        // Это закрывает гонку command-before-DOM, но не возвращает автопоказ.
+        if (categoryCommandReceived) {
+            try {
+                if (typeof window.onEts2Category === 'function') window.onEts2Category(category);
+            } catch (_) { }
+            revealSelectedCategory();
+        }
     });
 
     function connect() {
