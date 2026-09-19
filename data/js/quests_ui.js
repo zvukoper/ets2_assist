@@ -9,7 +9,7 @@
  */
 (function(){
 'use strict';
-var ws=null,model=null,currentQuest='',currentInteraction='',wasPaused=false,collapsed=false;
+var ws=null,model=null,currentQuest='',currentInteraction='',wasPaused=false,collapsed=false,questDetailPinned=false;
 var pagePaused=false,hasInteractive=false,lastDialogueKey='',lastOptionsKey='',lastInteractionsKey='',lastQuestsKey='',typeTimer=null,fadeTimer=null;
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
    переключать вид дважды: двойной клик по кнопке или по прозрачной области
@@ -288,13 +288,13 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R7 1.0.40.77</strong>',
+        '<strong>SOFT CURSOR R8 1.0.40.78</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
         'sum dx: '+rawInputFmt(msg.totalDx)+'   dy: '+rawInputFmt(msg.totalDy),
         '<strong>soft cursor: '+(Number(msg.cursorX)>=0?Number(msg.cursorX)+','+Number(msg.cursorY):'NO POSITION')+'</strong>',
-        'sync center: '+(Number(msg.syncCursorX)>=0?Number(msg.syncCursorX)+','+Number(msg.syncCursorY):'NOT SET'),
+        'sync corner: '+(Number(msg.syncCursorX)>=0?Number(msg.syncCursorX)+','+Number(msg.syncCursorY):'NOT SET'),
         'flags: 0x'+Number(msg.flags||0).toString(16).padStart(4,'0'),
         'buttons: 0x'+Number(msg.buttonFlags||0).toString(16).padStart(4,'0')+' data='+Number(msg.buttonData||0),
         'device: '+(msg.device||'0x0'),
@@ -317,6 +317,11 @@ function bindQuestNativeInput(){
             if(!msg||msg.source!=='quest-native-input')return;
             qdCounters.nativeMessages++;
             softCursorMessages++;
+            if(msg.type==='hotkey' && msg.command==='quest_toggle_collapse'){
+                qdLog('[NATIVE-IN] hotkey=TAB quest_toggle_collapse '+qdStateText());
+                if(collapsed)expandWindow();else collapseWindow();
+                return;
+            }
             if(msg.type==='mousemove' && Number.isFinite(Number(msg.x)) && Number.isFinite(Number(msg.y))){
                 qdLastPlace.hostX=Number(msg.x);qdLastPlace.hostY=Number(msg.y);
             }
@@ -346,9 +351,9 @@ bindQuestNativeInput();
  * Поэтому стрелку рисуем САМИ, внутри страницы: #cursorDot — реальный PNG cursor.png,
  * позиционируемый по виртуальным координатам. Он часть нашей разметки, значит всегда
  * выше игрового кадра и системной стрелки.
- * R7: ETS2 не даёт нам надёжно прочитать координату своей отрисованной стрелки.
- * Поэтому при входе в паузу host принудительно ставит физический курсор в центр
- * игрового экрана, а virtual cursor.png получает тот же центр. После этого оба
+ * R8: ETS2 не даёт нам надёжно прочитать координату своей отрисованной стрелки.
+ * Поэтому при входе в паузу host принудительно ведёт физический курсор в нулевой
+ * угол через относительный SendInput, а virtual cursor.png получает client=(0,0). После этого оба
  * курсора движутся по одному Raw Input dx/dy без дополнительной калибровки.
  * Прозрачность cursorDot зависит от визуального alpha текущего Quest-контента
  * и его CSS box-shadow.
@@ -451,8 +456,12 @@ function cursorSurfaceAlpha(x,y){
         bottom:rr.bottom+shadow.spread
     };
     var d=pointOutsideDistance(shadowRect,x-shadow.dx,y-shadow.dy);
-    if(d>=shadow.blur)return 0;
-    var t=1-d/shadow.blur;
+    /* v1.0.40.78: курсор не должен тускнеть сразу на первых пикселях тени.
+       Даём 50 px запаса: внутри этого буфера сохраняем текущую alpha тени,
+       затем запускаем прежнюю плавную quadratic-кривую затухания. */
+    var fadeDistance=Math.max(0,d-50);
+    if(fadeDistance>=shadow.blur)return 0;
+    var t=1-fadeDistance/shadow.blur;
     return Math.max(0,Math.min(1,shadow.alpha*t*t));
 }
 
@@ -493,7 +502,7 @@ function startCursorTrack(){
         qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
     }
     if(!cursorEl)return;
-    /* v1.0.40.77: no synthetic center position.
+    /* v1.0.40.78: no synthetic center position; host synchronizes to client=(0,0).
        The hidden WebOverlay Raw Input sink owns the physical-mouse bridge and
        sends the current client position as quest-native-input. The first packet
        is initialized from GetCursorPos when the window becomes active. */
@@ -731,15 +740,18 @@ function renderQuests(){
     el.innerHTML=html||'<div class="muted">Нет квестов</div>';
     el.querySelectorAll('.questItem').forEach(function(b){b.onclick=function(){showQuestDetail(b.dataset.q)}})
 }
-function questButton(q,active){return'<button class="questItem '+(active?'active':'archive')+'" data-q="'+esc(q.id)+'"><strong>'+esc(q.title)+'</strong><span>'+esc(q.status||'')+'</span>'+((q.stepDescription||q.description)?'<em>'+esc(q.stepDescription||q.description)+'</em>':'')+'</button>'}
+function questButton(q,active){var selected=questDetailPinned&&!currentInteraction&&currentQuest===q.id;return'<button class="questItem '+(active?'active':'archive')+(selected?' selected':'')+'" data-q="'+esc(q.id)+'"><strong>'+esc(q.title)+'</strong><span>'+esc(q.status||'')+'</span>'+((q.stepDescription||q.description)?'<em>'+esc(q.stepDescription||q.description)+'</em>':'')+'</button>'}
 function showQuestDetail(id){
     var q=[].concat((model&&model.activeQuests)||[],(model&&model.archiveQuests)||[]).find(function(x){return x.id===id});if(!q)return;
+    questDetailPinned=true;
     currentQuest=id;currentInteraction='';
     var speaker=$('dialogSpeaker'),text=$('dialogText'),opts=$('dialogOptions'),img=$('dialogImage');
     if(speaker)speaker.textContent=q.title;
     if(text)text.innerHTML='<span class="dialogTextRole">'+esc(q.description||'')+'</span>'+(q.stepDescription?'<div class="dialogTextService">'+esc(q.stepDescription)+'</div>':'')+'<div class="questRewardTitle">Награды</div>'+((q.rewards||[]).map(function(r){var col=r.color?' style="color:'+esc(r.color)+'"':'';return'<div class="rewardLine"'+col+'>'+esc(r.display||r.id)+' x'+esc(r.amount||1)+'</div>'+(r.serviceText?'<div class="dialogTextService">'+esc(r.serviceText)+'</div>':'')}).join('')||'<div class="muted">—</div>');
     if(opts)opts.innerHTML='';if(img){img.removeAttribute('src');img.style.display='none'}
     lastDialogueKey='';lastOptionsKey='';
+    lastQuestsKey='';
+    renderQuests();
     renderInteractions();
 }
 function renderInventory(){
@@ -747,7 +759,7 @@ function renderInventory(){
     el.innerHTML='<span class="inventoryTitle">Инвентарь</span> '+(items.length?items.map(function(x){return'<span class="inventoryItem">'+esc(x.name||x.id)+' ×'+esc(x.amount||0)+'</span>'}).join(' '):'<span class="muted">пусто</span>');
 }
 function clearDialogue(){stopTyping();lastDialogueKey='';lastOptionsKey='';var s=$('dialogSpeaker'),t=$('dialogText'),o=$('dialogOptions'),i=$('dialogImage');if(s)s.textContent='';if(t){t.classList.remove('fading');t.textContent=EmptyHint}if(o)o.innerHTML='';if(i){i.removeAttribute('src');i.style.display='none'}}
-function selectInteraction(qid,iid){if(!model||model.paused!==true)return;currentQuest=qid;currentInteraction=iid;send({command:'quest_select_interaction',questId:qid,id:iid});renderInteractions()}
+function selectInteraction(qid,iid){if(!model||model.paused!==true)return;questDetailPinned=false;currentQuest=qid;currentInteraction=iid;send({command:'quest_select_interaction',questId:qid,id:iid});renderInteractions()}
 
 function applyState(data){
     var app=$('questApp');if(!app)return;
@@ -761,23 +773,34 @@ function applyState(data){
         qdLog('WS-IN(8085) quest_state paused='+paused+' selectedInteraction='+(data.selectedInteraction||'')+' nearby='+((data.nearby||[]).length)+' dialogue='+(data.dialogue?'yes':'no'));
     }
     app.classList.toggle('paused',paused);
-    if(!paused){wasPaused=false;pagePaused=false;qdStateChanged();currentInteraction='';currentQuest='';lastDialogueKey='';clearDialogue();syncInput(false);return}
+    if(!paused){wasPaused=false;pagePaused=false;qdStateChanged();currentInteraction='';currentQuest='';questDetailPinned=false;lastDialogueKey='';clearDialogue();syncInput(false);return}
     wasPaused=true;pagePaused=true;qdStateChanged();
     /* Активный диалог приходит с выбранными идентификаторами — без них ответ
        игрока уходил бы без адреса. Если квест не пришёл, берём его из списка
        ближайших интерактивов. */
     if(data.selectedInteraction){
+        questDetailPinned=false;
         currentInteraction=data.selectedInteraction;
         if(data.selectedQuest)currentQuest=data.selectedQuest;
         else if(!currentQuest){var m=(data.nearby||[]).find(function(p){return p.InteractionId===data.selectedInteraction});if(m)currentQuest=m.QuestId||''}
-    }else if(data.selectedQuest)currentQuest=data.selectedQuest;
+    }else if(data.selectedQuest && !questDetailPinned){
+        currentInteraction='';
+        currentQuest=data.selectedQuest;
+    }else if(!questDetailPinned){
+        currentInteraction='';
+        currentQuest='';
+        lastDialogueKey='';
+        clearDialogue();
+    }else{
+        currentInteraction='';
+    }
     syncInput(false);
     /* Геометрия input-окна зависит от состояния — пересчитаем после рендера. */
     publishInteractiveBounds();
     setTimeout(publishInteractiveBounds,360);
     renderInteractions();renderQuests();renderInventory();
     if(data.dialogue){renderDialogue(data.dialogue)}
-    else if(!data.selectedInteraction){currentInteraction='';currentQuest='';clearDialogue()}
+    else if(!data.selectedInteraction && !questDetailPinned){currentInteraction='';currentQuest='';clearDialogue()}
     else if(currentInteraction){var keep=(data.nearby||[]).some(function(p){return p.QuestId===currentQuest&&p.InteractionId===currentInteraction&&p.Marker&&p.Marker!=='none'});if(!keep)clearDialogue()}
 }
 function connect(){try{ws=new WebSocket('ws://localhost:8085/');ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state')applyState(d);else if(d.command==='quest_error')showError(d.text)}catch(e){}};ws.onclose=function(){setTimeout(connect,1500)};ws.onerror=function(){try{ws.close()}catch(e){}}}catch(e){setTimeout(connect,1500)}}
