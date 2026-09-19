@@ -78,7 +78,6 @@ namespace ETS2_Assist_GUI
         // Интерактивный shell не ждёт анимацию стандартного ESC-меню ETS2.
         // Наша веб-страница сама делает единственный 150-мс fade; большой
         // 5.5-секундный lead здесь запрещён.
-        private const int QuestPauseUiLeadMs = 150;
         private const int QuestPauseUiTimeoutMs = 6500;
         private const int PauseConfirmSamples = 2;
         private const int QuestInterfaceAnimationMs = 320;
@@ -209,19 +208,6 @@ namespace ETS2_Assist_GUI
         {
             long now = Environment.TickCount64;
 
-            // Важно: после двух подтверждений паузы состояние уже становится
-            // InteractivePaused, поэтому старый код, который ждал QuestPauseUiLeadMs
-            // только внутри WaitingForPause, больше никогда не доходил до показа
-            // закладки. Отложенный показ проверяем независимо от состояния автомата.
-            if (paused &&
-                _questPauseFlow != QuestPauseFlowState.WaitingForResume &&
-                _questEscapeStartedAt > 0 &&
-                !_questInteractiveShellVisible &&
-                now - _questEscapeStartedAt >= QuestPauseUiLeadMs)
-            {
-                ShowQuestPauseShell();
-            }
-
             switch (_questPauseFlow)
             {
                 case QuestPauseFlowState.Running:
@@ -241,11 +227,12 @@ namespace ETS2_Assist_GUI
                         _pauseFalseStreak++;
                     }
 
-                    // Отложенный показ shell выполняется перед switch для всех пауз.
-
+                    /* ESC — только признак возможной паузы. Реальное состояние
+                       подтверждается отдельными сэмплами телеметрии. */
                     if (paused && _pauseTrueStreak >= PauseConfirmSamples)
                     {
                         _questPauseFlow = QuestPauseFlowState.InteractivePaused;
+                        ShowQuestPauseShell();
                         SendCommandToMap("quest_pause_ui", new JObject
                         {
                             ["visible"] = true,
@@ -288,10 +275,11 @@ namespace ETS2_Assist_GUI
                         _pauseFalseStreak++;
                     }
 
+                    /* Пока pause snapshot снова не подтвердит false, наш shell
+                       остаётся владельцем экрана. Это важно для ESC из меню:
+                       ESC может закрыть меню, не снимая саму паузу. */
                     if (!paused && _pauseFalseStreak >= PauseConfirmSamples)
                     {
-                        // Выход из паузы — окончательная граница интерактивного shell.
-                        // Нельзя оставлять закладку/минилого висеть до потери фокуса.
                         HideQuestPauseShell();
                         _questPauseFlow = QuestPauseFlowState.Running;
                         _pauseTrueStreak = 0;
@@ -349,7 +337,7 @@ namespace ETS2_Assist_GUI
                 _pauseTrueStreak = 0;
                 _pauseFalseStreak = 0;
                 _questPauseFlow = QuestPauseFlowState.WaitingForPause;
-                AppendLog($"[QUEST] ESC -> ожидание главной паузы; shell через {QuestPauseUiLeadMs} мс.");
+                AppendLog("[QUEST] ESC -> ожидание подтверждённой паузы.");
             }
         }
 
@@ -399,7 +387,6 @@ namespace ETS2_Assist_GUI
             _questPauseFlow = QuestPauseFlowState.WaitingForResume;
             _pauseTrueStreak = 0;
             _pauseFalseStreak = 0;
-            HideQuestPauseShell();
             AppendLog($"[QUEST] {reason}: ждём подтверждения выхода из паузы.");
         }
 
