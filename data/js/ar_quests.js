@@ -69,7 +69,9 @@
         var vp=viewPos(camPos);
         var py=(typeof yOverride==='number' && Number.isFinite(yOverride)) ? yOverride : readNumber(p.Y,0);
         var rel={x:readNumber(p.X,0)-vp.x,y:py-vp.y,z:readNumber(p.Z,0)-vp.z};
-        var basis=camPos && camPos.fwd && camPos.right && camPos.up ? camPos : cam;
+        var basis=camPos && (camPos.fwd || camPos.cameraForward) &&
+                  (camPos.right || camPos.cameraRight) &&
+                  (camPos.up || camPos.cameraUp) ? camPos : cam;
         var fwd=basis.fwd || basis.cameraForward || cam.fwd;
         var right=basis.right || basis.cameraRight || cam.right;
         var up=basis.up || basis.cameraUp || cam.up;
