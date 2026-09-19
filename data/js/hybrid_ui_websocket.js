@@ -134,16 +134,17 @@ function showHybridUIFirst() {
         setTimeout(showHybridUIFirst, 100);
         return;
     }
-    console.log('[UI Hybrid] Applying first animation to .dashboard-content');
+    console.log('[UI Hybrid] Applying 150ms fade to .dashboard-content');
     content.style.display = 'block';
-    content.style.transform = 'scale(0.45)';
+    content.style.transform = 'scale(1)';
     content.style.opacity = '0';
     content.style.transition = 'none';
     content.offsetHeight;
-    content.style.transition = 'transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease-in';
-    content.style.transform = 'scale(1)';
-    content.style.opacity = '1';
-    const badge = document.getElementById('ets2AssistBuildBadge');
+    requestAnimationFrame(() => {
+        content.style.transition = 'opacity 150ms ease-out';
+        content.style.opacity = '1';
+    });
+    const badge = document.getElementById('ets2AssistBuildBadge');    const badge = document.getElementById('ets2AssistBuildBadge');
     if (badge) badge.style.opacity = '0.9';
     hybridState.dataShown = true;
 }
