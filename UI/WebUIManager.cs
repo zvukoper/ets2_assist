@@ -200,6 +200,18 @@ namespace ETS2_Assist_GUI
         {
             long now = Environment.TickCount64;
 
+            // Важно: после двух подтверждений паузы состояние уже становится
+            // InteractivePaused, поэтому старый код, который ждал QuestPauseUiLeadMs
+            // только внутри WaitingForPause, больше никогда не доходил до показа
+            // закладки. Отложенный показ проверяем независимо от состояния автомата.
+            if (paused &&
+                _questEscapeStartedAt > 0 &&
+                !_questInteractiveShellVisible &&
+                now - _questEscapeStartedAt >= QuestPauseUiLeadMs)
+            {
+                ShowQuestPauseShell();
+            }
+
             switch (_questPauseFlow)
             {
                 case QuestPauseFlowState.Running:
@@ -219,11 +231,7 @@ namespace ETS2_Assist_GUI
                         _pauseFalseStreak++;
                     }
 
-                    // Показываем только закладку заранее, ещё до обязательного
-                    // подтверждения паузы. Само окно станет доступно после 2 сэмплов.
-                    if (!_questInteractiveShellVisible &&
-                        now - _questEscapeStartedAt >= QuestPauseUiLeadMs)
-                        ShowQuestPauseShell();
+                    // Отложенный показ shell выполняется перед switch для всех пауз.
 
                     if (paused && _pauseTrueStreak >= PauseConfirmSamples)
                     {
