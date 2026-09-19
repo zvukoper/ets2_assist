@@ -107,8 +107,8 @@ if (Test-Path $webOverlayProject) {
     $woVersion = $null
     try { $woVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($webOverlayTarget).ProductVersion } catch { }
     Write-Host "WebOverlay delivered: version=$woVersion path=$webOverlayTarget" -ForegroundColor Cyan
-    if ($woVersion -notlike "1.0.40.78*") {
-        Write-Host "WebOverlay version CHECK FAILED: expected 1.0.40.77*, got $woVersion" -ForegroundColor Red
+    if ($woVersion -notlike "1.0.40.79*") {
+        Write-Host "WebOverlay version CHECK FAILED: expected 1.0.40.79*, got $woVersion" -ForegroundColor Red
         exit 1
     }
     Write-Host "Updated ETS2 Assist data\bin\WebOverlay.exe from sibling WebOverlay build." -ForegroundColor Green
