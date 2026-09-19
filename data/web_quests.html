@@ -2,99 +2,91 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ETS2 Assist - Квесты - SOFT CURSOR R11 1.0.40.81</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ETS2 Assist — интерактив R12 1.0.40.82</title>
 <script src="js/debug_show.js"></script>
 <script src="js/ui_category.js"></script>
 <style>
-:root{font-family:'Segoe UI',Arial,sans-serif;color:#e8edf4;background:transparent;user-select:none}
+:root{font-family:'Segoe UI',Arial,sans-serif;color:#e7edf4;background:transparent;user-select:none}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
-#questApp{position:fixed;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none}
-#questApp.paused{display:flex;pointer-events:auto}
-/* v1.0.40.59: над окном квестов — обычный курсор (в остальных слоях курсор игры
-   скрыт). Вид курсора переключает js/quests_ui.js вместе с кликабельностью. */
-#questApp.paused{cursor:none}
-/* v1.0.40.61: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ. Системный/игровой курсор рисуется
-   ПОД окном (игра рисует его в свой кадр, а он ниже нашего слоя), поэтому
-   отображаем стрелку внутри страницы — она гарантированно выше. */
-#cursorDot{position:fixed;left:0;top:0;width:27px;height:44px;display:none;z-index:2147483000;pointer-events:none;will-change:transform,opacity;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.82))}
-#questTab{cursor:pointer}
-.questWindow{position:relative;width:min(1280px,92vw);height:min(900px,88vh);display:grid;grid-template-columns:240px minmax(420px,1fr) 310px;grid-template-rows:1fr 54px;gap:10px;padding:12px;box-sizing:border-box;background:rgba(13,17,22,.97);border:1px solid rgba(255,205,85,.35);box-shadow:0 15px 70px rgba(0,0,0,.75);border-radius:10px;opacity:1;transform:translateX(0);transition:transform 320ms ease-out,opacity 96ms ease-out}
-/* v1.0.40.60: СХЕМА АНИМАЦИИ СВОРАЧИВАНИЯ — точно по требованию пользователя.
-   Тайминги движения = 320 мс, поэтому проценты считаются от него:
-     кадр 0           — прозрачность 0% (окно полностью видно); движение
-                        стартует сразу с ease «с медленного с ускорением» = ease-in;
-     до 70% пути      — прозрачность ДЕРЖИТСЯ 0% (ключ: 70% от 320 мс = 224 мс);
-     с 70% до 99%     — прозрачность уходит в 100% (92 мс; 224+92 = 316 мс, т.е.
-                        99% кадров) ⇒ окно становится невидимым ЕЩЁ В ДВИЖЕНИИ.
-   Раньше фейдаут шёл с задержкой 220 мс И длился ещё 220 мс — он завершался
-   уже ПОСЛЕ остановки окна, и в самом конце была видна «полоса».
-   Раскрытие — зеркальное: движение с ease-out, проявление 96 мс с самого
-   начала (обратный порядок ключей: 0% → 30%, затем держится 100%). */
-.questWindow.collapsed{opacity:0;transform:translateX(calc(-100% - 40px));pointer-events:none;transition:transform 320ms ease-in,opacity 92ms ease-in 224ms}
-.panel{min-width:0;min-height:0;background:rgba(24,29,36,.98);border:1px solid rgba(255,255,255,.08);border-radius:8px;overflow:hidden}
-.panelTitle{padding:11px 12px;font-weight:700;color:#ffd45a;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025)}
-.scroll{height:calc(100% - 43px);overflow:auto}
-.sideItem,.questItem{width:100%;border:0;border-bottom:1px solid rgba(255,255,255,.055);background:transparent;color:#dce3eb;padding:10px;text-align:left;cursor:pointer}
-.sideItem:hover,.questItem:hover,.sideItem.selected,.questItem.selected{background:rgba(255,205,85,.10)}
-.sideItem img{width:28px;height:28px;vertical-align:middle;margin-right:8px;object-fit:contain}.questItem span{display:block;color:#7f8c9e;font-size:11px;margin-top:4px}
-#dialog{display:flex;flex-direction:column;height:100%}
-#dialogHeader{display:grid;grid-template-columns:25% 75%;gap:14px;height:44%;min-height:150px;flex:0 0 auto;border-bottom:1px solid rgba(255,255,255,.07);padding:10px;box-sizing:border-box}
-#portrait{background:#0f1216;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px}
-#dialogImage{width:100%;aspect-ratio:1/1;height:auto;object-fit:cover;object-position:center;background:#0f1216;border-radius:6px}
-#dialogHeaderText{padding:4px 6px;overflow:auto;min-width:0}
-#dialogSpeaker{font-size:21px;font-weight:700;color:#fff;margin-bottom:10px}
-#dialogText{font-family:Roboto,'Roboto Regular','Segoe UI',Arial,sans-serif;font-size:16px;line-height:1.55;white-space:pre-wrap;color:#fff;-webkit-text-stroke:.35px #000;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000}
-#dialogBody{padding:18px;overflow:auto;flex:1;min-height:0}
-#dialogOptions{display:flex;flex-direction:column;gap:8px}
-.dialogOption{padding:12px 14px;border:1px solid rgba(255,255,255,.12);background:#232a33;color:#e7edf4;border-radius:6px;text-align:left;cursor:pointer;font:inherit;transition:background 120ms ease,border-color 120ms ease,box-shadow 120ms ease}
-.dialogOption:hover{border-color:rgba(255,211,77,.65);background:#333c49;box-shadow:inset 0 0 0 1px rgba(255,211,77,.18)}
+#questApp{position:fixed;inset:0;visibility:hidden;opacity:0;pointer-events:none;transition:opacity 150ms ease;z-index:100}
+#questApp.interactiveVisible{visibility:visible;opacity:1;pointer-events:none}
+#safeZone{position:fixed;left:5vw;right:5vw;top:5vh;bottom:5vh;pointer-events:none}
+.panel{position:relative;min-width:0;min-height:0;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.08);border-radius:10px;overflow:hidden;box-sizing:border-box}
+#miniLogo{position:absolute;left:0;top:0;width:104px;z-index:20;pointer-events:none}
+#miniLogo img{display:block;width:86px;height:86px;object-fit:contain}
+#miniLogoVersion{display:flex;flex-direction:column;gap:1px;margin-top:2px;font-size:9px;line-height:1.15;color:#b8c1cc;word-break:break-all}
+#miniLogoVersion span:first-child{color:#e7edf4}
+#questLayout{position:absolute;left:0;right:0;top:104px;bottom:0;display:grid;grid-template-columns:minmax(215px,24%) minmax(0,1fr) minmax(245px,28%);grid-template-rows:minmax(0,1fr) minmax(0,.56fr);gap:12px}
+#questSidebar{grid-column:1;grid-row:1/3;display:flex;flex-direction:column}
+#questList,.scroll{padding:6px;overflow:auto;min-height:0}
+.questSectionTitle{padding:7px 6px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.55px}
+.questDivider{height:1px;background:rgba(255,255,255,.14);margin:6px 0}
+.questItem{width:100%;display:block;border:0;border-bottom:1px solid rgba(255,255,255,.06);background:transparent;color:#dce3eb;padding:8px 6px;text-align:left;cursor:pointer;border-radius:6px}
+.questItem:hover,.questItem.selected{background:rgba(255,205,85,.11)}
+.questItem strong{display:block;font-size:12px}
+.questItem span{display:block;color:#8794a5;font-size:10px;margin-top:3px}
+.questItem em{display:block;margin-top:4px;color:#8794a5;font-size:9px;font-style:normal;line-height:1.3}
+.archiveToggle{margin:8px 6px 0;padding:8px;border:1px solid rgba(255,205,85,.22);background:rgba(0,0,0,.15);color:#ffd45a;border-radius:7px;cursor:pointer;text-transform:lowercase}
+#eventPanel{grid-column:2;grid-row:1}
+#responsePanel{grid-column:2;grid-row:2}
+#imagePanel{grid-column:3;grid-row:1}
+#servicePanel{grid-column:3;grid-row:2}
+.panelInner{height:100%;padding:6px;box-sizing:border-box;overflow:auto}
+.panelTitle{padding:6px;color:#ffd45a;font-weight:700;font-size:12px}
+#dialog{height:100%;display:flex;flex-direction:column}
+#dialogSpeaker{padding:0 6px 6px;color:#fff;font-size:17px;font-weight:700}
+#dialogText{padding:0 6px;color:#fff;font-size:14px;line-height:1.45;white-space:pre-wrap;overflow:auto;flex:1}
+#dialogService{padding:6px;color:#c4ccd6;font:12px/1.4 'Courier New',monospace}
+#dialogText.fading{opacity:0;transition:opacity 150ms ease}
+#dialogText{transition:opacity 150ms ease}
+#dialogOptions{height:100%;display:flex;flex-direction:column;gap:7px;overflow:auto}
+.dialogOption{padding:9px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:#e7edf4;border-radius:7px;text-align:left;cursor:pointer;font:inherit}
+.dialogOption:hover{border-color:rgba(255,211,77,.65);background:rgba(255,255,255,.06)}
 .dialogOption:disabled{opacity:.38;cursor:not-allowed}
-.dialogOption:disabled:hover{border-color:rgba(255,255,255,.12);background:#232a33;box-shadow:none}
-.rewardLine{padding:6px 0}
-#inventory{grid-column:1/4;padding:12px 14px;display:flex;align-items:center;gap:14px;white-space:nowrap;overflow:auto;background:#11151b;border:1px solid rgba(255,255,255,.08);border-radius:8px}
-.inventoryTitle{font-weight:700;color:#ffd45a}.inventoryItem{padding:5px 8px;border-radius:5px;background:#242c35;color:#d7dee7}.muted{color:#788496;padding:12px}.error{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#5b2020;color:#fff;padding:8px 15px;border-radius:6px;opacity:0;transition:opacity .2s;z-index:900}.error.show{opacity:1}#rawInputDebug{position:fixed;left:12px;top:12px;z-index:2147483646;display:block;min-width:260px;padding:9px 11px;border:1px solid rgba(120,220,255,.55);border-radius:6px;background:rgba(5,12,18,.92);color:#bfefff;font:11px/1.45 'Consolas','Courier New',monospace;white-space:pre;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.45)}
-#collapseBtn{position:absolute;right:8px;top:8px;z-index:5;width:30px;height:26px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,205,85,.4);background:rgba(24,29,36,.95);color:#ffd45a;border-radius:5px;cursor:pointer;font:700 15px/1 'Segoe UI',Arial,sans-serif}
-#collapseBtn:hover{background:rgba(255,205,85,.18)}
-#questTab{position:fixed;left:0;top:50%;transform:translate(-115%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;width:34px;padding:18px 6px;background:rgba(13,17,22,.96);border:1px solid rgba(255,205,85,.45);border-left:0;border-radius:0 7px 7px 0;color:#ffd45a;font:700 14px/1 'Segoe UI',Arial,sans-serif;letter-spacing:1px;cursor:pointer;pointer-events:none;transition:transform 220ms ease,box-shadow 220ms ease;box-shadow:0 0 0 rgba(255,205,85,0)}
-/* v1.0.40.61: подпись «Квесты» — вертикальная, подсказка TAB — ГОРИЗОНТАЛЬНАЯ,
-   мелким НЕЖИРНЫМ тёмно-серым шрифтом на тёмном фоне закладки.
-   ⛔ Позиционируем АБСОЛЮТНО: у закладки padding-bottom 18px, поэтому обычный
-   margin-bottom дал бы отступ 21px. Абсолютный `bottom` отсчитывается от
-   PADDING-бокса (то есть от внутренней стороны рамки 1px), поэтому для РОВНЫХ
-   3px от видимой границы закладки ставим 2px. */
-.questTabText{writing-mode:vertical-rl}
-.questTabHint{position:absolute;left:0;right:0;bottom:2px;text-align:center;writing-mode:horizontal-tb;color:#5c646e;font:400 9px/1 'Segoe UI',Arial,sans-serif;letter-spacing:0}
-#questTab.visible{transform:translate(0,-50%);pointer-events:auto}
-#questTab.pulse{animation:questTabPulse 2s ease-in-out infinite}
-@keyframes questTabPulse{0%,100%{box-shadow:0 0 2px rgba(255,205,85,.25);border-color:rgba(255,205,85,.45);background:rgba(13,17,22,.96)}50%{box-shadow:0 0 22px rgba(255,205,85,.95);border-color:#ffd45a;background:rgba(58,46,12,.96)}}
-@media(max-width:1100px){.questWindow{grid-template-columns:190px minmax(0,1fr) 240px;width:96vw;height:92vh}#dialogText{font-size:14px}}
+#dialogImage{width:calc(100% - 12px);height:calc(100% - 12px);margin:6px;object-fit:cover;border-radius:10px;background:rgba(0,0,0,.14);display:block}
+.serviceBlock{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.questRewardTitle{margin-top:9px;margin-bottom:4px;color:#ffd45a;font-weight:700}
+.rewardLine{padding:3px 0}
+#questTab,#inventoryTab{position:absolute;left:0;width:94px;min-height:34px;padding:7px 10px;border-radius:0 9px 9px 0;border:1px solid rgba(255,205,85,.28);background:rgba(0,0,0,.55);color:#e7edf4;cursor:pointer;text-align:left;transition:transform 150ms ease,opacity 150ms ease;transform:translateX(-105%);opacity:0;pointer-events:auto;z-index:30}
+#questTab{top:46%}
+#inventoryTab{top:calc(46% + 45px)}
+#questTab.visible,#inventoryTab.visible{transform:translateX(0);opacity:1}
+#questTab.active,#inventoryTab.active{border-color:rgba(255,205,85,.7);color:#ffd45a}
+#questTab.pulse{animation:questTabPulse 900ms ease-in-out 1}
+@keyframes questTabPulse{0%,100%{transform:translateX(0) scale(1)}45%{transform:translateX(0) scale(1.045)}}
+#inventoryWindow{position:absolute;left:0;top:104px;bottom:0;width:26%;display:none}
+#inventoryWindow.visible{display:block}
+#inventoryList{height:100%;padding:6px;overflow:auto;box-sizing:border-box}
+.inventoryItem{width:100%;display:flex;justify-content:space-between;gap:8px;padding:9px 7px;margin-bottom:2px;border:0;border-bottom:1px solid rgba(255,255,255,.06);border-radius:6px;background:transparent;color:#dce3eb;text-align:left;cursor:pointer}
+.inventoryItem:hover{background:rgba(255,205,85,.11)}
+.inventoryItem small{color:#8c98a9}
+#overlayError{position:fixed;left:50%;top:5vh;transform:translateX(-50%);background:rgba(80,28,28,.92);color:#fff;padding:8px 14px;border-radius:8px;opacity:0;transition:opacity 150ms;z-index:2147483646}
+#overlayError.show{opacity:1}
+#cursorDot{position:fixed;left:0;top:0;width:27px;height:44px;display:none;z-index:2147483647;pointer-events:none;will-change:transform,opacity;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.82))}
+#rawInputDebug{display:none!important}
+@media(max-width:1050px){#questLayout{grid-template-columns:210px minmax(0,1fr) 220px}.questItem strong{font-size:11px}}
 </style>
 </head>
-<body>
-<div id="questApp" data-category="interactive">
-  <div class="questWindow" id="questWindow">
-    <button id="collapseBtn" title="Свернуть окно квестов">&#8592;</button>
-    <section class="panel"><div class="panelTitle">Интерактивы</div><div class="scroll" id="interactionList"></div></section>
-    <section class="panel" id="dialog">
-      <div id="dialogHeader">
-        <div id="portrait"><img id="dialogImage" alt=""></div>
-        <div id="dialogHeaderText"><div id="dialogSpeaker"></div><div id="dialogText">Выберите интерактив слева.</div></div>
-      </div>
-      <div id="dialogBody"><div id="dialogOptions"></div></div>
-    </section>
-    <section class="panel"><div class="panelTitle">Квесты</div><div class="scroll" id="questList"></div></section>
-    <div id="inventory"><span class="inventoryTitle">Инвентарь</span><span class="muted">пусто</span></div>
+<body data-category="interactive">
+<div id="questApp">
+ <div id="safeZone">
+  <div id="miniLogo"><img src="ets2a_logo.png" alt="ETS2 Assist"><div id="miniLogoVersion"><span id="versionNumber">1.0.40.82</span><span id="versionText">CURSOR-CAL-TAB-QUEST-R12</span></div></div>
+  <button id="questTab" type="button">Квесты</button>
+  <button id="inventoryTab" type="button">Инвентарь<br><small>I</small></button>
+  <div id="questLayout">
+   <section id="questSidebar" class="panel"><div id="questList"></div></section>
+   <section id="eventPanel" class="panel"><div id="dialog" class="panelInner"><div id="dialogSpeaker"></div><div id="dialogText"></div></div></section>
+   <section id="responsePanel" class="panel"><div class="panelInner"><div class="panelTitle">Ответы</div><div id="dialogOptions"></div></div></section>
+   <section id="imagePanel" class="panel"><img id="dialogImage" alt=""></section>
+   <section id="servicePanel" class="panel"><div class="panelInner"><div class="panelTitle">Служебная информация</div><div id="dialogService"></div></div></section>
   </div>
-  <div class="error" id="overlayError"></div>
-  <div id="rawInputDebug">SOFT CURSOR R7 1.0.40.77
-HOST: waiting for WebOverlay raw-input message...</div>
+  <section id="inventoryWindow" class="panel"><div id="inventoryList"></div></section>
+  <div id="overlayError" aria-live="polite"></div>
+  <div id="rawInputDebug"></div>
+  <img id="cursorDot" src="cursor.png" alt="">
+ </div>
 </div>
-<div id="questTab" data-category="interactive"><span class="questTabText">Квесты</span><span class="questTabHint">TAB</span></div>
-<!-- v1.0.40.77: реальный игровой курсор из data/quests/images/cursor.png.
-     Исходный размер 27x44 соответствует 1080p; масштабирование под другие
-     разрешения будет добавлено вместе с общей системой масштабов. -->
-<img id="cursorDot" src="quests/images/cursor.png?v=1.0.40.78" alt="">
 <script src="js/quests_ui.js"></script>
 </body>
 </html>
