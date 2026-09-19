@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ETS2 Assist - Квесты - SOFT CURSOR R3 1.0.40.73</title>
+<title>ETS2 Assist - Квесты - SOFT CURSOR R4 1.0.40.74</title>
 <script src="js/debug_show.js"></script>
 <script src="js/ui_category.js"></script>
 <style>
@@ -17,7 +17,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 /* v1.0.40.61: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ. Системный/игровой курсор рисуется
    ПОД окном (игра рисует его в свой кадр, а он ниже нашего слоя), поэтому
    отображаем стрелку внутри страницы — она гарантированно выше. */
-#cursorDot{position:fixed;left:0;top:0;width:15px;height:21px;display:none;z-index:2147483000;pointer-events:none}
+#cursorDot{position:fixed;left:0;top:0;width:27px;height:44px;display:none;z-index:2147483000;pointer-events:none;will-change:transform,opacity;filter:drop-shadow(2px 3px 2px rgba(0,0,0,.82))}
 #questTab{cursor:pointer}
 .questWindow{position:relative;width:min(1280px,92vw);height:min(900px,88vh);display:grid;grid-template-columns:240px minmax(420px,1fr) 310px;grid-template-rows:1fr 54px;gap:10px;padding:12px;box-sizing:border-box;background:rgba(13,17,22,.97);border:1px solid rgba(255,205,85,.35);box-shadow:0 15px 70px rgba(0,0,0,.75);border-radius:10px;opacity:1;transform:translateX(0);transition:transform 320ms ease-out,opacity 96ms ease-out}
 /* v1.0.40.60: СХЕМА АНИМАЦИИ СВОРАЧИВАНИЯ — точно по требованию пользователя.
@@ -87,17 +87,14 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     <div id="inventory"><span class="inventoryTitle">Инвентарь</span><span class="muted">пусто</span></div>
   </div>
   <div class="error" id="overlayError"></div>
-  <div id="rawInputDebug">SOFT CURSOR R3 1.0.40.73
+  <div id="rawInputDebug">SOFT CURSOR R4 1.0.40.74
 HOST: waiting for WebOverlay raw-input message...</div>
 </div>
 <div id="questTab" data-category="interactive"><span class="questTabText">Квесты</span><span class="questTabHint">TAB</span></div>
-<!-- v1.0.40.72: собственная стрелка курсора. Игра рисует СВОЙ курсор в игровой
-     кадр, а он лежит НИЖЕ нашего окна, поэтому системная стрелка и её счётчик
-     ShowCursor проблему не решают — рисуем курсор внутри страницы. -->
-<svg id="cursorDot" viewBox="0 0 15 21" xmlns="http://www.w3.org/2000/svg">
-  <path d="M1 1 L1 16.2 L5.1 12.6 L7.8 19.2 L10.4 18.1 L7.7 11.6 L12.6 11.4 Z"
-        fill="#fff" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/>
-</svg>
+<!-- v1.0.40.74: реальный игровой курсор из data/quests/images/cursor.png.
+     Исходный размер 27x44 соответствует 1080p; масштабирование под другие
+     разрешения будет добавлено вместе с общей системой масштабов. -->
+<img id="cursorDot" src="quests/images/cursor.png?v=1.0.40.74" alt="">
 <script src="js/quests_ui.js"></script>
 </body>
 </html>
