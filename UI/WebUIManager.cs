@@ -318,7 +318,7 @@ namespace ETS2_Assist_GUI
                 /* ESC в подтверждённой паузе немедленно сворачивает любой
                    открытый интерфейс в закладки, но НЕ переключает категорию.
                    Снятие паузы подтверждается отдельно тем же sampler. */
-                SendCommandToMap("set_quest_collapsed", new JObject { ["collapsed"] = true });
+                SendCommandToMap("quest_collapse_interfaces");
                 try { Quests.QuestRuntime.Current?.SetInteractiveVisible(true, false); } catch { }
                 BeginQuestResumeWait("ESC while interactive paused");
                 return;
