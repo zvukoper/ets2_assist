@@ -152,8 +152,9 @@ function connectSaveWebSocket() {
                             if (data.enabled === true) {
                                 minimapAlwaysOn = true;
                                 minimapAutoOff = false;
-                                if (typeof window.ets2Category === 'function' &&
-                                    window.ets2Category() !== 'game') return;
+                                // Не теряем show из-за порядка WS-сообщений:
+                                // startup CSS всё равно удержит страницу невидимой
+                                // до явной категории.
                                 if (!minimapShownOnce) { showUIWithAnimation(); minimapShownOnce = true; }
                                 else showUIFast();
                             } else {
