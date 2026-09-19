@@ -3335,3 +3335,303 @@ BUILD_VERSION=1.0.40.81-CURSOR-CAL-TAB-QUEST-R11-09.19-1509
 2026-09-19 15:13:49.443 [INFO] [LOGS] Сбор диагностических логов...
 2026-09-19 15:13:49.445 [INFO] [LOGS] Источник: F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\Logs
 2026-09-19 15:13:49.447 [INFO] [LOGS] Назначение: F:\repo\ets2_assist\MemoryAI\LOGS
+2026-09-19 15:13:52.805 [INFO] [LOGS] Скопирован: app_data.log -> F:\repo\ets2_assist\MemoryAI\LOGS\app_data.log (3258022 байт, изменён 2026-09-19 15:13:49)
+2026-09-19 15:13:52.807 [INFO] [LOGS] Скопирован: app_workflow.log -> F:\repo\ets2_assist\MemoryAI\LOGS\app_workflow.log (332363 байт, изменён 2026-09-19 15:13:49)
+2026-09-19 15:13:52.810 [INFO] [LOGS] Скопирован: quest-input-diagnostic.log -> F:\repo\ets2_assist\MemoryAI\LOGS\quest-input-diagnostic.log (3827939 байт, изменён 2026-09-19 15:13:52)
+2026-09-19 15:13:52.813 [INFO] [LOGS] Скопирован: debug.log -> F:\repo\ets2_assist\MemoryAI\LOGS\debug.log (25427 байт, изменён 2026-09-19 15:13:51)
+2026-09-19 15:13:52.815 [INFO] [LOGS] Готово: скопировано файлов — 4, в F:\repo\ets2_assist\MemoryAI\LOGS
+2026-09-19 15:13:54.479 [INFO] Exit: показываю диалог подтверждения выхода.
+2026-09-19 15:13:55.779 [INFO] Exit: подтверждено, выполняю остановку системы.
+2026-09-19 15:13:55.786 [INFO] [CONTROL] Сервер внешнего управления остановлен.
+2026-09-19 15:13:55.788 [INFO] Stopping system...
+2026-09-19 15:13:55.819 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 15:13:55.826 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 15:13:55.862 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 15:13:55.928 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 15:13:56.185 [INFO] [AR] AR HUD закрывается.
+2026-09-19 15:13:56.207 [INFO] System stopped
+2026-09-19 15:13:56.259 [INFO] Trigger HTTP server stopped.
+2026-09-19 15:13:56.314 [INFO] WebSocket save server stopped.
+2026-09-19 15:13:56.369 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-19 15:13:56.443 [INFO] Процесс WebOverlay (PID 15496) убит.
+2026-09-19 15:13:56.901 [INFO] KillChildProcesses завершён.
+2026-09-19 15:13:56.942 [INFO] [CONTROL] Пульт управления остаётся доступен: http://localhost:8086/start
+2026-09-19 15:13:56.991 [INFO] [SCS] Controller disposed.
+2026-09-19 15:13:56.995 [INFO] System stopped.
+2026-09-19 15:13:57.632 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-19 15:13:57.667 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-19 15:13:57.668 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-19 17:21:13.398 =======
+BUILD_VERSION=1.0.40.83-ESC-SAFEZONE-QUEST-R13-09.19-1719
+2026-09-19 17:21:13.407 [INFO] ETS2 Assist logger initialized.
+2026-09-19 17:21:13.466 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-19 17:21:13.468 [INFO] [DEV-MODE] config.cfg: uset g_developer "2", uset g_console "1".
+2026-09-19 17:21:13.496 [INFO] [WEBOVERLAY] Версия WebOverlay: 1.0.40.78
+2026-09-19 17:21:13.498 [INFO] [WEBOVERLAY] path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe; fileVersion=1.0.40.78; informational=1.0.40.78+60e6872d2d441ed7ddc035ec2e2d2f438112658c; size=174142962 байт
+2026-09-19 17:21:13.516 [INFO] [CONTROL] Внешнее управление запуском: http://localhost:8086/start
+2026-09-19 17:21:13.571 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-19 17:21:15.121 [INFO] [AR] Модель точек обновлена: 5751 (цели: 0).
+2026-09-19 17:21:17.742 [INFO] Starting system...
+2026-09-19 17:21:17.743 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-19 17:21:17.743 [INFO] Checking ETS2 plugins...
+2026-09-19 17:21:17.744 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-19 17:21:17.745 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-19 17:21:17.745 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-19 17:21:17.746 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-19 17:21:17.747 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-19 17:21:17.748 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-19 17:21:17.748 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-19 17:21:17.749 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-19 17:21:17.750 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789820473).
+2026-09-19 17:21:17.752 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6167, lastWrite=2026-09-18 19:36:46
+2026-09-19 17:21:17.753 [INFO] [WEB] web_ui_hybrid.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=4707, lastWrite=2026-09-18 19:36:46
+2026-09-19 17:21:17.754 [INFO] Trigger HTTP server started on port 8083.
+2026-09-19 17:21:17.755 [INFO] WebSocket save server started on port 8084.
+2026-09-19 17:21:17.880 [INFO] Script started with PID 1796
+2026-09-19 17:21:18.123 [INFO] [OVERLAY-DIAG][START] overlayExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe exists=True sha256=8BD36DC3639A3CFDC38EB075841733D22E0C89D6E6B5FC4B9420C797D5940143 lastWriteUtc=2026-09-19T12:19:51.0104650Z size=174142962
+2026-09-19 17:21:18.344 [INFO] [OVERLAY-DIAG][START] ownExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe version=1.0.40.83-ESC-SAFEZONE-QUEST-R13-09.19-1719 sha256=6536F8A088930788F85F51CFA2F6A0246E61C731C51B309E0D92C747B9C5C3CF lastWriteUtc=2026-09-19T12:20:58.6314572Z size=197520716
+2026-09-19 17:21:18.362 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-19 17:21:19.734 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-19 17:21:19.738 [INFO] [AR] Геометрия AR HUD: экран '\\.\DISPLAY1' 1920x1080 @(0,0).
+2026-09-19 17:21:19.980 [INFO] Command 'ar_fov' sent to map.
+2026-09-19 17:21:19.994 [INFO] Command 'ar_view' sent to map.
+2026-09-19 17:21:20.001 [INFO] [AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).
+2026-09-19 17:21:20.072 [INFO] [AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).
+2026-09-19 17:21:20.088 [INFO] Command 'ar_layer_visible' sent to map.
+2026-09-19 17:21:23.376 [INFO] [TruckTel] GetTruckTelPortFromProcess error: Process must exit before requested information can be determined.
+2026-09-19 17:21:23.381 [INFO] [TruckTel] Порт не найден через активные соединения, используется 8080
+2026-09-19 17:21:23.384 [INFO] [UI] Политика ESC/паузы запущена: опрос 50 мс, ESC — единственный триггер интерактива.
+2026-09-19 17:21:23.524 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-19 17:21:23.526 [INFO] SCS SDK input controller initialized successfully.
+2026-09-19 17:21:23.539 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 17:21:23.578 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 17:21:23.598 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 17:21:23.601 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 17:21:23.605 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 17:21:23.619 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:21:25.660 [INFO] [WebSocket] Получено сообщение: {"command":"ar_view_request"}...
+2026-09-19 17:21:25.753 [INFO] [WebSocket] Команда от клиента: ar_view_request
+2026-09-19 17:21:25.756 [INFO] [WS Command] ar_view_request
+2026-09-19 17:21:25.762 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-19 17:21:25.987 [INFO] Command 'ar_view' sent to map.
+2026-09-19 17:21:25.994 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-19 17:21:26.012 [INFO] [WS Command] map_ready
+2026-09-19 17:21:26.026 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-19 17:21:26.473 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-19 17:21:26.489 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5674 (переопр=5, custom=4), targets=0
+2026-09-19 17:21:28.913 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 17:21:28.966 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 17:21:28.968 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 17:21:28.977 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 17:21:32.179 [INFO] [QUEST] ESC detected flow=Running validatedPaused=True nonEscMenuGuard=False
+2026-09-19 17:21:42.969 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 17:21:43.616 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 17:21:43.624 [INFO] [UI] Фокус игры=False (фокус на постороннем окне ('ETS2_Assist'))
+2026-09-19 17:21:47.323 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 17:21:47.384 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 17:21:47.386 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 17:21:47.397 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 17:21:48.079 [INFO] Command 'show_ui_first' sent to map.
+2026-09-19 17:21:48.082 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 17:21:48.085 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 17:21:48.087 [INFO] [UI] Игровые интерфейсы показаны впервые: гибрид + миникарта + уведомления.
+2026-09-19 17:21:48.089 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 17:21:48.093 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:21:48.149 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 17:21:48.149 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 17:21:53.403 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-19 17:21:53.464 [INFO] [WebSocket] Команда звука: icon
+2026-09-19 17:21:53.547 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-19 17:21:53.566 [INFO] [WebSocket] Команда звука: icon
+2026-09-19 17:22:03.952 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 17:22:03.954 [INFO] [QUEST] ESC -> ожидание главной паузы; закладка через 5514 мс.
+2026-09-19 17:22:05.158 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 17:22:05.162 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 17:22:05.167 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:22:05.169 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 17:22:05.171 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:22:05.281 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 17:22:05.282 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 17:22:23.514 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 17:22:23.519 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 17:22:23.520 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 17:22:23.523 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 17:22:26.843 [INFO] [UI] Подтверждён выход из паузы — игровые интерфейсы возвращаются.
+2026-09-19 17:22:26.847 [INFO] Command 'show_ui' sent to map.
+2026-09-19 17:22:26.861 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 17:22:26.864 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 17:22:26.866 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 17:22:26.869 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 17:22:29.960 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 17:22:29.966 [INFO] [QUEST] ESC -> ожидание главной паузы; закладка через 5514 мс.
+2026-09-19 17:22:31.702 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 17:22:31.709 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 17:22:31.712 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:22:31.718 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 17:22:31.722 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:22:31.885 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 17:22:31.886 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 17:22:34.673 [INFO] [QUEST] menu-key VK=115: non-ESC menu guard ON
+2026-09-19 17:22:37.672 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 17:22:37.672 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 17:22:37.675 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 17:22:37.678 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 17:22:37.692 [INFO] [UI] Фокус игры=False (фокус на постороннем окне ('ETS2_Assist'))
+2026-09-19 17:22:40.567 [INFO] Exit: показываю диалог подтверждения выхода.
+2026-09-19 17:22:41.719 [INFO] Exit: подтверждено, выполняю остановку системы.
+2026-09-19 17:22:41.729 [INFO] [CONTROL] Сервер внешнего управления остановлен.
+2026-09-19 17:22:41.739 [INFO] Stopping system...
+2026-09-19 17:22:41.769 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 17:22:41.773 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 17:22:41.787 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 17:22:41.792 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 17:22:42.045 [INFO] [AR] AR HUD закрывается.
+2026-09-19 17:22:42.061 [INFO] System stopped
+2026-09-19 17:22:42.094 [INFO] Trigger HTTP server stopped.
+2026-09-19 17:22:42.114 [INFO] WebSocket save server stopped.
+2026-09-19 17:22:42.163 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-19 17:22:42.230 [INFO] Процесс WebOverlay (PID 21876) убит.
+2026-09-19 17:22:42.671 [INFO] KillChildProcesses завершён.
+2026-09-19 17:22:42.675 [INFO] [CONTROL] Пульт управления остаётся доступен: http://localhost:8086/start
+2026-09-19 17:22:42.716 [INFO] [SCS] Controller disposed.
+2026-09-19 17:22:42.755 [INFO] System stopped.
+2026-09-19 17:22:44.034 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-19 17:22:44.063 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-19 17:22:44.064 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-19 17:25:48.046 =======
+BUILD_VERSION=1.0.40.83-ESC-SAFEZONE-QUEST-R13-09.19-1719
+2026-09-19 17:25:48.046 [INFO] ETS2 Assist logger initialized.
+2026-09-19 17:25:48.082 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-19 17:25:48.084 [INFO] [DEV-MODE] config.cfg: uset g_developer "2", uset g_console "1".
+2026-09-19 17:25:48.103 [INFO] [WEBOVERLAY] Версия WebOverlay: 1.0.40.78
+2026-09-19 17:25:48.104 [INFO] [WEBOVERLAY] path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe; fileVersion=1.0.40.78; informational=1.0.40.78+60e6872d2d441ed7ddc035ec2e2d2f438112658c; size=174142962 байт
+2026-09-19 17:25:48.118 [INFO] [CONTROL] Внешнее управление запуском: http://localhost:8086/start
+2026-09-19 17:25:48.177 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-19 17:25:48.968 [INFO] [AR] Модель точек обновлена: 5751 (цели: 0).
+2026-09-19 17:26:23.512 [INFO] Cannot send command 'set_quest_tab_state': WebSocket save server is not running.
+2026-09-19 17:26:35.250 [INFO] Cannot send command 'set_quest_tab_state': WebSocket save server is not running.
+2026-09-19 17:26:47.430 [INFO] Starting system...
+2026-09-19 17:26:47.432 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-19 17:26:47.432 [INFO] Checking ETS2 plugins...
+2026-09-19 17:26:47.433 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-19 17:26:47.434 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-19 17:26:47.435 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-19 17:26:47.436 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-19 17:26:47.436 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-19 17:26:47.437 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-19 17:26:47.445 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-19 17:26:47.446 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-19 17:26:47.448 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789820747).
+2026-09-19 17:26:47.471 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6167, lastWrite=2026-09-18 19:36:46
+2026-09-19 17:26:47.487 [INFO] [WEB] web_ui_hybrid.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=4707, lastWrite=2026-09-18 19:36:46
+2026-09-19 17:26:47.489 [INFO] Trigger HTTP server started on port 8083.
+2026-09-19 17:26:47.490 [INFO] WebSocket save server started on port 8084.
+2026-09-19 17:26:47.498 [INFO] Script started with PID 23420
+2026-09-19 17:26:48.708 [INFO] [OVERLAY-DIAG][START] overlayExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe exists=True sha256=8BD36DC3639A3CFDC38EB075841733D22E0C89D6E6B5FC4B9420C797D5940143 lastWriteUtc=2026-09-19T12:19:51.0104650Z size=174142962
+2026-09-19 17:26:49.333 [INFO] [OVERLAY-DIAG][START] ownExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe version=1.0.40.83-ESC-SAFEZONE-QUEST-R13-09.19-1719 sha256=6536F8A088930788F85F51CFA2F6A0246E61C731C51B309E0D92C747B9C5C3CF lastWriteUtc=2026-09-19T12:20:58.6314572Z size=197520716
+2026-09-19 17:26:49.347 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-19 17:26:50.575 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-19 17:26:50.578 [INFO] [AR] Геометрия AR HUD: экран '\\.\DISPLAY1' 1920x1080 @(0,0).
+2026-09-19 17:26:50.789 [INFO] Command 'ar_fov' sent to map.
+2026-09-19 17:26:50.805 [INFO] Command 'ar_view' sent to map.
+2026-09-19 17:26:50.826 [INFO] [AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).
+2026-09-19 17:26:50.846 [INFO] [AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).
+2026-09-19 17:26:50.852 [INFO] Command 'ar_layer_visible' sent to map.
+2026-09-19 17:26:51.788 [INFO] [WebSocket] Получено сообщение: {"command":"ar_view_request"}...
+2026-09-19 17:26:51.830 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-19 17:26:53.889 [INFO] [TruckTel] GetTruckTelPortFromProcess error: Process must exit before requested information can be determined.
+2026-09-19 17:26:53.893 [INFO] [TruckTel] Порт не найден через активные соединения, используется 8080
+2026-09-19 17:26:53.897 [INFO] [UI] Политика ESC/паузы запущена: опрос 50 мс, ESC — единственный триггер интерактива.
+2026-09-19 17:26:54.018 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-19 17:26:54.023 [INFO] SCS SDK input controller initialized successfully.
+2026-09-19 17:26:54.045 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 17:26:54.073 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 17:26:54.094 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:26:54.118 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 17:26:54.121 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 17:26:54.124 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 17:26:54.128 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:26:54.136 [INFO] [WebSocket] Команда от клиента: ar_view_request
+2026-09-19 17:26:54.138 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-19 17:26:54.147 [INFO] [WS Command] ar_view_request
+2026-09-19 17:26:54.173 [INFO] [WS Command] map_ready
+2026-09-19 17:26:54.196 [INFO] Command 'ar_view' sent to map.
+2026-09-19 17:26:54.202 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-19 17:26:54.613 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-19 17:26:54.865 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5674 (переопр=5, custom=4), targets=0
+2026-09-19 17:26:55.500 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-19 17:26:55.573 [INFO] [WebSocket] Команда звука: icon
+2026-09-19 17:26:56.530 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 17:26:56.569 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 17:26:56.573 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 17:26:56.636 [INFO] Command 'show_ui_first' sent to map.
+2026-09-19 17:26:56.649 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 17:26:56.663 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 17:26:56.675 [INFO] [UI] Игровые интерфейсы показаны впервые: гибрид + миникарта + уведомления.
+2026-09-19 17:26:56.689 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 17:26:56.708 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 17:27:00.007 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:27:00.721 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:27:01.238 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:27:01.403 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:27:01.478 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:27:04.029 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:27:04.332 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:27:04.649 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:27:05.028 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:27:05.537 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 17:27:05.538 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 17:27:06.572 [INFO] Command 'ar_target' sent to map.
+2026-09-19 17:27:08.165 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 17:27:08.172 [INFO] [QUEST] ESC -> ожидание главной паузы; закладка через 5514 мс.
+2026-09-19 17:27:08.499 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 17:27:08.502 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 17:27:08.505 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:27:08.508 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 17:27:08.511 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:27:08.590 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 17:27:08.591 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 17:27:19.412 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 17:27:19.415 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 17:27:19.416 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 17:27:19.419 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 17:27:21.653 [INFO] [UI] Подтверждён выход из паузы — игровые интерфейсы возвращаются.
+2026-09-19 17:27:21.657 [INFO] Command 'show_ui' sent to map.
+2026-09-19 17:27:21.666 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 17:27:21.671 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 17:27:21.674 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 17:27:21.685 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 17:27:24.476 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-19 17:27:24.523 [INFO] [WebSocket] Команда звука: icon
+2026-09-19 17:27:28.407 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 17:27:28.423 [INFO] [QUEST] ESC -> ожидание главной паузы; закладка через 5514 мс.
+2026-09-19 17:27:28.563 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 17:27:28.567 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 17:27:28.570 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:27:28.572 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 17:27:28.574 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:27:28.656 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 17:27:28.657 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 17:27:37.731 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 17:27:37.734 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 17:27:37.735 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 17:27:37.739 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 17:27:39.846 [INFO] [UI] Подтверждён выход из паузы — игровые интерфейсы возвращаются.
+2026-09-19 17:27:39.857 [INFO] Command 'show_ui' sent to map.
+2026-09-19 17:27:39.873 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 17:27:39.890 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 17:27:39.906 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 17:27:39.922 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 17:27:42.465 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 17:27:42.468 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 17:27:42.482 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 17:27:42.499 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 17:27:42.512 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:27:42.515 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 17:27:42.517 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 17:27:42.530 [INFO] [UI] Фокус игры=False (фокус на постороннем окне ('ETS2_Assist'))
+2026-09-19 17:27:49.129 [INFO] [LOGS] Сбор диагностических логов...
+2026-09-19 17:27:49.133 [INFO] [LOGS] Источник: F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\Logs
+2026-09-19 17:27:49.135 [INFO] [LOGS] Назначение: F:\repo\ets2_assist\MemoryAI\LOGS
