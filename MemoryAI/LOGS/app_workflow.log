@@ -6352,3 +6352,1256 @@ BUILD_VERSION=1.0.40.84-PAUSE-CURSOR-SMOOTH-R14-09.19-2048
 2026-09-19 20:51:24.068 [INFO] [LOGS] Сбор диагностических логов...
 2026-09-19 20:51:24.071 [INFO] [LOGS] Источник: F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\Logs
 2026-09-19 20:51:24.075 [INFO] [LOGS] Назначение: F:\repo\ets2_assist\MemoryAI\LOGS
+2026-09-19 20:51:30.504 [INFO] [LOGS] Скопирован: app_data.log -> F:\repo\ets2_assist\MemoryAI\LOGS\app_data.log (10523069 байт, изменён 2026-09-19 20:51:24)
+2026-09-19 20:51:30.506 [INFO] [LOGS] Скопирован: app_workflow.log -> F:\repo\ets2_assist\MemoryAI\LOGS\app_workflow.log (652068 байт, изменён 2026-09-19 20:51:24)
+2026-09-19 20:51:30.508 [INFO] [LOGS] Скопирован: quest-input-diagnostic.log -> F:\repo\ets2_assist\MemoryAI\LOGS\quest-input-diagnostic.log (10029787 байт, изменён 2026-09-19 20:51:30)
+2026-09-19 20:51:30.509 [INFO] [LOGS] Скопирован: debug.log -> F:\repo\ets2_assist\MemoryAI\LOGS\debug.log (28568 байт, изменён 2026-09-19 20:51:29)
+2026-09-19 20:51:30.511 [INFO] [LOGS] Готово: скопировано файлов — 4, в F:\repo\ets2_assist\MemoryAI\LOGS
+2026-09-19 20:51:31.629 [INFO] Exit: показываю диалог подтверждения выхода.
+2026-09-19 20:51:33.791 [INFO] Exit: подтверждено, выполняю остановку системы.
+2026-09-19 20:51:33.804 [INFO] [CONTROL] Сервер внешнего управления остановлен.
+2026-09-19 20:51:33.807 [INFO] Stopping system...
+2026-09-19 20:51:33.851 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 20:51:33.886 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 20:51:33.899 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 20:51:33.918 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 20:51:33.925 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 20:51:33.957 [INFO] Command 'show_ui' sent to map.
+2026-09-19 20:51:33.987 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 20:51:34.009 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 20:51:34.029 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 20:51:34.046 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 20:51:34.047 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 20:51:34.058 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 20:51:34.079 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 20:51:34.090 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 20:51:34.299 [INFO] [AR] AR HUD закрывается.
+2026-09-19 20:51:34.321 [INFO] System stopped
+2026-09-19 20:51:34.387 [INFO] Trigger HTTP server stopped.
+2026-09-19 20:51:34.451 [INFO] WebSocket save server stopped.
+2026-09-19 20:51:34.517 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-19 20:51:34.626 [INFO] Процесс WebOverlay (PID 21852) убит.
+2026-09-19 20:51:35.094 [INFO] KillChildProcesses завершён.
+2026-09-19 20:51:35.128 [INFO] [CONTROL] Пульт управления остаётся доступен: http://localhost:8086/start
+2026-09-19 20:51:35.213 [INFO] [SCS] Controller disposed.
+2026-09-19 20:51:35.265 [INFO] System stopped.
+2026-09-19 20:51:35.667 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-19 20:51:35.700 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-19 20:51:35.700 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-19 21:14:10.938 =======
+BUILD_VERSION=1.0.40.84-PAUSE-CURSOR-SMOOTH-R14-09.19-2112
+2026-09-19 21:14:10.938 [INFO] ETS2 Assist logger initialized.
+2026-09-19 21:14:10.978 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-19 21:14:10.980 [INFO] [DEV-MODE] config.cfg: uset g_developer "2", uset g_console "1".
+2026-09-19 21:14:11.014 [INFO] [WEBOVERLAY] Версия WebOverlay: 1.0.40.79
+2026-09-19 21:14:11.015 [INFO] [WEBOVERLAY] path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe; fileVersion=1.0.40.78; informational=1.0.40.79+e74da7c909c58eec9f280432ae524c4d08d8e0e6; size=174142962 байт
+2026-09-19 21:14:11.045 [INFO] [CONTROL] Внешнее управление запуском: http://localhost:8086/start
+2026-09-19 21:14:11.108 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-19 21:14:12.092 [INFO] Cannot send command 'quest_bookmark_beacon': WebSocket save server is not running.
+2026-09-19 21:15:11.732 [INFO] Starting system...
+2026-09-19 21:15:11.733 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-19 21:15:11.733 [INFO] Checking ETS2 plugins...
+2026-09-19 21:15:11.734 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-19 21:15:11.735 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-19 21:15:11.735 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-19 21:15:11.736 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-19 21:15:11.737 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-19 21:15:11.737 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-19 21:15:11.738 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-19 21:15:11.740 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-19 21:15:11.742 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789834450).
+2026-09-19 21:15:11.744 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6187, lastWrite=2026-09-19 18:29:19
+2026-09-19 21:15:11.744 [INFO] [WEB] web_ui_hybrid.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=4707, lastWrite=2026-09-18 19:36:46
+2026-09-19 21:15:11.746 [INFO] Trigger HTTP server started on port 8083.
+2026-09-19 21:15:11.747 [INFO] WebSocket save server started on port 8084.
+2026-09-19 21:15:11.754 [INFO] Script started with PID 22780
+2026-09-19 21:15:11.969 [INFO] [OVERLAY-DIAG][START] overlayExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe exists=True sha256=3DD62278B098CD3A668C121F9AD0398AF5A79E0C3E6A0A9F56FA9496C180A269 lastWriteUtc=2026-09-19T16:12:44.3489935Z size=174142962
+2026-09-19 21:15:12.189 [INFO] [OVERLAY-DIAG][START] ownExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe version=1.0.40.84-PAUSE-CURSOR-SMOOTH-R14-09.19-2112 sha256=C758E6F9053676A1FD2187887412FA2AB009FB765C0E8AE24F2D05BA6EFAFBAD lastWriteUtc=2026-09-19T16:13:56.6559543Z size=197520716
+2026-09-19 21:15:12.210 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-19 21:15:13.641 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-19 21:15:13.681 [INFO] [AR] Геометрия AR HUD: экран '\\.\DISPLAY1' 1920x1080 @(0,0).
+2026-09-19 21:15:13.732 [INFO] Command 'ar_fov' sent to map.
+2026-09-19 21:15:13.771 [INFO] Command 'ar_view' sent to map.
+2026-09-19 21:15:13.821 [INFO] [AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).
+2026-09-19 21:15:13.960 [INFO] [AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).
+2026-09-19 21:15:13.968 [INFO] Command 'ar_layer_visible' sent to map.
+2026-09-19 21:15:15.756 [INFO] [TruckTel] Найден порт через активные соединения: 8080
+2026-09-19 21:15:15.760 [INFO] [TruckTel] web_data.json обновлён, wsPort = 8080
+2026-09-19 21:15:15.763 [INFO] [UI] Политика ESC/паузы запущена: опрос 50 мс, ESC — единственный триггер интерактива.
+2026-09-19 21:15:15.767 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-19 21:15:15.769 [INFO] SCS SDK input controller initialized successfully.
+2026-09-19 21:15:15.782 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 21:15:15.799 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 21:15:15.804 [INFO] Command 'ar_target' sent to map.
+2026-09-19 21:15:16.316 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 21:15:16.323 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 21:15:16.329 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:15:16.350 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:15:16.759 [INFO] [WebSocket] Получено сообщение: {"command":"ar_view_request"}...
+2026-09-19 21:15:16.874 [INFO] [WebSocket] Команда от клиента: ar_view_request
+2026-09-19 21:15:16.878 [INFO] [WS Command] ar_view_request
+2026-09-19 21:15:16.885 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-19 21:15:16.907 [INFO] Command 'ar_view' sent to map.
+2026-09-19 21:15:16.913 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-19 21:15:16.922 [INFO] [WS Command] map_ready
+2026-09-19 21:15:16.929 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-19 21:15:17.392 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-19 21:15:17.482 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 21:15:17.507 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5674 (переопр=5, custom=4), targets=0
+2026-09-19 21:15:17.588 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 21:15:17.613 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 21:15:17.633 [INFO] Command 'show_ui_first' sent to map.
+2026-09-19 21:15:17.649 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:15:17.670 [INFO] [UI] Игровые интерфейсы показаны впервые: гибрид + миникарта + уведомления.
+2026-09-19 21:15:17.688 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:15:17.699 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:15:17.700 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:15:17.717 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 21:15:20.372 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-19 21:15:20.397 [INFO] [WebSocket] Команда звука: icon
+2026-09-19 21:15:23.039 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:15:23.049 [INFO] [QUEST] ESC -> ожидание главной паузы; shell через 150 мс.
+2026-09-19 21:15:23.281 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:15:23.285 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:15:23.290 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:15:23.292 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:15:23.294 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:15:23.294 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:15:23.296 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:15:23.297 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:15:23.299 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:15:23.300 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:15:23.303 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:15:23.304 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:15:23.311 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:15:23.316 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:15:23.323 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:15:23.326 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:15:23.328 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:15:23.330 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:15:23.331 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:15:23.333 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:15:23.334 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:15:23.337 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:15:23.338 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:15:23.340 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:15:23.411 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:15:23.412 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:15:30.188 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:15:30.189 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:15:31.050 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:15:31.050 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:15:31.818 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:15:31.819 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:15:32.625 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:15:32.626 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:15:33.348 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:15:33.349 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:15:33.764 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:15:33.764 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:15:34.958 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:15:34.958 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:15:35.720 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:15:35.720 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:15:36.327 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:15:36.327 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:15:36.832 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:15:36.833 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:15:37.413 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:15:37.414 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:15:39.183 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:15:39.184 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:15:40.486 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:15:40.487 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:15:42.273 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:15:42.273 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:15:42.870 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:15:42.871 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:15:43.610 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:15:43.611 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:15:44.577 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:15:44.578 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:15:57.142 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:15:57.142 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:16:01.780 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:16:01.783 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:16:01.783 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:16:01.792 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:16:01.794 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:16:01.859 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:16:04.019 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:16:04.021 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:16:04.031 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:16:04.034 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:16:04.049 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:16:04.063 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:16:04.066 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:16:04.068 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:16:04.069 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:16:08.587 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:16:08.596 [INFO] [QUEST] ESC -> ожидание главной паузы; shell через 150 мс.
+2026-09-19 21:16:08.697 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:16:08.704 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:16:08.707 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:16:08.709 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:16:08.884 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:16:08.895 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:16:08.898 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:16:08.901 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:16:08.907 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:16:08.908 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:16:08.911 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:16:08.912 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:16:08.914 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:16:08.915 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:16:08.925 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:16:08.926 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:16:08.928 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:16:08.930 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:16:08.930 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:16:08.933 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:16:08.933 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:16:08.941 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:16:08.942 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:16:08.944 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:16:08.944 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:16:08.946 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:16:11.176 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:16:11.178 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:16:11.179 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:16:11.181 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:16:11.183 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:16:11.243 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:16:13.260 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:16:13.261 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:16:13.264 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:16:13.267 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:16:13.281 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:16:13.296 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:16:13.299 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:16:13.301 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:16:13.303 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:16:14.821 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 21:16:14.824 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 21:16:14.842 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:16:14.859 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:16:14.873 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:16:14.878 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:16:14.887 [INFO] [UI] Фокус игры=False (фокус на постороннем окне ('ETS2_Assist'))
+2026-09-19 21:16:17.216 [INFO] [LOGS] Сбор диагностических логов...
+2026-09-19 21:16:17.218 [INFO] [LOGS] Источник: F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\Logs
+2026-09-19 21:16:17.220 [INFO] [LOGS] Назначение: F:\repo\ets2_assist\MemoryAI\LOGS
+2026-09-19 21:16:17.233 [INFO] [LOGS] Скопирован: app_data.log -> F:\repo\ets2_assist\MemoryAI\LOGS\app_data.log (10659918 байт, изменён 2026-09-19 21:16:17)
+2026-09-19 21:16:17.238 [INFO] [LOGS] Скопирован: app_workflow.log -> F:\repo\ets2_assist\MemoryAI\LOGS\app_workflow.log (677275 байт, изменён 2026-09-19 21:16:17)
+2026-09-19 21:16:17.242 [INFO] [LOGS] Скопирован: quest-input-diagnostic.log -> F:\repo\ets2_assist\MemoryAI\LOGS\quest-input-diagnostic.log (7804747 байт, изменён 2026-09-19 21:16:16)
+2026-09-19 21:16:17.245 [INFO] [LOGS] Скопирован: debug.log -> F:\repo\ets2_assist\MemoryAI\LOGS\debug.log (20175 байт, изменён 2026-09-19 21:16:16)
+2026-09-19 21:16:17.247 [INFO] [LOGS] Готово: скопировано файлов — 4, в F:\repo\ets2_assist\MemoryAI\LOGS
+2026-09-19 21:16:20.405 [INFO] Exit: показываю диалог подтверждения выхода.
+2026-09-19 21:16:21.583 [INFO] Exit: подтверждено, выполняю остановку системы.
+2026-09-19 21:16:21.590 [INFO] [CONTROL] Сервер внешнего управления остановлен.
+2026-09-19 21:16:21.594 [INFO] Stopping system...
+2026-09-19 21:16:21.627 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 21:16:21.671 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 21:16:21.693 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 21:16:21.702 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 21:16:21.729 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:16:21.750 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:16:21.777 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:16:21.801 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:16:21.817 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:16:21.818 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:16:21.830 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 21:16:21.861 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 21:16:21.873 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 21:16:21.980 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 21:16:22.244 [INFO] [AR] AR HUD закрывается.
+2026-09-19 21:16:22.266 [INFO] System stopped
+2026-09-19 21:16:22.329 [INFO] Trigger HTTP server stopped.
+2026-09-19 21:16:22.346 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 21:16:22.363 [INFO] WebSocket save server stopped.
+2026-09-19 21:16:22.421 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-19 21:16:22.524 [INFO] Процесс WebOverlay (PID 20572) убит.
+2026-09-19 21:16:23.002 [INFO] KillChildProcesses завершён.
+2026-09-19 21:16:23.062 [INFO] [CONTROL] Пульт управления остаётся доступен: http://localhost:8086/start
+2026-09-19 21:16:23.065 [INFO] [SCS] Controller disposed.
+2026-09-19 21:16:23.145 [INFO] System stopped.
+2026-09-19 21:16:23.608 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-19 21:16:23.654 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-19 21:16:23.655 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-19 21:28:51.489 =======
+BUILD_VERSION=1.0.40.84-PAUSE-CURSOR-SMOOTH-R14-09.19-2127
+2026-09-19 21:28:51.489 [INFO] ETS2 Assist logger initialized.
+2026-09-19 21:28:51.527 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-19 21:28:51.529 [INFO] [DEV-MODE] config.cfg: uset g_developer "2", uset g_console "1".
+2026-09-19 21:28:51.669 [INFO] [WEBOVERLAY] Версия WebOverlay: 1.0.40.79
+2026-09-19 21:28:51.670 [INFO] [WEBOVERLAY] path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe; fileVersion=1.0.40.78; informational=1.0.40.79+e74da7c909c58eec9f280432ae524c4d08d8e0e6; size=174142962 байт
+2026-09-19 21:28:51.693 [INFO] [CONTROL] Внешнее управление запуском: http://localhost:8086/start
+2026-09-19 21:28:51.752 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-19 21:28:52.852 [INFO] Cannot send command 'quest_bookmark_beacon': WebSocket save server is not running.
+2026-09-19 21:29:11.099 [INFO] Starting system...
+2026-09-19 21:29:11.100 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-19 21:29:11.101 [INFO] Checking ETS2 plugins...
+2026-09-19 21:29:11.101 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-19 21:29:11.102 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-19 21:29:11.103 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-19 21:29:11.103 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-19 21:29:11.104 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-19 21:29:11.104 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-19 21:29:11.105 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-19 21:29:11.106 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-19 21:29:11.107 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789835331).
+2026-09-19 21:29:11.109 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6187, lastWrite=2026-09-19 18:29:19
+2026-09-19 21:29:11.109 [INFO] [WEB] web_ui_hybrid.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=4707, lastWrite=2026-09-18 19:36:46
+2026-09-19 21:29:11.111 [INFO] Trigger HTTP server started on port 8083.
+2026-09-19 21:29:11.112 [INFO] WebSocket save server started on port 8084.
+2026-09-19 21:29:11.118 [INFO] Script started with PID 23868
+2026-09-19 21:29:11.332 [INFO] [OVERLAY-DIAG][START] overlayExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe exists=True sha256=3DD62278B098CD3A668C121F9AD0398AF5A79E0C3E6A0A9F56FA9496C180A269 lastWriteUtc=2026-09-19T16:27:32.0057917Z size=174142962
+2026-09-19 21:29:11.559 [INFO] [OVERLAY-DIAG][START] ownExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe version=1.0.40.84-PAUSE-CURSOR-SMOOTH-R14-09.19-2127 sha256=6147B308FAD6F984527DB0D2B1A17BDA8ED9A1FE5444214574028AFEFC43957A lastWriteUtc=2026-09-19T16:28:36.9826499Z size=197520716
+2026-09-19 21:29:11.584 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-19 21:29:12.748 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-19 21:29:12.756 [INFO] [AR] Геометрия AR HUD: экран '\\.\DISPLAY1' 1920x1080 @(0,0).
+2026-09-19 21:29:12.813 [INFO] Command 'ar_fov' sent to map.
+2026-09-19 21:29:12.818 [INFO] Command 'ar_view' sent to map.
+2026-09-19 21:29:12.843 [INFO] [AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).
+2026-09-19 21:29:12.914 [INFO] [AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).
+2026-09-19 21:29:12.921 [INFO] Command 'ar_layer_visible' sent to map.
+2026-09-19 21:29:14.391 [INFO] [TruckTel] Найден порт через активные соединения: 8080
+2026-09-19 21:29:14.399 [INFO] [TruckTel] web_data.json обновлён, wsPort = 8080
+2026-09-19 21:29:14.409 [INFO] [UI] Политика ESC/паузы запущена: опрос 50 мс, ESC — единственный триггер интерактива.
+2026-09-19 21:29:14.429 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-19 21:29:14.442 [INFO] SCS SDK input controller initialized successfully.
+2026-09-19 21:29:14.469 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 21:29:14.481 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 21:29:14.491 [INFO] Command 'ar_target' sent to map.
+2026-09-19 21:29:14.518 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 21:29:15.697 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-19 21:29:15.740 [INFO] [WebSocket] Получено сообщение: {"command":"ar_view_request"}...
+2026-09-19 21:29:15.963 [INFO] Command 'show_ui_first' sent to map.
+2026-09-19 21:29:15.993 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:29:16.005 [INFO] [UI] Игровые интерфейсы показаны впервые: гибрид + миникарта + уведомления.
+2026-09-19 21:29:16.025 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:29:16.043 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:29:16.072 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:29:16.073 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:29:16.095 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 21:29:16.161 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-19 21:29:16.190 [INFO] [WebSocket] Команда от клиента: ar_view_request
+2026-09-19 21:29:16.195 [INFO] [WS Command] map_ready
+2026-09-19 21:29:16.208 [INFO] [WS Command] ar_view_request
+2026-09-19 21:29:16.216 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-19 21:29:16.226 [INFO] Command 'ar_view' sent to map.
+2026-09-19 21:29:16.802 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-19 21:29:16.885 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5674 (переопр=5, custom=4), targets=0
+2026-09-19 21:29:18.987 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-19 21:29:19.041 [INFO] [WebSocket] Команда звука: icon
+2026-09-19 21:29:19.362 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:29:19.371 [INFO] [QUEST] ESC -> ожидание главной паузы; shell через 150 мс.
+2026-09-19 21:29:19.531 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:29:19.535 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:29:19.538 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:29:19.541 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:29:19.547 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:29:19.548 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:29:19.553 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:29:19.553 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:29:19.557 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:29:19.558 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:29:19.565 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:29:19.566 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:29:19.568 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:29:19.571 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:29:19.574 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:29:19.576 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:29:19.580 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:29:19.582 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:29:19.583 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:29:19.586 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:29:19.587 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:29:19.590 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:29:19.591 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:29:19.597 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:29:19.669 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:29:19.671 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:29:22.152 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:22.153 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:23.868 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:23.868 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:24.721 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:24.722 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:25.478 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:25.479 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:27.084 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:27.085 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:28.108 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:28.108 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:29.933 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:29.933 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:30.558 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:30.559 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:30.978 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:30.979 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:31.522 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:31.523 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:32.083 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:32.084 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:32.484 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:32.484 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:33.105 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:33.105 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:34.235 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:34.236 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:34.838 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:34.839 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:35.642 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:35.644 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:36.285 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:36.286 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:36.808 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:36.808 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:37.488 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:37.488 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:38.281 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:38.282 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:39.406 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:39.406 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:40.008 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:40.008 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:41.012 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:41.013 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:42.054 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:42.056 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:43.060 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:43.061 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:43.667 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:43.668 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:44.205 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:29:44.206 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:29:47.221 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:47.221 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:48.376 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:48.377 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:29:50.522 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:29:50.523 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:30:25.135 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:30:25.138 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:30:25.138 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:30:25.141 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:30:25.164 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:30:25.201 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:30:33.490 [INFO] [QUEST] ESC detected flow=WaitingForResume validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:30:36.237 [INFO] [QUEST] ESC detected flow=WaitingForResume validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:30:38.725 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:30:38.726 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:30:38.738 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:30:39.085 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:30:39.089 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:30:39.091 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:30:39.105 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:30:39.107 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:30:39.109 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:30:44.621 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:30:44.624 [INFO] [QUEST] ESC -> ожидание главной паузы; shell через 150 мс.
+2026-09-19 21:30:44.826 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:30:44.834 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:30:44.838 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:30:44.841 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:30:44.846 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:30:44.846 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:30:44.848 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:30:44.849 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:30:44.851 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:30:44.852 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:30:44.855 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:30:44.856 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:30:44.862 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:30:44.865 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:30:44.868 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:30:44.870 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:30:44.873 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:30:44.877 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:30:44.878 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:30:44.881 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:30:44.882 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:30:44.885 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:30:44.885 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:30:44.887 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:30:44.963 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:30:44.964 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:30:46.230 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:30:46.233 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:30:46.233 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:30:46.235 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:30:46.237 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:30:46.303 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:30:48.313 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:30:48.314 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:30:48.321 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:30:48.652 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:30:48.656 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:30:48.658 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:30:48.673 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:30:48.687 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:30:48.689 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:30:57.750 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:30:57.769 [INFO] [QUEST] ESC -> ожидание главной паузы; shell через 150 мс.
+2026-09-19 21:30:57.880 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:30:57.883 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:30:57.886 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:30:57.888 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:30:57.965 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:30:57.969 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:30:57.972 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:30:57.976 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:30:57.979 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:30:57.980 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:30:57.982 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:30:57.982 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:30:57.985 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:30:57.985 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:30:57.988 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:30:57.989 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:30:57.991 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:30:57.993 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:30:57.994 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:30:57.997 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:30:57.997 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:30:57.999 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:30:58.000 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:30:58.002 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:30:58.002 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:30:58.004 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:30:59.458 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:30:59.459 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:31:12.096 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:31:12.096 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:31:16.922 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:31:16.922 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:31:22.123 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:31:22.124 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:31:34.237 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:31:34.238 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:31:35.385 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:31:35.386 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:31:40.554 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:31:40.557 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:31:40.558 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:31:40.566 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:31:40.578 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:31:40.618 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:31:42.760 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:31:42.761 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:31:42.771 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:31:43.115 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:31:43.119 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:31:43.121 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:31:43.123 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:31:43.125 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:31:43.126 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:31:43.570 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:31:43.573 [INFO] [QUEST] ESC -> ожидание главной паузы; shell через 150 мс.
+2026-09-19 21:31:45.263 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:31:45.267 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:31:45.270 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:31:45.273 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:31:45.276 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:31:45.277 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:31:45.279 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:31:45.279 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:31:45.281 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:31:45.282 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:31:45.285 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:31:45.286 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:31:45.289 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:31:45.298 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:31:45.304 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:31:45.307 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:31:45.313 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:31:45.316 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:31:45.317 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:31:45.319 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:31:45.319 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:31:45.322 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:31:45.323 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:31:45.328 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:31:45.471 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:31:45.472 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:31:45.920 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:31:45.922 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:31:45.923 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:31:45.929 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:31:45.931 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:31:45.949 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:31:48.096 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:31:48.097 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:31:48.103 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:31:48.460 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:31:48.470 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:31:48.472 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:31:48.486 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:31:48.490 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:31:48.491 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:31:48.786 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 21:31:48.790 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 21:31:48.803 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:31:48.817 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:31:48.830 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:31:48.834 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:31:48.842 [INFO] [UI] Фокус игры=False (фокус на постороннем окне ('ETS2_Assist'))
+2026-09-19 21:53:27.810 [INFO] Exit: получен сигнал graceful shutdown — останавливаю систему.
+2026-09-19 21:53:27.823 [INFO] [CONTROL] Сервер внешнего управления остановлен.
+2026-09-19 21:53:27.827 [INFO] Stopping system...
+2026-09-19 21:53:27.832 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 21:53:27.914 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 21:53:27.943 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 21:53:28.039 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 21:53:28.259 [INFO] [AR] AR HUD закрывается.
+2026-09-19 21:53:28.299 [INFO] System stopped
+2026-09-19 21:53:28.401 [INFO] Trigger HTTP server stopped.
+2026-09-19 21:53:28.450 [INFO] WebSocket save server stopped.
+2026-09-19 21:53:28.510 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-19 21:53:28.597 [INFO] Процесс WebOverlay (PID 22272) убит.
+2026-09-19 21:53:29.061 [INFO] KillChildProcesses завершён.
+2026-09-19 21:53:29.065 [INFO] [CONTROL] Пульт управления остаётся доступен: http://localhost:8086/start
+2026-09-19 21:53:29.127 [INFO] [SCS] Controller disposed.
+2026-09-19 21:53:29.205 [INFO] System stopped.
+2026-09-19 21:53:29.313 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-19 21:53:29.403 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-19 21:53:29.404 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-19 21:54:58.394 =======
+BUILD_VERSION=1.0.40.84-PAUSE-CURSOR-SMOOTH-R14-09.19-2153
+2026-09-19 21:54:58.394 [INFO] ETS2 Assist logger initialized.
+2026-09-19 21:54:58.464 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-19 21:54:58.466 [INFO] [DEV-MODE] config.cfg: uset g_developer "2", uset g_console "1".
+2026-09-19 21:54:58.630 [INFO] [WEBOVERLAY] Версия WebOverlay: 1.0.40.79
+2026-09-19 21:54:58.631 [INFO] [WEBOVERLAY] path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe; fileVersion=1.0.40.78; informational=1.0.40.79+e74da7c909c58eec9f280432ae524c4d08d8e0e6; size=174142962 байт
+2026-09-19 21:54:58.673 [INFO] [CONTROL] Внешнее управление запуском: http://localhost:8086/start
+2026-09-19 21:54:58.743 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-19 21:54:59.803 [INFO] Cannot send command 'quest_bookmark_beacon': WebSocket save server is not running.
+2026-09-19 21:55:18.503 [INFO] Starting system...
+2026-09-19 21:55:18.504 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-19 21:55:18.504 [INFO] Checking ETS2 plugins...
+2026-09-19 21:55:18.505 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-19 21:55:18.506 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-19 21:55:18.506 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-19 21:55:18.507 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-19 21:55:18.507 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-19 21:55:18.508 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-19 21:55:18.509 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-19 21:55:18.509 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-19 21:55:18.510 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789836898).
+2026-09-19 21:55:18.512 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6187, lastWrite=2026-09-19 18:29:19
+2026-09-19 21:55:18.513 [INFO] [WEB] web_ui_hybrid.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=4707, lastWrite=2026-09-18 19:36:46
+2026-09-19 21:55:18.514 [INFO] Trigger HTTP server started on port 8083.
+2026-09-19 21:55:18.516 [INFO] WebSocket save server started on port 8084.
+2026-09-19 21:55:18.522 [INFO] Script started with PID 6808
+2026-09-19 21:55:18.745 [INFO] [OVERLAY-DIAG][START] overlayExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe exists=True sha256=3DD62278B098CD3A668C121F9AD0398AF5A79E0C3E6A0A9F56FA9496C180A269 lastWriteUtc=2026-09-19T16:53:30.7029620Z size=174142962
+2026-09-19 21:55:18.980 [INFO] [OVERLAY-DIAG][START] ownExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe version=1.0.40.84-PAUSE-CURSOR-SMOOTH-R14-09.19-2153 sha256=E7DBB3CD7A32A9F879A47C06E0071978631B718D3F88A57F7601D2D4436B5263 lastWriteUtc=2026-09-19T16:54:45.6460636Z size=197520716
+2026-09-19 21:55:19.003 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-19 21:55:20.174 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-19 21:55:20.183 [INFO] [AR] Геометрия AR HUD: экран '\\.\DISPLAY1' 1920x1080 @(0,0).
+2026-09-19 21:55:20.207 [INFO] Command 'ar_fov' sent to map.
+2026-09-19 21:55:20.223 [INFO] Command 'ar_view' sent to map.
+2026-09-19 21:55:20.230 [INFO] [AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).
+2026-09-19 21:55:20.320 [INFO] [AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).
+2026-09-19 21:55:20.365 [INFO] Command 'ar_layer_visible' sent to map.
+2026-09-19 21:55:21.680 [INFO] [TruckTel] Найден порт через активные соединения: 8080
+2026-09-19 21:55:21.684 [INFO] [TruckTel] web_data.json обновлён, wsPort = 8080
+2026-09-19 21:55:21.686 [INFO] [UI] Политика ESC/паузы запущена: опрос 50 мс, ESC — единственный триггер интерактива.
+2026-09-19 21:55:21.690 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-19 21:55:21.693 [INFO] SCS SDK input controller initialized successfully.
+2026-09-19 21:55:21.712 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 21:55:21.727 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 21:55:21.733 [INFO] Command 'ar_target' sent to map.
+2026-09-19 21:55:21.846 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 21:55:21.848 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 21:55:21.851 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:55:21.886 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:55:22.577 [INFO] [WebSocket] Получено сообщение: {"command":"ar_view_request"}...
+2026-09-19 21:55:22.737 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-19 21:55:22.807 [INFO] [WebSocket] Команда от клиента: ar_view_request
+2026-09-19 21:55:22.820 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-19 21:55:22.833 [INFO] [WS Command] ar_view_request
+2026-09-19 21:55:22.843 [INFO] [WS Command] map_ready
+2026-09-19 21:55:22.857 [INFO] Command 'ar_view' sent to map.
+2026-09-19 21:55:22.863 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-19 21:55:23.437 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-19 21:55:23.491 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5674 (переопр=5, custom=4), targets=0
+2026-09-19 21:55:27.049 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-19 21:55:27.084 [INFO] [WebSocket] Команда звука: icon
+2026-09-19 21:55:29.971 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 21:55:30.057 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 21:55:30.065 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 21:55:30.083 [INFO] Command 'show_ui_first' sent to map.
+2026-09-19 21:55:30.086 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:55:30.090 [INFO] [UI] Игровые интерфейсы показаны впервые: гибрид + миникарта + уведомления.
+2026-09-19 21:55:30.104 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:55:30.128 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:55:30.129 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:55:30.137 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 21:55:33.515 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:55:33.519 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 21:55:33.739 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:55:33.743 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:55:33.746 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:55:33.748 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:55:33.824 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:55:33.827 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:55:33.830 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:55:33.832 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:55:33.836 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:55:33.837 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:55:33.839 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:55:33.840 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:55:33.843 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:55:33.843 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:55:33.846 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:55:33.847 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:55:33.850 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:55:33.852 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:55:33.853 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:55:33.855 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:55:33.855 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:55:33.859 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:55:33.860 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:55:33.864 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:55:33.865 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:55:33.867 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:55:35.213 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:55:35.214 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:55:49.261 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:55:49.262 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:55:51.744 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:55:51.746 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:55:52.444 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:55:52.445 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:55:53.373 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:55:53.373 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:55:54.316 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:55:54.318 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:55:56.485 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:55:56.488 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:55:56.509 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:55:56.518 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:55:56.521 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:55:56.852 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:55:56.857 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:55:56.869 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:55:56.871 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:55:56.885 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:55:56.885 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:01.744 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:56:01.752 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 21:56:01.919 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:01.927 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:01.933 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:01.935 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:56:02.025 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:02.033 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:02.036 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:56:02.038 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:02.041 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:56:02.042 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:02.048 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:56:02.049 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:56:02.054 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:56:02.055 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:02.060 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:56:02.061 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:56:02.063 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:56:02.066 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:56:02.066 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:02.069 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:56:02.070 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:02.074 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:56:02.075 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:56:02.081 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:56:02.082 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:56:02.090 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:56:03.451 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:56:03.452 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:56:04.364 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:56:04.367 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:56:06.433 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:56:06.434 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:06.437 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:56:06.439 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:56:06.455 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:56:06.797 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:56:06.802 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:56:06.804 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:56:06.818 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:56:06.820 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:56:06.820 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:08.001 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:56:08.018 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 21:56:08.153 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:08.159 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:08.162 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:08.164 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:56:08.309 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:08.318 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:08.320 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:56:08.324 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:08.326 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:56:08.327 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:08.334 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:56:08.335 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:56:08.338 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:56:08.339 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:08.345 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:56:08.346 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:56:08.349 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:56:08.352 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:56:08.352 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:08.355 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:56:08.355 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:08.360 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:56:08.360 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:56:08.362 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:56:08.363 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:56:08.365 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:56:10.743 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 21:56:10.744 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 21:56:12.483 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:56:12.486 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:56:14.590 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:56:14.592 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:14.601 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:56:14.603 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:56:14.606 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:56:14.933 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:56:14.937 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:56:14.951 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:56:14.957 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:56:14.969 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:56:14.970 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:20.537 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:56:20.556 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 21:56:20.711 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:20.717 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:20.719 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:20.723 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:56:20.964 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:20.971 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:20.980 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:56:20.985 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:20.992 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:56:20.993 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:20.999 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:56:21.000 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:56:21.004 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:56:21.005 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:21.011 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:56:21.012 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:56:21.014 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:56:21.017 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:56:21.017 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:21.021 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:56:21.022 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:21.026 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:56:21.026 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:56:21.029 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:56:21.030 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:56:21.032 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:56:25.369 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:56:25.370 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:56:25.999 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:56:26.001 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:56:28.240 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:56:28.241 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:28.253 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:56:28.256 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:56:28.270 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:56:28.630 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:56:28.636 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:56:28.651 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:56:28.655 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:56:28.668 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:56:28.669 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:30.118 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:56:30.121 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 21:56:30.279 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:30.283 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:30.286 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:30.288 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:56:30.358 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:30.362 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:30.365 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:56:30.368 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:30.371 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:56:30.371 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:30.375 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:56:30.377 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:56:30.379 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:56:30.379 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:30.388 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:56:30.390 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:56:30.394 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:56:30.396 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:56:30.397 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:30.399 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:56:30.400 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:30.402 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:56:30.403 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:56:30.405 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:56:30.406 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:56:30.410 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:56:32.536 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:56:32.537 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:56:33.571 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:56:33.578 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:56:35.729 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:56:35.730 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:35.735 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:56:35.750 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:56:35.753 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:56:36.062 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:56:36.070 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:56:36.072 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:56:36.085 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:56:36.088 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:56:36.088 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:39.425 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 21:56:39.429 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 21:56:39.441 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:39.461 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:39.479 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:39.490 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:56:39.500 [INFO] [UI] Фокус игры=False (фокус на постороннем окне ('chrome'))
+2026-09-19 21:56:53.875 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 21:56:53.957 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 21:56:53.967 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 21:56:53.994 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:56:54.017 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:56:54.037 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:56:54.059 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:56:54.071 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:56:54.072 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:54.090 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 21:56:54.850 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 21:56:54.853 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 21:56:55.029 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:55.032 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:55.036 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:55.038 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:56:55.119 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:56:55.127 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:56:55.130 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 21:56:55.133 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:56:55.134 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:56:55.135 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:55.137 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:56:55.138 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:56:55.144 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 21:56:55.145 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:55.147 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:56:55.148 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:56:55.149 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 21:56:55.151 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 21:56:55.152 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:56:55.154 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 21:56:55.155 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:56:55.162 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 21:56:55.164 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 21:56:55.166 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 21:56:55.167 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 21:56:55.169 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 21:56:56.037 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 21:56:56.038 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 21:56:58.888 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 21:56:58.894 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 21:57:01.030 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 21:57:01.031 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 21:57:01.035 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 21:57:01.036 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 21:57:01.050 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 21:57:01.384 [INFO] Command 'show_ui' sent to map.
+2026-09-19 21:57:01.388 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 21:57:01.402 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 21:57:01.404 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 21:57:01.419 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 21:57:01.420 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 21:57:05.929 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 21:57:05.932 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 21:57:05.952 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 21:57:05.968 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 21:57:05.979 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 21:57:05.982 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 21:57:05.984 [INFO] [UI] Фокус игры=False (фокус на постороннем окне ('chrome'))
+2026-09-19 22:08:55.098 [INFO] Exit: получен сигнал graceful shutdown — останавливаю систему.
+2026-09-19 22:08:55.105 [INFO] [CONTROL] Сервер внешнего управления остановлен.
+2026-09-19 22:08:55.108 [INFO] Stopping system...
+2026-09-19 22:08:55.112 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 22:08:55.308 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 22:08:55.336 [INFO] [ARv2] Нативный оверлей остановлен.
+2026-09-19 22:08:55.543 [INFO] [AR] Канал AR-целей остановлен.
+2026-09-19 22:08:55.845 [INFO] [AR] AR HUD закрывается.
+2026-09-19 22:08:55.882 [INFO] System stopped
+2026-09-19 22:08:55.958 [INFO] Trigger HTTP server stopped.
+2026-09-19 22:08:56.006 [INFO] WebSocket save server stopped.
+2026-09-19 22:08:56.054 [INFO] Игра запущена, процесс Ets2Telemetry не убиваем.
+2026-09-19 22:08:56.145 [INFO] Процесс WebOverlay (PID 17732) убит.
+2026-09-19 22:08:56.589 [INFO] KillChildProcesses завершён.
+2026-09-19 22:08:56.634 [INFO] [CONTROL] Пульт управления остаётся доступен: http://localhost:8086/start
+2026-09-19 22:08:56.640 [INFO] [SCS] Controller disposed.
+2026-09-19 22:08:56.701 [INFO] System stopped.
+2026-09-19 22:08:56.857 [INFO] Зависшие msedgewebview2 (наши) завершены.
+2026-09-19 22:08:56.903 [INFO] [MapEditor2GameEditor] Map Editor bridge: остановка
+2026-09-19 22:08:56.904 [INFO] [TRUCK] Фид телеметрии остановлен.
+
+======= ETS2 Assist started 2026-09-19 22:10:17.583 =======
+BUILD_VERSION=1.0.40.84-PAUSE-CURSOR-SMOOTH-R14-09.19-2209
+2026-09-19 22:10:17.584 [INFO] ETS2 Assist logger initialized.
+2026-09-19 22:10:17.618 [INFO] [TRUCK] Фид телеметрии запущен (WS + REST-снимок).
+2026-09-19 22:10:17.619 [INFO] [DEV-MODE] config.cfg: uset g_developer "2", uset g_console "1".
+2026-09-19 22:10:17.721 [INFO] [WEBOVERLAY] Версия WebOverlay: 1.0.40.79
+2026-09-19 22:10:17.722 [INFO] [WEBOVERLAY] path=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe; fileVersion=1.0.40.78; informational=1.0.40.79+e74da7c909c58eec9f280432ae524c4d08d8e0e6; size=174142962 байт
+2026-09-19 22:10:17.746 [INFO] [CONTROL] Внешнее управление запуском: http://localhost:8086/start
+2026-09-19 22:10:17.800 [INFO] [QUEST] WebSocket server started on 8085.
+2026-09-19 22:10:18.740 [INFO] Cannot send command 'quest_bookmark_beacon': WebSocket save server is not running.
+2026-09-19 22:13:22.332 [INFO] Starting system...
+2026-09-19 22:13:22.334 [INFO] [TRIGGER] Старых trigger-файлов не найдено.
+2026-09-19 22:13:22.334 [INFO] Checking ETS2 plugins...
+2026-09-19 22:13:22.335 [INFO] TruckTel is present (temporary telemetry provider during native-plugin migration).
+2026-09-19 22:13:22.336 [INFO] ets2-telemetry-server.dll is no longer required.
+2026-09-19 22:13:22.336 [INFO] Legacy ETS2 Telemetry Server disabled; using direct plugin WebSocket API.
+2026-09-19 22:13:22.337 [INFO] [STATIC] Map static data is present in publish\data.
+2026-09-19 22:13:22.337 [INFO] [STATIC] File GeoJson\roads.geojson: 47308544 bytes
+2026-09-19 22:13:22.338 [INFO] [STATIC] File GeoJson\cities.geojson: 145784 bytes
+2026-09-19 22:13:22.339 [INFO] [STATIC] File Overlays.json: 107764 bytes
+2026-09-19 22:13:22.339 [INFO] [STATIC] File localized_cities\cities_sibirmap.json: 13947 bytes
+2026-09-19 22:13:22.341 [INFO] Web server started on port 8082 (stable overlay URLs, asset cache epoch=1789837817).
+2026-09-19 22:13:22.343 [INFO] [WEB] web_pda_map.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=6187, lastWrite=2026-09-19 18:29:19
+2026-09-19 22:13:22.344 [INFO] [WEB] web_ui_hybrid.html: build=1.0.34-OVERLAY-TELEMETRY-TRACKS-2026.08.26-2215-RND3, bytes=4707, lastWrite=2026-09-18 19:36:46
+2026-09-19 22:13:22.345 [INFO] Trigger HTTP server started on port 8083.
+2026-09-19 22:13:22.346 [INFO] WebSocket save server started on port 8084.
+2026-09-19 22:13:22.352 [INFO] Script started with PID 19020
+2026-09-19 22:13:22.570 [INFO] [OVERLAY-DIAG][START] overlayExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\data\bin\WebOverlay.exe exists=True sha256=3DD62278B098CD3A668C121F9AD0398AF5A79E0C3E6A0A9F56FA9496C180A269 lastWriteUtc=2026-09-19T17:08:58.9725524Z size=174142962
+2026-09-19 22:13:22.793 [INFO] [OVERLAY-DIAG][START] ownExe=F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\ETS2_Assist.exe version=1.0.40.84-PAUSE-CURSOR-SMOOTH-R14-09.19-2209 sha256=C672D130092E9F7C155744D406A637938C5535FB469A1B035135D687994380FF lastWriteUtc=2026-09-19T17:10:03.1221517Z size=197520716
+2026-09-19 22:13:22.813 [INFO] [OVERLAY] Экран игры для дефолтов: \\.\DISPLAY1 bounds=0,0 1920x1080
+2026-09-19 22:13:23.976 [INFO] [OVERLAY] Hybrid, minimap, mini-logo, quest and notification layers started.
+2026-09-19 22:13:23.979 [INFO] [AR] Геометрия AR HUD: экран '\\.\DISPLAY1' 1920x1080 @(0,0).
+2026-09-19 22:13:24.003 [INFO] Command 'ar_fov' sent to map.
+2026-09-19 22:13:24.016 [INFO] Command 'ar_view' sent to map.
+2026-09-19 22:13:24.028 [INFO] [AR] Канал AR-целей запущен (REST-снимок + WS-дельта телеметрии, подбор ближайшей точки на C#).
+2026-09-19 22:13:24.145 [INFO] [AR] AR HUD запущен (web_ar_hud.html, полноэкранный на мониторе игры).
+2026-09-19 22:13:24.172 [INFO] Command 'ar_layer_visible' sent to map.
+2026-09-19 22:13:25.681 [INFO] [TruckTel] Найден порт через активные соединения: 8080
+2026-09-19 22:13:25.684 [INFO] [TruckTel] web_data.json обновлён, wsPort = 8080
+2026-09-19 22:13:25.686 [INFO] [UI] Политика ESC/паузы запущена: опрос 50 мс, ESC — единственный триггер интерактива.
+2026-09-19 22:13:25.698 [INFO] [SCS] ets2_assist_input.dll connected. PING -> PONG
+2026-09-19 22:13:25.732 [INFO] SCS SDK input controller initialized successfully.
+2026-09-19 22:13:25.775 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 22:13:25.777 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 22:13:25.784 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 22:13:25.810 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 22:13:25.826 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 22:13:25.848 [INFO] [AR] Телеметрия WS подключена: ws://localhost:8080/api/ws/delta/flat/ (REST-снимок: http://localhost:8080/api/rest/flat/truck).
+2026-09-19 22:13:25.854 [INFO] Command 'ar_target' sent to map.
+2026-09-19 22:13:27.281 [INFO] [WebSocket] Получено сообщение: {"command":"ar_view_request"}...
+2026-09-19 22:13:27.401 [INFO] [WebSocket] Получено сообщение: {"command":"map_ready"}...
+2026-09-19 22:13:27.519 [INFO] [WebSocket] Команда от клиента: ar_view_request
+2026-09-19 22:13:27.531 [INFO] [WebSocket] Команда от клиента: map_ready
+2026-09-19 22:13:27.537 [INFO] [WS Command] ar_view_request
+2026-09-19 22:13:27.543 [INFO] [WS Command] map_ready
+2026-09-19 22:13:27.569 [INFO] Command 'ar_view' sent to map.
+2026-09-19 22:13:27.585 [INFO] [WS] Миникарта готова -> отправляем overrides+цели
+2026-09-19 22:13:28.292 [INFO] Command 'map_overrides_data' sent to map.
+2026-09-19 22:13:28.320 [INFO] [OVR] map_overrides_data #1 (map_ready): cities=77 (переопр=0), pois=5674 (переопр=5, custom=4), targets=0
+2026-09-19 22:13:28.965 [INFO] [HOTKEY] Low-level keyboard hook активирован (ESC observation + TAB/I interactive).
+2026-09-19 22:13:29.022 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 22:13:29.024 [INFO] [UI] Фокус вернулся в игру — веб-оверлеи показаны.
+2026-09-19 22:13:29.037 [INFO] Command 'show_ui_first' sent to map.
+2026-09-19 22:13:29.058 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 22:13:29.091 [INFO] [UI] Игровые интерфейсы показаны впервые: гибрид + миникарта + уведомления.
+2026-09-19 22:13:29.098 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 22:13:29.120 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 22:13:29.120 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:13:29.123 [INFO] [UI] Фокус игры=True (фокус на игре)
+2026-09-19 22:13:31.034 [INFO] [WebSocket] Получено сообщение: {"command":"play_sound","type":"icon"}...
+2026-09-19 22:13:31.058 [INFO] [WebSocket] Команда звука: icon
+2026-09-19 22:13:36.762 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 22:13:36.765 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 22:13:36.855 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 22:13:36.867 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 22:13:36.879 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 22:13:36.882 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 22:13:37.005 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 22:13:37.008 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 22:13:37.011 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 22:13:37.014 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 22:13:37.016 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 22:13:37.017 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:13:37.019 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 22:13:37.020 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 22:13:37.023 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 22:13:37.023 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:13:37.032 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 22:13:37.033 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 22:13:37.044 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 22:13:37.047 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 22:13:37.048 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:13:37.050 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 22:13:37.051 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:13:37.053 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 22:13:37.054 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 22:13:37.056 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 22:13:37.057 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 22:13:37.059 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 22:13:38.346 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 22:13:38.347 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 22:13:41.299 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 22:13:41.299 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 22:13:43.725 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 22:13:43.726 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 22:13:44.767 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 22:13:44.768 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 22:13:45.751 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 22:13:45.753 [INFO] Command 'quest_collapse_interfaces' sent to map.
+2026-09-19 22:13:45.756 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 22:13:47.932 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 22:13:47.932 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:13:47.940 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 22:13:47.942 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 22:13:47.956 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 22:13:48.306 [INFO] Command 'show_ui' sent to map.
+2026-09-19 22:13:48.309 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 22:13:48.322 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 22:13:48.325 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 22:13:48.338 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 22:13:48.339 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:13:53.343 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 22:13:53.356 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 22:13:53.537 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 22:13:53.540 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 22:13:53.542 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 22:13:53.547 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 22:13:53.620 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 22:13:53.624 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 22:13:53.628 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 22:13:53.634 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 22:13:53.636 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 22:13:53.637 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:13:53.639 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 22:13:53.640 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 22:13:53.642 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 22:13:53.643 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:13:53.649 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 22:13:53.649 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 22:13:53.652 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 22:13:53.654 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 22:13:53.655 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:13:53.657 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 22:13:53.658 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:13:53.661 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 22:13:53.662 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 22:13:53.664 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 22:13:53.665 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 22:13:53.667 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 22:13:56.442 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 22:13:56.442 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 22:13:57.449 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 22:13:57.453 [INFO] Command 'quest_collapse_interfaces' sent to map.
+2026-09-19 22:13:57.456 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 22:13:59.649 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 22:13:59.649 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:13:59.656 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 22:13:59.658 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 22:13:59.672 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 22:14:00.032 [INFO] Command 'show_ui' sent to map.
+2026-09-19 22:14:00.040 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 22:14:00.043 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 22:14:00.056 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 22:14:00.059 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 22:14:00.060 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:14:01.576 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 22:14:01.583 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 22:14:01.680 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 22:14:01.686 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 22:14:01.690 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 22:14:01.696 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 22:14:01.770 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 22:14:01.773 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 22:14:01.775 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 22:14:01.779 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 22:14:01.782 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 22:14:01.783 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:14:01.787 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 22:14:01.788 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 22:14:01.791 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 22:14:01.792 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:14:01.798 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 22:14:01.799 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 22:14:01.801 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 22:14:01.804 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 22:14:01.804 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:14:01.807 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 22:14:01.807 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:14:01.813 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 22:14:01.814 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 22:14:01.819 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 22:14:01.820 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 22:14:01.825 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 22:14:02.647 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_inventory payload={"command":"quest_toggle_inventory"}
+2026-09-19 22:14:02.648 [INFO] Command 'quest_toggle_inventory' sent to map.
+2026-09-19 22:14:03.393 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 22:14:03.397 [INFO] Command 'quest_collapse_interfaces' sent to map.
+2026-09-19 22:14:03.400 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 22:14:05.474 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 22:14:05.474 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:14:05.487 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 22:14:05.489 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 22:14:05.491 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 22:14:05.563 [INFO] [QUEST] ESC detected flow=Running validatedPaused=False nonEscMenuGuard=False
+2026-09-19 22:14:05.571 [INFO] [QUEST] ESC -> ожидание подтверждённой паузы.
+2026-09-19 22:14:05.804 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 22:14:05.807 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 22:14:05.815 [INFO] Command 'minimap_auto' sent to map.
+2026-09-19 22:14:05.818 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 22:14:05.820 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 22:14:05.820 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:14:05.822 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 22:14:05.822 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 22:14:05.824 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":false,"pulse":true,"hasInteractive":true}
+2026-09-19 22:14:05.825 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:14:05.831 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 22:14:05.832 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 22:14:05.834 [INFO] [QUEST] Главный ESC: закладка квестов выдвигается.
+2026-09-19 22:14:05.836 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":true,"ready":true,"pulse":false,"hasInteractive":true}
+2026-09-19 22:14:05.837 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:14:05.839 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"interactive"}
+2026-09-19 22:14:05.839 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:14:05.848 [INFO] [QUEST-DIAG][POST] to page command=set_quest_collapsed payload={"command":"set_quest_collapsed","collapsed":true}
+2026-09-19 22:14:05.849 [INFO] Command 'set_quest_collapsed' sent to map.
+2026-09-19 22:14:05.853 [INFO] [QUEST-DIAG][POST] to page command=set_quest_tab_state payload={"command":"set_quest_tab_state","hasInteractive":true}
+2026-09-19 22:14:05.854 [INFO] Command 'set_quest_tab_state' sent to map.
+2026-09-19 22:14:05.856 [INFO] [QUEST-DIAG] state source=ESC-flow paused=True collapsed=True interactive=True gameUi=False focused=True
+2026-09-19 22:14:06.598 [INFO] [QUEST-DIAG][POST] to page command=quest_toggle_collapse payload={"command":"quest_toggle_collapse"}
+2026-09-19 22:14:06.598 [INFO] Command 'quest_toggle_collapse' sent to map.
+2026-09-19 22:14:14.585 [INFO] [QUEST] ESC detected flow=InteractivePaused validatedPaused=True nonEscMenuGuard=False
+2026-09-19 22:14:14.587 [INFO] Command 'quest_collapse_interfaces' sent to map.
+2026-09-19 22:14:14.590 [INFO] [QUEST] ESC while interactive paused: ждём подтверждения выхода из паузы.
+2026-09-19 22:14:16.689 [INFO] [QUEST-DIAG][POST] to page command=quest_pause_ui payload={"command":"quest_pause_ui","visible":false,"ready":false,"pulse":false}
+2026-09-19 22:14:16.689 [INFO] Command 'quest_pause_ui' sent to map.
+2026-09-19 22:14:16.693 [INFO] [QUEST] Интерактивный shell скрыт.
+2026-09-19 22:14:16.705 [INFO] [UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.
+2026-09-19 22:14:16.707 [INFO] [QUEST-DIAG] state source=ESC-flow paused=False collapsed=True interactive=False gameUi=False focused=True
+2026-09-19 22:14:17.032 [INFO] Command 'show_ui' sent to map.
+2026-09-19 22:14:17.038 [INFO] Command 'show_game_ui' sent to map.
+2026-09-19 22:14:17.042 [INFO] [UI] Игровые интерфейсы показаны: гибрид + миникарта + уведомления.
+2026-09-19 22:14:17.060 [INFO] Command 'minimap_show' sent to map.
+2026-09-19 22:14:17.072 [INFO] [QUEST-DIAG][POST] to page command=set_overlay_category payload={"command":"set_overlay_category","category":"game"}
+2026-09-19 22:14:17.073 [INFO] Command 'set_overlay_category' sent to map.
+2026-09-19 22:14:19.905 [INFO] Command 'set_overlay_hidden' sent to map.
+2026-09-19 22:14:19.909 [INFO] [UI] Фокус вне игры — все веб-оверлеи скрыты (и контент, и окна слоёв).
+2026-09-19 22:14:19.922 [INFO] Command 'hide_ui' sent to map.
+2026-09-19 22:14:19.946 [INFO] Command 'hide_game_ui' sent to map.
+2026-09-19 22:14:19.954 [INFO] Command 'minimap_hide' sent to map.
+2026-09-19 22:14:19.956 [INFO] [UI] Игровые интерфейсы скрыты.
+2026-09-19 22:14:19.964 [INFO] [UI] Фокус игры=False (фокус на постороннем окне ('ETS2_Assist'))
+2026-09-19 22:14:23.584 [INFO] [LOGS] Сбор диагностических логов...
+2026-09-19 22:14:23.587 [INFO] [LOGS] Источник: F:\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish\Logs
+2026-09-19 22:14:23.589 [INFO] [LOGS] Назначение: F:\repo\ets2_assist\MemoryAI\LOGS
