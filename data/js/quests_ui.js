@@ -273,6 +273,28 @@ function dispatchNativeMouse(msg){
         target.dispatchEvent(qnWheelEvent(x,y,Number(msg.wheelDelta||0),buttons));
     }
 }
+var rawInputDiagEl=null;
+function rawInputFmt(value){
+    var n=Number(value);
+    if(!Number.isFinite(n))return '?';
+    return (n>=0?'+':'')+n;
+}
+function updateRawInputDiagnostics(msg){
+    rawInputDiagEl=rawInputDiagEl||$('rawInputDebug');
+    if(!rawInputDiagEl)return;
+    rawInputDiagEl.style.display='block';
+    rawInputDiagEl.textContent=
+        'RAW INPUT TEST\\n'+
+        'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / ACTIVE\\n'+
+        'packets: '+(msg.packets??0)+'\\n'+
+        'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy)+'\\n'+
+        'sum  dx: '+rawInputFmt(msg.totalDx)+'   dy: '+rawInputFmt(msg.totalDy)+'\\n'+
+        'flags: 0x'+Number(msg.flags||0).toString(16).padStart(4,'0')+'\\n'+
+        'buttons: 0x'+Number(msg.buttonFlags||0).toString(16).padStart(4,'0')+' data='+Number(msg.buttonData||0)+'\\n'+
+        'device: '+(msg.device||'0x0')+'\\n'+
+        'last: '+(msg.lastRawUtc||'-');
+}
+
 function bindQuestNativeInput(){
     if(qnHostBound)return;
     try{
@@ -281,6 +303,10 @@ function bindQuestNativeInput(){
         window.chrome.webview.addEventListener('message',function(ev){
             qdCounters.hostMessages++;
             var msg=qnParseHostData(ev&&ev.data);
+            if(msg&&msg.source==='quest-raw-input-test'){
+                updateRawInputDiagnostics(msg);
+                return;
+            }
             if(!msg||msg.source!=='quest-native-input')return;
             qdCounters.nativeMessages++;
             dispatchNativeMouse(msg);
