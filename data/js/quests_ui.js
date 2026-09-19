@@ -36,7 +36,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){retur
  * window.__questDiag.state()    — paused/collapsed.
  * ================================================================ */
 var qdEvents=[],qdEventsMax=400;
-var qdCounters={mouseMove:0,mouseDown:0,mouseUp:0,click:0,place:0,posts:0,wsOut:0,cursorStart:0,cursorStop:0};
+var qdCounters={mouseMove:0,mouseDown:0,mouseUp:0,click:0,place:0,posts:0,wsOut:0,cursorStart:0,cursorStop:0,hostMessages:0,nativeMessages:0,nativeIgnored:0,nativeClicks:0};
 var qdLastMove={x:null,y:null,target:'',at:0};
 var qdLastPlace={x:null,y:null,shown:false};
 var qdLastState={paused:null,collapsed:null};
@@ -112,6 +112,8 @@ window.__questDiag={
         mouseMove:qdCounters.mouseMove,mouseDown:qdCounters.mouseDown,mouseUp:qdCounters.mouseUp,
         click:qdCounters.click,place:qdCounters.place,posts:qdCounters.posts,wsOut:qdCounters.wsOut,
         cursorStart:qdCounters.cursorStart,cursorStop:qdCounters.cursorStop,
+        hostMessages:qdCounters.hostMessages,nativeMessages:qdCounters.nativeMessages,
+        nativeIgnored:qdCounters.nativeIgnored,nativeClicks:qdCounters.nativeClicks,
         lastX:qdLastMove.x===null?-1:qdLastMove.x,lastY:qdLastMove.y===null?-1:qdLastMove.y,lastTarget:qdLastMove.target,
         paused:pagePaused,collapsed:collapsed,
         cursorDotShown:!!(cursorEl&&cursorEl.style.display==='block'),
@@ -178,6 +180,124 @@ function publishInteractiveBounds(){
     post(payload);
 }
 
+/* ================================================================ NATIVE MOUSE BRIDGE
+ * Native InteractiveQuestForm → CoreWebView2.PostWebMessageAsJson → this handler.
+ * PostWebMessageAsJson delivers event.data as an already-parsed JS object.
+ * Keep a string fallback for older/alternative hosts and reject everything else.
+ * Synthetic DOM events are used only to drive the EXISTING page handlers.
+ * ================================================================ */
+var qnPressedTarget=null,qnHoverTarget=null,qnHostBound=false,qnLastHostLogAt=0;
+function qnParseHostData(data){
+    if(data&&typeof data==='object')return data;
+    if(typeof data==='string'){try{return JSON.parse(data)}catch(e){return null}}
+    return null;
+}
+function qnClickableTarget(el){
+    if(!el)return null;
+    try{
+        if(el.closest){
+            var c=el.closest('button,a,input,select,textarea,summary,[role="button"],[onclick]');
+            if(c)return c;
+        }
+    }catch(e){}
+    return el;
+}
+function qnIsAllowedPointTarget(target){
+    if(!target||!pagePaused)return false;
+    if(collapsed){
+        var tab=$(\'questTab\');
+        return !!tab&&(target===tab||tab.contains(target));
+    }
+    var app=$(\'questApp\');
+    return !!app&&(target===app||app.contains(target));
+}
+function qnMouseEvent(type,x,y,button,buttons,detail){
+    return new MouseEvent(type,{view:window,bubbles:true,cancelable:true,
+        clientX:x,clientY:y,screenX:0,screenY:0,button:button||0,buttons:buttons||0,detail:detail||0});
+}
+function qnWheelEvent(x,y,delta,buttons){
+    try{return new WheelEvent('wheel',{view:window,bubbles:true,cancelable:true,clientX:x,clientY:y,
+        deltaX:0,deltaY:-Number(delta||0),deltaZ:0,deltaMode:0,button:0,buttons:buttons||0})}
+    catch(e){return new MouseEvent('wheel',{view:window,bubbles:true,cancelable:true,clientX:x,clientY:y,button:0,buttons:buttons||0})}
+}
+function qnSetHoverTarget(target){
+    if(qnHoverTarget===target)return;
+    if(qnHoverTarget&&qnHoverTarget.classList)qnHoverTarget.classList.remove('quest-native-hover');
+    qnHoverTarget=target||null;
+    if(qnHoverTarget&&qnHoverTarget.classList)qnHoverTarget.classList.add('quest-native-hover');
+}
+function dispatchNativeMouse(msg){
+    var x=Number(msg.x),y=Number(msg.y);
+    if(!Number.isFinite(x)||!Number.isFinite(y)){
+        qdCounters.nativeIgnored++;
+        return;
+    }
+    var type=String(msg.type||'');
+    var button=Number.isFinite(Number(msg.button))?Number(msg.button):0;
+    var buttons=Number.isFinite(Number(msg.buttons))?Number(msg.buttons):0;
+    if(type==='mousemove')placeCursor(x,y);
+
+    var raw=document.elementFromPoint(x,y);
+    var target=qnClickableTarget(raw);
+    if(!qnIsAllowedPointTarget(target)){
+        qdCounters.nativeIgnored++;
+        if(type==='mousemove')qnSetHoverTarget(null);
+        if(type==='mouseup')qnPressedTarget=null;
+        return;
+    }
+    if(type==='mousemove'){
+        qnSetHoverTarget(target);
+        target.dispatchEvent(qnMouseEvent('mousemove',x,y,0,buttons,0));
+        return;
+    }
+    if(type==='mousedown'){
+        if(target.disabled){qnPressedTarget=null;return;}
+        qnPressedTarget=target;
+        target.dispatchEvent(qnMouseEvent('mousedown',x,y,button,buttons,1));
+        return;
+    }
+    if(type==='mouseup'){
+        target.dispatchEvent(qnMouseEvent('mouseup',x,y,button,buttons,1));
+        var pressed=qnPressedTarget;
+        qnPressedTarget=null;
+        if(button===0&&pressed===target&&!target.disabled){
+            // dispatchEvent(mouseup) does not synthesize the browser's click event.
+            // Use element.click() for native controls so their EXISTING onclick handlers run.
+            if(typeof target.click==='function')target.click();
+            else target.dispatchEvent(qnMouseEvent('click',x,y,0,0,1));
+            qdCounters.nativeClicks++;
+        }
+        return;
+    }
+    if(type==='wheel'){
+        target.dispatchEvent(qnWheelEvent(x,y,Number(msg.wheelDelta||0),buttons));
+    }
+}
+function bindQuestNativeInput(){
+    if(qnHostBound)return;
+    try{
+        if(!(window.chrome&&window.chrome.webview&&window.chrome.webview.addEventListener))return;
+        qnHostBound=true;
+        window.chrome.webview.addEventListener('message',function(ev){
+            qdCounters.hostMessages++;
+            var msg=qnParseHostData(ev&&ev.data);
+            if(!msg||msg.source!=='quest-native-input')return;
+            qdCounters.nativeMessages++;
+            dispatchNativeMouse(msg);
+            var now=Date.now();
+            if(qdCounters.nativeMessages<=8||now-qnLastHostLogAt>=500){
+                qnLastHostLogAt=now;
+                qdLog('[NATIVE-IN] type='+msg.type+' x='+msg.x+' y='+msg.y+' button='+(msg.button??0)+' buttons='+(msg.buttons??0)+' target='+(qnHoverTarget?qdElementName(qnHoverTarget):'(none)')+' '+qdStateText());
+            }
+        });
+        qdLog('[NATIVE-IN] bridge bound');
+    }catch(e){
+        qnHostBound=false;
+        qdLog('[NATIVE-IN] bridge bind error='+e.message);
+    }
+}
+bindQuestNativeInput();
+
 /* ================================================================ КУРСОР
  * v1.0.40.61: СОБСТВЕННЫЙ КУРСОР СТРАНИЦЫ.
  *
@@ -217,23 +337,15 @@ function trackCursorFromEvent(e){
 function startCursorTrack(){
     cursorEl=cursorEl||$('cursorDot');
     qdCounters.cursorStart++;
-    /* Логируем ПЕРЕХОДЫ (иначе syncInput раз в секунду давал бы поток строк). */
     if(!qdTracking){
         qdTracking=true;
         qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
     }
     if(!cursorEl)return;
-    /* FIX v3: позицию курсора задаёт ТОЛЬКО native-событие (dispatchNativeMouse).
-       DOM-слушатели mousemove/mouseover сняты: визуальный слой мышь не получает
-       вообще (color-key), поэтому они были мёртвым кодом. */
-    if(!cursorTimer)cursorTimer=setInterval(function(){
-        if(!pagePaused||collapsed){stopCursorTrack('keepalive:paused-or-collapsed');return}
-        /* Событие движения может не прийти (курсор уже стоит на месте) —
-           поэтому принудительный старт в центре оставлен, но ТОЛЬКО до первого
-           настоящего native-события: дальше позицию задаёт placeCursor(x,y)
-           из dispatchNativeMouse (§18). */
-        if(!cursorShown)placeCursor(window.innerWidth/2,window.innerHeight/2);
-    },120);
+    /* One-time visual initialization only. Native mousemove becomes the sole
+       source of truth afterwards; there is deliberately NO timer that can snap
+       the page cursor back to the center. */
+    if(!cursorShown)placeCursor(window.innerWidth/2,window.innerHeight/2);
 }
 
 function stopCursorTrack(reason){
@@ -245,6 +357,8 @@ function stopCursorTrack(reason){
     window.removeEventListener('mousemove',trackCursorFromEvent);
     window.removeEventListener('mouseover',trackCursorFromEvent);
     if(cursorTimer){clearInterval(cursorTimer);cursorTimer=null}
+    qnSetHoverTarget(null);
+    qnPressedTarget=null;
     if(cursorEl){cursorEl.style.display='none';cursorShown=false}
 }
 
@@ -537,7 +651,7 @@ window.onEts2Command=function(d){
     if(tab)tab.addEventListener('transitionend',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     window.addEventListener('resize',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     var style=document.createElement('style');
-    style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#768497;font-size:10px}.questSectionTitle{padding:8px 10px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:#8c9aad;font-size:10px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid #ffd21f;background:rgba(255,210,31,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:#ffd45a;font-weight:700}.rewardLine{padding:3px 0;font-weight:600}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.optionReason{font-size:10px;color:#7e8a98;font-weight:400}.dialogTextRole{font-family:Roboto,"Roboto Regular","Segoe UI",Arial,sans-serif}.dialogTextService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:12px}.optionRequirements{font-family:"Courier New",Courier,monospace;color:#0048ff;font-size:12px}.optionRequirements.unmet{color:#0048ff;opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:13px}';
+    style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#768497;font-size:10px}.questSectionTitle{padding:8px 10px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:#8c9aad;font-size:10px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid #ffd21f;background:rgba(255,210,31,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:#ffd45a;font-weight:700}.rewardLine{padding:3px 0;font-weight:600}.dialogOption.quest-native-hover{border-color:rgba(255,211,77,.65);background:#333c49;box-shadow:inset 0 0 0 1px rgba(255,211,77,.18)}.sideItem.quest-native-hover,.questItem.quest-native-hover{background:rgba(255,205,85,.10)}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.optionReason{font-size:10px;color:#7e8a98;font-weight:400}.dialogTextRole{font-family:Roboto,"Roboto Regular","Segoe UI",Arial,sans-serif}.dialogTextService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:12px}.optionRequirements{font-family:"Courier New",Courier,monospace;color:#0048ff;font-size:12px}.optionRequirements.unmet{color:#0048ff;opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:13px}';
     document.head.appendChild(style);
 })();
 
