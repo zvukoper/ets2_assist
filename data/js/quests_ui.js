@@ -294,7 +294,7 @@ function updateRawInputDiagnostics(msg){
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
         'sum dx: '+rawInputFmt(msg.totalDx)+'   dy: '+rawInputFmt(msg.totalDy),
         '<strong>soft cursor: '+(Number(msg.cursorX)>=0?Number(msg.cursorX)+','+Number(msg.cursorY):'NO POSITION')+'</strong>',
-        'game cursor: '+(Number(msg.gameCursorScreenX)>=0?('screen '+Number(msg.gameCursorScreenX)+','+Number(msg.gameCursorScreenY)+' / client '+Number(msg.gameCursorClientX)+','+Number(msg.gameCursorClientY)):'NO SAVED POSITION'),
+        'sync center: '+(Number(msg.syncCursorX)>=0?Number(msg.syncCursorX)+','+Number(msg.syncCursorY):'NOT SET'),
         'flags: 0x'+Number(msg.flags||0).toString(16).padStart(4,'0'),
         'buttons: 0x'+Number(msg.buttonFlags||0).toString(16).padStart(4,'0')+' data='+Number(msg.buttonData||0),
         'device: '+(msg.device||'0x0'),
