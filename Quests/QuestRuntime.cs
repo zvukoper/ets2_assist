@@ -396,6 +396,9 @@ namespace ETS2_Assist_GUI.Quests
             Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] command={command} paused={_paused} raw={data.ToString(Formatting.None)}");
             switch (command)
             {
+                case "quest_state_request":
+                    BroadcastState(true);
+                    break;
                 case "quest_select_interaction": BeginInvokeUi(() => SelectInteraction(data["questId"]?.Value<string>() ?? "", data["id"]?.Value<string>() ?? "")); break;
                 case "quest_window_state": BeginInvokeUi(() => _host.OnQuestWindowCollapsedChanged(data["collapsed"]?.Value<bool>() ?? false)); break;
                 case "quest_dialog_option": BeginInvokeUi(() => ApplyDialogOption(data["questId"]?.Value<string>() ?? "", data["interaction"]?.Value<string>() ?? "", data["index"]?.Value<int>() ?? -1)); break;
