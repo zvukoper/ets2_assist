@@ -81,6 +81,11 @@ namespace ETS2_Assist_GUI
         private const int QuestPauseUiLeadMs = 150;
         private const int QuestPauseUiTimeoutMs = 6500;
         private const int PauseConfirmSamples = 2;
+        private const int QuestInterfaceAnimationMs = 320;
+
+        // Категория interactive не переключается на game, пока исходящая
+        // анимация окна не завершилась. Иначе CSS instant-hide обрезает slide-out.
+        private long _questInteractiveExitUntil;
 
         private void StartPauseCheck()
         {
@@ -181,13 +186,18 @@ namespace ETS2_Assist_GUI
             AdvanceQuestPauseFlow(paused);
 
             bool showInteractive = _questInteractiveShellVisible;
+            bool interactiveExitAnimating =
+                !_questInteractiveShellVisible &&
+                Environment.TickCount64 < _questInteractiveExitUntil;
+
             // Категории строго взаимоисключающие: пока игра на паузе,
             // игровая категория НИКОГДА не может быть принудительно показана
-            // ручным переключателем миникарты. Возврат game-категории выполняется
-            // только после подтверждённого выхода из паузы.
+            // ручным переключателем миникарты. После выхода из паузы сначала
+            // завершается наша 320-мс анимация интерфейса, затем возвращается game.
             bool showGameUi = gameVisible &&
                               !paused &&
                               !_questInteractiveShellVisible &&
+                              !interactiveExitAnimating &&
                               _questPauseFlow != QuestPauseFlowState.WaitingForResume;
 
             UpdateOverlayLayerFocus(debugShow || _committedActive);
@@ -347,6 +357,7 @@ namespace ETS2_Assist_GUI
         {
             if (_questInteractiveShellVisible) return;
 
+            _questInteractiveExitUntil = 0;
             _questInteractiveShellVisible = true;
             SendCommandToMap("hide_ui");
             SendCommandToMap("hide_game_ui");
@@ -371,6 +382,7 @@ namespace ETS2_Assist_GUI
         private void HideQuestPauseShell()
         {
             bool changed = _questInteractiveShellVisible;
+            _questInteractiveExitUntil = Environment.TickCount64 + QuestInterfaceAnimationMs;
             _questInteractiveShellVisible = false;
             SendCommandToMap("quest_pause_ui", new JObject
             {
@@ -395,6 +407,8 @@ namespace ETS2_Assist_GUI
         {
             if (_questPauseFlow != QuestPauseFlowState.Running || _questInteractiveShellVisible)
                 HideQuestPauseShell();
+            else
+                _questInteractiveExitUntil = 0;
 
             _questPauseFlow = QuestPauseFlowState.Running;
             _pauseTrueStreak = 0;
