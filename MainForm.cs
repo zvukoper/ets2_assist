@@ -4442,7 +4442,13 @@ RegisterHotKeyChecked(
             {
                 AppendLog($"IsGamePaused error: {ex.Message}");
             }
-            return _pausedIntent;
+            /* При временном сбое REST нельзя превращать неизвестное состояние
+               в paused=false: это мгновенно вернуло бы AR/game UI поверх паузы.
+               После первого достоверного сэмпла держим именно его до следующего
+               подтверждённого ответа. До первого сэмпла используем только
+               явное намерение приложения. */
+            int last = Volatile.Read(ref _pauseSnapshot);
+            return last >= 0 ? last == 1 : _pausedIntent;
         }
 
         // ================================================================
