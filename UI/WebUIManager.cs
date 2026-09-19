@@ -73,8 +73,13 @@ namespace ETS2_Assist_GUI
         private int _pauseTrueStreak;
         private int _pauseFalseStreak;
 
-        private const int PauseCheckIntervalMs = 100;
-        private const int QuestPauseUiLeadMs = 4000;
+        private const int PauseCheckIntervalMs = 50;
+
+        // Измеренный пользователем тайминг главного ESC-меню:
+        // начало анимации: 4.151 с, полное открытие: 5.664 с.
+        // Закладка выезжает 150 мс и должна завершить выезд ровно к 5.664 с:
+        // 5.664 - 0.150 = 5.514 с после нажатия ESC.
+        private const int QuestPauseUiLeadMs = 5514;
         private const int QuestPauseUiTimeoutMs = 6500;
         private const int PauseConfirmSamples = 2;
 
