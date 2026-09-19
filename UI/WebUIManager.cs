@@ -315,15 +315,22 @@ namespace ETS2_Assist_GUI
 
             if (_questPauseFlow == QuestPauseFlowState.InteractivePaused)
             {
+                /* ESC в подтверждённой паузе немедленно сворачивает любой
+                   открытый интерфейс в закладки, но НЕ переключает категорию.
+                   Снятие паузы подтверждается отдельно тем же sampler. */
+                SendCommandToMap("set_quest_collapsed", new JObject { ["collapsed"] = true });
+                try { Quests.QuestRuntime.Current?.SetInteractiveVisible(true, false); } catch { }
                 BeginQuestResumeWait("ESC while interactive paused");
                 return;
             }
 
             if (_questPauseFlow == QuestPauseFlowState.WaitingForPause)
             {
-                // Второй ESC после валидации паузы = закрытие нашего интерактива.
-                if (_validatedPaused)
-                    BeginQuestResumeWait("second ESC while pause validated");
+                return;
+            }
+
+            if (_questPauseFlow == QuestPauseFlowState.WaitingForResume)
+            {
                 return;
             }
 
