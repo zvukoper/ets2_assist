@@ -24,6 +24,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
+var QUEST_UI_DIAG_BUILD='QCONTENT-DIAG-2026-09-19-2227';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -174,6 +175,28 @@ window.__questDiag={
     state:function(){return{paused:pagePaused,collapsed:collapsed}}
 };
 qdBindMouse();
+(function installRuntimeDiagnostics(){
+    try{
+        qdLog('[CONTENT-BOOT] diagBuild='+QUEST_UI_DIAG_BUILD+' script=quests_ui.js loaded');
+        var bootErrors=window.__questBootstrapErrors||[];
+        bootErrors.forEach(function(err){qdLog('[CONTENT-BOOT-ERROR] '+err)});
+        window.__questBootstrapErrors=[];
+        window.addEventListener('error',function(e){
+            try{
+                var target=e&&e.target;
+                var isResource=!!(target&&target!==window&&(target.src||target.href));
+                qdLog(isResource
+                    ? '[RUNTIME-RESOURCE-ERROR] src='+(target.src||target.href||'')+' tag='+(target.tagName||'')
+                    : '[RUNTIME-ERROR] message='+(e.message||'')+' file='+(e.filename||'')+' line='+(e.lineno||0)+' col='+(e.colno||0));
+            }catch(_){}
+        },true);
+        window.addEventListener('unhandledrejection',function(e){
+            try{
+                qdLog('[RUNTIME-REJECTION] reason='+(e&&e.reason&&e.reason.message||e&&e.reason||''));
+            }catch(_){}
+        },true);
+    }catch(e){try{qdLog('[CONTENT-BOOT] diagnostic-install-error='+e.message)}catch(_){}}
+})();
 setInterval(function(){
     /* Пишем ВСЕГДА (в т.ч. при count=0): именно нулевой счётчик доказывает,
        что цепочка Windows/WebView2 → DOM не работает. */
@@ -308,7 +331,10 @@ function dispatchNativeMouse(msg){
            the DOM naturally; route them to questApp so its click handler can
            collapse the open interface. */
         var app=$('questApp');
-        if(app){target=app;managed=true}
+        if(app){
+            target=app;managed=true;
+            qdLog('[BACKDROP-FALLBACK] native '+type+' x='+x+' y='+y+' -> questApp collapse target');
+        }
     }
     if(!managed){
         qdCounters.nativeIgnored++;
