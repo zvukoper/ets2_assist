@@ -772,7 +772,7 @@ namespace ETS2_Assist_GUI.Quests
                     (string?)payload["selectedInteraction"] + "|" +
                     (payload["dialogue"] == null ? "0" : "1");
                 var now = DateTime.UtcNow;
-                if(!force && key==_lastWsDiagKey && now-_lastWsDiagUtc < TimeSpan.FromMilliseconds(750))
+                if(key==_lastWsDiagKey && now-_lastWsDiagUtc < TimeSpan.FromMilliseconds(1500))
                     return;
                 _lastWsDiagKey=key;
                 _lastWsDiagUtc=now;
