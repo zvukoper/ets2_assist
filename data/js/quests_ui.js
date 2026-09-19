@@ -380,7 +380,7 @@ function startCursorTrack(){
         qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
     }
     if(!cursorEl)return;
-    /* v1.0.40.71: no synthetic center position.
+    /* v1.0.40.73: no synthetic center position.
        The hidden WebOverlay Raw Input sink owns the physical-mouse bridge and
        sends the current client position as quest-native-input. The first packet
        is initialized from GetCursorPos when the window becomes active. */
