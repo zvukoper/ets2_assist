@@ -288,7 +288,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R3 1.0.40.73</strong>',
+        '<strong>SOFT CURSOR R4 1.0.40.74</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -345,25 +345,135 @@ bindQuestNativeInput();
  * Поэтому стрелку рисуем САМИ, внутри страницы: #cursorDot — обычный SVG,
  * позиционируемый по координатам мыши. Он часть нашей разметки, значит всегда
  * выше и игрового кадра, и любого системного курсора.
- * v1.0.40.73: источник координат — накопленный Raw Input delta.
+ * v1.0.40.74: источник координат — накопленный Raw Input delta.
  * Скрытый WebOverlay sink инициализирует позицию один раз из GetCursorPos,
  * затем больше НЕ читает системную позицию: каждое dx/dy добавляется к
  * виртуальной координате. Системный курсор при этом отпущен через set_cursor(false).
  * ================================================================ */
 var cursorEl=null,cursorTimer=null,cursorShown=false,cursorSystemReleased=false;
 
+function cssAlpha(value){
+    try{
+        if(!value||value==='transparent')return 0;
+        var m=value.match(/rgba?\\(([^)]+)\\)/i);
+        if(!m)return 1;
+        var parts=m[1].split(',').map(function(v){return v.trim()});
+        if(parts.length===4){
+            var a=parseFloat(parts[3]);
+            return Number.isFinite(a)?Math.max(0,Math.min(1,a)):1;
+        }
+        return 1;
+    }catch(e){return 1}
+}
+function elementVisualAlpha(el){
+    try{
+        if(!el||el===cursorEl)return 0;
+        var cs=getComputedStyle(el);
+        var opacity=parseFloat(cs.opacity);
+        if(!Number.isFinite(opacity)||opacity<=0)return 0;
+        var bg=cssAlpha(cs.backgroundColor);
+        if(bg>0)return opacity*bg;
+        var border=Math.max(
+            cssAlpha(cs.borderTopColor),
+            cssAlpha(cs.borderRightColor),
+            cssAlpha(cs.borderBottomColor),
+            cssAlpha(cs.borderLeftColor)
+        );
+        if(border>0)return opacity*border;
+        var tag=String(el.tagName||'').toLowerCase();
+        if(tag==='img'||tag==='svg'||tag==='canvas'||tag==='video')return opacity;
+        return 0;
+    }catch(e){return 0}
+}
+function parseBoxShadow(value){
+    try{
+        if(!value||value==='none')return null;
+        var colorMatch=value.match(/rgba?\\([^)]*\\)/i);
+        var colorAlpha=colorMatch?cssAlpha(colorMatch[0]):1;
+        var rest=colorMatch?value.replace(colorMatch[0],' '):value;
+        var nums=rest.match(/-?\\d+(?:\\.\\d+)?px/g)||[];
+        if(nums.length<3)return null;
+        return{
+            dx:parseFloat(nums[0])||0,
+            dy:parseFloat(nums[1])||0,
+            blur:Math.max(0,parseFloat(nums[2])||0),
+            spread:nums.length>=4?parseFloat(nums[3])||0:0,
+            alpha:colorAlpha
+        };
+    }catch(e){return null}
+}
+function pointOutsideDistance(rect,x,y){
+    var dx=Math.max(rect.left-x,0,x-rect.right);
+    var dy=Math.max(rect.top-y,0,y-rect.bottom);
+    return Math.sqrt(dx*dx+dy*dy);
+}
+function cursorSurfaceAlpha(x,y){
+    if(!pagePaused)return 0;
+    var root=collapsed?$('questTab'):$('questWindow');
+    if(!root)return 0;
+    var rr=root.getBoundingClientRect();
+    if(x>=rr.left&&x<=rr.right&&y>=rr.top&&y<=rr.bottom){
+        var els=[];
+        try{
+            if(document.elementsFromPoint)els=document.elementsFromPoint(x,y);
+            else{
+                var one=document.elementFromPoint(x,y);
+                if(one)els=[one];
+            }
+        }catch(e){}
+        var alpha=0;
+        for(var i=0;i<els.length;i++){
+            var el=els[i];
+            if(!el||el===cursorEl)continue;
+            alpha=Math.max(alpha,elementVisualAlpha(el));
+            if(alpha>=0.995)break;
+        }
+        /* #questWindow/#questTab themselves are the visible opaque surface, so
+           transparent child hit-test regions still retain the real surface alpha. */
+        alpha=Math.max(alpha,elementVisualAlpha(root));
+        return Math.max(0,Math.min(1,alpha));
+    }
+
+    /* За пределами окна оставляем курсор только там, где реально есть его тень.
+       Используем текущий CSS box-shadow, чтобы и полупрозрачная тень под cursor
+       не превращалась в резкое появление/исчезновение. */
+    var shadow=null;
+    try{shadow=parseBoxShadow(getComputedStyle(root).boxShadow)}catch(e){}
+    if(!shadow||shadow.blur<=0||shadow.alpha<=0)return 0;
+
+    var shadowRect={
+        left:rr.left-shadow.spread,
+        top:rr.top-shadow.spread,
+        right:rr.right+shadow.spread,
+        bottom:rr.bottom+shadow.spread
+    };
+    var d=pointOutsideDistance(shadowRect,x-shadow.dx,y-shadow.dy);
+    if(d>=shadow.blur)return 0;
+    var t=1-d/shadow.blur;
+    return Math.max(0,Math.min(1,shadow.alpha*t*t));
+}
+
 function placeCursor(x,y){
     cursorEl=cursorEl||$('cursorDot');   // резолвим лениво: place может вызваться первым
     if(!cursorEl)return;
+
     cursorEl.style.transform='translate('+x+'px,'+y+'px)';
-    if(!cursorShown){cursorShown=true;cursorEl.style.display='block'}
+    var alpha=cursorSurfaceAlpha(x,y);
+    cursorEl.style.opacity=alpha>0.01?String(alpha):'0';
+    if(alpha>0.01){
+        if(!cursorShown){cursorShown=true;cursorEl.style.display='block'}
+    }else{
+        cursorShown=false;
+        cursorEl.style.display='none';
+    }
+
     /* ДИАГНОСТИКА: первые 5 вызовов, затем не чаще 2-3 раз в секунду. */
     qdCounters.place++;
     qdLastPlace.x=x;qdLastPlace.y=y;qdLastPlace.shown=!!(cursorEl&&cursorEl.style.display==='block');
     var now=Date.now();
     if(qdCounters.place<=5||now-qdPlaceLogAt>=400){
         qdPlaceLogAt=now;
-        qdLog('[CURSOR-PLACE] x='+x+' y='+y+' shown='+qdLastPlace.shown+' placeCount='+qdCounters.place);
+        qdLog('[CURSOR-PLACE] x='+x+' y='+y+' alpha='+alpha.toFixed(3)+' shown='+qdLastPlace.shown+' placeCount='+qdCounters.place);
     }
 }
 
@@ -380,7 +490,7 @@ function startCursorTrack(){
         qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
     }
     if(!cursorEl)return;
-    /* v1.0.40.73: no synthetic center position.
+    /* v1.0.40.74: no synthetic center position.
        The hidden WebOverlay Raw Input sink owns the physical-mouse bridge and
        sends the current client position as quest-native-input. The first packet
        is initialized from GetCursorPos when the window becomes active. */
@@ -397,7 +507,7 @@ function stopCursorTrack(reason){
     if(cursorTimer){clearInterval(cursorTimer);cursorTimer=null}
     qnSetHoverTarget(null);
     qnPressedTarget=null;
-    if(cursorEl){cursorEl.style.display='none';cursorShown=false}
+    if(cursorEl){cursorEl.style.display='none';cursorEl.style.opacity='0';cursorShown=false}
 }
 
 /* Диагностика курсора из консоли страницы (аналог debugShow для этой части):
@@ -432,8 +542,10 @@ function applyCursorLayer(){
        это не исправят — слой всегда выше. Системный курсор в игре к тому же
        уведён счётчиком ShowCursor глубоко в минус.
        РЕШЕНИЕ: скрываем курсор во всём слое (CSS `cursor:none`) и рисуем
-       СОБСТВЕННУЮ стрелку (<svg id="cursorDot">) по позиции мыши — она часть
-       нашей страницы, значит гарантированно выше игровой.
+       СОБСТВЕННУЮ стрелку (<img id="cursorDot">) по виртуальной позиции мыши.
+       Изображение — реальный игровой cursor.png 27x44 для базового 1080p.
+       Прозрачность стрелки вычисляется по видимому контенту/тени под ней:
+       в прозрачной области стрелка исчезает, на тени становится полупрозрачной.
        Скрытие системной стрелки оставлено как дополнительная мера: если игра
        её не рисует, она не будет дублировать нашу. */
     var app=$('questApp');
