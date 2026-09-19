@@ -1780,6 +1780,15 @@ namespace ETS2_Assist_GUI
             var list = new List<ArPoint>();
             try
             {
+                // Обычный игровой AR больше не получает статический каталог карты.
+                // По умолчанию в AR должны появляться только квестовые точки,
+                // опубликованные QuestRuntime по текущей сюжетной логике.
+                // Полный каталог оставляем только для явного отладочного режима.
+                bool debugAllPoints = Quests.QuestRuntime.Current?.DebugShowAllPoints == true;
+                if (!debugAllPoints)
+                {
+                    return list;
+                }
                 // Города (статика по gameName).
                 // v1.0.40.42: ЦВЕТ передаём как на МИНИКАРТЕ (c.Color). Раньше здесь
                 // стояла пустая строка, и JS подставлял голубой KIND_FALLBACK.poi —
