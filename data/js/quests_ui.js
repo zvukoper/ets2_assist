@@ -1251,7 +1251,11 @@ function showError(text){var e=$('overlayError');if(!e)return;e.textContent=text
 window.onEts2Command=function(d){
     if(!d)return;
     qdLog('WS-IN(8084) command='+d.command+' payload='+JSON.stringify(d));
-    if(d.command==='quest_pause_ui'){
+    if(d.command==='quest_state'){
+        qdLog('[CONTENT-STATE-8084] fallback state received');
+        applyState(d);
+    }
+    else if(d.command==='quest_pause_ui'){
         setQuestInteractiveVisible(d.visible===true,d.ready===true,d.pulse===true);
         if(d.hasInteractive!==undefined)setTabPulse(d.hasInteractive===true);
     }
