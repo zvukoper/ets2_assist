@@ -310,7 +310,10 @@
             // v1.0.40.54: та же техника, что и для точек AR1 — экстраполяция цели
             // + экспоненциальный фильтр. Сначала пробуем готовую сглаженную позу
             // ar_hud.js (оба слоя смотрят из ОДНОЙ точки), иначе считаем сами.
-            var camPos=smoothQuestCamera(performance.now());
+            /* Используем тот же per-frame camera view, что и AR1.
+               Этот вариант был исходным плавным путём: оба слоя получают одну и ту
+               же сглаженную позу. Собственный фильтр остаётся только fallback. */
+            var camPos=smoothView() || smoothQuestCamera(performance.now());
             var vp=viewPos(camPos);
             var vpx=vp.x, vpy=vp.y, vpz=vp.z;   // скаляры: не держим ссылку на общий буфер
             var eyeH=eyeHeightAboveGroundAt(vpx,vpy,vpz);
