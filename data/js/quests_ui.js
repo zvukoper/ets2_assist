@@ -27,7 +27,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-PULSE-R17-2026-09-19';
+var QUEST_UI_DIAG_BUILD='QCONTENT-PULSE-R18-2026-09-19';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -385,7 +385,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R17 1.0.40.87</strong>',
+        '<strong>SOFT CURSOR R18 1.0.40.88</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -1110,7 +1110,8 @@ function setQuestInteractiveVisible(visible,ready,pulse){
         if(deferredInventoryBeacon)startBookmarkBeacon('inventory');
     }else{
         syncInterfaceState('none',false,false);
-        setTabPulse(pulse===true);
+        var nearbyInteractiveOnPause=!!((model&&model.nearby)||[]).some(function(p){return p&&p.Marker&&p.Marker!=='none'});
+        setTabPulse(pulse===true||nearbyInteractiveOnPause);
         /* Содержимое строим сразу, не ожидая отдельного «правильного»
            порядка quest_pause_ui/quest_state. Если model уже получена,
            пользователь видит данные без дополнительного тика WS. */
