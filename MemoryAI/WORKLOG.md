@@ -533,3 +533,38 @@ git show b34b75f:MemoryAI/WORKLOG.md > WORKLOG_full_until_17.09.26.md
   `1.0.40.67-RAW-INPUT-TEST`) — она в СВОЁМ репозитории.
 - **ПЕНДИНГ:** визуальная проверка пользователем — что две строки в правом нижнем
   углу не накладываются и не перекрываются нижним краем окна.
+
+---
+
+## 19.09.2026 — pull.ps1 — git pull для ОБОИХ репозиториев
+
+- **Задача:** `pull.ps1` должен пуллить и `ets2_assist`, и соседний `weboverlay`.
+- **РЕАЛИЗАЦИЯ:** `pull.ps1` переписан. Шаги: (1) `git -C $PSScriptRoot pull` для
+  текущего репозитория; (2) поиск соседнего WebOverlay — сначала `..\weboverlay`,
+  если нет `.git` — `..\..\weboverlay` (ровно та же логика, что уже была в
+  `compile.ps1`, поэтому worktree-раскладка тоже работает), затем
+  `git -C <resolved> pull`; (3) `dotnet clean` + `dotnet restore` +
+  `& "$PSScriptRoot\compile.ps1"` (сборку оверлея делает сам compile.ps1 —
+  отдельный publish не нужен).
+- **ОБРАБОТКА ОШИБОК:** `$ErrorActionPreference='Stop'`; после каждого `git pull`
+  проверяется `$LASTEXITCODE`, при провале — красное сообщение и `exit` с тем же
+  кодом (не собираем частично обновлённое состояние). Отсутствие репозитория
+  WebOverlay — НЕ фатально: жёлтое предупреждение, pull пропущен (compile.ps1
+  оставит существующий `data\bin\WebOverlay.exe`).
+- **⛔ НАЙДЕНА И ИСПРАВЛЕНА ЛОВУШКА КОДИРОВКИ.** Первая версия скрипта была с
+  русскими комментариями, и `Parser::ParseFile` дал ошибки «В строке отсутствует
+  завершающий символ "» / «Отсутствует закрывающий знак }». Причина: **PowerShell
+  5.1 читает файлы БЕЗ BOM как ANSI** (Windows-1251), поэтому UTF-8 кириллица
+  рассыпается и ломает парсер. `compile.ps1`/`kill.ps1`/`start_*.bat` в репозитории
+  ASCII-only именно поэтому. Скрипт переписан полностью на ASCII (проверено:
+  `non-ASCII=0`, `Parser::ParseFile` -> syntax OK).
+- **ПРОВЕРЕНО:** `Parser::ParseFile` — syntax OK и для `pull.ps1`, и для
+  `compile.ps1` (регресса нет); `pull.ps1` = 2295 байт, non-ASCII = 0. Discovery
+  соседнего репо проверен вживую: `..\weboverlay` -> `F:\repo\weboverlay`,
+  `hasGit=True`, origin `https://github.com/zvukoper/weboverlay.git`;
+  `..\..\weboverlay` не существует (fallback не мешает). `git pull` в
+  `F:\repo\weboverlay` (ветка `main`) выполнен вручную — `Already up to date.`
+- **Изменённые файлы:** `pull.ps1`, `АРХИТЕКТУРА ПРОЕКТА.md` (правило
+  `build_scripts`). Версия приложения НЕ менялась (изменение вне исходников C#).
+- **ПРАВИЛО НА БУДУЩЕЕ:** любые `.ps1` в репозитории писать ТОЛЬКО ASCII
+  (кириллица допустима лишь с BOM, но безопаснее ASCII).

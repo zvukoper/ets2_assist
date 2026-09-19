@@ -21703,3 +21703,1547 @@
 2026-09-19 13:15:45.810 [DATA] Command 'ar_telemetry' sent to map.
 2026-09-19 13:15:45.855 [DATA] Command 'ar_telemetry' sent to map.
 2026-09-19 13:15:45.904 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:47.703 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:47.756 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:47.756 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:15:47.760 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0002 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:15:47.760 [DATA] [AR] pose 'rest': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,592,-0,156,0,791 up=-0,094,0,988,0,125 ground=111,60.
+2026-09-19 13:15:47.760 [DATA] [AR] TILT (rest): кузов pitch=0,01° roll=0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=8,99° крен=-0,00° | fwd.Y=-0,1563 right.Y=0,0000 up.Y=0,9877
+2026-09-19 13:15:47.760 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=0,00° (центр экрана cy=540)
+2026-09-19 13:15:47.812 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:47.854 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:47.862 [DATA] [OVR] load_order.txt: [custom_map1.json, test_targets.json] (снизу=низший приоритет)
+2026-09-19 13:15:47.862 [DATA] [OVR] прочитан custom_map1.json: записей=5
+2026-09-19 13:15:47.862 [DATA] [OVR]   custom_map1.json -> courier2: 161108.91, 101.55, -88350.03
+2026-09-19 13:15:47.862 [DATA] [OVR]   custom_map1.json -> stash1: 161073.75, 101.55, -89153.34
+2026-09-19 13:15:47.863 [DATA] [OVR]   custom_map1.json -> courier3: 160946.91, 0.00, -89380.03
+2026-09-19 13:15:47.863 [DATA] [OVR]   custom_map1.json -> 0x63DF0053598007AD: 148487.99, 0.00, -80647.96
+2026-09-19 13:15:47.863 [DATA] [OVR]   custom_map1.json -> random: 120581.54, 0.00, -53144.94
+2026-09-19 13:15:47.863 [DATA] [OVR] прочитан test_targets.json: записей=0
+2026-09-19 13:15:47.870 [DATA] [AR] Модель точек без изменений: 5751.
+2026-09-19 13:15:47.931 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:47.990 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:48.048 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:48.107 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:48.167 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:48.180 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:48.242 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:48.309 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:48.369 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:15:49.416 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:28:33.923 [DATA] Language saved to config.json: en
+2026-09-19 13:28:34.056 [DATA] Hotkeys: Ctrl+X (игра: новая метка AR/миникарта), Ctrl+Shift+X (то же), S, R, N, Ctrl+T, Ctrl+Shift+T, Ctrl+PGUP/PGDN (FOV AR1 гориз.), Ctrl+Shift+PGUP/PGDN (FOV AR1 верт.), Ctrl+Shift+HOME/END (FOV AR2)
+2026-09-19 13:28:34.448 [DATA] [TRUCK] приём: WS=0 REST=1 без-placement=1 битых=0 применено=0 live=False возраст_данных=нет | placement нет (пауза/окно игры неактивно — это норма)
+2026-09-19 13:28:34.448 [DATA] [TRUCK] WS подключён: ws://localhost:8080/api/ws/delta/flat/
+2026-09-19 13:28:35.260 [DATA] [OVR] load_order.txt: [custom_map1.json, test_targets.json] (снизу=низший приоритет)
+2026-09-19 13:28:35.261 [DATA] [OVR] прочитан custom_map1.json: записей=5
+2026-09-19 13:28:35.261 [DATA] [OVR]   custom_map1.json -> courier2: 161108.91, 101.55, -88350.03
+2026-09-19 13:28:35.261 [DATA] [OVR]   custom_map1.json -> stash1: 161073.75, 101.55, -89153.34
+2026-09-19 13:28:35.262 [DATA] [OVR]   custom_map1.json -> courier3: 160946.91, 0.00, -89380.03
+2026-09-19 13:28:35.262 [DATA] [OVR]   custom_map1.json -> 0x63DF0053598007AD: 148487.99, 0.00, -80647.96
+2026-09-19 13:28:35.263 [DATA] [OVR]   custom_map1.json -> random: 120581.54, 0.00, -53144.94
+2026-09-19 13:28:35.264 [DATA] [OVR] прочитан test_targets.json: записей=0
+2026-09-19 13:28:35.320 [DATA] [AR] Форс-рассылка данных AR (quest-state-change).
+2026-09-19 13:28:37.201 [DATA] [QUEST] Road index loaded: 98341 segments.
+2026-09-19 13:28:49.482 [DATA] [TRUCK] приём: WS=230 REST=14 без-placement=244 битых=0 применено=0 live=False возраст_данных=нет | placement нет (пауза/окно игры неактивно — это норма)
+2026-09-19 13:29:04.486 [DATA] [TRUCK] приём: WS=455 REST=29 без-placement=484 битых=0 применено=0 live=False возраст_данных=нет | placement нет (пауза/окно игры неактивно — это норма)
+2026-09-19 13:29:18.178 [DATA] [OVR] load_order.txt: [custom_map1.json, test_targets.json] (снизу=низший приоритет)
+2026-09-19 13:29:18.179 [DATA] [OVR] прочитан custom_map1.json: записей=5
+2026-09-19 13:29:18.179 [DATA] [OVR]   custom_map1.json -> courier2: 161108.91, 101.55, -88350.03
+2026-09-19 13:29:18.179 [DATA] [OVR]   custom_map1.json -> stash1: 161073.75, 101.55, -89153.34
+2026-09-19 13:29:18.179 [DATA] [OVR]   custom_map1.json -> courier3: 160946.91, 0.00, -89380.03
+2026-09-19 13:29:18.179 [DATA] [OVR]   custom_map1.json -> 0x63DF0053598007AD: 148487.99, 0.00, -80647.96
+2026-09-19 13:29:18.180 [DATA] [OVR]   custom_map1.json -> random: 120581.54, 0.00, -53144.94
+2026-09-19 13:29:18.180 [DATA] [OVR] прочитан test_targets.json: записей=0
+2026-09-19 13:29:18.194 [DATA] [AR] Модель точек без изменений: 5751.
+2026-09-19 13:29:18.195 [DATA] [AR] AR-тик: потоковый таймер запущен (интервал 16 мс).
+2026-09-19 13:29:18.197 [DATA] OK   горизонтальная normal.Y=1,0000 avgH=99,9940 maxRes=0,00000
+2026-09-19 13:29:18.197 [DATA] OK   продольный уклон dz/dy=-0,0524 ожид≈-0,0524 maxRes=0,00000
+2026-09-19 13:29:18.197 [DATA] OK   поперечный уклон normal.X=-0,0349 maxRes=0,00000
+2026-09-19 13:29:18.197 [DATA] OK   диагональный уклон N=(-0,0523,0,9980,0,0349) maxRes=0,00000
+2026-09-19 13:29:18.197 [DATA] OK   поворот фуры normal.Y=1,0000 maxRes=0,00000
+2026-09-19 13:29:18.197 [DATA] OK   поднятое колесо used=3 wheel3on=False
+2026-09-19 13:29:18.197 [DATA] OK   snap наклонной u=10,0000 v=-7,0000 signed=-0,000000 hAt=100,0508 y=100,0508
+2026-09-19 13:29:18.197 [DATA] OK   луч × плоскость t=2,0060 hy=99,9940
+2026-09-19 13:29:18.197 [DATA] [AR] ArGroundPlane self-test: OK=8 FAIL=0.
+2026-09-19 13:29:18.198 [DATA] [AR] Насос телеметрии запущен (тик + WS-дельта + REST-снимок).
+2026-09-19 13:29:18.198 [DATA] [AR] TILT (start): кузов pitch=0,00° roll=0,00° | голова pitch=0,00° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=-0,00° крен=-0,00° | fwd.Y=0,0000 right.Y=0,0000 up.Y=0,0000
+2026-09-19 13:29:18.198 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=не число y(центр)=не число y(право)=не число наклон линии=не число° (центр экрана cy=540)
+2026-09-19 13:29:19.886 [DATA] [AR] tick alive: known=False changed=True forced=True head=False pts=5751 x=0,0 z=0,0
+2026-09-19 13:29:19.886 [DATA] [TRUCK] приём: WS=631 REST=39 без-placement=670 битых=0 применено=0 live=False возраст_данных=нет | placement нет (пауза/окно игры неактивно — это норма)
+2026-09-19 13:29:19.922 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:29:20.874 [DATA] [QUEST][DIAG] Ruslan: enabled=True status=Available step=available paused=True build=built marker=yellow_exclamation map=True ar=True interactive=True point=(146529,0,111,6,-60981,0) truck=(0,0,0,0,0,0) dist=158711,8m trigger=35,0m inside=False override=none
+2026-09-19 13:29:20.875 [DATA] [QUEST][DIAG] AR: truckKnown=False cameraValid=False camera=(0,0,0,0,0,0) arDisplayRadius=50 globalPoints=5751 nearSig=- questStatePoints=1 ruslanInQuestState=True
+2026-09-19 13:29:20.875 [DATA] [QUEST][DIAG] PIPE: definitions=1 activeQuest=False ruslanName=Шашлычник Руслан
+2026-09-19 13:29:20.939 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.939 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.939 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.939 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.939 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.939 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.939 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.939 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.940 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.940 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.940 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.940 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.940 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.940 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.940 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.940 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.940 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.941 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:20.941 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:21.121 [DATA] [OVR] load_order.txt: [custom_map1.json, test_targets.json] (снизу=низший приоритет)
+2026-09-19 13:29:21.121 [DATA] [OVR] прочитан custom_map1.json: записей=5
+2026-09-19 13:29:21.121 [DATA] [OVR]   custom_map1.json -> courier2: 161108.91, 101.55, -88350.03
+2026-09-19 13:29:21.122 [DATA] [OVR] новая USER-точка 'courier2' (custom_map1.json) -> pois[custom], coords=(161108,9, -88350,0)
+2026-09-19 13:29:21.122 [DATA] [OVR]   custom_map1.json -> stash1: 161073.75, 101.55, -89153.34
+2026-09-19 13:29:21.122 [DATA] [OVR] новая USER-точка 'stash1' (custom_map1.json) -> pois[custom], coords=(161073,8, -89153,3)
+2026-09-19 13:29:21.122 [DATA] [OVR]   custom_map1.json -> courier3: 160946.91, 0.00, -89380.03
+2026-09-19 13:29:21.122 [DATA] [OVR] новая USER-точка 'courier3' (custom_map1.json) -> pois[custom], coords=(160946,9, -89380,0)
+2026-09-19 13:29:21.122 [DATA] [OVR]   custom_map1.json -> 0x63DF0053598007AD: 148487.99, 0.00, -80647.96
+2026-09-19 13:29:21.122 [DATA] [OVR] merge POI '0x63DF0053598007AD' (custom_map1.json)
+2026-09-19 13:29:21.122 [DATA] [OVR]   custom_map1.json -> random: 120581.54, 0.00, -53144.94
+2026-09-19 13:29:21.122 [DATA] [OVR] новая USER-точка 'random' (custom_map1.json) -> pois[custom], coords=(120581,5, -53144,9)
+2026-09-19 13:29:21.123 [DATA] [OVR] прочитан test_targets.json: записей=0
+2026-09-19 13:29:21.123 [DATA] [OVR] merge итог: cities+0, pois+1, targets+0, user+4
+2026-09-19 13:29:23.126 [DATA] [AR] Форс-рассылка данных AR (новый WS-клиент).
+2026-09-19 13:29:24.911 [DATA] [AR] tick alive: known=False changed=True forced=True head=False pts=5751 x=0,0 z=0,0
+2026-09-19 13:29:24.959 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:29:29.936 [DATA] [AR] tick alive: known=False changed=True forced=True head=False pts=5751 x=0,0 z=0,0
+2026-09-19 13:29:29.993 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:29:33.309 [DATA] [OVR] load_order.txt: [custom_map1.json, test_targets.json] (снизу=низший приоритет)
+2026-09-19 13:29:33.309 [DATA] [OVR] прочитан custom_map1.json: записей=5
+2026-09-19 13:29:33.309 [DATA] [OVR]   custom_map1.json -> courier2: 161108.91, 101.55, -88350.03
+2026-09-19 13:29:33.310 [DATA] [OVR]   custom_map1.json -> stash1: 161073.75, 101.55, -89153.34
+2026-09-19 13:29:33.310 [DATA] [OVR]   custom_map1.json -> courier3: 160946.91, 0.00, -89380.03
+2026-09-19 13:29:33.310 [DATA] [OVR]   custom_map1.json -> 0x63DF0053598007AD: 148487.99, 0.00, -80647.96
+2026-09-19 13:29:33.310 [DATA] [OVR]   custom_map1.json -> random: 120581.54, 0.00, -53144.94
+2026-09-19 13:29:33.311 [DATA] [OVR] прочитан test_targets.json: записей=0
+2026-09-19 13:29:33.317 [DATA] [AR] Модель точек без изменений: 5751.
+2026-09-19 13:29:34.931 [DATA] [TRUCK] приём: WS=922 REST=53 без-placement=975 битых=0 применено=0 live=False возраст_данных=нет | placement нет (пауза/окно игры неактивно — это норма)
+2026-09-19 13:29:34.987 [DATA] [AR] tick alive: known=False changed=True forced=True head=False pts=5751 x=0,0 z=0,0
+2026-09-19 13:29:35.035 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:29:37.496 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0002 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:29:37.496 [DATA] [AR] pose 'ws': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,590,-0,156,0,792 up=-0,093,0,988,0,125 ground=111,60.
+2026-09-19 13:29:37.501 [DATA] [AR] TILT (ws): кузов pitch=0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=0,00° roll=0,00° | КАМЕРА наклон=8,99° крен=-0,00° | fwd.Y=-0,1563 right.Y=0,0000 up.Y=0,9877
+2026-09-19 13:29:37.501 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=0,00° (центр экрана cy=540)
+2026-09-19 13:29:37.503 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:37.507 [DATA] [AR] tick: truck=(146538,4,111,6,-60997,8) h=0,393 known=True points=5751 near3km=63 hasTarget=True (радиус 50 м: 9 точек, ближайшая 0x56f40cbb69800000 d=16м)
+2026-09-19 13:29:37.563 [DATA] [TRUCK] ПЕРВЫЙ placement: x=146538,4 y=111,6 z=-60997,8 h=0,3931 (включены метка и конус)
+2026-09-19 13:29:37.566 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:37.621 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:37.677 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:37.743 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:37.788 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:37.840 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:37.897 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:37.944 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:37.999 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.054 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.096 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.137 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.180 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.182 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.230 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.270 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.323 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.366 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.381 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.425 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.477 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.523 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.570 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.615 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.663 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.684 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.699 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.709 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.759 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.802 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.853 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.871 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.925 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:38.972 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.030 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.074 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.130 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.176 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.178 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.234 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.289 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.328 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.343 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.389 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.435 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.487 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.555 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.613 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.683 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.736 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.805 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.887 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.920 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:39.994 [DATA] [AR] tick alive: known=True changed=True forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:29:39.996 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.067 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.116 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.160 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.205 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.258 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.314 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.374 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.375 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:29:40.441 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.492 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.555 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.615 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.665 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.706 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.751 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.802 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.849 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.892 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:40.952 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.015 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.057 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.102 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.143 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.188 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.238 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.280 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.324 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.338 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.376 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.425 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.468 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.507 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.552 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.607 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.651 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.694 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.741 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.784 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.822 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.863 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.875 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.918 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.957 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:41.999 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.043 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.044 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.084 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.126 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.167 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.207 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.249 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.292 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.336 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.351 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.391 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.435 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.482 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.484 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.526 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.570 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.617 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.656 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.701 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.747 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.788 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.832 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.845 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.892 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.940 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:42.990 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.030 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.073 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.134 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.175 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.233 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.286 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.361 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.374 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.419 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.459 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.504 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.504 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0003 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:29:43.505 [DATA] [AR] pose 'rest': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,590,-0,157,0,792 up=-0,094,0,988,0,126 ground=111,60.
+2026-09-19 13:29:43.505 [DATA] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,01° крен=0,00° | fwd.Y=-0,1566 right.Y=-0,0000 up.Y=0,9877
+2026-09-19 13:29:43.505 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-19 13:29:43.548 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.590 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.639 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.681 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.726 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.772 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.815 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.867 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.910 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.953 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:43.997 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.039 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.079 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.136 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.180 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.182 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.231 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.276 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.316 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.363 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.376 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.420 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.421 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.468 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.508 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.574 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.638 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.694 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.754 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.822 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.841 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.909 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:44.993 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.050 [DATA] [AR] tick alive: known=True changed=False forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:29:45.051 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.094 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.139 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.187 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.227 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.270 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.314 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.363 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.377 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.377 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:29:45.420 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.478 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.529 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.569 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.615 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.664 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.667 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.668 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.711 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.763 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.806 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.867 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.921 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:45.963 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.004 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.045 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.087 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.126 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.172 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.216 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.255 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.300 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.344 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.358 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.398 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.439 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.441 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.487 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.528 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.575 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.619 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.664 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.708 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.711 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.765 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.811 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.852 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.903 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.942 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:46.989 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.027 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.070 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.113 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.158 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.197 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.240 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.279 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.325 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.338 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.382 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.423 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.464 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.507 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.551 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.592 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.636 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.687 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.731 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.773 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.818 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.865 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.877 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.921 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:47.962 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.008 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.056 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.097 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.138 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.184 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.227 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.268 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.314 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.357 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.370 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.411 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.459 [DATA] [OVR] load_order.txt: [custom_map1.json, test_targets.json] (снизу=низший приоритет)
+2026-09-19 13:29:48.459 [DATA] [OVR] прочитан custom_map1.json: записей=5
+2026-09-19 13:29:48.459 [DATA] [OVR]   custom_map1.json -> courier2: 161108.91, 101.55, -88350.03
+2026-09-19 13:29:48.459 [DATA] [OVR]   custom_map1.json -> stash1: 161073.75, 101.55, -89153.34
+2026-09-19 13:29:48.460 [DATA] [OVR]   custom_map1.json -> courier3: 160946.91, 0.00, -89380.03
+2026-09-19 13:29:48.460 [DATA] [OVR]   custom_map1.json -> 0x63DF0053598007AD: 148487.99, 0.00, -80647.96
+2026-09-19 13:29:48.460 [DATA] [OVR]   custom_map1.json -> random: 120581.54, 0.00, -53144.94
+2026-09-19 13:29:48.460 [DATA] [OVR] прочитан test_targets.json: записей=0
+2026-09-19 13:29:48.461 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.468 [DATA] [AR] Модель точек без изменений: 5751.
+2026-09-19 13:29:48.506 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.551 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.591 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.638 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.682 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.684 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.724 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.766 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.767 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0003 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:29:48.767 [DATA] [AR] pose 'rest': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,590,-0,157,0,792 up=-0,094,0,988,0,126 ground=111,60.
+2026-09-19 13:29:48.767 [DATA] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,01° крен=0,00° | fwd.Y=-0,1566 right.Y=-0,0000 up.Y=0,9877
+2026-09-19 13:29:48.767 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-19 13:29:48.809 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.853 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.866 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.908 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:48.954 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.000 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.040 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.082 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.124 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.162 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.205 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.253 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.293 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.339 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.354 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.399 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.444 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.491 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.531 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.534 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.593 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.655 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.710 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.780 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.839 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.859 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.928 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.987 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:49.988 [DATA] [TRUCK] приём: WS=1161 REST=68 без-placement=1179 битых=0 применено=50 live=False возраст_данных=9,6с | placement нет (пауза/окно игры неактивно — это норма)
+2026-09-19 13:29:50.050 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.097 [DATA] [AR] tick alive: known=True changed=False forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:29:50.098 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.138 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.184 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.233 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.277 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.322 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.336 [DATA] [UI] политика жива: тиков=60 running=True paused=True focus=True active=True gameUI=False interactive=True (фокус на игре)
+2026-09-19 13:29:50.337 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.378 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.419 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.420 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:29:50.461 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.505 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.555 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.609 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.657 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.698 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.741 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.787 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.827 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.841 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.892 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.940 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.943 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:50.987 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.032 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.071 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.118 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.162 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.204 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.254 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.297 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.341 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.355 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.394 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.441 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.532 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.582 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.586 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.639 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.685 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.729 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.769 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.813 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.872 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.919 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:51.961 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.001 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.042 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.084 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.125 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.169 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.210 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.254 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.297 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.337 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.350 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.390 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.433 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.434 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.472 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.513 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.556 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.601 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.643 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.693 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.739 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.778 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.828 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.884 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.925 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:52.966 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.008 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.054 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.094 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.138 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.184 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.227 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.267 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.311 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.355 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.368 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.406 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.455 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.495 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.533 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.579 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.626 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.669 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.710 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.757 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.798 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.839 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.895 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.934 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:53.976 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.049 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.098 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.143 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0003 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:29:54.143 [DATA] [AR] pose 'rest': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,590,-0,157,0,792 up=-0,094,0,988,0,126 ground=111,60.
+2026-09-19 13:29:54.143 [DATA] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,01° крен=0,00° | fwd.Y=-0,1566 right.Y=-0,0000 up.Y=0,9877
+2026-09-19 13:29:54.143 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-19 13:29:54.145 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.187 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.229 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.232 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.269 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.311 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.355 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.410 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.454 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.497 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.546 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.614 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.674 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.730 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.793 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.856 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.870 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:54.938 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.010 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.069 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.108 [DATA] [AR] tick alive: known=True changed=False forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:29:55.109 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.111 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.148 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.188 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.189 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.234 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.273 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.315 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.369 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.410 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.448 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:29:55.450 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.503 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.551 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.593 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.636 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.682 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.684 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.738 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.792 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.835 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.852 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.910 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.950 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:55.990 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.032 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.069 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.110 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.149 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.188 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.231 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.269 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.317 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.329 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.370 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.407 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.446 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.490 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.527 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.571 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.616 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.654 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.693 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.743 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.783 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.822 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.865 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.878 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.920 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:56.959 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.005 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.051 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.093 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.133 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.177 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.225 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.265 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.310 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.355 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.411 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.452 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.496 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.535 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.576 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.620 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.663 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.703 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.743 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.788 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.832 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.844 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.883 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.885 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.930 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:57.978 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.018 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.061 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.108 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.156 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.200 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.251 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.254 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.301 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.359 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.413 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.416 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.461 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.502 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.550 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.598 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.638 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.676 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.678 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.723 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.764 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.804 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.845 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.900 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.938 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:58.980 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.019 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.058 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.100 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.137 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.178 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.222 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.260 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.302 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.344 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.356 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.394 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.398 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.437 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.439 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.440 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0003 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:29:59.440 [DATA] [AR] pose 'rest': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,590,-0,157,0,792 up=-0,094,0,988,0,126 ground=111,60.
+2026-09-19 13:29:59.440 [DATA] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,01° крен=0,00° | fwd.Y=-0,1566 right.Y=-0,0000 up.Y=0,9877
+2026-09-19 13:29:59.440 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-19 13:29:59.484 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.527 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.587 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.654 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.705 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.754 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.815 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.881 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.899 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:29:59.968 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.027 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.083 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.121 [DATA] [AR] tick alive: known=True changed=False forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:30:00.122 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.163 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.205 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.247 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.286 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.328 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.341 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.386 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.426 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.474 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:30:00.477 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.522 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.583 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.640 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.685 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.734 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.784 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.837 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.907 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.949 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:00.989 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.031 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.073 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.113 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.153 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.196 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.237 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.276 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.314 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.356 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.369 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.411 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.449 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.486 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.525 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.563 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.608 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.649 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.688 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.733 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.779 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.819 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.863 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.876 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.923 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.925 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:01.970 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.009 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.051 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.095 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.144 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.186 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.229 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.274 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.313 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.355 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.409 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.449 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.492 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.536 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.578 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.623 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.667 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.711 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.753 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.796 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.845 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.856 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.905 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.945 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:02.993 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.038 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.076 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.118 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.162 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.203 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.248 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.291 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.333 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.347 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.389 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.438 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.484 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.528 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.572 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.598 [DATA] [OVR] load_order.txt: [custom_map1.json, test_targets.json] (снизу=низший приоритет)
+2026-09-19 13:30:03.598 [DATA] [OVR] прочитан custom_map1.json: записей=5
+2026-09-19 13:30:03.598 [DATA] [OVR]   custom_map1.json -> courier2: 161108.91, 101.55, -88350.03
+2026-09-19 13:30:03.599 [DATA] [OVR]   custom_map1.json -> stash1: 161073.75, 101.55, -89153.34
+2026-09-19 13:30:03.599 [DATA] [OVR]   custom_map1.json -> courier3: 160946.91, 0.00, -89380.03
+2026-09-19 13:30:03.599 [DATA] [OVR]   custom_map1.json -> 0x63DF0053598007AD: 148487.99, 0.00, -80647.96
+2026-09-19 13:30:03.600 [DATA] [OVR]   custom_map1.json -> random: 120581.54, 0.00, -53144.94
+2026-09-19 13:30:03.600 [DATA] [OVR] прочитан test_targets.json: записей=0
+2026-09-19 13:30:03.606 [DATA] [AR] Модель точек без изменений: 5751.
+2026-09-19 13:30:03.621 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.664 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.705 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.756 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.798 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.841 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.891 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.939 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:03.985 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.024 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.070 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.116 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.155 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.199 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.201 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.246 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.290 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.332 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.387 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.431 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.480 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.521 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.572 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.651 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.721 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.773 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0003 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:30:04.773 [DATA] [AR] pose 'rest': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,590,-0,157,0,792 up=-0,094,0,988,0,126 ground=111,60.
+2026-09-19 13:30:04.773 [DATA] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,01° крен=0,00° | fwd.Y=-0,1566 right.Y=-0,0000 up.Y=0,9877
+2026-09-19 13:30:04.774 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-19 13:30:04.776 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.857 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.873 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:04.939 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.021 [DATA] [TRUCK] приём: WS=1404 REST=82 без-placement=1436 битых=0 применено=50 live=False возраст_данных=24,6с | placement нет (пауза/окно игры неактивно — это норма)
+2026-09-19 13:30:05.024 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.084 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.126 [DATA] [AR] tick alive: known=True changed=False forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:30:05.127 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.167 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.211 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.259 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.303 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.353 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.369 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.412 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.456 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.516 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.516 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:30:05.567 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.612 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.656 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.705 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.753 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.797 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.799 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.846 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.860 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.918 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:05.968 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.016 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.019 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.067 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.116 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.155 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.200 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.201 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.247 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.288 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.337 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.350 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.393 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.440 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.482 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.525 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.571 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.611 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.654 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.698 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.743 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.784 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.829 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.886 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.925 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:06.967 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.010 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.050 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.090 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.135 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.173 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.175 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.220 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.265 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.309 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.354 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.369 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.410 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.453 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.492 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.534 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.579 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.618 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.659 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.702 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.743 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.786 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.826 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.840 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.880 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.922 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:07.964 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.008 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.054 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.098 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.139 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.179 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.182 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.228 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.271 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.310 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.355 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.369 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.414 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.455 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.497 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.547 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.596 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.640 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.682 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.727 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.771 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.816 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.860 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.873 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.918 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.960 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:08.963 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.003 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.048 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.088 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.133 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.177 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.179 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.224 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.267 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.309 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.350 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.362 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.406 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.446 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.491 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.529 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.573 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.639 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.705 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.775 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.841 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.868 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:09.929 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.007 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.080 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.081 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0003 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:30:10.081 [DATA] [AR] pose 'rest': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,590,-0,157,0,792 up=-0,094,0,988,0,126 ground=111,60.
+2026-09-19 13:30:10.082 [DATA] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,01° крен=0,00° | fwd.Y=-0,1566 right.Y=-0,0000 up.Y=0,9877
+2026-09-19 13:30:10.082 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-19 13:30:10.147 [DATA] [AR] tick alive: known=True changed=True forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:30:10.149 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.192 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.242 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.287 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.337 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.352 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.398 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.443 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.488 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.534 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.535 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:30:10.594 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.650 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.652 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.710 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.762 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.811 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.862 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.881 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.939 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.941 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:10.988 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.044 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.098 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.101 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.143 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.191 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.238 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.299 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.351 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.410 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.466 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.509 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.566 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.609 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.659 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.706 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.756 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.800 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.848 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.861 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.908 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.950 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:11.991 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.036 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.088 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.132 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.134 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.187 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.242 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.290 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.341 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.390 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.442 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.444 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.489 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.533 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.584 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.586 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.632 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.675 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.721 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.761 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.803 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.844 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.858 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.922 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:12.968 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.010 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.055 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.097 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.139 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.179 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.224 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.268 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.308 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.351 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.364 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.410 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.449 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.493 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.535 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.577 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.622 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.666 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.709 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.751 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.799 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.844 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.857 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.900 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.943 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:13.984 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.026 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.069 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.118 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.159 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.203 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.205 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.247 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.290 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.330 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.343 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.383 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.426 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.468 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.509 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.553 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.609 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.672 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.733 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.781 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.838 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.855 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.916 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:14.983 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.069 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.135 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.181 [DATA] [AR] tick alive: known=True changed=False forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:30:15.182 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.183 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.226 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.226 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0002 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:30:15.226 [DATA] [AR] pose 'rest': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,607,-0,157,0,779 up=-0,096,0,988,0,124 ground=111,60.
+2026-09-19 13:30:15.227 [DATA] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,01° крен=0,00° | fwd.Y=-0,1566 right.Y=-0,0000 up.Y=0,9877
+2026-09-19 13:30:15.227 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-19 13:30:15.274 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.318 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.333 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.375 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.416 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.460 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.506 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.547 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:30:15.549 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.592 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.644 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.684 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.729 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.774 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.828 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.842 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.887 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.924 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:15.973 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.019 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.071 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.122 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.171 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.225 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.269 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.317 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.362 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.376 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.421 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.465 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.510 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.555 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.598 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.641 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.684 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.724 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.766 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.811 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.853 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.867 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.910 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:16.967 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.007 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.049 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.090 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.135 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.175 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.217 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.260 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.300 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.341 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.354 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.399 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.441 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.483 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.527 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.576 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.621 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.669 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.714 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.727 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.775 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.819 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.833 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.874 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.918 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:17.965 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.006 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.047 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.089 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.131 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.173 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.220 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.259 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.304 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.348 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.402 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.441 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.484 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.527 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.572 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.630 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.676 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.726 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.740 [DATA] [OVR] load_order.txt: [custom_map1.json, test_targets.json] (снизу=низший приоритет)
+2026-09-19 13:30:18.741 [DATA] [OVR] прочитан custom_map1.json: записей=5
+2026-09-19 13:30:18.741 [DATA] [OVR]   custom_map1.json -> courier2: 161108.91, 101.55, -88350.03
+2026-09-19 13:30:18.741 [DATA] [OVR]   custom_map1.json -> stash1: 161073.75, 101.55, -89153.34
+2026-09-19 13:30:18.741 [DATA] [OVR]   custom_map1.json -> courier3: 160946.91, 0.00, -89380.03
+2026-09-19 13:30:18.741 [DATA] [OVR]   custom_map1.json -> 0x63DF0053598007AD: 148487.99, 0.00, -80647.96
+2026-09-19 13:30:18.742 [DATA] [OVR]   custom_map1.json -> random: 120581.54, 0.00, -53144.94
+2026-09-19 13:30:18.742 [DATA] [OVR] прочитан test_targets.json: записей=0
+2026-09-19 13:30:18.747 [DATA] [AR] Модель точек без изменений: 5751.
+2026-09-19 13:30:18.772 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.815 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.870 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.913 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:18.966 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.011 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.055 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.105 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.144 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.190 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.192 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.235 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.277 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.316 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.360 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.373 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.418 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.459 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.508 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.547 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.590 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.652 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.706 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.765 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.821 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.889 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.904 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:19.975 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.043 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.043 [DATA] [TRUCK] приём: WS=1641 REST=96 без-placement=1668 битых=0 применено=69 live=False возраст_данных=7,8с | placement нет (пауза/окно игры неактивно — это норма)
+2026-09-19 13:30:20.106 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.151 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.194 [DATA] [AR] tick alive: known=True changed=False forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:30:20.196 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.199 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.242 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.292 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.336 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.348 [DATA] [UI] политика жива: тиков=120 running=True paused=True focus=True active=True gameUI=False interactive=True (фокус на игре)
+2026-09-19 13:30:20.350 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.391 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.431 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.474 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.475 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0002 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:30:20.475 [DATA] [AR] pose 'rest': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,607,-0,157,0,779 up=-0,096,0,988,0,124 ground=111,60.
+2026-09-19 13:30:20.475 [DATA] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,01° крен=0,00° | fwd.Y=-0,1566 right.Y=-0,0000 up.Y=0,9877
+2026-09-19 13:30:20.475 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-19 13:30:20.520 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.580 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.581 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:30:20.624 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.669 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.711 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.752 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.831 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.884 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.936 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:20.985 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.025 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.072 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.111 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.153 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.194 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.236 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.277 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.320 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.333 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.370 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.413 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.452 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.493 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.538 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.585 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.626 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.672 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.719 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.764 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.805 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.847 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.858 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.905 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:21.959 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.016 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.056 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.099 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.143 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.187 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.232 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.277 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.318 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.366 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.378 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.425 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.472 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.513 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.555 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.606 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.646 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.687 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.735 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.782 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.823 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.837 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.876 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.921 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.959 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:22.999 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.040 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.077 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.118 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.163 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.203 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.245 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.290 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.330 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.343 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.383 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.425 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.428 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.471 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.510 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.553 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.554 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.599 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.642 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.685 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.724 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.764 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.807 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.853 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.866 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.905 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.947 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:23.990 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.030 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.073 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.117 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.156 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.204 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.246 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.288 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.326 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.339 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.383 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.423 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.425 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.468 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.510 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.555 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.596 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.656 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.712 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.771 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.824 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.843 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.904 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:24.965 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.037 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.106 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.154 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.194 [DATA] [AR] tick alive: known=True changed=False forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:30:25.197 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.242 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.286 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.334 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.347 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.391 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.433 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.475 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.522 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.524 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.575 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.617 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.618 [DATA] [AR] нет применимых telemetry-полей в источнике 'ws'.
+2026-09-19 13:30:25.658 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.703 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.744 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.791 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.838 [DATA] [AR] ground plane: plane origin=(146538.00,111.60,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.598 refH=111.598 maxRes=0.0002 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:30:25.839 [DATA] [AR] pose 'rest': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,607,-0,157,0,779 up=-0,096,0,988,0,124 ground=111,60.
+2026-09-19 13:30:25.839 [DATA] [AR] TILT (rest): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,01° крен=0,00° | fwd.Y=-0,1566 right.Y=-0,0000 up.Y=0,9877
+2026-09-19 13:30:25.839 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-19 13:30:25.841 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.853 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.903 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:25.947 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.000 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.042 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.087 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.138 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.177 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.235 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.278 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.324 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.339 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.383 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.421 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.476 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.519 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.566 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.613 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.665 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.715 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.757 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.804 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.852 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.867 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.916 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:26.959 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.013 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.053 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.099 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.144 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.184 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.232 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.284 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.322 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.366 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.380 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.421 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.423 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.468 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.470 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.522 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.560 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.618 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.662 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.715 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.761 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.804 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.852 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.910 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:27.976 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.026 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.070 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.114 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.159 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.218 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.284 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.342 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.357 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.403 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.457 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.500 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.559 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.603 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.651 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.694 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.740 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.785 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.832 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.846 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.888 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.932 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:28.976 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.023 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.066 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.115 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.185 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.187 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.248 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.292 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.343 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.398 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.439 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.486 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.529 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.533 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.573 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.623 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.694 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.759 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.811 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.869 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:29.963 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.028 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.030 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.093 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.151 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.208 [DATA] [AR] tick alive: known=True changed=False forced=False head=True pts=5751 x=146538,4 z=-60997,8
+2026-09-19 13:30:30.210 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.254 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.301 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.350 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.368 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.412 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.456 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.505 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.548 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.591 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.633 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.675 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.677 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.726 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.770 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.809 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.852 [DATA] [AR] ground plane: plane origin=(146538.00,111.59,-60998.00) N=(0.0000,1.0000,0.0000) avgWheelH=111.594 refH=111.594 maxRes=0.0005 used=4 wheels=4 | режим=ГОРИЗОНТ (виз.) | измеренный уклон=0 мм
+2026-09-19 13:30:30.853 [DATA] [AR] pose 'ws': truck=146538,42,111,60,-60997,84 camera=146537,82,114,16,-60995,98 fwd=-0,607,-0,157,0,779 up=-0,096,0,988,0,123 ground=111,59.
+2026-09-19 13:30:30.853 [DATA] [AR] TILT (ws): кузов pitch=-0,01° roll=-0,00° | голова pitch=-9,00° roll=0,00° | кабина pitch=-0,00° roll=-0,00° | КАМЕРА наклон=9,01° крен=0,00° | fwd.Y=-0,1566 right.Y=-0,0000 up.Y=0,9877
+2026-09-19 13:30:30.853 [DATA] [AR] HORIZON-GEOM: 1920x1080 hFov=105,0° vFov=65,0° fh=737 fv=848 → y(лево)=406 y(центр)=406 y(право)=406 наклон линии=-0,00° (центр экрана cy=540)
+2026-09-19 13:30:30.855 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.869 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.909 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:30.955 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.003 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.006 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.047 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.091 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.142 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.144 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.189 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.227 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.272 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.307 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.346 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.399 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.437 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.476 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.517 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.556 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.595 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.636 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.673 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.713 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.759 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.802 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.842 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.856 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.900 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.937 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:31.977 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.016 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.058 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.096 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.137 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.178 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.180 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.220 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.262 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.298 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.343 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.356 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.393 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.430 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.471 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.513 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.549 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.588 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.625 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.663 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.666 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.707 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.744 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.786 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.825 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.874 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.914 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.916 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.957 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:32.996 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.039 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.078 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.117 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.162 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.205 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.240 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.282 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.319 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.368 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.411 [DATA] Command 'ar_telemetry' sent to map.
+2026-09-19 13:30:33.448 [DATA] Command 'ar_telemetry' sent to map.
