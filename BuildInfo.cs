@@ -19,7 +19,7 @@ namespace ETS2_Assist_GUI
                         return attr.InformationalVersion;
                 }
                 catch { }
-                return "1.0.40.90-QUEST-CONTENT-R20";
+                return "1.0.40.91-QUEST-CONTENT-R21";
             }
         }
     }
