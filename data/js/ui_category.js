@@ -34,11 +34,14 @@
             'html.ets2-cat-game [data-category~="interactive"],' +
             'html.ets2-cat-interactive [data-category~="game"]' +
             '{visibility:hidden!important;opacity:0!important;pointer-events:none!important}' +
-            // Выбранная категория появляется через общий 150-мс fade.
-            'html[data-ets2-ui-ready="1"].ets2-cat-game [data-category~="game"],' +
-            'html[data-ets2-ui-ready="1"].ets2-cat-interactive [data-category~="interactive"]' +
+            // Игровые слои могут использовать общий fade.
+            // Интерактивные окна анимируют transform/opacity сами, поэтому
+            // категория НЕ должна перекрывать их transition/opacity.
+            'html[data-ets2-ui-ready="1"].ets2-cat-game [data-category~="game"]' +
             '{visibility:visible!important;opacity:1!important;pointer-events:auto!important;' +
             'transition:opacity 150ms ease-out!important}' +
+            'html[data-ets2-ui-ready="1"].ets2-cat-interactive [data-category~="interactive"]' +
+            '{visibility:visible!important;pointer-events:auto!important}' +
             'html[data-ets2-ui-ready="1"].ets2-ui-reveal-pending.ets2-cat-game [data-category~="game"],' +
             'html[data-ets2-ui-ready="1"].ets2-ui-reveal-pending.ets2-cat-interactive [data-category~="interactive"]' +
             '{opacity:0!important}' +
