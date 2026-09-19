@@ -204,6 +204,7 @@ namespace ETS2_Assist_GUI
             // только внутри WaitingForPause, больше никогда не доходил до показа
             // закладки. Отложенный показ проверяем независимо от состояния автомата.
             if (paused &&
+                _questPauseFlow != QuestPauseFlowState.WaitingForResume &&
                 _questEscapeStartedAt > 0 &&
                 !_questInteractiveShellVisible &&
                 now - _questEscapeStartedAt >= QuestPauseUiLeadMs)
@@ -279,10 +280,14 @@ namespace ETS2_Assist_GUI
 
                     if (!paused && _pauseFalseStreak >= PauseConfirmSamples)
                     {
+                        // Выход из паузы — окончательная граница интерактивного shell.
+                        // Нельзя оставлять закладку/минилого висеть до потери фокуса.
+                        HideQuestPauseShell();
                         _questPauseFlow = QuestPauseFlowState.Running;
                         _pauseTrueStreak = 0;
                         _pauseFalseStreak = 0;
-                        AppendLog("[UI] Подтверждён выход из паузы — игровые интерфейсы возвращаются.");
+                        _questEscapeStartedAt = 0;
+                        AppendLog("[UI] Подтверждён выход из паузы — интерактивный shell скрыт, игровые интерфейсы возвращаются.");
                     }
                     break;
             }
