@@ -54,16 +54,33 @@ namespace ETS2_Assist_GUI
         // ================================================================
         private System.Threading.Timer? _pauseCheckTimer;
         private int _pauseCheckBusy;
+        private int _pauseSnapshot = -1;
+        private long _pauseCheckTicks;
+        private long _pauseCheckLastLogged;
+
+        private enum QuestPauseFlowState
+        {
+            Running,
+            WaitingForPause,
+            InteractivePaused,
+            WaitingForResume
+        }
+
+        private QuestPauseFlowState _questPauseFlow = QuestPauseFlowState.Running;
+        private bool _questInteractiveShellVisible;
+        private bool _validatedPaused;
+        private long _questEscapeStartedAt;
+        private int _pauseTrueStreak;
+        private int _pauseFalseStreak;
+
+        private const int PauseCheckIntervalMs = 100;
+        private const int QuestPauseUiLeadMs = 4000;
+        private const int QuestPauseUiTimeoutMs = 6500;
+        private const int PauseConfirmSamples = 2;
 
         private void StartPauseCheck()
         {
-            // Проверяем, включен ли debug-режим (передаётся через параметр в URL)
-            // В веб-страницах используется ?debug=true, мы можем сохранить это состояние при запуске
-            // Для простоты будем проверять наличие файла debug.flag или параметра в конфиге.
-            // Я добавлю проверку через AppSettings или просто по наличию аргумента командной строки.
-            // Для демонстрации будем считать, что debug включен, если в аргументах есть --debug
-            var args = Environment.GetCommandLineArgs();
-            foreach (var arg in args)
+            foreach (var arg in Environment.GetCommandLineArgs())
             {
                 if (arg.Equals("--debug", StringComparison.OrdinalIgnoreCase))
                 {
@@ -75,22 +92,9 @@ namespace ETS2_Assist_GUI
             _pauseCheckTimer?.Dispose();
             _pauseCheckTimer = new System.Threading.Timer(
                 _ => QueuePauseCheck(), null, PauseCheckIntervalMs, PauseCheckIntervalMs);
-            AppendLog($"[UI] Политика оверлеев запущена (гистерезис 1 с, опрос {PauseCheckIntervalMs} мс, потоковый таймер).");
+            AppendLog($"[UI] Политика ESC/паузы запущена: опрос {PauseCheckIntervalMs} мс, ESC — единственный триггер интерактива.");
         }
 
-        private const int PauseCheckIntervalMs = 500;
-        private long _pauseCheckTicks;
-        private long _pauseCheckLastLogged;
-
-        // Снимок паузы, снятый В ФОНЕ (HTTP-запрос нельзя выполнять в обработчике
-        // сообщений: пока он идёт, оконная процедура стоит и WM_TIMER/Tick копятся).
-        // -1 = данных ещё нет, 0 = игра идёт, 1 = пауза.
-        private int _pauseSnapshot = -1;
-
-        /// <summary>
-        /// Тик политики приходит в потоке пула. Сеть опрашиваем ЗДЕСЬ (в фоне),
-        /// решение применяем в UI-потоке.
-        /// </summary>
         private void QueuePauseCheck()
         {
             if (Interlocked.CompareExchange(ref _pauseCheckBusy, 1, 0) != 0) return;
@@ -105,71 +109,54 @@ namespace ETS2_Assist_GUI
                     try { CheckPauseAndUpdateUI(); }
                     finally { Volatile.Write(ref _pauseCheckBusy, 0); }
                 }));
-                handed = true;   // флаг снимет сам UI-вызов в finally
+                handed = true;
             }
             catch { }
             finally
             {
-                // ВАЖНО: если вызов НЕ передан в UI-очередь (форма закрывается или
-                // окно ещё без handle), флаг надо снять ЗДЕСЬ — иначе он «залипнет»
-                // в 1 и политика умрёт навсегда. Та же ловушка, что и в AR-тике.
                 if (!handed) Volatile.Write(ref _pauseCheckBusy, 0);
             }
         }
 
-        /// <summary>
-        /// Строка «жизни» политики: раз в 30 с в app_data.log. Без неё молчание
-        /// политики (ровно этот баг) невозможно отличить от «нечего показывать».
-        /// </summary>
         private void LogPauseCheckAlive(bool gameRunning, bool paused, bool gameFocused)
         {
             long ticks = Interlocked.Increment(ref _pauseCheckTicks);
-            if (ticks - Interlocked.Read(ref _pauseCheckLastLogged) < 60) return;
+            if (ticks - Interlocked.Read(ref _pauseCheckLastLogged) < 300) return;
             Volatile.Write(ref _pauseCheckLastLogged, ticks);
             AppendDataLog(
                 $"[UI] политика жива: тиков={ticks} running={gameRunning} paused={paused} " +
-                $"focus={gameFocused} active={_committedActive} gameUI={_lastGameUiVisible} " +
-                $"interactive={_lastInteractiveVisible} ({_focusDiagnostics})");
+                $"focus={gameFocused} flow={_questPauseFlow} shell={_questInteractiveShellVisible} " +
+                $"active={_committedActive} ({_focusDiagnostics})");
         }
 
         private void CheckPauseAndUpdateUI()
         {
-            // Если debug режим, не скрываем UI (и принудительно показываем окна слоёв)
+            bool gameRunning = IsGameRunning();
+            bool gameFocused = IsGameFocused();
+
             if (_debugMode)
             {
                 RestoreOverlayLayers();
-                // Если UI ещё не показан, показываем его с анимацией один раз
-                if (!_uiShown)
-                {
-                    _uiShown = true;
-                    SendCommandToMap("show_ui_first");
-                    SendCommandToMap("minimap_show");
-                    AppendLog("[UI] Отправлена команда show_ui_first (debug mode)");
-                }
+                bool debugVisible = gameRunning && gameFocused;
+                SetQuestInputHookActive(debugVisible);
+                SetQuestToggleHotkeyActive(_questInteractiveShellVisible);
+                ApplyOverlayVisibility(debugVisible, _questInteractiveShellVisible, gameFocused);
                 return;
             }
 
-            bool gameRunning = IsGameRunning();
-            bool gameFocused = IsGameFocused();
-            // Пауза — из снимка, снятого в фоне (если ещё нет, берём намерение).
             int snap = Volatile.Read(ref _pauseSnapshot);
             bool paused = snap < 0 ? _pausedIntent : snap == 1;
-            LogPauseCheckAlive(gameRunning, paused, gameFocused);
+            _validatedPaused = paused;
 
-            // v1.0.40.58: ОТЛАДКА ВЕБ-КОНТЕНТА. При включённом debugShow чекбоксе
-            // оверлеи НЕ исчезают при потере фокуса (окно ушло на другой экран/
-            // пользователь работает в редакторе), но ЛОГИКА ПАУЗЫ работает как есть:
-            // пауза -> интерактивные, игра -> игровые. Отключается РОВНО правило
-            // фокуса, и ничего больше.
+            try { Quests.QuestRuntime.Current?.SetHostPauseState(paused); } catch { }
+
+            // ESC слушается только когда foreground принадлежит ETS2. Оно никогда
+            // не превращается в глобальный перехват для остальных приложений.
+            SetQuestInputHookActive(gameRunning && gameFocused);
+
             bool debugShow = AR.ArBridge.DebugShow;
-
-            // Оверлеи допустимы только когда игра запущена и её окно активно.
-            // Фокус на любом СТОРОННЕМ окне (включая основную форму приложения)
-            // означает, что игровая картинка не видна — наложение запрещено.
             bool gameVisible = gameRunning && (debugShow || gameFocused);
 
-            // Гистерезис: фиксируем смену только после 2 устойчивых тиков (~1 с),
-            // чтобы кратковременная потеря фокуса не мигала оверлеями.
             if (gameVisible != _committedActive)
             {
                 _activeMismatch++;
@@ -177,20 +164,203 @@ namespace ETS2_Assist_GUI
                 _committedActive = gameVisible;
                 _activeMismatch = 0;
             }
-            else
+            else _activeMismatch = 0;
+
+            if (!_committedActive)
             {
-                _activeMismatch = 0;
+                ResetQuestPauseFlowForFocusLoss();
+                UpdateOverlayLayerFocus(false);
+                ApplyOverlayVisibility(false, false, false);
+                return;
             }
 
-            bool visible = _committedActive;
-            // Ровно одна категория за раз: пауза -> интерактивные, игра -> игровые.
-            // Отладочные кнопки («Показать карту», «Показать hybrid») принудительно
-            // включают игровую категорию: взаимоисключение при этом сохраняется.
-            bool showInteractive = visible && paused && !_gameUiForce;
-            bool showGameUi = _gameUiForce || (visible && !paused);
+            AdvanceQuestPauseFlow(paused);
+
+            bool showInteractive = _questInteractiveShellVisible;
+            bool showGameUi = _gameUiForce ||
+                              (gameVisible &&
+                               !_questInteractiveShellVisible &&
+                               _questPauseFlow != QuestPauseFlowState.WaitingForResume);
 
             UpdateOverlayLayerFocus(debugShow || _committedActive);
             ApplyOverlayVisibility(showGameUi, showInteractive, gameFocused);
+            LogPauseCheckAlive(gameRunning, paused, gameFocused);
+        }
+
+        private void AdvanceQuestPauseFlow(bool paused)
+        {
+            long now = Environment.TickCount64;
+
+            switch (_questPauseFlow)
+            {
+                case QuestPauseFlowState.Running:
+                    _pauseTrueStreak = 0;
+                    _pauseFalseStreak = 0;
+                    break;
+
+                case QuestPauseFlowState.WaitingForPause:
+                    if (paused)
+                    {
+                        _pauseTrueStreak++;
+                        _pauseFalseStreak = 0;
+                    }
+                    else
+                    {
+                        _pauseTrueStreak = 0;
+                        _pauseFalseStreak++;
+                    }
+
+                    // Показываем только закладку заранее, ещё до обязательного
+                    // подтверждения паузы. Само окно станет доступно после 2 сэмплов.
+                    if (!_questInteractiveShellVisible &&
+                        now - _questEscapeStartedAt >= QuestPauseUiLeadMs)
+                        ShowQuestPauseShell();
+
+                    if (paused && _pauseTrueStreak >= PauseConfirmSamples)
+                    {
+                        _questPauseFlow = QuestPauseFlowState.InteractivePaused;
+                        SendCommandToMap("quest_pause_ui", new JObject
+                        {
+                            ["visible"] = true,
+                            ["ready"] = true,
+                            ["pulse"] = false,
+                            ["hasInteractive"] = _questHasInteractive
+                        });
+                        try { Quests.QuestRuntime.Current?.SetInteractiveVisible(true, false); } catch { }
+                    }
+                    else if (!paused &&
+                             now - _questEscapeStartedAt >= QuestPauseUiTimeoutMs)
+                    {
+                        HideQuestPauseShell();
+                        _questPauseFlow = QuestPauseFlowState.Running;
+                    }
+                    break;
+
+                case QuestPauseFlowState.InteractivePaused:
+                    if (paused)
+                    {
+                        _pauseFalseStreak = 0;
+                        _pauseTrueStreak++;
+                    }
+                    else
+                    {
+                        _pauseTrueStreak = 0;
+                        _pauseFalseStreak++;
+                    }
+                    break;
+
+                case QuestPauseFlowState.WaitingForResume:
+                    if (paused)
+                    {
+                        _pauseFalseStreak = 0;
+                        _pauseTrueStreak++;
+                    }
+                    else
+                    {
+                        _pauseTrueStreak = 0;
+                        _pauseFalseStreak++;
+                    }
+
+                    if (!paused && _pauseFalseStreak >= PauseConfirmSamples)
+                    {
+                        _questPauseFlow = QuestPauseFlowState.Running;
+                        _pauseTrueStreak = 0;
+                        _pauseFalseStreak = 0;
+                        AppendLog("[UI] Подтверждён выход из паузы — игровые интерфейсы возвращаются.");
+                    }
+                    break;
+            }
+        }
+
+        private void OnQuestEscapeKeyDetected()
+        {
+            if (!_committedActive || !IsQuestHookGameForeground()) return;
+
+            AppendLog($"[QUEST] ESC detected flow={_questPauseFlow} validatedPaused={_validatedPaused}");
+
+            if (_questPauseFlow == QuestPauseFlowState.InteractivePaused)
+            {
+                BeginQuestResumeWait("ESC while interactive paused");
+                return;
+            }
+
+            if (_questPauseFlow == QuestPauseFlowState.WaitingForPause)
+            {
+                // Второй ESC после валидации паузы = закрытие нашего интерактива.
+                if (_validatedPaused)
+                    BeginQuestResumeWait("second ESC while pause validated");
+                return;
+            }
+
+            // F1-F12/PAUSE могли открыть внутриигровое меню. Их ESC здесь не
+            // превращается в наш триггер: если пауза уже подтверждена, ничего не делаем.
+            if (_validatedPaused) return;
+
+            if (_questPauseFlow == QuestPauseFlowState.Running)
+            {
+                _questEscapeStartedAt = Environment.TickCount64;
+                _pauseTrueStreak = 0;
+                _pauseFalseStreak = 0;
+                _questPauseFlow = QuestPauseFlowState.WaitingForPause;
+                AppendLog($"[QUEST] ESC -> ожидание главной паузы; закладка через {QuestPauseUiLeadMs} мс.");
+            }
+        }
+
+        private void ShowQuestPauseShell()
+        {
+            if (_questInteractiveShellVisible) return;
+
+            _questInteractiveShellVisible = true;
+            SendCommandToMap("hide_ui");
+            SendCommandToMap("hide_game_ui");
+            if (!_minimapAutoLogic) SendCommandToMap("minimap_hide");
+            SendCommandToMap("set_overlay_category", new JObject { ["category"] = "interactive" });
+            SendCommandToMap("set_quest_collapsed", new JObject { ["collapsed"] = true });
+            SendCommandToMap("quest_pause_ui", new JObject
+            {
+                ["visible"] = true,
+                ["ready"] = false,
+                ["pulse"] = !_questHasInteractive,
+                ["hasInteractive"] = _questHasInteractive
+            });
+            try { Quests.QuestRuntime.Current?.SetInteractiveVisible(true, true); } catch { }
+            PushQuestInteractiveSignal();
+            AppendLog("[QUEST] Главный ESC: закладка квестов выдвигается.");
+        }
+
+        private void HideQuestPauseShell()
+        {
+            bool changed = _questInteractiveShellVisible;
+            _questInteractiveShellVisible = false;
+            SendCommandToMap("quest_pause_ui", new JObject
+            {
+                ["visible"] = false,
+                ["ready"] = false,
+                ["pulse"] = false
+            });
+            try { Quests.QuestRuntime.Current?.SetInteractiveVisible(false, false); } catch { }
+            if (changed) AppendLog("[QUEST] Интерактивный shell скрыт.");
+        }
+
+        private void BeginQuestResumeWait(string reason)
+        {
+            _questPauseFlow = QuestPauseFlowState.WaitingForResume;
+            _pauseTrueStreak = 0;
+            _pauseFalseStreak = 0;
+            HideQuestPauseShell();
+            AppendLog($"[QUEST] {reason}: ждём подтверждения выхода из паузы.");
+        }
+
+        private void ResetQuestPauseFlowForFocusLoss()
+        {
+            if (_questPauseFlow != QuestPauseFlowState.Running || _questInteractiveShellVisible)
+                HideQuestPauseShell();
+
+            _questPauseFlow = QuestPauseFlowState.Running;
+            _pauseTrueStreak = 0;
+            _pauseFalseStreak = 0;
+            _questEscapeStartedAt = 0;
+            _validatedPaused = false;
         }
 
         /// <summary>
@@ -265,14 +435,14 @@ namespace ETS2_Assist_GUI
             {
                 _lastGameUiVisible = showGameUi;
                 _lastUiVisible = showGameUi;
-                _lastPauseState = !showGameUi;
+                _lastPauseState = _validatedPaused;
 
                 if (!showGameUi)
                 {
                     SendCommandToMap("hide_ui");
                     SendCommandToMap("hide_game_ui");
                     if (!_minimapAutoLogic) SendCommandToMap("minimap_hide");
-                    AppendLog("[UI] Игровые интерфейсы скрыты (пауза или фокус вне игры).");
+                    AppendLog("[UI] Игровые интерфейсы скрыты.");
                 }
                 else
                 {
@@ -286,8 +456,6 @@ namespace ETS2_Assist_GUI
                 }
             }
 
-            // Миникарта живёт в игровой категории. Отладочный тоггл «Показать карту»
-            // держит её видимой всегда (вне зависимости от паузы и фокуса).
             if (_minimapAutoLogic)
             {
                 if (_lastMinimapVisible != true)
@@ -315,25 +483,24 @@ namespace ETS2_Assist_GUI
             {
                 _lastInteractiveVisible = showInteractive;
                 _lastPauseLogoVisible = showInteractive;
-                if (showInteractive) _lastPauseState = true;
-                SendCommandToMap("set_overlay_category", new JObject
-                {
-                    ["category"] = showInteractive ? "interactive" : "game"
-                });
+
                 if (showInteractive)
                 {
-                    RestoreQuestWindowState();
+                    SendCommandToMap("set_overlay_category", new JObject { ["category"] = "interactive" });
+                    SendCommandToMap("set_quest_collapsed", new JObject { ["collapsed"] = true });
                     PushQuestInteractiveSignal();
                 }
-                AppendLog(showInteractive
-                    ? "[UI] Интерактивные интерфейсы показаны: минилого + интерактивы (квесты)."
-                    : "[UI] Интерактивные интерфейсы скрыты (игра снята с паузы или фокус вне игры).");
-                Logger.Current?.Workflow($"[QUEST-DIAG] state source=policy paused={!showGameUi} collapsed={_questCollapsed} interactive={showInteractive} gameUi={showGameUi} focused={gameFocused}");
+                else if (showGameUi)
+                {
+                    SendCommandToMap("set_overlay_category", new JObject { ["category"] = "game" });
+                }
+
+                Logger.Current?.Workflow(
+                    $"[QUEST-DIAG] state source=ESC-flow paused={_validatedPaused} " +
+                    $"collapsed={_questCollapsed} interactive={showInteractive} " +
+                    $"gameUi={showGameUi} focused={gameFocused}");
             }
 
-            // v1.0.40.79: пока на экране интерактивная категория (а это значит, что
-            // видна закладка «Квесты» либо само окно), активируем low-level TAB hook.
-            // В остальное время TAB полностью проходит к активному приложению.
             SetQuestToggleHotkeyActive(showInteractive);
 
             if (gameFocused != _lastGameFocused)
