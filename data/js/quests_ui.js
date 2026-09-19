@@ -317,11 +317,10 @@ function bindQuestNativeInput(){
             if(!msg||msg.source!=='quest-native-input')return;
             qdCounters.nativeMessages++;
             softCursorMessages++;
-            if(msg.type==='hotkey' && msg.command==='quest_toggle_collapse'){
-                qdLog('[NATIVE-IN] hotkey=TAB quest_toggle_collapse '+qdStateText());
-                if(collapsed)expandWindow();else collapseWindow();
-                return;
-            }
+            /* v1.0.40.79: TAB больше не переключается из native-input host.
+               Единственный источник TAB — MainForm low-level keyboard hook.
+               Так исключаем двойное переключение, когда host и приложение
+               одновременно видят одну физическую клавишу. */
             if(msg.type==='mousemove' && Number.isFinite(Number(msg.x)) && Number.isFinite(Number(msg.y))){
                 qdLastPlace.hostX=Number(msg.x);qdLastPlace.hostY=Number(msg.y);
             }
