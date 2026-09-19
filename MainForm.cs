@@ -4419,7 +4419,7 @@ RegisterHotKeyChecked(
             {
                 using (var client = new HttpClient())
                 {
-                    client.Timeout = TimeSpan.FromMilliseconds(700);
+                    client.Timeout = TimeSpan.FromMilliseconds(180);
                     int currentPort = TruckTelemetry.Port;
                     foreach (int port in (currentPort == 8080 ? new[] { 8080, 8081 } : new[] { currentPort, 8080 }).Distinct())
                     {
