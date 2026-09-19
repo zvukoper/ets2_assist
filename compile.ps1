@@ -104,6 +104,13 @@ if (Test-Path $webOverlayProject) {
         exit 1
     }
     Copy-Item -LiteralPath $webOverlayExe -Destination $webOverlayTarget -Force
+    $woVersion = $null
+    try { $woVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($webOverlayTarget).ProductVersion } catch { }
+    Write-Host "WebOverlay delivered: version=$woVersion path=$webOverlayTarget" -ForegroundColor Cyan
+    if ($woVersion -notlike "1.0.40.67*") {
+        Write-Host "WebOverlay version CHECK FAILED: expected 1.0.40.67*, got $woVersion" -ForegroundColor Red
+        exit 1
+    }
     Write-Host "Updated ETS2 Assist data\bin\WebOverlay.exe from sibling WebOverlay build." -ForegroundColor Green
 } else {
     Write-Host "Sibling WebOverlay repository not found at $webOverlayProject; keeping existing data\bin\WebOverlay.exe." -ForegroundColor Yellow
