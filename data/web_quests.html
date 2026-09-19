@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ETS2 Assist — интерактив R16 1.0.40.86</title>
+<title>ETS2 Assist — интерактив R17 1.0.40.87</title>
 <script src="js/debug_show.js"></script>
 <script src="js/ui_category.js"></script>
 <style>
@@ -195,13 +195,21 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 }
 #questTab.pulse,#inventoryTab.pulse{animation:none}
 
-/* New-item indicator: static, positioned to the RIGHT and slightly ABOVE the name. */
+/* New-item indicator: a small circle in the same place where the old
+   star marker was. It uses EXACTLY the bookmark beacon animation. */
 .inventoryNewDot{
-    flex:0 0 auto;
+    display:inline-block;
+    flex:0 0 7px;
+    width:7px;
+    height:7px;
     margin-left:6px;
-    margin-top:-2px;
+    margin-top:4px;
+    border-radius:50%;
+    background:#ffd45a;
     color:#ffd45a;
-    font:700 13px/1 'Segoe UI',Arial,sans-serif;
+    box-shadow:0 0 2px rgba(255,211,77,.15);
+    animation:bookmarkBeaconPulse 700ms ease-in-out 2;
+    will-change:box-shadow,transform;
 }
 .inventoryItemName{
     display:flex;align-items:flex-start;min-width:0;
@@ -269,7 +277,7 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 })();
 </script>
 <script>
-window.__questHtmlDiagBuild='QHTML-CONTENT-R16-2026-09-19';
+window.__questHtmlDiagBuild='QHTML-CONTENT-PULSE-R17-2026-09-19';
 window.__questBootstrapErrors=[];
 window.addEventListener('error',function(e){
     try{
