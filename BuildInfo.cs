@@ -19,7 +19,7 @@ namespace ETS2_Assist_GUI
                         return attr.InformationalVersion;
                 }
                 catch { }
-                return "1.0.40.66-RAW-INPUT-TEST";
+                return "1.0.40.67-RAW-INPUT-TEST-R2";
             }
         }
     }
