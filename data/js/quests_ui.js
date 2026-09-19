@@ -921,7 +921,11 @@ window.onEts2Command=function(d){
     }
     else if(d.command==='set_quest_tab_state'){setTabPulse(d.hasInteractive===true);}
     else if(d.command==='set_quest_collapsed'){
-        if(interactiveReady)syncInterfaceState(d.collapsed?'none':'quest',false,false);
+        // Пока открыт Инвентарь, Квесты обязаны оставаться закрытыми.
+        // Это защищает от echo-команды C# после quest_window_state(collapsed=true),
+        // которая иначе могла бы немедленно закрыть уже открытый Инвентарь.
+        if(interactiveReady && !inventoryOpen)
+            syncInterfaceState(d.collapsed?'none':'quest',false,false);
     }
     else if(d.command==='quest_toggle_collapse')toggleQuestInterface();
     else if(d.command==='quest_toggle_inventory')toggleInventory();
