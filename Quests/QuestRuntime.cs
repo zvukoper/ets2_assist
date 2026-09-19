@@ -619,6 +619,14 @@ namespace ETS2_Assist_GUI.Quests
             string? sq = string.IsNullOrWhiteSpace(selectedQuest) ? _selectedQuestId : selectedQuest;
             string? si = string.IsNullOrWhiteSpace(selectedInteraction) ? _selectedInteractionId : selectedInteraction;
 
+            /* selectedQuest/selectedInteraction — часть СОСТОЯНИЯ выбора, а не
+               побочный эффект наличия dialogue. Раньше после SelectInteraction
+               следующий периодический BroadcastState не находил _activeDialogue
+               и поэтому вообще не отправлял выбранные ID; UI принимал такой
+               пакет за сброс выделения примерно через один тик (~1 с). */
+            payload["selectedQuest"] = sq ?? "";
+            payload["selectedInteraction"] = si ?? "";
+
             if (!string.IsNullOrWhiteSpace(sq) && !string.IsNullOrWhiteSpace(si))
             {
                 if (explicitDialogue == null)
@@ -628,8 +636,6 @@ namespace ETS2_Assist_GUI.Quests
                     _store.Definitions.TryGetValue(sq, out QuestDefinition? def) &&
                     def.Dialogues.TryGetValue(explicitDialogue, out QuestDialogueNode? node))
                 {
-                    payload["selectedQuest"] = sq;
-                    payload["selectedInteraction"] = si;
                     payload["dialogue"] = BuildDialoguePayload(def, node);
                 }
             }
