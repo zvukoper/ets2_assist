@@ -145,6 +145,7 @@ namespace ETS2_Assist_GUI.Quests
             State ??= new QuestPersistentState();
             State.Quests ??= new(StringComparer.OrdinalIgnoreCase);
             State.Inventory ??= new(StringComparer.OrdinalIgnoreCase);
+            State.NewItems ??= new(StringComparer.OrdinalIgnoreCase);
             State.Reputation ??= new(StringComparer.OrdinalIgnoreCase);
             State.Stats ??= new(StringComparer.OrdinalIgnoreCase);
             State.PermanentInteractionNames ??= new(StringComparer.OrdinalIgnoreCase);
@@ -183,6 +184,7 @@ namespace ETS2_Assist_GUI.Quests
         {
             state.Quests ??= new(StringComparer.OrdinalIgnoreCase);
             state.Inventory ??= new(StringComparer.OrdinalIgnoreCase);
+            state.NewItems ??= new(StringComparer.OrdinalIgnoreCase);
             state.Reputation ??= new(StringComparer.OrdinalIgnoreCase);
             state.Stats ??= new(StringComparer.OrdinalIgnoreCase);
             state.PermanentInteractionNames ??= new(StringComparer.OrdinalIgnoreCase);
