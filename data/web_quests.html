@@ -32,14 +32,33 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 #miniLogo img{display:block;width:84px;height:83px;object-fit:contain}
 #miniLogoVersion{display:none}
 
+/* STANDARD INTERFACE MOTION
+   One reusable animation for every interactive screen: enter from outside,
+   leave to outside. Future interfaces should use .interfaceWindow too. */
+.interfaceWindow{
+    position:absolute;
+    box-sizing:border-box;
+    opacity:0;
+    transform:translateX(calc(-100% - 40px));
+    pointer-events:none;
+    transition:transform 220ms ease,opacity 160ms ease 160ms;
+    will-change:transform,opacity;
+}
+.interfaceWindow.interfaceActive{
+    opacity:1;
+    transform:translateX(0);
+    pointer-events:auto;
+    transition:transform 220ms ease,opacity 160ms ease;
+}
 #questWindow{
-    position:absolute;left:0;top:0;width:1410px;height:906px;
-    opacity:1;transform:translateX(0);pointer-events:auto;
-    transition:opacity 160ms ease,transform 220ms ease 160ms;
+    left:0;top:0;width:1410px;height:906px;
 }
 #questWindow.collapsed{
     opacity:0;transform:translateX(calc(-100% - 40px));pointer-events:none;
-    transition:transform 220ms ease,opacity 160ms ease 220ms;
+}
+#inventoryWindow{
+    left:104px;top:74px;width:278px;height:829px;
+    z-index:35;
 }
 
 #questLayout{position:absolute;left:0;top:0;width:1410px;height:906px;display:block}
@@ -75,19 +94,29 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 #dialogText.fading{opacity:0}
 #dialogService{padding:6px;color:#c4ccd6;font:12px/1.4 'Courier New',monospace}
 #dialogOptions{height:100%;display:flex;flex-direction:column;gap:7px;overflow:auto}
-.dialogOption{padding:9px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:#e7edf4;border-radius:7px;text-align:left;cursor:pointer;font:inherit}
-.dialogOption:hover{border-color:rgba(255,211,77,.65);background:rgba(255,255,255,.06)}
+.dialogOption{
+    padding:9px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgb(19,20,21);
+    color:#e7edf4;border-radius:7px;text-align:left;cursor:pointer;font:inherit;
+    transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease;
+}
+.dialogOption:hover,.dialogOption.quest-native-hover{
+    border-color:rgba(255,211,77,.65);
+    background:rgb(33,34,35);
+}
 .dialogOption:disabled{opacity:.38;cursor:not-allowed}
+#imagePanel{padding:12px}
 #dialogImage{
     width:100%;height:100%;margin:0;object-fit:cover;
-    border-radius:10px;background:rgba(0,0,0,.14);display:none;
+    border-radius:8px;background:rgba(0,0,0,1);display:none;
 }
 .serviceBlock{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)}
 .questRewardTitle{margin-top:9px;margin-bottom:4px;color:#ffd45a;font-weight:700}
 .rewardLine{padding:3px 0}
 
-/* Old quest bookmark design restored verbatim in shape/visual language.
-   Entrance/exit is opacity-only; the original continuous pulse remains. */
+/* Bookmarks use the SAME enter/exit motion as interface windows.
+   While any interface is open both bookmarks are physically outside the screen. */
 #questTab,#inventoryTab{
     position:absolute;left:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -97,13 +126,16 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     border-radius:0 7px 7px 0;
     color:#ffd45a;font:700 14px/1 'Segoe UI',Arial,sans-serif;
     letter-spacing:1px;cursor:pointer;box-sizing:content-box;
-    opacity:0;pointer-events:none;z-index:30;
-    transition:opacity 150ms ease;
+    opacity:0;pointer-events:none;z-index:40;
+    transform:translate(-115%,-50%);
+    transition:transform 220ms ease,opacity 160ms ease 160ms;
+    will-change:transform,opacity;
 }
-#questTab{top:50%;transform:translate(-115%,-50%)}
-#inventoryTab{top:calc(50% + 149px);transform:translate(-115%,-50%)}
+#questTab{top:50%}
+#inventoryTab{top:calc(50% + 149px)}
 #questTab.visible,#inventoryTab.visible{
     transform:translate(0,-50%);opacity:1;pointer-events:auto;
+    transition:transform 220ms ease,opacity 160ms ease;
 }
 #questTab.active,#inventoryTab.active{
     border-color:rgba(255,205,85,.45);
@@ -121,33 +153,19 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     50%{box-shadow:0 0 22px rgba(255,205,85,.95)}
 }
 
-/* Новые предметы: такая же мягкая жёлтая пульсация, но только у точки. */
+/* New-item indicator: static, positioned to the RIGHT and slightly ABOVE the name. */
 .inventoryNewDot{
-    flex:0 0 7px;width:7px;height:7px;margin-right:7px;
-    margin-top:5px;border-radius:50%;
-    background:#ffd45a;
-    box-shadow:0 0 2px rgba(255,205,85,.25);
-    animation:questTabPulse 2s ease-in-out infinite;
+    flex:0 0 auto;
+    margin-left:6px;
+    margin-top:-2px;
+    color:#ffd45a;
+    font:700 13px/1 'Segoe UI',Arial,sans-serif;
 }
-.inventoryItemName{display:flex;align-items:flex-start;min-width:0}
-.inventoryItemName span:last-child{min-width:0}
-
-/* Inventory panel uses the same 150ms opacity fade, never display/slide animation. */
-#inventoryWindow{
-    position:absolute;left:104px;top:74px;width:278px;height:829px;
-    box-sizing:border-box;display:block;visibility:hidden;opacity:0;
-    background:rgba(23,24,25,.87);box-shadow:none;
-    pointer-events:none;transition:opacity 150ms ease;
+.inventoryItemName{
+    display:flex;align-items:flex-start;min-width:0;
 }
-#inventoryWindow.visible{visibility:visible;opacity:1;pointer-events:auto}
+.inventoryItemLabel{min-width:0}
 #inventoryList{height:100%;padding:6px;overflow:auto;box-sizing:border-box}
-.inventoryItem{
-    width:100%;display:flex;justify-content:space-between;gap:8px;
-    padding:9px 7px;margin-bottom:2px;border:0;
-    border-bottom:1px solid rgba(255,255,255,.06);border-radius:6px;
-    background:transparent;color:#dce3eb;text-align:left;cursor:pointer
-}
-.inventoryItem:hover{background:rgba(255,205,85,.11)}
 .inventoryItem small{color:#8c98a9}
 
 #overlayError{
@@ -171,7 +189,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   <button id="questTab" type="button"><span class="questTabText">Квесты</span><span class="questTabHint">TAB</span></button>
   <button id="inventoryTab" type="button"><span class="inventoryTabText">Инвентарь</span><span class="inventoryTabHint">I</span></button>
 
-  <div id="questWindow"><div id="questLayout">
+  <div id="questWindow" class="interfaceWindow collapsed"><div id="questLayout">
    <section id="questSidebar"><div id="questList"></div></section>
    <section id="eventPanel"><div id="dialog" class="panelInner"><div id="dialogSpeaker"></div><div id="dialogText"></div></div></section>
    <section id="responsePanel"><div class="panelInner"><div class="panelTitle">Ответы</div><div id="dialogOptions"></div></div></section>
@@ -179,7 +197,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
    <section id="servicePanel"><div class="panelInner"><div class="panelTitle">Служебная информация</div><div id="dialogService"></div></div></section>
   </div></div>
 
-  <section id="inventoryWindow"><div id="inventoryList"></div></section>
+  <section id="inventoryWindow" class="interfaceWindow"><div id="inventoryList"></div></section>
  </div>
 
  <div id="overlayError" aria-live="polite"></div>
