@@ -33,30 +33,60 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 #miniLogoVersion{display:none}
 
 /* STANDARD INTERFACE MOTION
-   One reusable animation for every interactive screen: enter from outside,
-   leave to outside. Future interfaces should use .interfaceWindow too. */
+   Единая анимация для всех интерактивных окон:
+   - вход: slide-in из-за левой границы + быстрый fade-in;
+   - выход: slide-out, а последние 100 мс — fade-out.
+   Вся геометрия задаётся только через --interface-closed-transform. */
 .interfaceWindow{
     position:absolute;
     box-sizing:border-box;
-    opacity:1;
-    transform:translateX(calc(-100% - 40px));
+    opacity:0;
+    transform:var(--interface-closed-transform);
     pointer-events:none;
-    transition:transform 220ms ease;
-    will-change:transform;
+    will-change:transform,opacity;
 }
 .interfaceWindow.interfaceActive{
     opacity:1;
     transform:translateX(0);
     pointer-events:auto;
-    transition:transform 220ms ease;
+}
+.interfaceWindow.interfaceMotionEnter{
+    animation:
+        interfaceSlideIn 320ms cubic-bezier(.22,.8,.2,1) both,
+        interfaceFadeIn 120ms ease-out both;
+}
+.interfaceWindow.interfaceMotionExit{
+    animation:
+        interfaceSlideOut 320ms cubic-bezier(.22,.8,.2,1) both,
+        interfaceFadeOut 100ms ease-in 220ms both;
+}
+@keyframes interfaceSlideIn{
+    from{transform:var(--interface-closed-transform)}
+    to{transform:translateX(0)}
+}
+@keyframes interfaceSlideOut{
+    from{transform:translateX(0)}
+    to{transform:var(--interface-closed-transform)}
+}
+@keyframes interfaceFadeIn{
+    from{opacity:0}
+    to{opacity:1}
+}
+@keyframes interfaceFadeOut{
+    from{opacity:1}
+    to{opacity:0}
 }
 #questWindow{
+    --interface-closed-transform:translateX(calc(-100% - 40px));
     left:0;top:0;width:1410px;height:906px;
 }
 #questWindow.collapsed{
-    opacity:1;transform:translateX(calc(-100% - 40px));pointer-events:none;
+    opacity:0;
+    transform:var(--interface-closed-transform);
+    pointer-events:none;
 }
 #inventoryWindow{
+    --interface-closed-transform:translateX(calc(-100% - 40px - 104px));
     left:104px;top:74px;width:278px;height:829px;
     z-index:35;
     border-radius:10px;
@@ -131,7 +161,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     letter-spacing:1px;cursor:pointer;box-sizing:content-box;
     opacity:1;pointer-events:none;z-index:40;
     transform:translate(-115%,-50%);
-    transition:transform 220ms ease;
+    transition:transform 320ms cubic-bezier(.22,.8,.2,1);
     will-change:transform;
 }
 #questTab{top:50%}
@@ -157,8 +187,6 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     color:#5c646e;font:400 9px/1 'Segoe UI',Arial,sans-serif;letter-spacing:0;
 }
 #questTab.pulse,#inventoryTab.pulse{animation:none}
-
-}
 
 /* New-item indicator: static, positioned to the RIGHT and slightly ABOVE the name. */
 .inventoryNewDot{
@@ -190,6 +218,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 #cursorDot{
     position:fixed;left:0;top:0;width:27px;height:44px;display:none;
     z-index:2147483647;pointer-events:none;will-change:transform,opacity;
+    transition:opacity 50ms ease-out;
     filter:drop-shadow(2px 3px 2px rgba(0,0,0,.82))
 }
 </style>
