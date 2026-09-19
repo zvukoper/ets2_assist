@@ -12,6 +12,9 @@
 var ws=null,model=null,currentQuest='',currentInteraction='',wasPaused=false,collapsed=true,questDetailPinned=false,inventoryOpen=false,archiveVisible=false,interactiveReady=false,activeInterface='none',selectedInventoryItem='';
 var locallySeenInventoryItems=Object.create(null);
 var pagePaused=false,hasInteractive=false,lastDialogueKey='',lastOptionsKey='',lastInteractionsKey='',lastQuestsKey='',typeTimer=null,fadeTimer=null;
+var questBeaconVisible=false,inventoryBeaconVisible=false,questBeaconTimer=0,inventoryBeaconTimer=0;
+var pendingQuestBeacon=false,pendingInventoryBeacon=false;
+var inventoryBeaconSeen=Object.create(null),lastNearbyInteractive=false;
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
    переключать вид дважды: двойной клик по кнопке или по прозрачной области
    давал пару «свёрнуто → развёрнуто» в одну миллисекунду, и окно визуально
@@ -161,20 +164,34 @@ function setNativeClickable(value){post({command:'set_clickable',value:!!value})
  * Геометрия отправляется в долях viewport'а (не зависит от DPI). */
 var lastInteractiveKey='';
 function publishInteractiveBounds(){
-    var mode='hidden',el=null;
+    var mode='hidden',els=[];
     if(pagePaused){
-        if(inventoryOpen){mode='inventory';el=$('inventoryWindow')}
-        else if(collapsed){mode='quest-tab';el=$('questTab')}
-        else{mode='quest-window';el=$('questWindow')}
+        if(inventoryOpen){
+            mode='inventory+quest-tab';els=[$('inventoryWindow'),$('questTab')];
+        }else if(!collapsed){
+            mode='quest-window+inventory-tab';els=[$('questWindow'),$('inventoryTab')];
+        }else{
+            mode='tabs';els=[$('questTab'),$('inventoryTab')];
+        }
     }
-    if(!el){post({command:'set_interactive_bounds',mode:'hidden',xr:0,yr:0,wr:0,hr:0});lastInteractiveKey='hidden';return}
-    var r=el.getBoundingClientRect(),vw=Math.max(1,innerWidth),vh=Math.max(1,innerHeight);
-    var key=mode+'|'+Math.round(r.left)+'|'+Math.round(r.top)+'|'+Math.round(r.width)+'|'+Math.round(r.height);
+    els=els.filter(Boolean);
+    if(!els.length){
+        post({command:'set_interactive_bounds',mode:'hidden',xr:0,yr:0,wr:0,hr:0});
+        lastInteractiveKey='hidden';return;
+    }
+    var vw=Math.max(1,innerWidth),vh=Math.max(1,innerHeight);
+    var left=Infinity,top=Infinity,right=-Infinity,bottom=-Infinity;
+    els.forEach(function(el){
+        var r=el.getBoundingClientRect();
+        left=Math.min(left,r.left);top=Math.min(top,r.top);
+        right=Math.max(right,r.right);bottom=Math.max(bottom,r.bottom);
+    });
+    var key=mode+'|'+Math.round(left)+'|'+Math.round(top)+'|'+Math.round(right-left)+'|'+Math.round(bottom-top);
     if(key===lastInteractiveKey)return;
     lastInteractiveKey=key;
     post({command:'set_interactive_bounds',mode:mode,
-        xr:Math.max(0,Math.min(1,r.left/vw)),yr:Math.max(0,Math.min(1,r.top/vh)),
-        wr:Math.max(0,Math.min(1,r.width/vw)),hr:Math.max(0,Math.min(1,r.height/vh))});
+        xr:Math.max(0,Math.min(1,left/vw)),yr:Math.max(0,Math.min(1,top/vh)),
+        wr:Math.max(0,Math.min(1,(right-left)/vw)),hr:Math.max(0,Math.min(1,(bottom-top)/vh))});
 }
 var qnPressedTarget=null,qnHoverTarget=null,qnHostBound=false,qnLastHostLogAt=0;
 function qnParseHostData(data){
@@ -194,16 +211,19 @@ function qnClickableTarget(el){
 }
 function qnIsAllowedPointTarget(target){
     if(!target||!pagePaused)return false;
-    if(collapsed&&!inventoryOpen){
-        var tab=$('questTab');
-        return !!tab&&(target===tab||tab.contains(target));
+    if(activeInterface==='inventory'){
+        var iw=$('inventoryWindow'),qt=$('questTab');
+        return (!!iw&&(target===iw||iw.contains(target))) ||
+               (!!qt&&(target===qt||qt.contains(target)));
     }
-    if(inventoryOpen){
-        var iw=$('inventoryWindow');
-        return !!iw&&(target===iw||iw.contains(target));
+    if(activeInterface==='quest'){
+        var qw=$('questWindow'),it=$('inventoryTab');
+        return (!!qw&&(target===qw||qw.contains(target))) ||
+               (!!it&&(target===it||it.contains(target)));
     }
-    var qw=$('questWindow');
-    return !!qw&&(target===qw||qw.contains(target));
+    var qtab=$('questTab'),itab=$('inventoryTab');
+    return (!!qtab&&(target===qtab||qtab.contains(target))) ||
+           (!!itab&&(target===itab||itab.contains(target)));
 }
 function qnMouseEvent(type,x,y,button,buttons,detail){
     return new MouseEvent(type,{view:window,bubbles:true,cancelable:true,
@@ -640,6 +660,61 @@ function syncInputLegacy(notify){
  * Новые интерфейсы должны подключаться к этой же схеме: один экран открыт,
  * остальные панели и закладки закрыты.
  * ================================================================ */
+function clearBookmarkBeacon(kind){
+    var isQuest=kind==='quest',tab=$(isQuest?'questTab':'inventoryTab');
+    if(isQuest){
+        if(questBeaconTimer){clearTimeout(questBeaconTimer);questBeaconTimer=0}
+        questBeaconVisible=false;pendingQuestBeacon=false;
+    }else{
+        if(inventoryBeaconTimer){clearTimeout(inventoryBeaconTimer);inventoryBeaconTimer=0}
+        inventoryBeaconVisible=false;pendingInventoryBeacon=false;
+    }
+    if(tab)tab.classList.remove('beacon');
+    syncTabVisibility();
+}
+function startBookmarkBeacon(kind){
+    var isQuest=kind==='quest';
+    if(pagePaused){
+        if(isQuest)pendingQuestBeacon=true;else pendingInventoryBeacon=true;
+        return;
+    }
+    if(isQuest){
+        if(activeInterface==='quest')return;
+        pendingQuestBeacon=false;questBeaconVisible=true;
+        if(questBeaconTimer)clearTimeout(questBeaconTimer);
+        questBeaconTimer=setTimeout(function(){clearBookmarkBeacon('quest')},1550);
+        var qt=$('questTab');
+        if(qt){qt.classList.remove('beacon');void qt.offsetWidth;qt.classList.add('beacon')}
+    }else{
+        if(activeInterface==='inventory')return;
+        pendingInventoryBeacon=false;inventoryBeaconVisible=true;
+        if(inventoryBeaconTimer)clearTimeout(inventoryBeaconTimer);
+        inventoryBeaconTimer=setTimeout(function(){clearBookmarkBeacon('inventory')},1550);
+        var it=$('inventoryTab');
+        if(it){it.classList.remove('beacon');void it.offsetWidth;it.classList.add('beacon')}
+    }
+    syncTabVisibility();
+}
+function flushPendingBookmarkBeacons(){
+    if(pagePaused)return;
+    if(pendingQuestBeacon)startBookmarkBeacon('quest');
+    if(pendingInventoryBeacon)startBookmarkBeacon('inventory');
+}
+function syncTabVisibility(){
+    var qt=$('questTab'),it=$('inventoryTab');
+    var qVisible=pagePaused ? activeInterface!=='quest' : questBeaconVisible;
+    var iVisible=pagePaused ? activeInterface!=='inventory' : inventoryBeaconVisible;
+    if(qt){
+        qt.classList.toggle('visible',qVisible);
+        qt.classList.toggle('interactive',qVisible&&pagePaused);
+        qt.classList.remove('active');
+    }
+    if(it){
+        it.classList.toggle('visible',iVisible);
+        it.classList.toggle('interactive',iVisible&&pagePaused);
+        it.classList.remove('active');
+    }
+}
 function syncInterfaceState(name,notify,report){
     if(name!=='quest'&&name!=='inventory')name='none';
     activeInterface=name;
@@ -647,51 +722,36 @@ function syncInterfaceState(name,notify,report){
     collapsed=name!=='quest';
     qdStateChanged();
 
-    var qw=$('questWindow'),iw=$('inventoryWindow'),qt=$('questTab'),it=$('inventoryTab');
-
+    var qw=$('questWindow'),iw=$('inventoryWindow');
     if(qw){
         qw.classList.toggle('collapsed',name!=='quest');
         qw.classList.toggle('interfaceActive',name==='quest');
     }
-    if(iw){
-        iw.classList.toggle('visible',name==='inventory');
-        iw.classList.toggle('interfaceActive',name==='inventory');
-    }
+    if(iw)iw.classList.toggle('interfaceActive',name==='inventory');
 
-    // Закладки существуют только пока НЕ открыт ни один интерфейс.
-    if(qt){
-        qt.classList.toggle('visible',name==='none');
-        qt.classList.remove('active');
+    // При открытии уезжает только собственная закладка.
+    if(name==='quest'){
+        if(questBeaconTimer){clearTimeout(questBeaconTimer);questBeaconTimer=0}
+        questBeaconVisible=false;var qt=$('questTab');if(qt)qt.classList.remove('beacon');
+    }else if(name==='inventory'){
+        if(inventoryBeaconTimer){clearTimeout(inventoryBeaconTimer);inventoryBeaconTimer=0}
+        inventoryBeaconVisible=false;var it=$('inventoryTab');if(it)it.classList.remove('beacon');
     }
-    if(it){
-        it.classList.toggle('visible',name==='none');
-        it.classList.remove('active');
-    }
-
-    if(name==='quest')lastDialogueKey='';
+    syncTabVisibility();
     applyCursorLayer();
     publishInteractiveBounds();
-
     if(report)send({command:'quest_window_state',collapsed:name!=='quest'});
     if(notify)post({command:'return_focus'});
 }
-
 function toggleInterface(name){
     if(!pagePaused||!interactiveReady||blockToggle())return;
     var current=activeInterface;
     var next=current===name?'none':name;
-    // Только состояние «Квестов» синхронизируется с C# как quest_window_state.
-    // Открытие/закрытие Инвентаря не должно эхо-возвращаться через
-    // set_quest_collapsed и тем самым открывать/закрывать Квесты.
     var reportQuestState=(name==='quest'||current==='quest');
     syncInterfaceState(next,false,reportQuestState);
 }
-
 function toggleQuestInterface(){toggleInterface('quest')}
 function toggleInventory(){toggleInterface('inventory')}
-
-/* Старые имена оставлены как единая точка совместимости с существующими
-   обработчиками сворачивания/разворачивания. */
 function collapseWindow(){if(activeInterface==='quest')toggleQuestInterface()}
 function expandWindow(){if(activeInterface!=='quest')syncInterfaceState('quest',false,true)}
 function blockToggle(){
@@ -703,9 +763,7 @@ function blockToggle(){
 
 function setTabPulse(value){
     hasInteractive=!!value;
-    var tab=$('questTab');
-    if(tab)tab.classList.toggle('pulse',hasInteractive&&activeInterface==='none');
-    setInventoryTabPulse(inventoryHasNewItems()&&activeInterface==='none');
+    syncTabVisibility();
 }
 
 /* ------------------------------------------------------------ набор текста */
@@ -800,10 +858,7 @@ function inventoryHasNewItems(){
         return x&&x.new_item===true&&!locallySeenInventoryItems[String(x.id||'')];
     });
 }
-function setInventoryTabPulse(on){
-    var tab=$('inventoryTab');
-    if(tab)tab.classList.toggle('pulse',!!on&&activeInterface==='none');
-}
+function setInventoryTabPulse(on){syncTabVisibility()}
 function renderInventory(){
     var el=$('inventoryList');if(!el||!model)return;
     var items=model.inventory||[];
@@ -862,23 +917,17 @@ function selectInteraction(qid,iid){
     questDetailPinned=false;currentQuest=qid;currentInteraction=iid;
     send({command:'quest_select_interaction',questId:qid,id:iid});renderQuests()
 }
-function setTabPulse(value){
-    hasInteractive=!!value;
-    var tab=$('questTab');
-    if(tab)tab.classList.toggle('pulse',hasInteractive&&activeInterface==='none');
-    setInventoryTabPulse(inventoryHasNewItems()&&activeInterface==='none');
-}
+
 function setQuestInteractiveVisible(visible,ready,pulse){
     pagePaused=!!visible;interactiveReady=!!ready;
     var app=$('questApp');if(app)app.classList.toggle('interactiveVisible',pagePaused);
     if(!pagePaused){
-        archiveVisible=false;
-        currentQuest='';currentInteraction='';questDetailPinned=false;
+        archiveVisible=false;currentQuest='';currentInteraction='';questDetailPinned=false;
         activeInterface='none';inventoryOpen=false;collapsed=true;
-        clearDialogue();setTabPulse(false);stopCursorTrack('interactive-hidden');
+        clearDialogue();stopCursorTrack('interactive-hidden');
         syncInterfaceState('none',false,false);
+        flushPendingBookmarkBeacons();
     }else{
-        // Вход в ESC-меню всегда начинается с закрытых интерфейсов.
         syncInterfaceState('none',false,false);
         setTabPulse(pulse===true);
         renderInventory();
@@ -886,7 +935,30 @@ function setQuestInteractiveVisible(visible,ready,pulse){
     publishInteractiveBounds();
 }
 function applyState(data){
-    if(!$('questApp'))return;model=data;
+    if(!$('questApp'))return;
+    var previousModel=model;
+    model=data;
+
+    var nearbyNow=!!((data.nearby)||[]).some(function(p){return p&&p.Marker&&p.Marker!=='none'});
+    if(nearbyNow&&!lastNearbyInteractive&&!pagePaused)startBookmarkBeacon('quest');
+    lastNearbyInteractive=nearbyNow;
+
+    var presentInventory=Object.create(null);
+    (data.inventory||[]).forEach(function(x){
+        var id=String(x&&x.id||'');
+        if(!id)return;
+        presentInventory[id]=true;
+        if(x.new_item===true&&!inventoryBeaconSeen[id]){
+            if(pagePaused)pendingInventoryBeacon=true;
+            else{
+                inventoryBeaconSeen[id]=true;
+                startBookmarkBeacon('inventory');
+            }
+        }
+    });
+    Object.keys(inventoryBeaconSeen).forEach(function(id){
+        if(!presentInventory[id])delete inventoryBeaconSeen[id];
+    });
     setInventoryTabPulse(inventoryHasNewItems());
     var paused=data.paused===true,interactive=data.interactive===true;
     /* interactive из quest_state — пост-валидатор. Видимость UI меняется
@@ -920,6 +992,8 @@ window.onEts2Command=function(d){
         if(d.hasInteractive!==undefined)setTabPulse(d.hasInteractive===true);
     }
     else if(d.command==='set_quest_tab_state'){setTabPulse(d.hasInteractive===true);}
+    else if(d.command==='quest_bookmark_beacon'){startBookmarkBeacon('quest');}
+    else if(d.command==='inventory_bookmark_beacon'){startBookmarkBeacon('inventory');}
     else if(d.command==='set_quest_collapsed'){
         // Пока открыт Инвентарь, Квесты обязаны оставаться закрытыми.
         // Это защищает от echo-команды C# после quest_window_state(collapsed=true),
@@ -948,7 +1022,8 @@ window.onEts2Command=function(d){
         if(e.target!==app)return;
         collapseWindow();
     });
-    if(tab)tab.addEventListener('transitionend',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
+    if(tab)tab.addEventListener('transitionend',function(){syncTabVisibility();if(pagePaused)syncInput(false);publishInteractiveBounds()});
+    if(itab)itab.addEventListener('transitionend',function(){syncTabVisibility();if(pagePaused)syncInput(false);publishInteractiveBounds()});
     window.addEventListener('resize',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     var style=document.createElement('style');
     style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}.#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#768497;font-size:10px}.questSectionTitle{padding:8px 10px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:#8c9aad;font-size:10px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid #ffd21f;background:rgba(255,210,31,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:#ffd45a;font-weight:700}.rewardLine{padding:3px 0;font-weight:600}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}#questApp button{box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgb(19,20,21);color:#e7edf4;transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease}#questApp button:hover,#questApp button.quest-native-hover{border-color:rgba(255,211,77,.65);background:rgb(33,34,35)}#questApp button:disabled{opacity:.38;cursor:not-allowed}#questApp #questTab,#questApp #inventoryTab{border-left:0;border-color:rgba(255,255,255,.12);background:rgb(19,20,21)}#questApp #questTab:hover,#questApp #inventoryTab:hover,#questApp #questTab.quest-native-hover,#questApp #inventoryTab.quest-native-hover{border-color:rgba(255,211,77,.65);border-left:0;background:rgb(33,34,35)}#questApp .questItem.selected,#questApp .inventoryItem.selected,#questApp .sideItem.selected{border-color:rgba(255,211,77,.65);background:rgb(33,34,35)}.optionReason{font-size:10px;color:#7e8a98;font-weight:400}.dialogTextRole{font-family:Roboto,"Roboto Regular","Segoe UI",Arial,sans-serif}.dialogTextService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:12px}.optionRequirements{font-family:"Courier New",Courier,monospace;color:#0048ff;font-size:12px}.optionRequirements.unmet{color:#0048ff;opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:13px}';
