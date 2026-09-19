@@ -2940,6 +2940,29 @@ RegisterHotKeyChecked(
         private static bool IsStreamingCommand(string command) =>
             command == "ar_telemetry";   // 30 Гц — единственный потоковый канал сейчас
 
+        /// <summary>
+        /// Резервная доставка текущего quest_state по общему каналу 8084.
+        /// Окно квестов продолжает иметь основной WS 8085, но 8084 гарантирует
+        /// получение состояния при проблеме с отдельным WebSocket страницы.
+        /// </summary>
+        internal void PushQuestStateToOverlay(JObject payload, string reason)
+        {
+            try
+            {
+                if (payload == null) return;
+                JObject copy = (JObject)payload.DeepClone();
+                copy["command"] = "quest_state";
+                string json = copy.ToString(Formatting.None);
+                Logger.Current?.Workflow(
+                    $"[QUEST][DIAG][WS8084] relay reason={reason} bytes={Encoding.UTF8.GetByteCount(json)}");
+                SendCommandToMap("quest_state", copy);
+            }
+            catch (Exception ex)
+            {
+                Logger.Current?.Workflow($"[QUEST][DIAG][WS8084] relay error reason={reason}: {ex.Message}");
+            }
+        }
+
         /// <summary>ДИАГНОСТИКА (временно): команды, влияющие на мышь окна квестов.</summary>
         private static bool IsQuestInputCommand(string command) =>
             command == "set_clickable" ||
@@ -2951,7 +2974,8 @@ RegisterHotKeyChecked(
             command == "set_quest_tab_state" ||
             command == "quest_bookmark_beacon" ||
             command == "inventory_bookmark_beacon" ||
-            command == "set_overlay_category";
+            command == "set_overlay_category" ||
+            command == "quest_state";
 
         // ================================================================
         // СОХРАНЕНИЕ ТРЕКА
