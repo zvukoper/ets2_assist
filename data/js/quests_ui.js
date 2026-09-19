@@ -27,7 +27,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R19-2026-09-19';
+var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R20-2026-09-19';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -385,7 +385,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R19 1.0.40.89</strong>',
+        '<strong>SOFT CURSOR R20 1.0.40.90</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -1099,7 +1099,11 @@ function renderQuestSelectionFallback(qid){
     qdLog('[SELECTION-FALLBACK] qid='+qid+' local quest content rendered while waiting for dialogue');
 }
 function selectInteraction(qid,iid){
-    if(!pagePaused||!interactiveReady||!model||model.paused!==true)return;
+    /* pagePaused/interactiveReady — локальное состояние уже показанного UI.
+       model.paused может отставать на один пакет quest_state во время входа
+       в паузу; запрещать клик из-за этого рассинхрона нельзя. Backend всё равно
+       повторно валидирует _paused и _interactiveVisible. */
+    if(!pagePaused||!interactiveReady||!model)return;
     questDetailPinned=false;currentQuest=qid;currentInteraction=iid;
     renderQuestSelectionFallback(qid);
     pendingSelectionKey=String(qid||'')+':'+String(iid||'');pendingSelectionAt=Date.now();
