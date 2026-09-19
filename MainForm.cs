@@ -3410,12 +3410,13 @@ RegisterHotKeyChecked(
             try
             {
                 StopStaticWebServer();
-                string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+                string root = ResolveStaticWebRoot();
                 if (!Directory.Exists(root))
                 {
                     AppendLog($"Static web root not found: {root}");
                     return false;
                 }
+                AppendLog($"Web server root selected: {root}");
 
                 _staticWebListener = new HttpListener();
                 _staticWebListener.Prefixes.Add("http://localhost:8082/");
@@ -3433,6 +3434,84 @@ RegisterHotKeyChecked(
                 try { _staticWebListener?.Close(); } catch { }
                 _staticWebListener = null;
                 _staticWebRunning = false;
+                return false;
+            }
+        }
+
+        private string ResolveStaticWebRoot()
+        {
+            string publishRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+            string expectedBuild = GetWebBuildToken();
+
+            var candidates = new List<string>();
+            void AddCandidate(string path)
+            {
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(path) &&
+                        !candidates.Any(x => string.Equals(x, path, StringComparison.OrdinalIgnoreCase)))
+                        candidates.Add(path);
+                }
+                catch { }
+            }
+
+            // First priority: the application's own publish\data.
+            AddCandidate(publishRoot);
+
+            // Development layout fallback:
+            // ...\repo\ets2_assist\bin\Release\net10.0-windows\win-x64\publish
+            // -> walk upwards and look for the repository's data\ directory.
+            try
+            {
+                DirectoryInfo? cursor = Directory.GetParent(publishRoot);
+                for (int level = 0; cursor != null && level < 8; level++, cursor = cursor.Parent)
+                    AddCandidate(Path.Combine(cursor.FullName, "data"));
+            }
+            catch { }
+
+            foreach (string candidate in candidates)
+            {
+                if (!Directory.Exists(candidate)) continue;
+                if (WebRootMatchesBuild(candidate, expectedBuild))
+                {
+                    AppendLog($"[WEB] selected current web root: {candidate} build={expectedBuild}");
+                    return candidate;
+                }
+            }
+
+            // Preserve the old behavior as a final fallback. The fingerprint is
+            // logged separately so a stale packaged data directory is immediately
+            // visible instead of silently looking like a JS/runtime failure.
+            AppendLog($"[WEB] no data root matched build={expectedBuild}; falling back to publish data: {publishRoot}");
+            return publishRoot;
+        }
+
+        private static string GetWebBuildToken()
+        {
+            try
+            {
+                Match m = Regex.Match(BuildInfo.Version ?? "", @"^\d+\.\d+\.\d+\.\d+");
+                if (m.Success) return m.Value;
+            }
+            catch { }
+            return "0.0.0.0";
+        }
+
+        private static bool WebRootMatchesBuild(string root, string expectedBuild)
+        {
+            try
+            {
+                string htmlPath = Path.Combine(root, "web_quests.html");
+                string jsPath = Path.Combine(root, "js", "quests_ui.js");
+                if (!File.Exists(htmlPath) || !File.Exists(jsPath)) return false;
+
+                string html = File.ReadAllText(htmlPath, Encoding.UTF8);
+                string js = File.ReadAllText(jsPath, Encoding.UTF8);
+                return html.Contains(expectedBuild, StringComparison.OrdinalIgnoreCase) &&
+                       js.Contains(expectedBuild, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
                 return false;
             }
         }
@@ -3574,10 +3653,11 @@ RegisterHotKeyChecked(
                     string text = File.ReadAllText(path, Encoding.UTF8);
                     Match buildMatch = Regex.Match(text, @"1\.0\.[0-9]+[-A-Z0-9._]*", RegexOptions.IgnoreCase);
                     string build = buildMatch.Success ? buildMatch.Value : "unknown";
+                    string expectedWebBuild = GetWebBuildToken();
                     string marker = fileName.Equals("web_quests.html", StringComparison.OrdinalIgnoreCase)
-                        ? $" htmlMarker={(text.Contains("QHTML-DIAG-2026-09-19-2228", StringComparison.Ordinal) ? "present" : "MISSING")}"
+                        ? $" htmlBuildMatch={(text.Contains(expectedWebBuild, StringComparison.OrdinalIgnoreCase) ? "yes" : "NO")}"
                         : fileName.Equals("js/quests_ui.js", StringComparison.OrdinalIgnoreCase)
-                            ? $" jsMarker={(text.Contains("QCONTENT-DIAG-2026-09-19-2227", StringComparison.Ordinal) ? "present" : "MISSING")}"
+                            ? $" jsBuildMatch={(text.Contains(expectedWebBuild, StringComparison.OrdinalIgnoreCase) ? "yes" : "NO")}"
                             : "";
                     AppendLog($"[WEB] {fileName}: build={build}, bytes={new FileInfo(path).Length}, lastWrite={File.GetLastWriteTime(path):yyyy-MM-dd HH:mm:ss}{marker}");
                 }
