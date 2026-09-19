@@ -502,7 +502,11 @@ function startCursorTrack(){
         qdLog('[CURSOR] start pagePaused='+pagePaused+' collapsed='+collapsed+' cursorElementExists='+!!cursorEl+' startCount='+qdCounters.cursorStart);
     }
     if(!cursorEl)return;
-    /* v1.0.40.78: no synthetic center position; host synchronizes to client=(0,0).
+    /* v1.0.40.79: the visual cursor starts at the same corner as the host-side
+       physical cursor. The first Raw Input packet may arrive a little later,
+       so initialize immediately instead of briefly showing the old position. */
+    placeCursor(0,0);
+    /* Host synchronizes the physical cursor to client=(0,0). */
        The hidden WebOverlay Raw Input sink owns the physical-mouse bridge and
        sends the current client position as quest-native-input. The first packet
        is initialized from GetCursorPos when the window becomes active. */
@@ -731,7 +735,7 @@ function renderInteractions(){
 function renderQuests(){
     var el=$('questList');if(!el||!model)return;
     var active=model.activeQuests||[],archive=model.archiveQuests||[];
-    var key=JSON.stringify(active.concat(archive).map(function(q){return[q.id,q.title,q.status,q.stepDescription,q.description]}));
+    var key=JSON.stringify([questDetailPinned,currentQuest].concat(active.concat(archive).map(function(q){return[q.id,q.title,q.status,q.stepDescription,q.description]})));
     if(key===lastQuestsKey)return;
     lastQuestsKey=key;
     var html='';
@@ -775,31 +779,31 @@ function applyState(data){
     app.classList.toggle('paused',paused);
     if(!paused){wasPaused=false;pagePaused=false;qdStateChanged();currentInteraction='';currentQuest='';questDetailPinned=false;lastDialogueKey='';clearDialogue();syncInput(false);return}
     wasPaused=true;pagePaused=true;qdStateChanged();
-    /* Активный диалог приходит с выбранными идентификаторами — без них ответ
-       игрока уходил бы без адреса. Если квест не пришёл, берём его из списка
-       ближайших интерактивов. */
-    if(data.selectedInteraction){
-        questDetailPinned=false;
+    /* Пока пользователь открыл карточку квеста из списка, backend может ещё
+       секунду присылать старый selectedInteraction/selectedQuest от прежнего
+       интерактива. Не позволяем этому состоянию перезаписать локальный выбор.
+       Новый интерактив сам снимет questDetailPinned через selectInteraction(). */
+    if(questDetailPinned){
+        currentInteraction='';
+    }else if(data.selectedInteraction){
         currentInteraction=data.selectedInteraction;
         if(data.selectedQuest)currentQuest=data.selectedQuest;
         else if(!currentQuest){var m=(data.nearby||[]).find(function(p){return p.InteractionId===data.selectedInteraction});if(m)currentQuest=m.QuestId||''}
-    }else if(data.selectedQuest && !questDetailPinned){
+    }else if(data.selectedQuest){
         currentInteraction='';
         currentQuest=data.selectedQuest;
-    }else if(!questDetailPinned){
+    }else{
         currentInteraction='';
         currentQuest='';
         lastDialogueKey='';
         clearDialogue();
-    }else{
-        currentInteraction='';
     }
     syncInput(false);
     /* Геометрия input-окна зависит от состояния — пересчитаем после рендера. */
     publishInteractiveBounds();
     setTimeout(publishInteractiveBounds,360);
     renderInteractions();renderQuests();renderInventory();
-    if(data.dialogue){renderDialogue(data.dialogue)}
+    if(data.dialogue && !questDetailPinned){renderDialogue(data.dialogue)}
     else if(!data.selectedInteraction && !questDetailPinned){currentInteraction='';currentQuest='';clearDialogue()}
     else if(currentInteraction){var keep=(data.nearby||[]).some(function(p){return p.QuestId===currentQuest&&p.InteractionId===currentInteraction&&p.Marker&&p.Marker!=='none'});if(!keep)clearDialogue()}
 }
