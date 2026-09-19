@@ -144,7 +144,7 @@ function showHybridUIFirst() {
         content.style.transition = 'opacity 150ms ease-out';
         content.style.opacity = '1';
     });
-    const badge = document.getElementById('ets2AssistBuildBadge');    const badge = document.getElementById('ets2AssistBuildBadge');
+    const badge = document.getElementById('ets2AssistBuildBadge');
     if (badge) badge.style.opacity = '0.9';
     hybridState.dataShown = true;
 }
