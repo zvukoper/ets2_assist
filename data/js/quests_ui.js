@@ -1061,6 +1061,9 @@ window.onEts2Command=function(d){
     else if(d.command==='set_quest_tab_state'){setTabPulse(d.hasInteractive===true);}
     else if(d.command==='quest_bookmark_beacon'){startBookmarkBeacon('quest');}
     else if(d.command==='inventory_bookmark_beacon'){startBookmarkBeacon('inventory');}
+    else if(d.command==='quest_collapse_interfaces'){
+        if(pagePaused)syncInterfaceState('none',false,false);
+    }
     else if(d.command==='set_quest_collapsed'){
         // Пока открыт Инвентарь, Квесты обязаны оставаться закрытыми.
         // Это защищает от echo-команды C# после quest_window_state(collapsed=true),
