@@ -141,24 +141,24 @@ function connectSaveWebSocket() {
                             }
                             break;
                         case 'minimap_hide':
-                            // При включённом тогл-режиме (minimapAutoOff=false => показ ВСЕГДА)
-                            // hide-команды игнорируются: карта никогда не исчезает.
-                            if (!minimapAlwaysOn) hideUIFast();
+                            // hide — абсолютная команда политики. Она обязана гасить
+                            // карту даже при ранее включённом режиме «Показать карту всегда».
+                            minimapAlwaysOn = false;
+                            hideUIFast();
                             break;
                         case 'minimap_auto':
-                            // Тоггл «Показать карту»: enabled=true — карта ВСЕГДА на экране
-                            // (minimap_hide игнорируется); false — обычная авто-логика.
+                            // Тоггл «Показать карту»: enabled=true — карта может
+                            // быть постоянно видна только внутри игровой категории.
                             if (data.enabled === true) {
                                 minimapAlwaysOn = true;
                                 minimapAutoOff = false;
+                                if (typeof window.ets2Category === 'function' &&
+                                    window.ets2Category() !== 'game') return;
                                 if (!minimapShownOnce) { showUIWithAnimation(); minimapShownOnce = true; }
                                 else showUIFast();
                             } else {
                                 minimapAlwaysOn = false;
                             }
-                            break;
-                        case 'show_pause_logo':
-                        case 'hide_pause_logo':
                             break;
                         default:
                             console.log('[WS] Unknown command:', data.command);
@@ -193,14 +193,15 @@ function showUIWithAnimation() {
         setTimeout(showUIWithAnimation, 100);
         return;
     }
-    console.log('[UI] Applying animation to map');
+    console.log('[UI] Applying 150ms fade to map');
     container.style.opacity = '0';
-    container.style.transform = 'scale(0.45) translateY(0)';
+    container.style.transform = 'scale(1) translateY(0)';
     container.style.transition = 'none';
     container.offsetHeight;
-    container.style.transition = 'transform 2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease-in';
-    container.style.transform = 'scale(1) translateY(0)';
-    container.style.opacity = '1';
+    requestAnimationFrame(() => {
+        container.style.transition = 'opacity 150ms ease-out';
+        container.style.opacity = '1';
+    });
     const badge = document.getElementById('mapBuildBadge');
     if (badge) badge.style.opacity = '0.9';
 }
@@ -208,7 +209,7 @@ function showUIWithAnimation() {
 function showUIFast() {
     const container = document.querySelector('.minimap-container');
     if (!container) return;
-    container.style.transition = 'opacity 0.15s ease-in';
+    container.style.transition = 'opacity 150ms ease-out';
     container.style.opacity = '1';
     container.style.transform = 'scale(1) translateY(0)';
     const badge = document.getElementById('mapBuildBadge');
