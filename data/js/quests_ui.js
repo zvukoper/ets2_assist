@@ -1079,7 +1079,46 @@ function requestQuestState(){
     if(stateRequestTimer)clearTimeout(stateRequestTimer);
     stateRequestTimer=setTimeout(requestQuestState,500);
 }
-function connect(){try{ws=new WebSocket('ws://localhost:8085/');ws.onmessage=function(ev){try{var d=JSON.parse(ev.data);if(d.command==='quest_state')applyState(d);else if(d.command==='quest_error')showError(d.text)}catch(e){}};ws.onclose=function(){setTimeout(connect,1500)};ws.onerror=function(){try{ws.close()}catch(e){}}}catch(e){setTimeout(connect,1500)}}
+function connect(){
+    try{
+        ws=new WebSocket('ws://localhost:8085/');
+        ws.onopen=function(){
+            qdLog('[CONTENT] quest WS connected');
+            stateRequestAttempts=0;
+            requestQuestState();
+        };
+        ws.onmessage=function(ev){
+            try{
+                var d=JSON.parse(ev.data);
+                if(d.command==='quest_state'){
+                    qdLog('[CONTENT] quest_state counts available='+(d.availableQuests||[]).length+
+                        ' active='+(d.activeQuests||[]).length+
+                        ' archive='+(d.archiveQuests||[]).length+
+                        ' inventory='+(d.inventory||[]).length+
+                        ' nearby='+(d.nearby||[]).length+
+                        ' paused='+(d.paused===true)+
+                        ' interactive='+(d.interactive===true));
+                    stateRequestAttempts=8;
+                    if(stateRequestTimer){clearTimeout(stateRequestTimer);stateRequestTimer=0}
+                    applyState(d);
+                }else if(d.command==='quest_error')showError(d.text);
+            }catch(e){
+                qdLog('[CONTENT] quest WS parse error='+e.message);
+            }
+        };
+        ws.onclose=function(){
+            qdLog('[CONTENT] quest WS closed');
+            setTimeout(connect,1500);
+        };
+        ws.onerror=function(){
+            qdLog('[CONTENT] quest WS error');
+            try{ws.close()}catch(e){}
+        };
+    }catch(e){
+        qdLog('[CONTENT] quest WS connect error='+e.message);
+        setTimeout(connect,1500);
+    }
+}
 function showError(text){var e=$('overlayError');if(!e)return;e.textContent=text||'Ошибка';e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2500)}
 
 /* Команды приложения, адресованные именно окну квестов. */
