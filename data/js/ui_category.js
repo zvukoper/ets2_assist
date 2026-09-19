@@ -64,6 +64,24 @@
     var categoryCommandReceived = false;
     var hideAllWanted = false;
     var revealRaf = 0;
+    var pendingEts2Commands = [];
+    var pendingEts2CommandNames = {
+        quest_pause_ui:true,
+        set_quest_tab_state:true,
+        set_quest_collapsed:true,
+        quest_toggle_collapse:true,
+        quest_toggle_inventory:true
+    };
+
+    function flushPendingEts2Commands() {
+        if (typeof window.onEts2Command !== 'function') return;
+        if (!pendingEts2Commands.length) return;
+        var queue = pendingEts2Commands.slice(0);
+        pendingEts2Commands.length = 0;
+        queue.forEach(function (command) {
+            try { window.onEts2Command(command); } catch (_) { }
+        });
+    }
 
     function revealSelectedCategory() {
         var root = document.documentElement;
@@ -130,6 +148,10 @@
             } catch (_) { }
             revealSelectedCategory();
         }
+        /* quests_ui.js is loaded at the end of web_quests.html. Commands may
+           have arrived through this earlier WebSocket before its handler existed;
+           replay them in the original order once the DOM/page handler is ready. */
+        flushPendingEts2Commands();
     });
 
     function connect() {
@@ -141,7 +163,12 @@
                     if (!d || !d.command) return;
                     if (d.command === 'set_overlay_category') apply(d.category);
                     if (d.command === 'set_overlay_hidden') { hideAllWanted = d.hidden === true; reapplyVisibility(); }
-                    if (typeof window.onEts2Command === 'function') window.onEts2Command(d);
+                    if (typeof window.onEts2Command === 'function') {
+                        window.onEts2Command(d);
+                    } else if (pendingEts2CommandNames[d.command]) {
+                        pendingEts2Commands.push(d);
+                        if (pendingEts2Commands.length > 16) pendingEts2Commands.shift();
+                    }
                 } catch (_) { }
             };
             ws.onclose = function () { setTimeout(connect, 1000); };
