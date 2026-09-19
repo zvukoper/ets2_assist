@@ -345,10 +345,10 @@ bindQuestNativeInput();
  * Поэтому стрелку рисуем САМИ, внутри страницы: #cursorDot — обычный SVG,
  * позиционируемый по координатам мыши. Он часть нашей разметки, значит всегда
  * выше и игрового кадра, и любого системного курсора.
- * v1.0.40.72: источник координат — накопленный Raw Input delta.
+ * v1.0.40.73: источник координат — накопленный Raw Input delta.
  * Скрытый WebOverlay sink инициализирует позицию один раз из GetCursorPos,
  * затем больше НЕ читает системную позицию: каждое dx/dy добавляется к
- * виртуальной координате. Это устраняет возврат в центр и дрожание ETS2.
+ * виртуальной координате. Системный курсор при этом отпущен через set_cursor(false).
  * ================================================================ */
 var cursorEl=null,cursorTimer=null,cursorShown=false;
 
@@ -439,6 +439,10 @@ function applyCursorLayer(){
     var app=$('questApp');
     if(app)app.style.cursor=pagePaused?'none':'';
     var active=pagePaused&&!collapsed;
+    /* Системная стрелка не является курсором квестов. ETS2 удерживает её
+       возле центра; наличие этой стрелки поверх страницы даёт дрожание.
+       Видимый курсор теперь только #cursorDot. */
+    post({command:'set_cursor',value:false});
     if(active)startCursorTrack();else stopCursorTrack('applyCursorLayer:inactive');
 }
 
