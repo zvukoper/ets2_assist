@@ -53,6 +53,9 @@ namespace ETS2_Assist_GUI.Quests
         private string _selectedInteractionId = "";
 
         private DateTime _lastStateSentUtc = DateTime.MinValue;
+        private DateTime _lastWsDiagUtc = DateTime.MinValue;
+        private string _lastWsDiagKey = "";
+
         private JObject? _lastState;
         private double _lastTruckX, _lastTruckY, _lastTruckZ;
         private bool? _lastDebugShow;
@@ -377,14 +380,22 @@ namespace ETS2_Assist_GUI.Quests
             return true;
         }
 
-        private void OnQuestClientOpen(QuestSocketBehavior client) => client.SendJson(BuildStatePayload());
+        private void OnQuestClientOpen(QuestSocketBehavior client)
+        {
+            var payload = BuildStatePayload();
+            LogQuestStateWire("client-open", payload, true);
+            client.SendJson(payload);
+        }
 
         private void OnQuestMessage(JObject data)
         {
             string command = data["command"]?.Value<string>() ?? "";
             // ДИАГНОСТИКА ВВОДА (временно): отделяем «мышь не приходит» от
             // «мышь приходит, но action не доходит до C#». Поведение не меняется.
-            Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] command={command} paused={_paused} raw={data.ToString(Formatting.None)}");
+            Logger.Current?.Workflow(
+                $"[QUEST-DIAG][WS-IN] command={command} paused={_paused} " +
+                $"clients={GetQuestClientCount()} rawBytes={Encoding.UTF8.GetByteCount(data.ToString(Formatting.None))} " +
+                $"raw={data.ToString(Formatting.None)}");
             switch (command)
             {
                 case "quest_state_request":
@@ -718,8 +729,73 @@ namespace ETS2_Assist_GUI.Quests
             }
             BroadcastState(true);
         }
-        private void BroadcastState(bool force,string? selectedQuest=null,string? selectedInteraction=null,string? explicitDialogue=null) { JObject payload=BuildStatePayload(selectedQuest,selectedInteraction,explicitDialogue); if(!force&&JToken.DeepEquals(payload,_lastState))return; _lastState=payload;_lastStateSentUtc=DateTime.UtcNow;Broadcast(payload); }
-        private void Broadcast(JObject payload){try{_server?.WebSocketServices["/"]?.Sessions.Broadcast(payload.ToString(Formatting.None));}catch{}}
+        private void BroadcastState(bool force,string? selectedQuest=null,string? selectedInteraction=null,string? explicitDialogue=null)
+        {
+            JObject payload=BuildStatePayload(selectedQuest,selectedInteraction,explicitDialogue);
+            if(!force&&JToken.DeepEquals(payload,_lastState))return;
+            _lastState=payload;
+            _lastStateSentUtc=DateTime.UtcNow;
+            LogQuestStateWire(force ? "broadcast-force" : "broadcast-change", payload, force);
+            Broadcast(payload);
+        }
+
+        private void Broadcast(JObject payload)
+        {
+            string json = payload.ToString(Formatting.None);
+            try { _server?.WebSocketServices["/"]?.Sessions.Broadcast(json); }
+            catch(Exception ex)
+            {
+                Logger.Current?.Data($"[QUEST][DIAG][WS-OUT] broadcast error={ex.Message}");
+            }
+        }
+
+        private int GetQuestClientCount()
+        {
+            try { return _server?.WebSocketServices["/"]?.Sessions.Count ?? 0; }
+            catch { return -1; }
+        }
+
+        private void LogQuestStateWire(string reason, JObject payload, bool force)
+        {
+            try
+            {
+                string key =
+                    (string?)payload["paused"] + "|" +
+                    (string?)payload["interactive"] + "|" +
+                    ((payload["availableQuests"] as JArray)?.Count ?? 0) + "|" +
+                    ((payload["activeQuests"] as JArray)?.Count ?? 0) + "|" +
+                    ((payload["archiveQuests"] as JArray)?.Count ?? 0) + "|" +
+                    ((payload["inventory"] as JArray)?.Count ?? 0) + "|" +
+                    ((payload["nearby"] as JArray)?.Count ?? 0) + "|" +
+                    (string?)payload["selectedQuest"] + "|" +
+                    (string?)payload["selectedInteraction"] + "|" +
+                    (payload["dialogue"] == null ? "0" : "1");
+                var now = DateTime.UtcNow;
+                if(!force && key==_lastWsDiagKey && now-_lastWsDiagUtc < TimeSpan.FromMilliseconds(750))
+                    return;
+                _lastWsDiagKey=key;
+                _lastWsDiagUtc=now;
+                string json=payload.ToString(Formatting.None);
+                var dialogue=payload["dialogue"] as JObject;
+                int dialogueOptions=(dialogue?["options"] as JArray)?.Count ?? 0;
+                Logger.Current?.Workflow(
+                    $"[QUEST][DIAG][WS-OUT] reason={reason} clients={GetQuestClientCount()} " +
+                    $"paused={(bool?)payload["paused"] ?? false} interactive={(bool?)payload["interactive"] ?? false} " +
+                    $"counts=available:{((payload["availableQuests"] as JArray)?.Count ?? 0)}," +
+                    $"active:{((payload["activeQuests"] as JArray)?.Count ?? 0)}," +
+                    $"archive:{((payload["archiveQuests"] as JArray)?.Count ?? 0)}," +
+                    $"inventory:{((payload["inventory"] as JArray)?.Count ?? 0)}," +
+                    $"nearby:{((payload["nearby"] as JArray)?.Count ?? 0)} " +
+                    $"points={((payload["points"] as JArray)?.Count ?? 0)} " +
+                    $"selected={(string?)payload["selectedQuest"] ?? ""}/{(string?)payload["selectedInteraction"] ?? ""} " +
+                    $"dialogue={(dialogue!=null)} dialogueOptions={dialogueOptions} " +
+                    $"jsonBytes={Encoding.UTF8.GetByteCount(json)} force={force}");
+            }
+            catch(Exception ex)
+            {
+                Logger.Current?.Data($"[QUEST][DIAG][WS-OUT] diagnostics error={ex.Message}");
+            }
+        }
         private void SendError(string text)=>Broadcast(new JObject { ["command"]="quest_error",["text"]=text });
 
         private Task UpdateOverlayAsync()
