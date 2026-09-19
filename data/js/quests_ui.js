@@ -1066,6 +1066,7 @@ function setQuestInteractiveVisible(visible,ready,pulse){
         clearBookmarkBeacon('inventory');
 
         syncInterfaceState('none',false,false);
+        pendingSelectionKey='';pendingSelectionAt=0;
         if(deferredQuestBeacon)startBookmarkBeacon('quest');
         if(deferredInventoryBeacon)startBookmarkBeacon('inventory');
     }else{
@@ -1200,8 +1201,6 @@ function applyState(data){
     }
     if(data.dialogue&&!questDetailPinned&&!keepPendingSelection)renderDialogue(data.dialogue);
     else if(!questDetailPinned&&!keepPendingSelection&&!data.selectedQuest&&!data.selectedInteraction)clearDialogue();
-    if(data.dialogue&&!questDetailPinned)renderDialogue(data.dialogue);
-    else if(!questDetailPinned&&!data.selectedQuest&&!data.selectedInteraction)clearDialogue();
     renderQuests();renderInventory();publishInteractiveBounds();
     qdContentSnapshot('applyState-interactive',true);
 }
