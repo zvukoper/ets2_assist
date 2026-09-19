@@ -633,9 +633,14 @@ function syncInputLegacy(notify){
 }
 function applyCollapsed(value,notify,report){
     collapsed=!!value;
+    // Явное разворачивание «Квестов» всегда закрывает другой интерфейс.
+    // Но закрытие инвентаря само по себе НИКОГДА не разворачивает квесты.
+    if(!collapsed) inventoryOpen=false;
     qdStateChanged();
-    var w=$('questWindow'),tab=$('questTab');
+    var w=$('questWindow'),tab=$('questTab'),iw=$('inventoryWindow'),itab=$('inventoryTab');
     if(w)w.classList.toggle('collapsed',collapsed);
+    if(iw&&!inventoryOpen)iw.classList.remove('visible');
+    if(itab)itab.classList.toggle('active',inventoryOpen);
     if(tab)tab.classList.toggle('visible',collapsed);
     if(collapsed)lastDialogueKey='';
     syncInput(notify);
@@ -872,21 +877,23 @@ function setQuestInteractiveVisible(visible,ready,pulse){
 function toggleInventory(){
     if(!pagePaused||!interactiveReady||blockToggle())return;
     inventoryOpen=!inventoryOpen;
-    collapsed=inventoryOpen;
+    // Инвентарь всегда является отдельным экраном: при его закрытии
+    // «Квесты» остаются свёрнутыми и доступны только через свою закладку/TAB.
+    collapsed=true;
     qdStateChanged();
     var qw=$('questWindow'),iw=$('inventoryWindow');
     if(qw){
-        qw.classList.toggle('visible',!inventoryOpen);
-        qw.classList.toggle('collapsed',inventoryOpen);
+        qw.classList.remove('visible');
+        qw.classList.add('collapsed');
     }
     if(iw)iw.classList.toggle('visible',inventoryOpen);
     var tab=$('questTab'),itab=$('inventoryTab');
-    if(tab)tab.classList.toggle('active',!inventoryOpen);
+    if(tab)tab.classList.remove('active');
     if(itab)itab.classList.toggle('active',inventoryOpen);
     applyCursorLayer();
     renderInventory();
     publishInteractiveBounds();
-    send({command:'quest_window_state',collapsed:collapsed});
+    send({command:'quest_window_state',collapsed:true});
 }
 function applyState(data){
     if(!$('questApp'))return;model=data;
@@ -918,16 +925,20 @@ function showError(text){var e=$('overlayError');if(!e)return;e.textContent=text
 window.onEts2Command=function(d){
     if(!d)return;
     qdLog('WS-IN(8084) command='+d.command+' payload='+JSON.stringify(d));
-    if(d.command==='quest_pause_ui')setQuestInteractiveVisible(d.visible===true,d.ready===true,d.pulse===true);
-    else if(d.command==='set_quest_tab_state'){hasInteractive=d.hasInteractive===true;}
+    if(d.command==='quest_pause_ui'){
+        setQuestInteractiveVisible(d.visible===true,d.ready===true,d.pulse===true);
+        if(d.hasInteractive!==undefined)setTabPulse(d.hasInteractive===true);
+    }
+    else if(d.command==='set_quest_tab_state'){setTabPulse(d.hasInteractive===true);}
     else if(d.command==='set_quest_collapsed'){if(interactiveReady)applyCollapsed(d.collapsed,false,false);}
     else if(d.command==='quest_toggle_collapse'){
-    if(interactiveReady){
-        if(inventoryOpen)toggleInventory();
-        else if(collapsed)expandWindow();
-        else collapseWindow();
+        if(interactiveReady){
+            // TAB — явный запрос именно «Квестов»: если открыт инвентарь,
+            // переключаемся на Квесты, а не просто закрываем инвентарь.
+            if(collapsed||inventoryOpen)expandWindow();
+            else collapseWindow();
+        }
     }
-}
     else if(d.command==='quest_toggle_inventory')toggleInventory();
 };
 (function(){
@@ -937,7 +948,8 @@ window.onEts2Command=function(d){
     if(tab)tab.addEventListener('click',function(e){
         e.stopPropagation();
         if(!interactiveReady)return;
-        if(inventoryOpen)toggleInventory();else expandWindow();
+        // Клик по закладке — явное открытие «Квестов», даже когда открыт инвентарь.
+        expandWindow();
     });
     var itab=$('inventoryTab');if(itab)itab.addEventListener('click',function(e){e.stopPropagation();toggleInventory()});
     /* Оверлей полноэкранный, поэтому «прозрачная область окна квестов» — это сам
