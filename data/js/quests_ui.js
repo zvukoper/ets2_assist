@@ -641,7 +641,6 @@ function applyCollapsed(value,notify,report){
     /* Геометрия input-окна зависит от вида окна: пересчитаем ПОСЛЕ смены
        классов/анимации — и сразу, и по завершении перехода. */
     publishInteractiveBounds();
-    setTimeout(publishInteractiveBounds,360);
     /* Приложение запоминает вид окна (свёрнуто/развёрнуто). Сообщаем только о
        действиях игрока: состояние, пришедшее ОТ приложения, а также стартовое
        состояние страницы повторно отправлять нельзя — иначе окно при загрузке
@@ -671,7 +670,6 @@ function applyCollapsed(value,notify,report){
     /* Геометрия input-окна зависит от вида окна: пересчитаем ПОСЛЕ смены
        классов/анимации — и сразу, и по завершении перехода. */
     publishInteractiveBounds();
-    setTimeout(publishInteractiveBounds,360);
     /* Приложение запоминает вид окна (свёрнуто/развёрнуто). Сообщаем только о
        действиях игрока: состояние, пришедшее ОТ приложения, а также стартовое
        состояние страницы повторно отправлять нельзя — иначе окно при загрузке
@@ -804,9 +802,10 @@ function selectInteraction(qid,iid){
     send({command:'quest_select_interaction',questId:qid,id:iid});renderQuests()
 }
 function setTabPulse(on){
-    hasInteractive=!!on;var tab=$('questTab');if(!tab)return;tab.classList.remove('pulse');
-    if(on){void tab.offsetWidth;tab.classList.add('pulse');setTimeout(function(){tab.classList.remove('pulse')},1050)}
-}
+    hasInteractive=!!on;
+    var tab=$('questTab');
+    if(tab)tab.classList.toggle('pulse',hasInteractive);
+  }
 function setQuestInteractiveVisible(visible,ready,pulse){
     pagePaused=!!visible;interactiveReady=!!ready;
     var app=$('questApp');if(app)app.classList.toggle('interactiveVisible',pagePaused);
@@ -900,7 +899,6 @@ document.addEventListener('DOMContentLoaded',function(){
     connect();
     /* Первый отчёт о геометрии input-окна (initial render). */
     publishInteractiveBounds();
-    setTimeout(publishInteractiveBounds,120);
     setInterval(publishInteractiveBounds,1000);
 });
 })();
