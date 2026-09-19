@@ -179,6 +179,7 @@ namespace ETS2_Assist_GUI
             bool showInteractive = _questInteractiveShellVisible;
             bool showGameUi = _gameUiForce ||
                               (gameVisible &&
+                               !paused &&
                                !_questInteractiveShellVisible &&
                                _questPauseFlow != QuestPauseFlowState.WaitingForResume);
 
