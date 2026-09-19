@@ -19,7 +19,7 @@ namespace ETS2_Assist_GUI
                         return attr.InformationalVersion;
                 }
                 catch { }
-                return "1.0.40.78-QUEST-CURSOR-TAB-CLICK-R8";
+                return "1.0.40.79-CURSOR-CAL-TAB-QUEST-R9";
             }
         }
     }
