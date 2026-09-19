@@ -199,6 +199,12 @@ namespace ETS2_Assist_GUI
         private bool _questTabHookKeyDown;
         private bool _questInventoryKeyDown;
         private bool _questEscKeyDown;
+        // F1-F12/PAUSE могут открыть внутриигровое окно, которое не является
+        // главной ESC-паузой. Пока такой режим считается открытым, следующий ESC
+        // только передаётся игре для закрытия этого окна и НЕ запускает интерактив.
+        private bool _questNonEscMenuGuard;
+        private uint _questNonEscMenuGuardVk;
+        private uint _questNonEscMenuTriggerVk;
         private const int WH_KEYBOARD_LL = 13;
         private const int HC_ACTION = 0;
         private const int QUEST_HOOK_WM_KEYDOWN = 0x0100;
@@ -570,6 +576,51 @@ RegisterHotKeyChecked(
             bool tabEnabled = Volatile.Read(ref _questTabHookEnabled) != 0;
             bool inputEnabled = Volatile.Read(ref _questInputHookEnabled) != 0;
             bool gameForeground = inputEnabled && IsQuestHookGameForeground();
+
+            bool isFMenuKey = k.vkCode >= (uint)Keys.F1 && k.vkCode <= (uint)Keys.F12;
+            bool isPauseMenuKey = k.vkCode == (uint)Keys.Pause;
+
+            if (gameForeground && (isFMenuKey || isPauseMenuKey))
+            {
+                if (keyDown && (k.flags & LLKHF_UP) == 0)
+                {
+                    /* Toggle once per physical key press; auto-repeat must not
+                       accidentally close the guard again. */
+                    if (_questNonEscMenuTriggerVk == 0)
+                    {
+                        _questNonEscMenuTriggerVk = k.vkCode;
+                        if (_questNonEscMenuGuard && _questNonEscMenuGuardVk == k.vkCode)
+                        {
+                            _questNonEscMenuGuard = false;
+                            _questNonEscMenuGuardVk = 0;
+                            try
+                            {
+                                if (!IsDisposed && IsHandleCreated)
+                                    BeginInvoke((Action)(() => AppendLog(
+                                        $"[QUEST] menu-key VK={k.vkCode}: non-ESC menu guard OFF")));
+                            }
+                            catch { }
+                        }
+                        else
+                        {
+                            _questNonEscMenuGuard = true;
+                            _questNonEscMenuGuardVk = k.vkCode;
+                            try
+                            {
+                                if (!IsDisposed && IsHandleCreated)
+                                    BeginInvoke((Action)(() => AppendLog(
+                                        $"[QUEST] menu-key VK={k.vkCode}: non-ESC menu guard ON")));
+                            }
+                            catch { }
+                        }
+                    }
+                }
+                else if (keyUp && _questNonEscMenuTriggerVk == k.vkCode)
+                {
+                    _questNonEscMenuTriggerVk = 0;
+                }
+                return CallNextHookEx(_questTabKeyboardHook, nCode, wParam, lParam);
+            }
 
             if (k.vkCode == (uint)Keys.Escape && gameForeground)
             {
