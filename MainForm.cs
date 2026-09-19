@@ -2842,7 +2842,8 @@ RegisterHotKeyChecked(
                 TrailBehavior.SetOnCommand(data => OnClientCommand(data));
                 // v1.0.41: новая страница сразу получает СВОЮ категорию оверлеев,
                 // а не устаревшую пару show_ui/hide_ui.
-                TrailBehavior.SetCategoryProvider(() => _gameUiForce ? "game" : (_lastPauseState == true ? "interactive" : "game"));
+                TrailBehavior.SetCategoryProvider(() =>
+                    _gameUiForce ? "game" : (_validatedPaused || _questInteractiveShellVisible ? "interactive" : "game"));
                 TrailBehavior.SetQuestStateProviders(() => _questHasInteractive, () => _questCollapsed);
                 // v1.0.40.27: новый WS-клиент → форс-рассылка данных AR (страница AR1,
                 // подключившаяся на паузе/при неподвижной фуре, иначе ждала события).
