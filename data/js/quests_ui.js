@@ -17,7 +17,7 @@ var pendingQuestBeacon=false,pendingInventoryBeacon=false;
 /* Защита от гонки выбора: после клика короткое время локальный выбор имеет
    приоритет над запаздывающим quest_state со старым selectedQuest. */
 var pendingSelectionKey='',pendingSelectionAt=0,pendingSelectionTimeoutMs=2000;
-var inventoryBeaconSeen=Object.create(null),inventoryKnown=Object.create(null),inventoryKnownInitialized=false,lastNearbyInteractive=false;
+var inventoryBeaconSeen=Object.create(null),inventoryKnown=Object.create(null),inventoryKnownInitialized=false,lastNearbyInteractive=false,inventoryPulseState=false;
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
    переключать вид дважды: двойной клик по кнопке или по прозрачной области
    давал пару «свёрнуто → развёрнуто» в одну миллисекунду, и окно визуально
@@ -824,7 +824,10 @@ function blockToggle(){
 }
 
 function setTabPulse(value){
-    hasInteractive=!!value;
+    var next=!!value,was=hasInteractive;
+    hasInteractive=next;
+    if(next&&!was)startBookmarkBeacon('quest');
+    else if(!next&&was)clearBookmarkBeacon('quest');
     syncTabVisibility();
 }
 
@@ -983,7 +986,13 @@ function inventoryHasNewItems(){
         return x&&x.new_item===true&&!locallySeenInventoryItems[String(x.id||'')];
     });
 }
-function setInventoryTabPulse(on){syncTabVisibility()}
+function setInventoryTabPulse(on){
+    var next=!!on,was=inventoryPulseState;
+    inventoryPulseState=next;
+    if(next&&!was)startBookmarkBeacon('inventory');
+    else if(!next&&was)clearBookmarkBeacon('inventory');
+    syncTabVisibility();
+}
 function renderInventory(){
     var el=$('inventoryList');
     if(!el){qdLog('[CONTENT-RENDER] inventoryList element MISSING');return}
@@ -1003,7 +1012,7 @@ function renderInventory(){
         return'<button class="inventoryItem'+(selected?' selected':'')+'" data-item="'+esc(id)+'">'
             +'<span class="inventoryItemName">'
             +'<span class="inventoryItemLabel">'+esc(x.name||id)+'</span>'
-            +(isNew?'<span class="inventoryNewDot" aria-hidden="true">*</span>':'')
+            +(isNew?'<span class="inventoryNewDot" aria-hidden="true"></span>':'')
             +'</span><small>×'+esc(x.amount||1)+'</small></button>';
     }).join('')||'<div class="muted">пусто</div>';
     setInventoryTabPulse(inventoryHasNewItems()&&activeInterface==='none');
@@ -1112,8 +1121,9 @@ function applyState(data){
     var nearbyNow=!!((data.nearby)||[]).some(function(p){return p&&p.Marker&&p.Marker!=='none'});
 
     /* Если backend уже подтвердил паузу, квестовый beacon не должен
-       появиться поверх AR до прихода quest_pause_ui. Старый beacon здесь
-       тоже немедленно убираем. */
+       остаться поверх AR до прихода quest_pause_ui. Но сам признак
+       доступного интерактива сохраняем: при выходе из паузы beacon
+       запускается автоматически. */
     if(pausedByState){
         if(questBeaconVisible){
             if(questBeaconTimer){clearTimeout(questBeaconTimer);questBeaconTimer=0}
@@ -1125,10 +1135,9 @@ function applyState(data){
             inventoryBeaconVisible=false;
             var ibt=$('inventoryTab');if(ibt)ibt.classList.remove('beacon');
         }
-    }else if(nearbyNow&&!lastNearbyInteractive&&!pagePaused){
-        startBookmarkBeacon('quest');
     }
     lastNearbyInteractive=nearbyNow;
+    setTabPulse(nearbyNow);
 
     var presentInventory=Object.create(null);
     var currentInventory=Object.create(null);
