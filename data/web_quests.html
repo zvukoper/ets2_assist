@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ETS2 Assist — интерактив R25 1.0.40.95</title>
+<title>ETS2 Assist — интерактив R26 1.0.40.96</title>
 <script src="js/debug_show.js"></script>
 <script src="js/ui_category.js"></script>
 <style>
@@ -179,6 +179,14 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 .optionService{color:var(--accent)}
 .optionRequirements,.optionReason{color:var(--muted)}
 
+/* Невозвратный ответ: оранжевая звёздочка перед текстом и предупреждение
+   курсивом в блоке допинформации. */
+.irreversibleStar{color:var(--accent);margin-right:6px;font-size:13px}
+.dialogOption.irreversible .optionText{font-weight:600}
+.irreversibleNote{color:var(--muted);font-size:13px;line-height:1.4}
+.irreversibleNote em{font-style:italic}
+.irreversibleNote .irreversibleStar{margin-right:2px}
+
 /* Панель кнопок: своя полоса во всю ширину блока ответов. */
 #actionBar{
     display:flex;gap:8px;align-items:stretch;
@@ -344,7 +352,7 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 })();
 </script>
 <script>
-window.__questHtmlDiagBuild='QHTML-UISTYLE-R25-2026-09-20';
+window.__questHtmlDiagBuild='QHTML-IRREV-R26-2026-09-20';
 window.__questBootstrapErrors=[];
 window.addEventListener('error',function(e){
     try{
@@ -363,6 +371,6 @@ window.addEventListener('unhandledrejection',function(e){
     }catch(_){}
 },true);
 </script>
-<script src="js/quests_ui.js?v=1.0.40.95"></script>
+<script src="js/quests_ui.js?v=1.0.40.96"></script>
 </body>
 </html>

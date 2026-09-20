@@ -67,6 +67,47 @@ namespace ETS2_Assist_GUI.Quests
                 i.MinimapVisibleByStep ??= new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
                 i.ArVisibleByStep ??= new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
             }
+            ValidateIrreversibleOptions(def);
+        }
+
+        /* Невозвратный ответ обязан вести в существующий узел: без Next диалог
+           упирается в тупик и после перезахода с середины продолжить его нечем.
+           Такая комбинация несовместима — помечаем её и отключаем флаг, чтобы
+           игрок не потерял диалог. */
+        private static void ValidateIrreversibleOptions(QuestDefinition def)
+        {
+            foreach (var node in def.Dialogues)
+            {
+                foreach (QuestDialogueOption option in node.Value.Options ?? new List<QuestDialogueOption>())
+                {
+                    if (!option.Irreversible) continue;
+                    if (!string.IsNullOrWhiteSpace(option.Next) && def.Dialogues.ContainsKey(option.Next)) continue;
+                    Logger.Current?.Data(
+                        $"[QUEST] '{def.Id}': узел '{node.Key}' — невозвратный ответ '{option.Text}' " +
+                        $"не ведёт в существующий узел (next='{option.Next}'). Флаг невозвратности снят: " +
+                        "диалог упёрся бы в тупик после перезахода.");
+                    option.Irreversible = false;
+                }
+            }
+        }
+
+        /* Закрепить узел продолжения диалога после невозвратного ответа. */
+        public void SetDialogueAnchor(string questId, string interactionId, string node)
+        {
+            if (!State.Quests.TryGetValue(questId, out QuestProgress? progress) || progress == null) return;
+            progress.DialogueAnchor ??= new(StringComparer.OrdinalIgnoreCase);
+            string key = questId + ":" + interactionId;
+            if (string.IsNullOrWhiteSpace(node)) progress.DialogueAnchor.Remove(key);
+            else progress.DialogueAnchor[key] = node;
+            SaveState();
+        }
+
+        public string GetDialogueAnchor(string questId, string interactionId)
+        {
+            if (!State.Quests.TryGetValue(questId, out QuestProgress? progress) || progress == null) return "";
+            return progress.DialogueAnchor != null &&
+                   progress.DialogueAnchor.TryGetValue(questId + ":" + interactionId, out string? node)
+                ? node ?? "" : "";
         }
 
         public void ResetQuest(string id, bool clearInventory = false)
@@ -90,6 +131,9 @@ namespace ETS2_Assist_GUI.Quests
 
             foreach (string key in State.PermanentInteractionNames.Keys.Where(k => k.StartsWith(id + ":", StringComparison.OrdinalIgnoreCase)).ToList())
                 State.PermanentInteractionNames.Remove(key);
+            /* Полный сброс квеста снимает и закреплённые невозвратные узлы:
+               иначе после reset диалог продолжался бы с середины. */
+            State.Quests[id].DialogueAnchor?.Clear();
             foreach (string key in State.GeneratedPoints.Keys.Where(k => k.StartsWith(id + ":", StringComparison.OrdinalIgnoreCase)).ToList())
                 State.GeneratedPoints.Remove(key);
             State.ActivationCounts.Remove(id);
@@ -155,6 +199,7 @@ namespace ETS2_Assist_GUI.Quests
             foreach (var progress in State.Quests.Values)
             {
                 progress.Flags ??= new(StringComparer.OrdinalIgnoreCase);
+                progress.DialogueAnchor ??= new(StringComparer.OrdinalIgnoreCase);
             }
         }
 
@@ -191,7 +236,11 @@ namespace ETS2_Assist_GUI.Quests
             state.GeneratedPoints ??= new(StringComparer.OrdinalIgnoreCase);
             state.EditorPointOverrides ??= new(StringComparer.OrdinalIgnoreCase);
             state.ActivationCounts ??= new(StringComparer.OrdinalIgnoreCase);
-            foreach (var p in state.Quests.Values) p.Flags ??= new(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in state.Quests.Values)
+            {
+                p.Flags ??= new(StringComparer.OrdinalIgnoreCase);
+                p.DialogueAnchor ??= new(StringComparer.OrdinalIgnoreCase);
+            }
         }
 
         private QuestSettings LoadSettings()

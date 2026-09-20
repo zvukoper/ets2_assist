@@ -6,7 +6,7 @@
                             "Overlays.json",
                             "localized_cities/cities_sibirmap.json"
                         ],
-    "build":  "1.0.40.95-QUEST-UI-R25",
+    "build":  "1.0.40.96-QUEST-IRREV-R26",
     "mode":  "track-static-snapshot",
     "playbackStaticFetch":  false
 }

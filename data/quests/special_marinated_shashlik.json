@@ -33,8 +33,8 @@
   },
   "dialogues": {
     "ruslan_start": { "speaker": "Руслан", "text": "Приветствую, бродяга. Что интересует?", "image": "quests/images/ruslan_shahlichnik.jpg", "options": [
-      { "text": "Хочу попробовать твой лучший шашлык!", "serviceText": "[+1 выносливость, +1 сила]", "next": "ruslan_special_offer" },
-      { "text": "Ищу подработку. Нужно с чем подсобить?", "serviceText": "[+ репутация]", "next": "ruslan_job_offer" },
+      { "text": "Хочу попробовать твой лучший шашлык!", "serviceText": "[+1 выносливость, +1 сила]", "next": "ruslan_special_offer", "irreversible": true },
+      { "text": "Ищу подработку. Нужно с чем подсобить?", "serviceText": "[+ репутация]", "next": "ruslan_job_offer", "irreversible": true },
       { "text": "Пока ничего, просто осматриваюсь.", "close": true }
     ]},
     "ruslan_special_offer": { "speaker": "Руслан", "text": "Тогда ты по адресу. У меня есть специальная версия шашлыка, проверенный веками рецепт, доведённый до совершенства. Я его не продаю массово, только для специальных клиентов. И дело не в деньгах, хотя он стоит прилично. Я должен убедиться, что ты надёжный клиент. Выполни для меня задание и посмотрим.", "image": "quests/images/ruslan_shahlichnik.jpg", "options": [

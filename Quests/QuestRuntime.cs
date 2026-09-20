@@ -560,6 +560,10 @@ namespace ETS2_Assist_GUI.Quests
 
         private string ResolveEntryDialogue(QuestDefinition def, QuestInteractionDefinition interaction)
         {
+            /* Невозвратный ответ закрепляется в состоянии: диалог больше не
+               начинается сначала, а продолжается с узла, куда привёл выбор. */
+            string anchor = _store.GetDialogueAnchor(def.Id, interaction.Id);
+            if (!string.IsNullOrWhiteSpace(anchor) && def.Dialogues.ContainsKey(anchor)) return anchor;
             QuestProgress progress = GetProgress(def.Id);
             if (progress.ReturnOffer && !string.IsNullOrWhiteSpace(interaction.CancelledDialogue)) return interaction.CancelledDialogue;
             if (progress.Status == QuestStatus.Active && !string.IsNullOrWhiteSpace(interaction.ActiveDialogue)) return interaction.ActiveDialogue;
@@ -582,6 +586,14 @@ namespace ETS2_Assist_GUI.Quests
             if (option.Requirements != null && !EvaluateRequirement(option.Requirements)) { SendError("Условия варианта не выполнены."); return; }
             ApplyEffects(def, option.Effects);
             if (!string.IsNullOrWhiteSpace(option.Next)) _activeDialogue[key] = option.Next; else _activeDialogue.Remove(key);
+            /* Невозвратный ответ: закрепляем узел продолжения, чтобы диалог не
+               начинался сначала и игрок не мог подобрать другой вариант. */
+            if (option.Irreversible)
+            {
+                _store.SetDialogueAnchor(questId, interactionId, option.Next ?? "");
+                Logger.Current?.Workflow(
+                    $"[QUEST-DIAG][IRREVERSIBLE] quest={questId} interaction={interactionId} node={current} -> anchor={option.Next}");
+            }
             if (option.Close)
             {
                 _selectedQuestId = "";
@@ -806,6 +818,7 @@ namespace ETS2_Assist_GUI.Quests
                     ["serviceText"]=option.ServiceText ?? "",
                     ["enabled"]=enabled,
                     ["close"]=option.Close,
+                    ["irreversible"]=option.Irreversible,
                     ["requirements"]=requirementText,
                     ["requirementsMet"]=enabled,
                     ["reason"]=enabled?"":"Условие не выполнено"

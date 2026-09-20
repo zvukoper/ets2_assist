@@ -34,7 +34,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-UISTYLE-R25-2026-09-20';
+var QUEST_UI_DIAG_BUILD='QCONTENT-IRREV-R26-2026-09-20';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -392,7 +392,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R25 1.0.40.95</strong>',
+        '<strong>SOFT CURSOR R26 1.0.40.96</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -881,14 +881,16 @@ function renderDialogue(node){
     baseServiceHtml=node.serviceText?'<div class="serviceBlock">'+esc(node.serviceText)+'</div>':'';
     if(service)service.innerHTML=baseServiceHtml;
     if(opts){
-        var optionsKey=JSON.stringify((node.options||[]).map(function(o){return[o.text,o.serviceText,o.requirements,o.requirementsMet,o.enabled,o.reason]}));
+        var optionsKey=JSON.stringify((node.options||[]).map(function(o){return[o.text,o.serviceText,o.requirements,o.requirementsMet,o.enabled,o.reason,o.irreversible===true]}));
         if(optionsKey!==lastOptionsKey){
             lastOptionsKey=optionsKey;
             opts.innerHTML=(node.options||[]).map(function(o,i){
                 var req=o.requirements?'<small class="optionRequirements">'+esc(o.requirements)+'</small>':'';
                 var svc=o.serviceText?'<small class="optionService">'+esc(o.serviceText)+'</small>':'';
                 var reason=o.enabled===false?'<small class="optionReason">'+esc(o.reason||'Требование не выполнено')+'</small>':'';
-                return'<button class="dialogOption" data-index="'+i+'" '+(o.enabled===false?'disabled':'')+'><span class="optionText">'+esc(o.text)+'</span>'+svc+req+reason+'</button>';
+                /* Невозвратный ответ помечается оранжевой звёздочкой перед текстом. */
+                var star=o.irreversible===true?'<span class="irreversibleStar" aria-hidden="true">\u2605</span>':'';
+                return'<button class="dialogOption'+(o.irreversible===true?' irreversible':'')+'" data-index="'+i+'" '+(o.enabled===false?'disabled':'')+'><span class="optionText">'+star+esc(o.text)+'</span>'+svc+req+reason+'</button>';
             }).join('');
             opts.querySelectorAll('.dialogOption').forEach(function(btn){
                 btn.onclick=function(){
@@ -905,18 +907,26 @@ function renderDialogue(node){
     renderActionBar();
 }
 
+/* Текст-предупреждение для невозвратного ответа. */
+var IrreversibleWarning='Невозвратный ответ. Выбирайте осознанно, у вас не будет возможности начать диалог заново и выбрать другой ответ. Это может повлиять на сюжет и вашу репутацию.';
 /* При выборе ответа под картинкой показываем его служебную информацию:
-   прибавки характеристик, требования и причину недоступности. Пока просто
-   дублируем текст допинфы и условий выбранного ответа. Если ответ снят,
-   возвращаем служебный текст текущей реплики НПЦ. */
+   прибавки характеристик, требования и причину недоступности. Для невозвратного
+   ответа в конце добавляем звёздочку, дефис и предупреждение курсивом.
+   Если ответ снят, возвращаем служебный текст текущей реплики НПЦ. */
 function renderOptionService(o){
     var service=$('dialogService');if(!service)return;
     if(!o){service.innerHTML=baseServiceHtml;return}
     var parts=[];
-    if(o.serviceText)parts.push(o.serviceText);
-    if(o.requirements)parts.push(o.requirements);
-    if(o.enabled===false)parts.push(o.reason||'Требование не выполнено');
-    service.innerHTML=parts.map(function(t){return'<div class="serviceBlock">'+esc(t)+'</div>'}).join('')||baseServiceHtml;
+    if(o.serviceText)parts.push(esc(o.serviceText));
+    if(o.requirements)parts.push(esc(o.requirements));
+    if(o.enabled===false)parts.push(esc(o.reason||'Требование не выполнено'));
+    var html=parts.map(function(t){return'<div class="serviceBlock">'+t+'</div>'}).join('');
+    if(o.irreversible===true){
+        html+='<div class="serviceBlock irreversibleNote">'
+            +'<span class="irreversibleStar" aria-hidden="true">\u2605</span>'
+            +' — <em>'+esc(IrreversibleWarning)+'</em></div>';
+    }
+    service.innerHTML=html||baseServiceHtml;
 }
 
 function setActionButton(btn,label,cls){
@@ -1615,7 +1625,7 @@ window.onEts2Command=function(d){
     if(itab)itab.addEventListener('transitionend',function(){syncTabVisibility();if(pagePaused)syncInput(false);publishInteractiveBounds()});
     window.addEventListener('resize',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     var style=document.createElement('style');
-    style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}.#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px}.questSectionTitle{padding:8px 10px 5px;color:var(--accent);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:var(--muted);font-size:13px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid var(--accent);background:rgba(229,147,16,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:var(--accent);font-weight:700;font-size:14px}.rewardLine{padding:3px 0;font-weight:600;font-size:14px}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}#questApp button{box-sizing:border-box;border:1px solid transparent;background:var(--panel);color:#e7edf4;font-family:var(--font-ui);transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease}#questApp button:hover,#questApp button.quest-native-hover{border-color:transparent;background:var(--hover)}#questApp button:disabled{opacity:.38;cursor:not-allowed}#questApp #questTab,#questApp #inventoryTab{border-left:0;border-color:transparent;background:var(--panel)}#questApp #questTab:hover,#questApp #inventoryTab:hover,#questApp #questTab.quest-native-hover,#questApp #inventoryTab.quest-native-hover{border-color:transparent;border-left:0;background:var(--hover)}#questApp .questItem.selected,#questApp .inventoryItem.selected,#questApp .sideItem.selected{border-color:var(--accent);background:var(--selected)}#questApp .dialogOption.selected{border-color:var(--accent);background:var(--selected);box-shadow:0 0 0 1px var(--accent)}#questApp .dialogOption:disabled{opacity:.38;cursor:not-allowed}.optionReason{font-size:13px;color:var(--muted);font-weight:400}.dialogTextRole{font-family:var(--font-ui)}.dialogTextService{font-family:var(--font-ui);color:var(--muted);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:var(--font-ui);color:var(--accent);font-size:13px}.optionRequirements{font-family:var(--font-ui);color:var(--muted);font-size:13px}.optionRequirements.unmet{color:var(--muted);opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:14px}';
+    style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}.#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px}.questSectionTitle{padding:8px 10px 5px;color:var(--accent);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:var(--muted);font-size:13px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid var(--accent);background:rgba(229,147,16,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:var(--accent);font-weight:700;font-size:14px}.rewardLine{padding:3px 0;font-weight:600;font-size:14px}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}#questApp button{box-sizing:border-box;border:1px solid transparent;background:var(--panel);color:#e7edf4;font-family:var(--font-ui);transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease}#questApp button:hover,#questApp button.quest-native-hover{border-color:transparent;background:var(--hover)}#questApp button:disabled{opacity:.38;cursor:not-allowed}#questApp #questTab,#questApp #inventoryTab{border-left:0;border-color:transparent;background:var(--panel)}#questApp #questTab:hover,#questApp #inventoryTab:hover,#questApp #questTab.quest-native-hover,#questApp #inventoryTab.quest-native-hover{border-color:transparent;border-left:0;background:var(--hover)}#questApp .questItem.selected,#questApp .inventoryItem.selected,#questApp .sideItem.selected{border-color:var(--accent);background:var(--selected)}#questApp .dialogOption.selected{border-color:var(--accent);background:var(--selected);box-shadow:0 0 0 1px var(--accent)}#questApp .dialogOption:disabled{opacity:.38;cursor:not-allowed}.optionReason{font-size:13px;color:var(--muted);font-weight:400}.dialogTextRole{font-family:var(--font-ui)}.dialogTextService{font-family:var(--font-ui);color:var(--muted);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:var(--font-ui);color:var(--accent);font-size:13px}.optionRequirements{font-family:var(--font-ui);color:var(--muted);font-size:13px}.irreversibleStar{color:var(--accent);margin-right:6px;font-size:13px}.dialogOption.irreversible .optionText{font-weight:600}.irreversibleNote{color:var(--muted);font-size:13px;line-height:1.4}.irreversibleNote em{font-style:italic}.irreversibleNote .irreversibleStar{margin-right:2px}.optionRequirements.unmet{color:var(--muted);opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:14px}';
     document.head.appendChild(style);
 })();
 
