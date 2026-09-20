@@ -298,7 +298,7 @@ namespace ETS2_Assist_GUI
                 case "quest_state_request":
                 case "quest_select_interaction":
                 case "quest_dialogue_start":
-                case "quest_dialogue_end":
+                case "quest_dialogue_back":
                 case "quest_clear_selection":
                 case "quest_dialog_option":
                 case "inventory_item_seen":

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ETS2 Assist — интерактив R26 1.0.40.96</title>
+<title>ETS2 Assist — интерактив R27 1.0.40.97</title>
 <script src="js/debug_show.js"></script>
 <script src="js/ui_category.js"></script>
 <style>
@@ -193,9 +193,9 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
     padding:8px 6px 6px;border-top:1px solid rgba(255,255,255,.12);
     flex:0 0 auto;
 }
-/* Отмена всегда справа у края и никогда не переносится — у неё личное место. */
-.actionCancel{flex:0 0 120px;max-width:120px}
-/* Инициация расширяется до кнопки отмены, но не перекрывает её. */
+/* «Назад» всегда у правого края и не переносится — у неё личное место.
+   «Подтвердить» расширяется до неё, но не перекрывает. */
+.actionBack{flex:0 0 120px;max-width:120px}
 .actionPrimary{flex:0 1 auto;min-width:0;max-width:calc(100% - 128px)}
 .actionBtn{
     padding:10px 14px;border:1px solid transparent;border-radius:7px;
@@ -209,6 +209,9 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 .actionBtn.primary:hover,.actionBtn.primary.quest-native-hover{background:#f0a52a}
 /* Текст кнопки переносится максимум на две строки. */
 .actionBtn span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+/* Вариант инициации события «Поговорить» и его пометка «(продолжить)». */
+.dialogOption.talkOption{background:var(--hover)}
+.talkOption.continuation .optionText{color:var(--accent)}
 #imagePanel{padding:12px}
 #dialogImage{
     width:100%;height:100%;margin:0;object-fit:cover;
@@ -352,7 +355,7 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 })();
 </script>
 <script>
-window.__questHtmlDiagBuild='QHTML-IRREV-R26-2026-09-20';
+window.__questHtmlDiagBuild='QHTML-NAV-R27-2026-09-20';
 window.__questBootstrapErrors=[];
 window.addEventListener('error',function(e){
     try{
@@ -371,6 +374,6 @@ window.addEventListener('unhandledrejection',function(e){
     }catch(_){}
 },true);
 </script>
-<script src="js/quests_ui.js?v=1.0.40.96"></script>
+<script src="js/quests_ui.js?v=1.0.40.97"></script>
 </body>
 </html>

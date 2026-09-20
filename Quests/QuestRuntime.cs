@@ -410,8 +410,8 @@ namespace ETS2_Assist_GUI.Quests
                         data["questId"]?.Value<string>() ?? "",
                         data["id"]?.Value<string>() ?? ""));
                     break;
-                case "quest_dialogue_end":
-                    BeginInvokeUi(EndDialogue);
+                case "quest_dialogue_back":
+                    BeginInvokeUi(GoBackDialogue);
                     break;
                 case "quest_clear_selection":
                     BeginInvokeUi(ClearSelection);
@@ -444,7 +444,7 @@ namespace ETS2_Assist_GUI.Quests
                     break;
                 case "quest_select_interaction": BeginInvokeUi(() => SelectInteraction(data["questId"]?.Value<string>() ?? "", data["id"]?.Value<string>() ?? "")); break;
                 case "quest_dialogue_start": BeginInvokeUi(() => StartDialogue(data["questId"]?.Value<string>() ?? "", data["id"]?.Value<string>() ?? "")); break;
-                case "quest_dialogue_end": BeginInvokeUi(EndDialogue); break;
+                case "quest_dialogue_back": BeginInvokeUi(GoBackDialogue); break;
                 case "quest_clear_selection": BeginInvokeUi(ClearSelection); break;
                 case "quest_window_state": BeginInvokeUi(() => _host.OnQuestWindowCollapsedChanged(data["collapsed"]?.Value<bool>() ?? false)); break;
                 case "quest_dialog_option": BeginInvokeUi(() => ApplyDialogOption(data["questId"]?.Value<string>() ?? "", data["interaction"]?.Value<string>() ?? "", data["index"]?.Value<int>() ?? -1)); break;
@@ -528,14 +528,43 @@ namespace ETS2_Assist_GUI.Quests
             SendQuestState("dialogue-start");
         }
 
-        /* Выход из диалога обратно к карточке квеста (кнопка «Отмена» в диалоге).
-           Выделение СОХРАНЯЕТСЯ, сбрасывается только активная реплика — иначе
-           следующий broadcast вернул бы диалог обратно. */
-        private void EndDialogue()
+        /* Шаг назад по диалогу. Возврат в корень возможен, пока диалог не дошёл
+           до невозвратной точки. После неё корень недоступен, и шаг назад
+           возвращает только на карточку квеста. */
+        private void GoBackDialogue()
         {
-            Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] dialogue_end quest={_selectedQuestId}/{_selectedInteractionId}");
-            _activeDialogue.Clear();
-            SendQuestState("dialogue-end");
+            string questId = _selectedQuestId, interactionId = _selectedInteractionId;
+            Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] dialogue_back quest={questId}/{interactionId}");
+            if (string.IsNullOrWhiteSpace(questId) || string.IsNullOrWhiteSpace(interactionId)) return;
+            if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) return;
+            QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(
+                i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));
+            string key = questId + ":" + interactionId;
+            if (interaction != null && CanReturnToDialogueRoot(questId, interaction))
+            {
+                _activeDialogue[key] = interaction.InitialDialogue!;
+                Logger.Current?.Workflow($"[QUEST-DIAG][DIALOGUE-BACK] root={interaction.InitialDialogue}");
+            }
+            else
+            {
+                /* Корень недоступен (невозвратная точка) или смотреть назад некуда:
+                   выходим на карточку квеста, выделение сохраняется. */
+                _activeDialogue.Remove(key);
+                Logger.Current?.Workflow("[QUEST-DIAG][DIALOGUE-BACK] -> quest card");
+            }
+            SendQuestState("dialogue-back");
+        }
+
+        /* Возврат в корень диалога разрешён, если игрок сейчас ВНУТРИ диалога,
+           он не в корне и невозвратная точка ещё не достигнута. */
+        private bool CanReturnToDialogueRoot(string questId, QuestInteractionDefinition interaction)
+        {
+            if (!_activeDialogue.TryGetValue(questId + ":" + interaction.Id, out string? current) ||
+                string.IsNullOrWhiteSpace(current)) return false;
+            string root = interaction.InitialDialogue ?? "";
+            if (string.IsNullOrWhiteSpace(root)) return false;
+            if (string.Equals(current, root, StringComparison.OrdinalIgnoreCase)) return false;
+            return string.IsNullOrWhiteSpace(_store.GetDialogueAnchor(questId, interaction.Id));
         }
 
         /* Снятие выделения: кнопка «Назад» (или «Отмена» в карточке квеста).
@@ -692,6 +721,9 @@ namespace ETS2_Assist_GUI.Quests
                     /* Текст кнопки инициации события. Пользователь задаёт его в
                        свойствах квеста; по умолчанию — «Поговорить». */
                     ["actionName"] = string.IsNullOrWhiteSpace(def.ActionName) ? "Поговорить" : def.ActionName,
+                    /* Есть ли входной диалог: без него вариант «Поговорить» в
+                       карточке не создаётся (нечего открывать). */
+                    ["talk"] = def.Interactions.Any(i => !string.IsNullOrWhiteSpace(i.InitialDialogue)),
                     /* ВАЖНО: весь остальной quest_state отдаёт camelCase, а
                        JArray.FromObject(def.Rewards) сериализовал модель
                        PascalCase (Type/Id/Amount/Display/…). web_quests.html
@@ -768,6 +800,10 @@ namespace ETS2_Assist_GUI.Quests
                пакет за сброс выделения примерно через один тик (~1 с). */
             payload["selectedQuest"] = sq ?? "";
             payload["selectedInteraction"] = si ?? "";
+            /* Вариант «Поговорить» в карточке помечается «(продолжить)», когда
+               диалог возобновится НЕ с начала: либо закреплена невозвратная
+               точка, либо диалог уже ушёл вперёд и смотреть назад нельзя. */
+            payload["talkContinuation"] = TalkContinuesDialogue(sq, si);
 
             if (!string.IsNullOrWhiteSpace(sq) && !string.IsNullOrWhiteSpace(si))
             {
@@ -783,6 +819,20 @@ namespace ETS2_Assist_GUI.Quests
             }
 
             return payload;
+        }
+
+        /* Возобновится ли диалог с середины, а не с начала. */
+        private bool TalkContinuesDialogue(string? questId, string? interactionId)
+        {
+            if (string.IsNullOrWhiteSpace(questId) || string.IsNullOrWhiteSpace(interactionId)) return false;
+            if (!string.IsNullOrWhiteSpace(_store.GetDialogueAnchor(questId, interactionId))) return true;
+            if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) return false;
+            QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(
+                i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));
+            if (interaction == null) return false;
+            return _activeDialogue.TryGetValue(questId + ":" + interactionId, out string? current) &&
+                   !string.IsNullOrWhiteSpace(current) &&
+                   !string.Equals(current, interaction.InitialDialogue ?? "", StringComparison.OrdinalIgnoreCase);
         }
 
         /* Награды квеста для UI. Отдаём camelCase-поля, потому что страница
