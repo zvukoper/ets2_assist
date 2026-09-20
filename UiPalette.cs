@@ -53,15 +53,17 @@ namespace ETS2_Assist_GUI
             Color.FromArgb((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
 
         /// <summary>
-        /// Скруглить контрол. Свойство Region не сглаживает края, поэтому у кнопок
-        /// с плоским стилем рисуем закруглённый путь.
+        /// Скруглить контрол.
+        /// ВНИМАНИЕ: отключено. Region подгоняется под текущий размер контрола, но
+        /// при DPI-масштабировании Windows/пересчёте размеров он не пересчитывается
+        /// и обрезает кнопку с текстом. Владелец контрола должен пересчитывать
+        /// Region в OnResize, если скругление всё же понадобится.
         /// </summary>
         public static void ApplyRoundedRegion(Control c, int radius = CornerRadius)
         {
-            if (c == null || c.Width <= 0 || c.Height <= 0) return;
-            using var path = RoundedPath(new Rectangle(0, 0, c.Width, c.Height), radius);
+            if (c == null) return;
             c.Region?.Dispose();
-            c.Region = new Region(path);
+            c.Region = null;
         }
 
         /// <summary>Построить закруглённый прямоугольник.</summary>
@@ -78,19 +80,64 @@ namespace ETS2_Assist_GUI
         }
 
         /// <summary>
-        /// Единый вид кнопки: скругление, плоский стиль, палитра приложения.
+        /// Единый вид кнопки: плоский стиль и палитра приложения.
         /// </summary>
         public static void StyleButton(Button b, Color? background = null, Color? foreground = null)
         {
             if (b == null) return;
             b.FlatStyle = FlatStyle.Flat;
-            b.FlatAppearance.BorderSize = 0;
+            b.FlatAppearance.BorderSize = 1;
+            b.FlatAppearance.BorderColor = Panel;
             b.FlatAppearance.MouseOverBackColor = Hover;
             b.FlatAppearance.MouseDownBackColor = Selected;
             b.BackColor = background ?? Panel;
             b.ForeColor = foreground ?? TextPrimary;
             b.UseVisualStyleBackColor = false;
-            ApplyRoundedRegion(b);
+            b.AutoEllipsis = false;
+        }
+
+        /// <summary>
+        /// Единая раскраска меню приложения: тёмный фон панели, светлый текст,
+        /// приглушённая оранжевая подсветка наведения. Без этой настройки
+        /// ToolStrip использует системную (ярко-голубую) подсветку.
+        /// </summary>
+        public static void StyleMenuStrip(ToolStrip strip)
+        {
+            if (strip == null) return;
+            strip.BackColor = Panel;
+            strip.ForeColor = TextPrimary;
+            strip.Renderer = new ToolStripProfessionalRenderer(new MenuColors());
+            foreach (ToolStripItem item in strip.Items) StyleMenuItem(item);
+        }
+
+        private static void StyleMenuItem(ToolStripItem item)
+        {
+            item.BackColor = Panel;
+            item.ForeColor = TextPrimary;
+            if (item is ToolStripMenuItem mi)
+            {
+                mi.DropDown.BackColor = InputBackground;
+                mi.DropDown.ForeColor = TextPrimary;
+                foreach (ToolStripItem sub in mi.DropDownItems) StyleMenuItem(sub);
+            }
+        }
+
+        /// <summary>Цветовая таблица меню: убирает системный голубой hover.</summary>
+        private sealed class MenuColors : ProfessionalColorTable
+        {
+            public override Color MenuItemSelected => Hover;
+            public override Color MenuItemSelectedGradientBegin => Hover;
+            public override Color MenuItemSelectedGradientEnd => Hover;
+            public override Color MenuItemPressedGradientBegin => Selected;
+            public override Color MenuItemPressedGradientEnd => Selected;
+            public override Color MenuItemBorder => Accent;
+            public override Color MenuBorder => Panel;
+            public override Color ToolStripDropDownBackground => InputBackground;
+            public override Color ImageMarginGradientBegin => InputBackground;
+            public override Color ImageMarginGradientMiddle => InputBackground;
+            public override Color ImageMarginGradientEnd => InputBackground;
+            public override Color SeparatorDark => Panel;
+            public override Color SeparatorLight => Panel;
         }
     }
 }

@@ -33,7 +33,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-PALETTE-R29-2026-09-20';
+var QUEST_UI_DIAG_BUILD='QCONTENT-FADE-R30-2026-09-20';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -391,7 +391,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R29 1.0.40.99</strong>',
+        '<strong>SOFT CURSOR R30 1.0.40.100</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -867,6 +867,45 @@ function dialogueNodeKey(node){
         (node.options||[]).map(function(o){return[o.text,o.serviceText||'',o.requirements||'',o.enabled!==false,o.reason||'',o.irreversible===true]})]);
 }
 
+/* ---------------------------------------------------------------- фейды
+   Правило интерфейса: ничто не появляется и не исчезает рывком. Все подмены
+   текста и содержимого идут через старый контент → фейд-аут → новый контент →
+   фейд-ин. Ниже — единственный механизм для таких подмен. */
+var FADE_OUT_MS=110;
+function restartAnim(el,name){
+    if(!el)return;
+    el.classList.remove('uiFadeIn','uiFadeOut','uiFadeInUp','uiFadeZoom','fadingOut');
+    void el.offsetWidth;   // принудительный reflow, иначе анимация не перезапустится
+    el.classList.add(name);
+}
+/* Плавная замена innerHTML. Если контента не было — только фейд-ин. */
+function fadeSwapHtml(el,html,after){
+    if(!el){if(after)after();return}
+    var next=html||'',current=el.innerHTML;
+    if(current===next){if(after)after();return}
+    if(!current.trim()){
+        el.innerHTML=next;
+        if(next)restartAnim(el,'uiFadeIn');
+        if(after)after();
+        return;
+    }
+    var done=false;
+    var finish=function(){
+        if(done)return;done=true;
+        el.classList.remove('fadingOut');
+        el.innerHTML=next;
+        if(next)restartAnim(el,'uiFadeIn');
+        if(after)after();
+    };
+    el.addEventListener('animationend',finish,{once:true});
+    /* Страховка: если animationend не придт (скрытый элемент, отключённые
+       анимации), содержимое всё равно заменится. */
+    setTimeout(finish,FADE_OUT_MS+70);
+    restartAnim(el,'fadingOut');
+}
+/* Плавно скрыть содержимое блока. */
+function fadeClear(el,after){fadeSwapHtml(el,'',after)}
+
 /* Реплика меняется плавно: старое уходит за 150 мс, затем набор нового.
    Ответы строит общий рендерер карточки: в диалоге «Поговорить» уже не нужен,
    поэтому список содержит только варианты узла.
@@ -894,13 +933,17 @@ function renderDialogue(node){
         if(changed&&text.textContent&&text.textContent.length>1){
             text.classList.add('fading');stopTyping();
             fadeTimer=setTimeout(function(){text.classList.remove('fading');typeInto(text,node.text||'')},150);
-        }else if(changed){typeInto(text,node.text||'')}
+        }else if(changed){
+            /* Первая реплика: не «выпрыгивает», а проявляется фейдом. */
+            if(!text.textContent||text.textContent.length<=1)restartAnim(text,'uiFadeIn');
+            typeInto(text,node.text||'');
+        }
     }
     /* Базовая служебная информация узла: к ней возвращаемся, когда ответ не выбран. */
     baseServiceHtml=node.serviceText?'<div class="serviceBlock">'+esc(node.serviceText)+'</div>':'';
     /* Служебное поле переписываем только при смене узла или отсутствии выбора:
-       иначе затёрли бы допинфу выделенного ответа. */
-    if(!sameNode&&service&&selectedOptionIndex<0){service.innerHTML=baseServiceHtml;staggerServiceBlocks(service)}
+       иначе затёрли бы допинфу выделенного ответа. Подмена — через фейд. */
+    if(!sameNode&&service&&selectedOptionIndex<0)fadeSwapHtml(service,baseServiceHtml,function(){staggerServiceBlocks(service)});
     if(img){
         /* Картинка появляется фейдом с зумом из 90% размера (класс .shown),
            а не рывком через display. */
@@ -926,14 +969,16 @@ function renderOptionList(){
     }));
     if(optionsKey===lastOptionsKey)return;
     lastOptionsKey=optionsKey;
-    opts.innerHTML=items.map(function(o,i){return cardOptionHtml(o,i)}).join('');
-    /* Ответы проявляются последовательно друг за другом: фейд-ин с небольшим
-       движением снизу вверх. */
-    opts.querySelectorAll('.dialogOption').forEach(function(btn,i){
-        btn.style.animation='uiFadeInUp 170ms cubic-bezier(.22,.8,.2,1) both';
-        btn.style.animationDelay=(i*45)+'ms';
+    /* Список ответов тоже подменяется через фейд, а не рывком. */
+    fadeSwapHtml(opts,items.map(function(o,i){return cardOptionHtml(o,i)}).join(''),function(){
+        /* Ответы проявляются последовательно друг за другом: фейд-ин с небольшим
+           движением снизу вверх. */
+        opts.querySelectorAll('.dialogOption').forEach(function(btn,i){
+            btn.style.animation='uiFadeInUp 170ms cubic-bezier(.22,.8,.2,1) both';
+            btn.style.animationDelay=(i*45)+'ms';
+        });
+        bindCardOptions(items);
     });
-    bindCardOptions(items);
 }
 
 /* Текст-предупреждение для невозвратного ответа. */
@@ -953,7 +998,7 @@ function staggerServiceBlocks(root){
    Если ответ снят, возвращаем служебный текст текущей реплики НПЦ. */
 function renderOptionService(o){
     var service=$('dialogService');if(!service)return;
-    if(!o){service.innerHTML=baseServiceHtml;staggerServiceBlocks(service);return}
+    if(!o){fadeSwapHtml(service,baseServiceHtml,function(){staggerServiceBlocks(service)});return}
     var parts=[];
     if(o.serviceText)parts.push(esc(o.serviceText));
     if(o.requirements)parts.push(esc(o.requirements));
@@ -964,8 +1009,7 @@ function renderOptionService(o){
             +'<span class="irreversibleStar" aria-hidden="true">\u2605</span>'
             +' — <em>'+esc(IrreversibleWarning)+'</em></div>';
     }
-    service.innerHTML=html||baseServiceHtml;
-    staggerServiceBlocks(service);
+    fadeSwapHtml(service,html||baseServiceHtml,function(){staggerServiceBlocks(service)});
 }
 
 function setActionButton(btn,label,cls){
@@ -1131,7 +1175,7 @@ function selectCardOption(pos,items){
     var service=$('dialogService');
     if(item.talk){
         /* Служебная информация квеста сохраняется, ответ ничего не добавляет. */
-        if(service)service.innerHTML=baseServiceHtml;
+        fadeSwapHtml(service,baseServiceHtml,function(){staggerServiceBlocks(service)});
     }else{
         renderOptionService(item.node);
     }
@@ -1380,9 +1424,9 @@ function showQuestDetail(id){
     stopTyping();lastDialogueKey='';lastOptionsKey='';
     var speaker=$('dialogSpeaker'),text=$('dialogText'),service=$('dialogService'),opts=$('dialogOptions'),img=$('dialogImage');
     if(speaker)speaker.textContent=q.title;
-    if(text)text.innerHTML='<span class="dialogTextRole">'+esc(q.description||'')+'</span>';
+    fadeSwapHtml(text,'<span class="dialogTextRole">'+esc(q.description||'')+'</span>');
     baseServiceHtml=(q.stepDescription?'<div class="serviceBlock">'+esc(q.stepDescription)+'</div>':'')+rewardsHtml(q.rewards);
-    if(service)service.innerHTML=baseServiceHtml;
+    fadeSwapHtml(service,baseServiceHtml,function(){staggerServiceBlocks(service)});
     if(img){img.removeAttribute('src');img.classList.remove('shown');img.style.display='none'}
     if(opts)renderOptionList();
     lastDialogueKey='';lastOptionsKey='';lastQuestsKey='';
@@ -1391,7 +1435,12 @@ function showQuestDetail(id){
 function clearDialogue(){
     dialogActive=false;selectedOptionIndex=-1;lastActionKey='';currentDialogueNode=null;lastDialogueNodeKey='';
     var s=$('dialogSpeaker'),t=$('dialogText'),svc=$('dialogService'),o=$('dialogOptions'),i=$('dialogImage');
-    if(s)s.textContent='';if(t){t.classList.remove('fading');t.textContent=EmptyHint}if(svc)svc.innerHTML='';if(o)o.innerHTML='';if(i){i.removeAttribute('src');i.classList.remove('shown');i.style.display='none'}
+    if(s)s.textContent='';
+    /* Тексты убираем фейдом, а не рывком. */
+    if(t){t.classList.remove('fading');fadeSwapHtml(t,EmptyHint)}
+    if(svc)fadeClear(svc);
+    if(o)fadeClear(o);
+    if(i){i.removeAttribute('src');i.classList.remove('shown');i.style.display='none'}
 }
 function sendCriticalQuestCommand(payload){
     var sharedSent=false;
@@ -1415,15 +1464,14 @@ function renderQuestSelectionFallback(qid){
     if(speaker)speaker.textContent=q.title||'';
     if(text){
         text.classList.remove('fading');
-        text.innerHTML='<span class="dialogTextRole">'+esc(q.description||EmptyHint)+'</span>';
+        fadeSwapHtml(text,'<span class="dialogTextRole">'+esc(q.description||EmptyHint)+'</span>');
     }
     if(service){
         var parts=[];
         if(q.status)parts.push(q.status);
         if(q.stepDescription)parts.push(q.stepDescription);
         baseServiceHtml=(parts.length?'<div class="serviceBlock">'+esc(parts.join(' · '))+'</div>':'')+rewardsHtml(q.rewards);
-        service.innerHTML=baseServiceHtml;
-        staggerServiceBlocks(service);
+        fadeSwapHtml(service,baseServiceHtml,function(){staggerServiceBlocks(service)});
     }
     if(img){img.removeAttribute('src');img.classList.remove('shown');img.style.display='none'}
     if(opts)renderOptionList();

@@ -1431,45 +1431,50 @@ RegisterHotKeyChecked(
             mainMenu.Items.Add(devModeHost);
 
             this.Controls.Add(mainMenu);
+            // Меню: без системной ярко-голубой подсветки и со светлым текстом.
+            UiPalette.StyleMenuStrip(mainMenu);
 
             int leftX = 20;
             int topY = mainMenu.Height + 20;
-            btnStart = new Button { Text = "Start", Location = new Point(leftX, topY), Size = new Size(120, 30), Tag = "Toggle" };
+            /* Ширина основных кнопок левой колонки. Раньше было 120 px, но текст
+               занимал почти всю ширину и выглядел обрезанным. */
+            const int BtnW = 140;
+            btnStart = new Button { Text = "Start", Location = new Point(leftX, topY), Size = new Size(BtnW, 30), Tag = "Toggle" };
             btnStart.Click += (s, e) => StartSystem();
 
-            btnStop = new Button { Text = "Stop", Location = new Point(leftX, topY + 40), Size = new Size(120, 30), Enabled = false };
+            btnStop = new Button { Text = "Stop", Location = new Point(leftX, topY + 40), Size = new Size(BtnW, 30), Enabled = false };
             btnStop.Click += (s, e) => StopSystem();
 
-            btnRestartOverlay = new Button { Text = "Restart Overlay", Location = new Point(leftX, topY + 80), Size = new Size(120, 30) };
+            btnRestartOverlay = new Button { Text = "Restart Overlay", Location = new Point(leftX, topY + 80), Size = new Size(BtnW, 30) };
             btnRestartOverlay.Click += (s, e) => RestartOverlay();
 
-            btnMinimize = new Button { Text = "Minimize", Location = new Point(leftX, topY + 120), Size = new Size(120, 30) };
+            btnMinimize = new Button { Text = "Minimize", Location = new Point(leftX, topY + 120), Size = new Size(BtnW, 30) };
             btnMinimize.Click += (s, e) => this.Hide();
 
-            btnExit = new Button { Text = "Exit", Location = new Point(leftX, topY + 160), Size = new Size(120, 30) };
+            btnExit = new Button { Text = "Exit", Location = new Point(leftX, topY + 160), Size = new Size(BtnW, 30) };
             btnExit.Click += (s, e) => ConfirmExit();
 
-            btnRefreshTracks = new Button { Text = "Обновить список", Location = new Point(leftX, topY + 210), Size = new Size(120, 30) };
+            btnRefreshTracks = new Button { Text = "Обновить список", Location = new Point(leftX, topY + 210), Size = new Size(BtnW, 30) };
             btnRefreshTracks.Click += (s, e) => RefreshTrackList();
 
-            btnRandomTarget = new Button { Text = "Курьер 100 POI дорога т50 а.у.", Location = new Point(leftX, topY + 260), Size = new Size(230, 20) };
+            btnRandomTarget = new Button { Text = "Курьер 100 POI дорога т50 а.у.", Location = new Point(leftX, topY + 260), Size = new Size(230, 24) };
             btnRandomTarget.Click += BtnRandomTarget_Click;
 
-            btnRandomTarget2 = new Button { Text = "Тайник 2 200м т30", Location = new Point(leftX, topY + 290), Size = new Size(230, 20) };
+            btnRandomTarget2 = new Button { Text = "Тайник 2 200м т30", Location = new Point(leftX, topY + 290), Size = new Size(230, 24) };
             btnRandomTarget2.Click += BtnRandomTarget2_Click;
 
-            btnRandomTarget3 = new Button { Text = "Перекус 400", Location = new Point(leftX, topY + 320), Size = new Size(230, 20) };
+            btnRandomTarget3 = new Button { Text = "Перекус 400", Location = new Point(leftX, topY + 320), Size = new Size(230, 24) };
             btnRandomTarget3.Click += BtnRandomTarget3_Click;
 
-            btnRandomTarget4 = new Button { Text = "Обзор целей", Location = new Point(leftX, topY + 350), Size = new Size(230, 20) };
+            btnRandomTarget4 = new Button { Text = "Обзор целей", Location = new Point(leftX, topY + 350), Size = new Size(230, 24) };
             btnRandomTarget4.Click += BtnRandomTarget4_Click;
 
-            btnCheckTargets = new Button { Text = "Проверка точек", Location = new Point(leftX, topY + 380), Size = new Size(120, 20) };
+            btnCheckTargets = new Button { Text = "Проверка точек", Location = new Point(leftX, topY + 380), Size = new Size(BtnW, 24) };
             btnCheckTargets.Click += BtnCheckTargets_Click;
             // v71: кнопка «Пометить в АР» УДАЛЕНА — функционал перенесён на
             // хоткей Shift+Ctrl+X (требование 31.08.2026: «с кнопкой отбой»).
 
-            btnShowMap = new Button { Text = "Показать карту ✖", Location = new Point(leftX, topY + 410), Size = new Size(130, 30), Tag = "Toggle" };
+            btnShowMap = new Button { Text = "Показать карту ✖", Location = new Point(leftX, topY + 410), Size = new Size(150, 30), Tag = "Toggle" };
             btnShowMap.Click += (s, e) => {
                 _minimapAutoLogic = !_minimapAutoLogic;
                 btnShowMap.Text = _minimapAutoLogic ? "Показать карту ✔" : "Показать карту ✖";
@@ -1493,7 +1498,7 @@ RegisterHotKeyChecked(
                 UpdateStartButton();
             };
 
-            btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 440), Size = new Size(120, 30) };
+            btnShowHybrid = new Button { Text = "Показать hybrid", Location = new Point(leftX, topY + 440), Size = new Size(BtnW, 30) };
             btnShowHybrid.Click += (s, e) => {
                 AppendLog("Debug: принудительный показ игровой категории (гибрид + миникарта).");
                 _gameUiForce = true;
@@ -1501,7 +1506,7 @@ RegisterHotKeyChecked(
             };
 
             // Тест паузы через тот же Named Pipe, который используется при достижении цели.
-            btnTestPause = new Button { Text = "Тест паузы SDK", Location = new Point(leftX, topY + 470), Size = new Size(135, 30) };
+            btnTestPause = new Button { Text = "Тест паузы SDK", Location = new Point(leftX, topY + 470), Size = new Size(150, 30) };
             btnTestPause.Click += (s, e) => {
                 AppendLog("=== ТЕСТ ПАУЗЫ SDK ===");
                 bool ok = SCSController.SetPause(true);
@@ -1513,7 +1518,7 @@ RegisterHotKeyChecked(
             {
                 Text = "Сбросить начало\nзаписи трека",
                 Location = new Point(leftX, topY + 510),
-                Size = new Size(120, 42),
+                Size = new Size(BtnW, 42),
                 TextAlign = ContentAlignment.MiddleCenter
             };
             btnResetRecordingOrigin.Click += (s, e) => {
@@ -4013,13 +4018,17 @@ RegisterHotKeyChecked(
             SyncAr1Button();
             AppendLog(manual ? "[AR] AR HUD закрывается кнопкой." : "[AR] AR HUD закрывается.");
         }
-        // v1.0.40.27: тоггл-подсветка кнопки AR1 (как у AR2 — Lime при видимом слое).
+        // v1.0.40.27: тоггл-подсветка кнопки AR1 (как у AR2 — второстепенный оранжевый при видимом слое).
         internal void SyncAr1Button()
         {
             if (btnLaunchAR == null || btnLaunchAR.IsDisposed) return;
             bool on = IsAr1Running;
+            bool active = on && _arLayerVisible;
             btnLaunchAR.Text = !on ? "Запустить AR" : (_arLayerVisible ? "AR (Web) — ON" : "AR (Web) — OFF");
-            btnLaunchAR.BackColor = on && _arLayerVisible ? UiPalette.AccentSecondary : DefaultButtonColor();
+            btnLaunchAR.BackColor = active ? UiPalette.AccentSecondary : DefaultButtonColor();
+            /* Как у кнопки Start: текст ЧЁРНЫЙ на активном фоне, иначе читался бы
+               серым по оранжевому. */
+            btnLaunchAR.ForeColor = active ? Color.Black : UiPalette.TextPrimary;
         }
 
         private void LaunchArOverlay()
@@ -6037,11 +6046,13 @@ RegisterHotKeyChecked(
             {
                 btnStart.Text = lang.Get("btn_stop") ?? "Stop";
                 btnStart.BackColor = UiPalette.AccentSecondary;   // v39: запущено → второстепенный оранжевый (без красного)
+                btnStart.ForeColor = Color.Black;                 // на акцентном фоне текст чёрный
             }
             else
             {
                 btnStart.Text = lang.Get("btn_start") ?? "Start";
                 btnStart.BackColor = DefaultButtonColor();
+                btnStart.ForeColor = UiPalette.TextPrimary;
             }
             SyncAr2Button();
             SyncShowMapButton();
@@ -6060,6 +6071,7 @@ RegisterHotKeyChecked(
             bool on = IsAr2Running;
             btnAr2.Text = on ? "AR v2.0 (D3D) — ON" : "AR v2.0 (D3D)";
             btnAr2.BackColor = on ? UiPalette.AccentSecondary : DefaultButtonColor();
+            btnAr2.ForeColor = on ? Color.Black : UiPalette.TextPrimary;
         }
 
         // v39: тоггл «показать карту» — Lime при включённом режиме «всегда».
@@ -6067,6 +6079,7 @@ RegisterHotKeyChecked(
         {
             if (btnShowMap == null) return;
             btnShowMap.BackColor = _minimapAutoLogic ? UiPalette.AccentSecondary : DefaultButtonColor();
+            btnShowMap.ForeColor = _minimapAutoLogic ? Color.Black : UiPalette.TextPrimary;
         }
 
         // v39: пока система не запущена, функциональные кнопки левой части

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ETS2 Assist — интерактив R29 1.0.40.99</title>
+<title>ETS2 Assist — интерактив R30 1.0.40.100</title>
 <script src="js/debug_show.js"></script>
 <script src="js/ui_category.js"></script>
 <style>
@@ -51,6 +51,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .uiFadeOut{animation:uiFadeOut 100ms ease both}
 .uiFadeInUp{animation:uiFadeInUp 170ms cubic-bezier(.22,.8,.2,1) both}
 .uiFadeZoom{animation:uiFadeZoom 220ms cubic-bezier(.22,.8,.2,1) both}
+/* Плавная замена содержимого перед подстановкой нового (см. fadeSwapHtml). */
+.fadingOut{animation:uiFadeOut 110ms ease both}
 @media(prefers-reduced-motion:reduce){
   .uiFadeIn,.uiFadeOut,.uiFadeInUp,.uiFadeZoom{animation-duration:1ms}
 }
@@ -398,7 +400,7 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 })();
 </script>
 <script>
-window.__questHtmlDiagBuild='QHTML-PALETTE-R29-2026-09-20';
+window.__questHtmlDiagBuild='QHTML-FADE-R30-2026-09-20';
 window.__questBootstrapErrors=[];
 window.addEventListener('error',function(e){
     try{
@@ -417,6 +419,6 @@ window.addEventListener('unhandledrejection',function(e){
     }catch(_){}
 },true);
 </script>
-<script src="js/quests_ui.js?v=1.0.40.99"></script>
+<script src="js/quests_ui.js?v=1.0.40.100"></script>
 </body>
 </html>
