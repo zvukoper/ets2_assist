@@ -625,7 +625,12 @@ namespace ETS2_Assist_GUI.Quests
                     ["status"] = p.Status.ToString(),
                     ["step"] = p.Step,
                     ["stepDescription"] = def.Steps.TryGetValue(p.Step ?? "", out QuestStepDefinition? step) ? step.Description : "",
-                    ["rewards"] = JArray.FromObject(def.Rewards),
+                    /* ВАЖНО: весь остальной quest_state отдаёт camelCase, а
+                       JArray.FromObject(def.Rewards) сериализовал модель
+                       PascalCase (Type/Id/Amount/Display/…). web_quests.html
+                       читает r.display/r.amount, поэтому награды приходили
+                       пустыми («×1» и «—»). Строим объекты вручную. */
+                    ["rewards"] = BuildRewardsPayload(def.Rewards),
                     ["returnOffer"] = p.ReturnOffer
                 };
 
@@ -711,6 +716,26 @@ namespace ETS2_Assist_GUI.Quests
             }
 
             return payload;
+        }
+
+        /* Награды квеста для UI. Отдаём camelCase-поля, потому что страница
+           интерактива читает r.display/r.amount/r.serviceText/r.color. */
+        private static JArray BuildRewardsPayload(List<QuestReward> rewards)
+        {
+            var list = new JArray();
+            foreach (QuestReward r in rewards ?? (IEnumerable<QuestReward>)Array.Empty<QuestReward>())
+            {
+                list.Add(new JObject
+                {
+                    ["type"] = r.Type ?? "",
+                    ["id"] = r.Id ?? "",
+                    ["amount"] = r.Amount,
+                    ["display"] = r.Display ?? "",
+                    ["serviceText"] = r.ServiceText ?? "",
+                    ["color"] = r.Color ?? ""
+                });
+            }
+            return list;
         }
 
         private JObject BuildDialoguePayload(QuestDefinition def, QuestDialogueNode node)

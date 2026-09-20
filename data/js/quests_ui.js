@@ -27,7 +27,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R23-2026-09-19';
+var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R24-2026-09-20';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -385,7 +385,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R23 1.0.40.93</strong>',
+        '<strong>SOFT CURSOR R24 1.0.40.94</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -831,6 +831,8 @@ function setTabPulse(value){
 }
 
 /* ------------------------------------------------------------ набор текста */
+function stopTyping(){if(typeTimer){clearInterval(typeTimer);typeTimer=null}if(fadeTimer){clearTimeout(fadeTimer);fadeTimer=null}}
+
 function typeInto(el,text,service){
     stopTyping();
     if(!el)return;
@@ -1075,14 +1077,40 @@ function renderInventory(){
     }
     setInventoryTabPulse(inventoryHasNewItems()&&activeInterface==='none');
 }
+/* Награды в quest_state приходят camelCase (type/id/amount/display/serviceText/color),
+   но у старых сборок ключи были PascalCase. Читаем оба варианта, чтобы блок наград
+   не превращался в строки «×1». */
+function rewardGet(r,name){
+    if(!r)return undefined;
+    if(r[name]!==undefined)return r[name];
+    var pascal=name.charAt(0).toUpperCase()+name.slice(1);
+    return r[pascal];
+}
+function rewardsHtml(rewards){
+    var rows=(rewards||[]).map(function(r){
+        var amount=Number(rewardGet(r,'amount'));
+        if(!Number.isFinite(amount)||amount<=0)amount=1;
+        var label=rewardGet(r,'display')||rewardGet(r,'id')||'';
+        var svc=rewardGet(r,'serviceText')||'';
+        var color=rewardGet(r,'color')||'';
+        return '<div class="rewardLine"'+(color?' style="color:'+esc(color)+'"':'')+'>'
+            +esc(label)+' ×'+esc(amount)
+            +(svc?'<span class="rewardService"> '+esc(svc)+'</span>':'')
+            +'</div>';
+    }).join('');
+    return '<div class="questRewardTitle">Награды</div>'+(rows||'<div class="muted">—</div>');
+}
 function showQuestDetail(id){
     var q=questById(id);if(!q)return;
     pendingSelectionKey='';pendingSelectionAt=0;
     questDetailPinned=true;currentQuest=id;currentInteraction='';
+    /* Останавливаем набор текста прошлой реплики: иначе живой typeTimer
+       продолжает писать в #dialogText и затирает карточку квеста. */
+    stopTyping();lastDialogueKey='';lastOptionsKey='';
     var speaker=$('dialogSpeaker'),text=$('dialogText'),service=$('dialogService'),opts=$('dialogOptions'),img=$('dialogImage');
     if(speaker)speaker.textContent=q.title;
     if(text)text.innerHTML='<span class="dialogTextRole">'+esc(q.description||'')+'</span>';
-    if(service)service.innerHTML=(q.stepDescription?'<div class="serviceBlock">'+esc(q.stepDescription)+'</div>':'')+'<div class="questRewardTitle">Награды</div>'+((q.rewards||[]).map(function(r){return'<div class="rewardLine">'+esc(r.display||r.id)+' ×'+esc(r.amount||1)+'</div>'}).join('')||'<div class="muted">—</div>');
+    if(service)service.innerHTML=(q.stepDescription?'<div class="serviceBlock">'+esc(q.stepDescription)+'</div>':'')+rewardsHtml(q.rewards);
     if(opts)opts.innerHTML='';
     if(img){img.removeAttribute('src');img.style.display='none'}
     lastDialogueKey='';lastOptionsKey='';lastQuestsKey='';
@@ -1118,11 +1146,7 @@ function renderQuestSelectionFallback(qid){
         if(q.status)parts.push(q.status);
         if(q.stepDescription)parts.push(q.stepDescription);
         parts.push('Ожидание данных интерактива…');
-        service.innerHTML='<div class="serviceBlock">'+esc(parts.join(' · '))+'</div>'+
-            '<div class="questRewardTitle">Награды</div>'+
-            ((q.rewards||[]).map(function(r){
-                return'<div class="rewardLine">'+esc(r.display||r.id)+' ×'+esc(r.amount||1)+'</div>';
-            }).join('')||'<div class="muted">—</div>');
+        service.innerHTML='<div class="serviceBlock">'+esc(parts.join(' · '))+'</div>'+rewardsHtml(q.rewards);
     }
     if(opts)opts.innerHTML='';
     if(img){img.removeAttribute('src');img.style.display='none'}
