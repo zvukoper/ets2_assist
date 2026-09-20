@@ -23,8 +23,7 @@ var pendingSelectionKey='',pendingSelectionAt=0;
    dialogActive=false — карточка; true — идёт диалог.
    selectedOptionIndex=-1 — ответ не выбран; применение только по «Подтвердить». */
 var dialogActive=false,selectedOptionIndex=-1,currentActionName='Поговорить',lastActionKey='';
-var pendingClearSelection=false,baseServiceHtml='',currentDialogueNode=null;
-var inventoryBeaconSeen=Object.create(null),inventoryKnown=Object.create(null),inventoryKnownInitialized=false,lastNearbyInteractive=false,inventoryPulseState=false,lastInventoryRenderKey='';
+var pendingClearSelection=false,baseServiceHtml='',currentDialogueNode=null,lastDialogueNodeKey='';var inventoryBeaconSeen=Object.create(null),inventoryKnown=Object.create(null),inventoryKnownInitialized=false,lastNearbyInteractive=false,inventoryPulseState=false,lastInventoryRenderKey='';
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
    переключать вид дважды: двойной клик по кнопке или по прозрачной области
    давал пару «свёрнуто → развёрнуто» в одну миллисекунду, и окно визуально
@@ -34,7 +33,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-NAV-R27-2026-09-20';
+var QUEST_UI_DIAG_BUILD='QCONTENT-SELRETAIN-R28-2026-09-20';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -392,7 +391,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R27 1.0.40.97</strong>',
+        '<strong>SOFT CURSOR R28 1.0.40.98</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -860,14 +859,33 @@ function typeInto(el,text,service){
     el.appendChild(body);
 }
 
+/* Ключ содержимого узла диалога. Пакеты quest_state приходят раз в секунду и
+   каждый раз несут НОВЫЙ объект узла, поэтому по ссылке «тот же экран» не
+   определить — сравниваем содержимое. */
+function dialogueNodeKey(node){
+    return JSON.stringify([node.speaker||'',node.text||'',node.serviceText||'',node.image||'',
+        (node.options||[]).map(function(o){return[o.text,o.serviceText||'',o.requirements||'',o.enabled!==false,o.reason||'',o.irreversible===true]})]);
+}
+
 /* Реплика меняется плавно: старое уходит за 150 мс, затем набор нового.
    Ответы строит общий рендерер карточки: в диалоге «Поговорить» уже не нужен,
-   поэтому список содержит только варианты узла. */
+   поэтому список содержит только варианты узла.
+
+   ВАЖНО: повторный вызов с тем же узлом НЕ должен сбрасывать выбор ответа.
+   Периодический quest_state вызывает renderDialogue каждую секунду; если
+   сбрасывать selectedOptionIndex всегда, выделенный ответ и кнопка
+   «Подтвердить» исчезают через мгновение после клика. */
 function renderDialogue(node){
     var speaker=$('dialogSpeaker'),text=$('dialogText'),service=$('dialogService'),img=$('dialogImage'),opts=$('dialogOptions');
+    var nodeKey=dialogueNodeKey(node);
+    var sameNode=dialogActive&&nodeKey===lastDialogueNodeKey;
     dialogActive=true;
-    selectedOptionIndex=-1;lastActionKey='';
     currentDialogueNode=node;
+    lastDialogueNodeKey=nodeKey;
+    if(!sameNode){
+        /* Новый узел: выбор сбрасывается, список ответов перестраивается. */
+        selectedOptionIndex=-1;lastActionKey='';lastOptionsKey='';
+    }
     if(speaker)speaker.textContent=node.speaker||'';
     var key=(node.speaker||'')+'|'+(node.text||'')+'|'+(node.serviceText||'');
     var changed=key!==lastDialogueKey;
@@ -880,7 +898,9 @@ function renderDialogue(node){
     }
     /* Базовая служебная информация узла: к ней возвращаемся, когда ответ не выбран. */
     baseServiceHtml=node.serviceText?'<div class="serviceBlock">'+esc(node.serviceText)+'</div>':'';
-    if(service)service.innerHTML=baseServiceHtml;
+    /* Служебное поле переписываем только при смене узла или отсутствии выбора:
+       иначе затёрли бы допинфу выделенного ответа. */
+    if(!sameNode&&service&&selectedOptionIndex<0)service.innerHTML=baseServiceHtml;
     if(img){if(node.image){img.src=node.image;img.style.display='block'}else{img.removeAttribute('src');img.style.display='none'}}
     if(opts)renderOptionList();
     renderActionBar();
@@ -999,8 +1019,7 @@ function startDialogue(){
    Текст берётся из actionName квеста, а пометка «(продолжить)» появляется,
    если диалог возобновится НЕ с начала (есть невозвратная точка) либо если
    игрок сам ушёл назад из глубины диалога в недоступный корень. */
-var talkContinuation=false;
-function talkText(){
+var talkContinuation=false;function talkText(){
     var q=currentQuest?questById(currentQuest):null;
     var label=(q&&q.actionName)||'Поговорить';
     return label+(talkContinuation?' (продолжить)':'');
@@ -1290,7 +1309,7 @@ function showQuestDetail(id){
     var q=questById(id);if(!q)return;
     pendingSelectionKey='';pendingSelectionAt=0;
     questDetailPinned=true;currentQuest=id;currentInteraction='';
-    dialogActive=false;selectedOptionIndex=-1;lastActionKey='';currentDialogueNode=null;
+    dialogActive=false;selectedOptionIndex=-1;lastActionKey='';currentDialogueNode=null;lastDialogueNodeKey='';
     /* Останавливаем набор текста прошлой реплики: иначе живой typeTimer
        продолжает писать в #dialogText и затирает карточку квеста. */
     stopTyping();lastDialogueKey='';lastOptionsKey='';
@@ -1305,7 +1324,7 @@ function showQuestDetail(id){
     renderQuests();renderInventory();renderActionBar();
 }
 function clearDialogue(){
-    dialogActive=false;selectedOptionIndex=-1;lastActionKey='';currentDialogueNode=null;
+    dialogActive=false;selectedOptionIndex=-1;lastActionKey='';currentDialogueNode=null;lastDialogueNodeKey='';
     var s=$('dialogSpeaker'),t=$('dialogText'),svc=$('dialogService'),o=$('dialogOptions'),i=$('dialogImage');
     if(s)s.textContent='';if(t){t.classList.remove('fading');t.textContent=EmptyHint}if(svc)svc.innerHTML='';if(o)o.innerHTML='';if(i){i.removeAttribute('src');i.style.display='none'}
 }
@@ -1326,7 +1345,7 @@ function renderQuestSelectionFallback(qid){
     /* Карточка квеста: описание, служебная информация и награды. Реплики НПЦ
        здесь НЕ грузятся — они появляются после подтверждения «Поговорить».
        Ответы карточки начинаются с варианта инициации события. */
-    dialogActive=false;selectedOptionIndex=-1;lastActionKey='';currentDialogueNode=null;
+    dialogActive=false;selectedOptionIndex=-1;lastActionKey='';currentDialogueNode=null;lastDialogueNodeKey='';
     lastDialogueKey='';lastOptionsKey='';
     if(speaker)speaker.textContent=q.title||'';
     if(text){
