@@ -392,8 +392,7 @@ namespace ETS2_Assist_GUI.Quests
            The normal quest-state socket remains 8085; critical user actions are also
            accepted here so they cannot be lost when the page's state WS is transient. */
         internal void HandleSharedChannelCommand(JObject data)
-        {
-            string command = data["command"]?.Value<string>() ?? "";
+        {            string command = data["command"]?.Value<string>() ?? "";
             Logger.Current?.Workflow(
                 $"[QUEST-DIAG][WS8084-IN] command={command} paused={_paused} interactive={_interactiveVisible} raw={data.ToString(Formatting.None)}");
             switch (command)
@@ -405,6 +404,17 @@ namespace ETS2_Assist_GUI.Quests
                     BeginInvokeUi(() => SelectInteraction(
                         data["questId"]?.Value<string>() ?? "",
                         data["id"]?.Value<string>() ?? ""));
+                    break;
+                case "quest_dialogue_start":
+                    BeginInvokeUi(() => StartDialogue(
+                        data["questId"]?.Value<string>() ?? "",
+                        data["id"]?.Value<string>() ?? ""));
+                    break;
+                case "quest_dialogue_end":
+                    BeginInvokeUi(EndDialogue);
+                    break;
+                case "quest_clear_selection":
+                    BeginInvokeUi(ClearSelection);
                     break;
                 case "quest_dialog_option":
                     BeginInvokeUi(() => ApplyDialogOption(
@@ -433,6 +443,9 @@ namespace ETS2_Assist_GUI.Quests
                     BroadcastState(true);
                     break;
                 case "quest_select_interaction": BeginInvokeUi(() => SelectInteraction(data["questId"]?.Value<string>() ?? "", data["id"]?.Value<string>() ?? "")); break;
+                case "quest_dialogue_start": BeginInvokeUi(() => StartDialogue(data["questId"]?.Value<string>() ?? "", data["id"]?.Value<string>() ?? "")); break;
+                case "quest_dialogue_end": BeginInvokeUi(EndDialogue); break;
+                case "quest_clear_selection": BeginInvokeUi(ClearSelection); break;
                 case "quest_window_state": BeginInvokeUi(() => _host.OnQuestWindowCollapsedChanged(data["collapsed"]?.Value<bool>() ?? false)); break;
                 case "quest_dialog_option": BeginInvokeUi(() => ApplyDialogOption(data["questId"]?.Value<string>() ?? "", data["interaction"]?.Value<string>() ?? "", data["index"]?.Value<int>() ?? -1)); break;
                 case "inventory_item_seen": BeginInvokeUi(() => MarkInventoryItemSeen(data["id"]?.Value<string>() ?? "")); break;
@@ -482,21 +495,67 @@ namespace ETS2_Assist_GUI.Quests
             if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) return;
             QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));
             if (interaction == null || !TryBuildInteraction(def, interaction, out _)) return;
-            // v1.0.41: окно квестов всегда открывается в исходном состоянии —
-            // игрок сам выбирает интерактив, ранее открытый диалог не восстанавливается.
+
+            /* Выбор интерактива в сайдбаре = КАРТОЧКА КВЕСТА.
+               Диалог НЕ начинается: игрок видит описание, служебную информацию и
+               награды, а реплики НПЦ и варианты ответа грузятся только после
+               нажатия кнопки инициации (quest_dialogue_start). Поэтому
+               _activeDialogue очищается — иначе карточка сразу показала бы
+               прошлую реплику. */
             string key = questId + ":" + interactionId;
             _selectedQuestId = questId;
             _selectedInteractionId = interactionId;
             _activeDialogue.Remove(key);
+            SendQuestState("select-interaction");
+        }
+
+        /* Инициация события: кнопка «Поговорить» (текст из actionName квеста).
+           Только здесь загружается входная реплика НПЦ и варианты ответа. */
+        private void StartDialogue(string questId, string interactionId)
+        {
+            Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] dialogue_start questId={questId} id={interactionId} paused={_paused} interactive={_interactiveVisible}");
+            if (!_paused) { SendError("Интерактив доступен только на паузе игры."); return; }
+            if (!_store.Definitions.TryGetValue(questId, out QuestDefinition? def)) return;
+            QuestInteractionDefinition? interaction = def.Interactions.FirstOrDefault(i => i.Id.Equals(interactionId, StringComparison.OrdinalIgnoreCase));
+            if (interaction == null || !TryBuildInteraction(def, interaction, out _)) return;
+
+            string key = questId + ":" + interactionId;
+            _selectedQuestId = questId;
+            _selectedInteractionId = interactionId;
             string entryDialogue = ResolveEntryDialogue(def, interaction);
-            BroadcastState(true, questId, interactionId, entryDialogue);
-            try
-            {
-                _host.PushQuestStateToOverlay(
-                    BuildStatePayload(questId, interactionId, entryDialogue),
-                    "select-interaction");
-            }
-            catch { }
+            if (!string.IsNullOrWhiteSpace(entryDialogue)) _activeDialogue[key] = entryDialogue;
+            else _activeDialogue.Remove(key);
+            SendQuestState("dialogue-start");
+        }
+
+        /* Выход из диалога обратно к карточке квеста (кнопка «Отмена» в диалоге).
+           Выделение СОХРАНЯЕТСЯ, сбрасывается только активная реплика — иначе
+           следующий broadcast вернул бы диалог обратно. */
+        private void EndDialogue()
+        {
+            Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] dialogue_end quest={_selectedQuestId}/{_selectedInteractionId}");
+            _activeDialogue.Clear();
+            SendQuestState("dialogue-end");
+        }
+
+        /* Снятие выделения: кнопка «Назад» (или «Отмена» в карточке квеста).
+           Без явной команды периодический BroadcastState возвращал бы квест
+           обратно в UI сразу после локальной очистки. */
+        private void ClearSelection()
+        {
+            Logger.Current?.Workflow($"[QUEST-DIAG][WS-IN] clear_selection quest={_selectedQuestId}/{_selectedInteractionId}");
+            _selectedQuestId = "";
+            _selectedInteractionId = "";
+            _activeDialogue.Clear();
+            SendQuestState("clear-selection");
+        }
+
+        /* Единая отправка состояния: broadcast всем клиентам + прямая доставка
+           оверлею. Раньше эти два вызова дублировались в каждом действии. */
+        private void SendQuestState(string reason)
+        {
+            BroadcastState(true);
+            try { _host.PushQuestStateToOverlay(BuildStatePayload(), reason); } catch { }
         }
 
         private string ResolveEntryDialogue(QuestDefinition def, QuestInteractionDefinition interaction)
@@ -534,14 +593,7 @@ namespace ETS2_Assist_GUI.Quests
                 _selectedInteractionId = interactionId;
             }
             ForceArRebuild();
-            BroadcastState(true, option.Close ? null : questId, option.Close ? null : interactionId, option.Close ? null : option.Next);
-            try
-            {
-                _host.PushQuestStateToOverlay(
-                    BuildStatePayload(option.Close ? null : questId, option.Close ? null : interactionId, option.Close ? null : option.Next),
-                    "dialog-option");
-            }
-            catch { }
+            SendQuestState("dialog-option");
         }
 
         private void ApplyEffects(QuestDefinition def, IEnumerable<QuestEffect> effects)
@@ -625,6 +677,9 @@ namespace ETS2_Assist_GUI.Quests
                     ["status"] = p.Status.ToString(),
                     ["step"] = p.Step,
                     ["stepDescription"] = def.Steps.TryGetValue(p.Step ?? "", out QuestStepDefinition? step) ? step.Description : "",
+                    /* Текст кнопки инициации события. Пользователь задаёт его в
+                       свойствах квеста; по умолчанию — «Поговорить». */
+                    ["actionName"] = string.IsNullOrWhiteSpace(def.ActionName) ? "Поговорить" : def.ActionName,
                     /* ВАЖНО: весь остальной quest_state отдаёт camelCase, а
                        JArray.FromObject(def.Rewards) сериализовал модель
                        PascalCase (Type/Id/Amount/Display/…). web_quests.html

@@ -17,6 +17,13 @@ var pendingQuestBeacon=false,pendingInventoryBeacon=false;
 /* Защита от гонки выбора: после клика короткое время локальный выбор имеет
    приоритет над запаздывающим quest_state со старым selectedQuest. */
 var pendingSelectionKey='',pendingSelectionAt=0;
+/* Состояние интерактива. Диалог НЕ начинается при выборе квеста: сначала
+   показывается карточка (описание, служебная информация, награды), а реплики
+   НПЦ и ответы грузятся только после кнопки инициации события.
+   dialogActive=false — карточка; true — идёт диалог.
+   selectedOptionIndex=-1 — ответ не выбран; применение только по «Подтвердить». */
+var dialogActive=false,selectedOptionIndex=-1,currentActionName='Поговорить',lastActionKey='';
+var pendingClearSelection=false,baseServiceHtml='';
 var inventoryBeaconSeen=Object.create(null),inventoryKnown=Object.create(null),inventoryKnownInitialized=false,lastNearbyInteractive=false,inventoryPulseState=false,lastInventoryRenderKey='';
 /* Время последнего сворачивания/разворачивания. Один жест игрока не должен
    переключать вид дважды: двойной клик по кнопке или по прозрачной области
@@ -27,7 +34,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-SELECT-R24-2026-09-20';
+var QUEST_UI_DIAG_BUILD='QCONTENT-UISTYLE-R25-2026-09-20';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -385,7 +392,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R24 1.0.40.94</strong>',
+        '<strong>SOFT CURSOR R25 1.0.40.95</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -856,6 +863,8 @@ function typeInto(el,text,service){
 /* Реплика меняется плавно: старое уходит за 150 мс, затем набор нового. */
 function renderDialogue(node){
     var speaker=$('dialogSpeaker'),text=$('dialogText'),service=$('dialogService'),img=$('dialogImage'),opts=$('dialogOptions');
+    dialogActive=true;
+    selectedOptionIndex=-1;
     if(speaker)speaker.textContent=node.speaker||'';
     var key=(node.speaker||'')+'|'+(node.text||'')+'|'+(node.serviceText||'');
     var changed=key!==lastDialogueKey;
@@ -868,8 +877,11 @@ function renderDialogue(node){
     }
     if(service)service.innerHTML=node.serviceText?'<div class="serviceBlock">'+esc(node.serviceText)+'</div>':'';
     if(img){if(node.image){img.src=node.image;img.style.display='block'}else{img.removeAttribute('src');img.style.display='none'}}
+    /* Базовая служебная информация узла: к ней возвращаемся, когда ответ не выбран. */
+    baseServiceHtml=node.serviceText?'<div class="serviceBlock">'+esc(node.serviceText)+'</div>':'';
+    if(service)service.innerHTML=baseServiceHtml;
     if(opts){
-        var optionsKey=JSON.stringify((node.options||[]).map(function(o){return[o.id,o.text,o.serviceText,o.requirements,o.requirementsMet,o.enabled,o.reason]}));
+        var optionsKey=JSON.stringify((node.options||[]).map(function(o){return[o.text,o.serviceText,o.requirements,o.requirementsMet,o.enabled,o.reason]}));
         if(optionsKey!==lastOptionsKey){
             lastOptionsKey=optionsKey;
             opts.innerHTML=(node.options||[]).map(function(o,i){
@@ -878,11 +890,129 @@ function renderDialogue(node){
                 var reason=o.enabled===false?'<small class="optionReason">'+esc(o.reason||'Требование не выполнено')+'</small>':'';
                 return'<button class="dialogOption" data-index="'+i+'" '+(o.enabled===false?'disabled':'')+'><span class="optionText">'+esc(o.text)+'</span>'+svc+req+reason+'</button>';
             }).join('');
-            opts.querySelectorAll('.dialogOption').forEach(function(btn){btn.onclick=function(){
-                sendCriticalQuestCommand({command:'quest_dialog_option',questId:currentQuest,interaction:currentInteraction,index:Number(btn.dataset.index)});
-            }});
+            opts.querySelectorAll('.dialogOption').forEach(function(btn){
+                btn.onclick=function(){
+                    if(btn.disabled)return;
+                    selectedOptionIndex=Number(btn.dataset.index);
+                    opts.querySelectorAll('.dialogOption').forEach(function(b2){b2.classList.toggle('selected',b2===btn)});
+                    /* Служебное поле под картинкой: дублируем допинфу/условия ответа. */
+                    renderOptionService(node.options[selectedOptionIndex]);
+                    renderActionBar();
+                };
+            });
         }
     }
+    renderActionBar();
+}
+
+/* При выборе ответа под картинкой показываем его служебную информацию:
+   прибавки характеристик, требования и причину недоступности. Пока просто
+   дублируем текст допинфы и условий выбранного ответа. Если ответ снят,
+   возвращаем служебный текст текущей реплики НПЦ. */
+function renderOptionService(o){
+    var service=$('dialogService');if(!service)return;
+    if(!o){service.innerHTML=baseServiceHtml;return}
+    var parts=[];
+    if(o.serviceText)parts.push(o.serviceText);
+    if(o.requirements)parts.push(o.requirements);
+    if(o.enabled===false)parts.push(o.reason||'Требование не выполнено');
+    service.innerHTML=parts.map(function(t){return'<div class="serviceBlock">'+esc(t)+'</div>'}).join('')||baseServiceHtml;
+}
+
+function setActionButton(btn,label,cls){
+    if(!btn)return;
+    btn.className='actionBtn '+(cls||'');
+    btn.innerHTML='<span>'+esc(label)+'</span>';
+}
+/* Панель кнопок. Состав зависит от состояния:
+   - карточка квеста: [инициация события] [Отмена];
+   - диалог без выбранного ответа: [Назад];
+   - диалог с выбранным ответом: [Подтвердить] [Отмена].
+   Отмена в диалоге возвращает к карточке квеста (выход из диалога), а в
+   карточке — снимает выделение и выгружает информацию квеста. */
+function renderActionBar(){
+    var bar=$('actionBar');if(!bar)return;
+    var q=currentQuest?questById(currentQuest):null;
+    var label=(q&&q.actionName)||'Поговорить';
+    var key=(dialogActive?'1':'0')+'|'+(selectedOptionIndex>=0?'1':'0')+'|'+label+'|'+(currentQuest||'');
+    if(key===lastActionKey)return;
+    lastActionKey=key;
+    bar.innerHTML='';
+
+    if(!dialogActive){
+        if(!currentQuest)return;
+        var initBtn=document.createElement('button');
+        initBtn.type='button';initBtn.className='actionBtn actionPrimary';
+        setActionButton(initBtn,label,'actionPrimary');
+        initBtn.onclick=function(){startDialogue();};
+        var cancelBtn=document.createElement('button');
+        cancelBtn.type='button';cancelBtn.className='actionBtn actionCancel';
+        setActionButton(cancelBtn,'Отмена','actionCancel');
+        cancelBtn.onclick=function(){clearQuestSelection();};
+        bar.appendChild(initBtn);bar.appendChild(cancelBtn);
+        return;
+    }
+
+    if(selectedOptionIndex<0){
+        var backBtn=document.createElement('button');
+        backBtn.type='button';backBtn.className='actionBtn actionCancel';
+        setActionButton(backBtn,'Назад','actionCancel');
+        backBtn.onclick=function(){clearQuestSelection();};
+        bar.appendChild(backBtn);
+        return;
+    }
+
+    var okBtn=document.createElement('button');
+    okBtn.type='button';okBtn.className='actionBtn actionPrimary primary';
+    setActionButton(okBtn,'Подтвердить','actionPrimary primary');
+    okBtn.onclick=function(){confirmDialogOption();};
+    var cancel2=document.createElement('button');
+    cancel2.type='button';cancel2.className='actionBtn actionCancel';
+    setActionButton(cancel2,'Отмена','actionCancel');
+    /* Отмена в диалоге — возврат к карточке квеста, ответ не применяется. */
+    cancel2.onclick=function(){exitDialogueToCard();};
+    bar.appendChild(okBtn);bar.appendChild(cancel2);
+}
+
+/* Инициация события: грузим реплику НПЦ и варианты ответа. */
+function startDialogue(){
+    if(!currentQuest||!currentInteraction)return;
+    qdLog('[DIALOGUE-START] q='+currentQuest+' i='+currentInteraction);
+    sendCriticalQuestCommand({command:'quest_dialogue_start',questId:currentQuest,id:currentInteraction});
+}
+
+/* Выход из диалога обратно к карточке квеста (без снятия выделения). */
+function exitDialogueToCard(){
+    if(!currentQuest)return;
+    if(dialogActive)sendCriticalQuestCommand({command:'quest_dialogue_end'});
+    currentInteraction=currentInteraction||'';
+    renderQuestSelectionFallback(currentQuest);
+    qdLog('[DIALOGUE-EXIT] q='+currentQuest);
+}
+
+/* Снятие выделения: «Назад»/«Отмена» в карточке. Локальная очистка + команда,
+   иначе периодический quest_state вернёт квест обратно. */
+function clearQuestSelection(){
+    var qid=currentQuest,iid=currentInteraction;
+    currentQuest='';currentInteraction='';questDetailPinned=false;
+    dialogActive=false;selectedOptionIndex=-1;
+    pendingSelectionKey='';pendingSelectionAt=0;
+    lastDialogueKey='';lastOptionsKey='';lastActionKey='';lastQuestsKey='';
+    if(qid&&iid)pendingClearSelection=true;
+    clearDialogue();
+    renderQuests();renderInventory();renderActionBar();
+    if(qid&&iid)sendCriticalQuestCommand({command:'quest_clear_selection',questId:qid,id:iid});
+    qdLog('[SELECTION-CLEARED] q='+qid+' i='+iid);
+}
+
+/* Применение выбранного ответа — только по кнопке «Подтвердить». */
+function confirmDialogOption(){
+    if(!dialogActive||selectedOptionIndex<0)return;
+    var idx=selectedOptionIndex;
+    selectedOptionIndex=-1;lastActionKey='';
+    sendCriticalQuestCommand({command:'quest_dialog_option',questId:currentQuest,interaction:currentInteraction,index:idx});
+    if(currentInteraction)renderActionBar();
+    else renderActionBar();
 }
 
 /* ------------------------------------------------------------------ панели */
@@ -1104,6 +1234,7 @@ function showQuestDetail(id){
     var q=questById(id);if(!q)return;
     pendingSelectionKey='';pendingSelectionAt=0;
     questDetailPinned=true;currentQuest=id;currentInteraction='';
+    dialogActive=false;selectedOptionIndex=-1;lastActionKey='';
     /* Останавливаем набор текста прошлой реплики: иначе живой typeTimer
        продолжает писать в #dialogText и затирает карточку квеста. */
     stopTyping();lastDialogueKey='';lastOptionsKey='';
@@ -1114,10 +1245,10 @@ function showQuestDetail(id){
     if(opts)opts.innerHTML='';
     if(img){img.removeAttribute('src');img.style.display='none'}
     lastDialogueKey='';lastOptionsKey='';lastQuestsKey='';
-    renderQuests();renderInventory();
+    renderQuests();renderInventory();renderActionBar();
 }
 function clearDialogue(){
-    stopTyping();lastDialogueKey='';lastOptionsKey='';
+    dialogActive=false;selectedOptionIndex=-1;lastActionKey='';
     var s=$('dialogSpeaker'),t=$('dialogText'),svc=$('dialogService'),o=$('dialogOptions'),i=$('dialogImage');
     if(s)s.textContent='';if(t){t.classList.remove('fading');t.textContent=EmptyHint}if(svc)svc.innerHTML='';if(o)o.innerHTML='';if(i){i.removeAttribute('src');i.style.display='none'}
 }
@@ -1135,6 +1266,9 @@ function renderQuestSelectionFallback(qid){
     var q=questById(qid);if(!q)return;
     var speaker=$('dialogSpeaker'),text=$('dialogText'),service=$('dialogService'),opts=$('dialogOptions'),img=$('dialogImage');
     stopTyping();
+    /* Карточка квеста: описание, служебная информация и награды.
+       Реплики НПЦ и ответы здесь НЕ грузятся — только после инициации. */
+    dialogActive=false;selectedOptionIndex=-1;lastActionKey='';
     lastDialogueKey='';lastOptionsKey='';
     if(speaker)speaker.textContent=q.title||'';
     if(text){
@@ -1145,12 +1279,12 @@ function renderQuestSelectionFallback(qid){
         var parts=[];
         if(q.status)parts.push(q.status);
         if(q.stepDescription)parts.push(q.stepDescription);
-        parts.push('Ожидание данных интерактива…');
         service.innerHTML='<div class="serviceBlock">'+esc(parts.join(' · '))+'</div>'+rewardsHtml(q.rewards);
     }
     if(opts)opts.innerHTML='';
     if(img){img.removeAttribute('src');img.style.display='none'}
-    qdLog('[SELECTION-FALLBACK] qid='+qid+' local quest content rendered while waiting for dialogue');
+    renderActionBar();
+    qdLog('[SELECTION-FALLBACK] qid='+qid+' quest card rendered (dialogue not started)');
 }
 function selectInteraction(qid,iid){
     /* Клик по уже показанному интерактиву не должен зависеть от transient ready:
@@ -1161,6 +1295,7 @@ function selectInteraction(qid,iid){
         return;
     }
     questDetailPinned=false;currentQuest=qid;currentInteraction=iid;
+    dialogActive=false;selectedOptionIndex=-1;lastActionKey='';
     renderQuestSelectionFallback(qid);
     pendingSelectionKey=String(qid||'')+':'+String(iid||'');pendingSelectionAt=Date.now();
     qdLog('[SELECTION-REQUEST] key='+pendingSelectionKey+' local-selection-set');
@@ -1175,7 +1310,9 @@ function setQuestInteractiveVisible(visible,ready,pulse){
     var app=$('questApp');if(app)app.classList.toggle('interactiveVisible',pagePaused);
     if(!pagePaused){
         archiveVisible=false;currentQuest='';currentInteraction='';questDetailPinned=false;
+        selectedOptionIndex=-1;dialogActive=false;lastActionKey='';pendingClearSelection=false;
         clearDialogue();stopCursorTrack('interactive-hidden');
+        if($('actionBar'))$('actionBar').innerHTML='';
 
         /* Всё, что уже было показано в паузе, обязано исчезнуть.
            Маяки, накопленные ВО ВРЕМЯ паузы, сохраняем и запускаем
@@ -1297,11 +1434,21 @@ function applyState(data){
         return;
     }
     var keepPendingSelection=false;
+    /* Подтверждение снятия выделения: пока команда в пути, локально очищенный
+       квест не должен вернуться из запаздывающего broadcast. */
+    if(pendingClearSelection){
+        if(!data.selectedQuest&&!data.selectedInteraction){
+            qdLog('[SELECTION-CLEAR-ACK] server-cleared');
+            pendingClearSelection=false;
+        }else{
+            keepPendingSelection=true;
+        }
+    }
     if(questDetailPinned){
         /* Локально открытая карточка квеста не должна заменяться backend-blank
            состоянием: у карточки нет selectedInteraction по протоколу. */
         currentInteraction='';
-    }else{
+    }else if(!keepPendingSelection){
         var serverSelectionKey=String(data.selectedQuest||'')+':'+String(data.selectedInteraction||'');
         if(pendingSelectionKey){
             if(serverSelectionKey===pendingSelectionKey){
@@ -1317,9 +1464,26 @@ function applyState(data){
             currentInteraction=data.selectedInteraction||'';
         }
     }
-    if(data.dialogue&&!questDetailPinned&&!keepPendingSelection)renderDialogue(data.dialogue);
-    else if(!questDetailPinned&&!keepPendingSelection&&!data.selectedQuest&&!data.selectedInteraction)clearDialogue();
-    renderQuests();renderInventory();publishInteractiveBounds();
+    if(keepPendingSelection){publishInteractiveBounds();qdContentSnapshot('applyState-keep-pending',true);return}
+    /* Состояние блока полностью определяется сервером:
+       есть dialogue — идёт диалог с НПЦ (реплика + ответы);
+       есть selection без dialogue — карточка квеста (описание + награды);
+       нет selection — блоки пусты. Так выход из диалога кнопкой «Отмена»
+       не отменяется следующим broadcast. */
+    if(data.dialogue&&!questDetailPinned){
+        renderDialogue(data.dialogue);
+    }else if(!questDetailPinned&&data.selectedQuest){
+        if(dialogActive||!currentQuest||currentQuest!==data.selectedQuest){
+            currentQuest=data.selectedQuest;
+            currentInteraction=data.selectedInteraction||'';
+            renderQuestSelectionFallback(currentQuest);
+        }else{
+            renderActionBar();
+        }
+    }else if(!questDetailPinned&&!data.selectedQuest&&!data.selectedInteraction){
+        clearDialogue();
+    }
+    renderQuests();renderInventory();renderActionBar();publishInteractiveBounds();
     qdContentSnapshot('applyState-interactive',true);
 }
 var stateRequestTimer=0,stateRequestAttempts=0;
@@ -1451,7 +1615,7 @@ window.onEts2Command=function(d){
     if(itab)itab.addEventListener('transitionend',function(){syncTabVisibility();if(pagePaused)syncInput(false);publishInteractiveBounds()});
     window.addEventListener('resize',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     var style=document.createElement('style');
-    style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}.#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#768497;font-size:10px}.questSectionTitle{padding:8px 10px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:#8c9aad;font-size:10px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid #ffd21f;background:rgba(255,210,31,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:#ffd45a;font-weight:700}.rewardLine{padding:3px 0;font-weight:600}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}#questApp button{box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgb(19,20,21);color:#e7edf4;transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease}#questApp button:hover,#questApp button.quest-native-hover{border-color:rgba(255,211,77,.65);background:rgb(33,34,35)}#questApp button:disabled{opacity:.38;cursor:not-allowed}#questApp #questTab,#questApp #inventoryTab{border-left:0;border-color:rgba(255,255,255,.12);background:rgb(19,20,21)}#questApp #questTab:hover,#questApp #inventoryTab:hover,#questApp #questTab.quest-native-hover,#questApp #inventoryTab.quest-native-hover{border-color:rgba(255,211,77,.65);border-left:0;background:rgb(33,34,35)}#questApp .questItem.selected,#questApp .inventoryItem.selected,#questApp .sideItem.selected{border-color:rgba(255,211,77,.65);background:rgb(33,34,35)}.optionReason{font-size:10px;color:#7e8a98;font-weight:400}.dialogTextRole{font-family:Roboto,"Roboto Regular","Segoe UI",Arial,sans-serif}.dialogTextService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:"Courier New",Courier,monospace;color:rgba(255,255,255,.8);font-size:12px}.optionRequirements{font-family:"Courier New",Courier,monospace;color:#0048ff;font-size:12px}.optionRequirements.unmet{color:#0048ff;opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:13px}';
+    style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}.#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px}.questSectionTitle{padding:8px 10px 5px;color:var(--accent);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:var(--muted);font-size:13px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid var(--accent);background:rgba(229,147,16,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:var(--accent);font-weight:700;font-size:14px}.rewardLine{padding:3px 0;font-weight:600;font-size:14px}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}#questApp button{box-sizing:border-box;border:1px solid transparent;background:var(--panel);color:#e7edf4;font-family:var(--font-ui);transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease}#questApp button:hover,#questApp button.quest-native-hover{border-color:transparent;background:var(--hover)}#questApp button:disabled{opacity:.38;cursor:not-allowed}#questApp #questTab,#questApp #inventoryTab{border-left:0;border-color:transparent;background:var(--panel)}#questApp #questTab:hover,#questApp #inventoryTab:hover,#questApp #questTab.quest-native-hover,#questApp #inventoryTab.quest-native-hover{border-color:transparent;border-left:0;background:var(--hover)}#questApp .questItem.selected,#questApp .inventoryItem.selected,#questApp .sideItem.selected{border-color:var(--accent);background:var(--selected)}#questApp .dialogOption.selected{border-color:var(--accent);background:var(--selected);box-shadow:0 0 0 1px var(--accent)}#questApp .dialogOption:disabled{opacity:.38;cursor:not-allowed}.optionReason{font-size:13px;color:var(--muted);font-weight:400}.dialogTextRole{font-family:var(--font-ui)}.dialogTextService{font-family:var(--font-ui);color:var(--muted);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:var(--font-ui);color:var(--accent);font-size:13px}.optionRequirements{font-family:var(--font-ui);color:var(--muted);font-size:13px}.optionRequirements.unmet{color:var(--muted);opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:14px}';
     document.head.appendChild(style);
 })();
 

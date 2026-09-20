@@ -3,12 +3,34 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ETS2 Assist — интерактив R24 1.0.40.94</title>
+<title>ETS2 Assist — интерактив R25 1.0.40.95</title>
 <script src="js/debug_show.js"></script>
 <script src="js/ui_category.js"></script>
 <style>
-:root{font-family:'Segoe UI',Arial,sans-serif;color:#e7edf4;background:transparent;user-select:none}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}
+/* Оформление повторяет интерфейс игры: тот же шрифт, оранжевый акцент и
+   серые панели. Тёмный фон окна совпадает с игровым и не меняется. */
+:root{
+  --font-ui:'Open Sans','Helvetica Neue',Arial,sans-serif;
+  --accent:#e59310;
+  --muted:#9e9e9e;
+  --panel:#262626;
+  --hover:#181f23;
+  --selected:#4b5a66;
+  --scroll-thumb:#4b5a66;
+  --scroll-thumb-hover:#5d7080;
+  font-family:var(--font-ui);color:#e7edf4;background:transparent;user-select:none
+}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:var(--font-ui)}
+
+/* Тёмно-серые скроллбары. Вертикальные — автоматически при переполнении,
+   горизонтальные исключены полностью. */
+*{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) transparent}
+*::-webkit-scrollbar{width:8px;height:0}
+*::-webkit-scrollbar:horizontal{height:0;display:none}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border-radius:4px}
+*::-webkit-scrollbar-thumb:hover{background:var(--scroll-thumb-hover)}
+::-webkit-scrollbar-corner{background:transparent}
 
 /* The page itself fades; the quest panel also slides out when collapsed. */
 #questApp{position:fixed;inset:0;visibility:visible;opacity:1;pointer-events:none;transition:opacity 150ms ease;z-index:100}
@@ -116,45 +138,78 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 #imagePanel{left:1124px;top:75px;width:286px;height:278px}
 #servicePanel{left:1124px;top:365px;width:286px;height:540px}
 
-#questList,.scroll{padding:6px;overflow:auto;min-height:0}
-.questSectionTitle{padding:7px 6px 5px;color:#ffd45a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.55px}
+#questList,.scroll{padding:6px;overflow-y:auto;overflow-x:hidden;min-height:0}
+.questSectionTitle{padding:7px 6px 5px;color:var(--accent);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.55px}
 .questDivider{height:1px;background:rgba(255,255,255,.14);margin:6px 0}
-.questItem{width:100%;display:block;border:0;border-bottom:1px solid rgba(255,255,255,.06);background:transparent;color:#dce3eb;padding:8px 6px;text-align:left;cursor:pointer;border-radius:6px}
-.questItem:hover,.questItem.selected{background:rgba(255,205,85,.11)}
-.questItem strong{display:block;font-size:12px}
-.questItem span{display:block;color:#8794a5;font-size:10px;margin-top:3px}
-.questItem em{display:block;margin-top:4px;color:#8794a5;font-size:9px;font-style:normal;line-height:1.3}
-.archiveToggle{margin:8px 6px 0;padding:8px;border:1px solid rgba(255,205,85,.22);background:rgba(0,0,0,.15);color:#ffd45a;border-radius:7px;cursor:pointer;text-transform:lowercase}
+.questItem{width:100%;display:block;border:1px solid transparent;background:var(--panel);color:#e7edf4;padding:8px 6px;text-align:left;cursor:pointer;border-radius:6px;margin-bottom:2px}
+.questItem:hover,.questItem.quest-native-hover{background:var(--hover)}
+.questItem.selected{background:var(--selected);border-color:var(--accent)}
+.questItem strong{display:block;font-size:14px;font-weight:600}
+.questItem span{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.questItem em{display:block;margin-top:4px;color:var(--muted);font-size:13px;font-style:normal;line-height:1.3}
+.archiveToggle{margin:8px 6px 0;padding:8px;border:1px solid transparent;background:var(--panel);color:var(--accent);border-radius:7px;cursor:pointer;text-transform:lowercase;font-family:inherit}
+.archiveToggle:hover,.archiveToggle.quest-native-hover{background:var(--hover)}
 
-.panelInner{height:100%;padding:6px;box-sizing:border-box;overflow:auto}
-.panelTitle{padding:6px;color:#ffd45a;font-weight:700;font-size:12px}
+.panelInner{height:100%;padding:6px;box-sizing:border-box;overflow-y:auto;overflow-x:hidden}
+.panelTitle{padding:6px;color:var(--accent);font-weight:700;font-size:14px}
 #dialog{height:100%;display:flex;flex-direction:column}
-#dialogSpeaker{padding:0 6px 6px;color:#fff;font-size:17px;font-weight:700}
-#dialogText{padding:0 6px;color:#fff;font-size:14px;line-height:1.45;white-space:pre-wrap;overflow:auto;flex:1;transition:opacity 150ms ease}
+#dialogSpeaker{padding:0 6px 6px;color:#fff;font-size:18px;font-weight:700}
+#dialogText{padding:0 6px;color:#fff;font-size:14px;line-height:1.45;white-space:pre-wrap;overflow-y:auto;overflow-x:hidden;flex:1;transition:opacity 150ms ease}
 #dialogText.fading{opacity:0}
-#dialogService{padding:6px;color:#c4ccd6;font:12px/1.4 'Courier New',monospace}
-#dialogOptions{height:100%;display:flex;flex-direction:column;gap:7px;overflow:auto}
+#dialogService{padding:6px;color:var(--muted);font-size:14px;line-height:1.4}
+#dialogOptions{display:flex;flex-direction:column;gap:7px;overflow-y:auto;overflow-x:hidden}
+
+/* Блок ответов — колонка: список заполняет высоту, панель кнопок прижата к низу. */
+.responseInner{height:100%;display:flex;flex-direction:column;padding:6px;box-sizing:border-box;min-height:0}
+.responseInner #dialogOptions{flex:1 1 auto;min-height:0}
+
+/* Ответы: выбор подсвечивается, применение — только по кнопке «Подтвердить». */
 .dialogOption{
     padding:9px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgb(19,20,21);
+    border:1px solid transparent;
+    background:var(--panel);
     color:#e7edf4;border-radius:7px;text-align:left;cursor:pointer;font:inherit;
     transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease;
 }
-.dialogOption:hover,.dialogOption.quest-native-hover{
-    border-color:rgba(255,211,77,.65);
-    background:rgb(33,34,35);
-}
+.dialogOption:hover,.dialogOption.quest-native-hover{background:var(--hover)}
+.dialogOption.selected{background:var(--selected);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .dialogOption:disabled{opacity:.38;cursor:not-allowed}
+.optionText{display:block;font-size:14px}
+.optionRequirements,.optionService,.optionReason{display:block;font-size:13px;font-weight:400;margin-top:4px}
+.optionService{color:var(--accent)}
+.optionRequirements,.optionReason{color:var(--muted)}
+
+/* Панель кнопок: своя полоса во всю ширину блока ответов. */
+#actionBar{
+    display:flex;gap:8px;align-items:stretch;
+    padding:8px 6px 6px;border-top:1px solid rgba(255,255,255,.12);
+    flex:0 0 auto;
+}
+/* Отмена всегда справа у края и никогда не переносится — у неё личное место. */
+.actionCancel{flex:0 0 120px;max-width:120px}
+/* Инициация расширяется до кнопки отмены, но не перекрывает её. */
+.actionPrimary{flex:0 1 auto;min-width:0;max-width:calc(100% - 128px)}
+.actionBtn{
+    padding:10px 14px;border:1px solid transparent;border-radius:7px;
+    background:var(--panel);color:#e7edf4;font:inherit;font-size:14px;
+    cursor:pointer;text-align:center;
+    transition:background-color 50ms ease,border-color 50ms ease,color 50ms ease;
+}
+.actionBtn:hover,.actionBtn.quest-native-hover{background:var(--hover)}
+/* Подтвердить — акцентная кнопка. */
+.actionBtn.primary{background:var(--accent);color:#1b1b1b;font-weight:600}
+.actionBtn.primary:hover,.actionBtn.primary.quest-native-hover{background:#f0a52a}
+/* Текст кнопки переносится максимум на две строки. */
+.actionBtn span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
 #imagePanel{padding:12px}
 #dialogImage{
     width:100%;height:100%;margin:0;object-fit:cover;
     border-radius:8px;background:rgba(0,0,0,1);display:none;
 }
-.serviceBlock{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)}
-.questRewardTitle{margin-top:9px;margin-bottom:4px;color:#ffd45a;font-weight:700}
-.rewardLine{padding:3px 0}
-.rewardService{color:#8c9aad;font-size:11px;font-weight:400}
+.serviceBlock{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:14px}
+.questRewardTitle{margin-top:9px;margin-bottom:4px;color:var(--accent);font-weight:700;font-size:14px}
+.rewardLine{padding:3px 0;font-size:14px}
+.rewardService{color:var(--muted);font-size:13px;font-weight:400}
 
 /* Bookmarks use the SAME enter/exit motion as interface windows.
    Each bookmark controls only its own interface. Other bookmarks stay visible. */
@@ -162,10 +217,10 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
     position:absolute;left:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     width:34px;padding:18px 6px;
-    background:rgb(19,20,21);
-    border:1px solid rgba(255,255,255,.12);border-left:0;
+    background:var(--panel);
+    border:1px solid transparent;border-left:0;
     border-radius:0 7px 7px 0;
-    color:#ffd45a;font:700 14px/1 'Segoe UI',Arial,sans-serif;
+    color:var(--accent);font:700 14px/1 var(--font-ui);
     letter-spacing:1px;cursor:pointer;box-sizing:content-box;
     opacity:0;pointer-events:none;z-index:40;
     transform:translate(-115%,-50%);
@@ -179,20 +234,22 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
     transition:transform 220ms ease,opacity 150ms ease;
 }
 #questTab.visible.interactive,#inventoryTab.visible.interactive{pointer-events:auto}
+#questTab:hover,#inventoryTab:hover,
+#questTab.quest-native-hover,#inventoryTab.quest-native-hover{background:var(--hover)}
 #questTab.active,#inventoryTab.active{
-    border-color:rgba(255,255,255,.12);
+    border-color:transparent;
     box-shadow:none;
 }
 #questTab.beacon,#inventoryTab.beacon{animation:bookmarkBeaconPulse 700ms ease-in-out 2}
 @keyframes bookmarkBeaconPulse{
-    0%,100%{box-shadow:0 0 2px rgba(255,211,77,.15)}
-    50%{box-shadow:0 0 22px rgba(255,211,77,.95)}
+    0%,100%{box-shadow:0 0 2px rgba(229,147,16,.15)}
+    50%{box-shadow:0 0 22px rgba(229,147,16,.95)}
 }
 .questTabText,.inventoryTabText{writing-mode:vertical-rl}
 .questTabHint,.inventoryTabHint{
     position:absolute;left:0;right:0;bottom:2px;
     text-align:center;writing-mode:horizontal-tb;
-    color:#5c646e;font:400 9px/1 'Segoe UI',Arial,sans-serif;letter-spacing:0;
+    color:var(--muted);font:400 9px/1 var(--font-ui);letter-spacing:0;
 }
 #questTab.pulse,#inventoryTab.pulse{animation:none}
 
@@ -206,9 +263,9 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
     margin-left:6px;
     margin-top:4px;
     border-radius:50%;
-    background:#ffd45a;
-    color:#ffd45a;
-    box-shadow:0 0 2px rgba(255,211,77,.15);
+    background:var(--accent);
+    color:var(--accent);
+    box-shadow:0 0 2px rgba(229,147,16,.15);
     animation:bookmarkBeaconPulse 700ms ease-in-out 2;
     will-change:box-shadow,transform;
 }
@@ -216,13 +273,16 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
     display:flex;align-items:flex-start;min-width:0;
 }
 .inventoryItemLabel{min-width:0}
-#inventoryList{height:100%;padding:6px;overflow:auto;box-sizing:border-box}
+#inventoryList{height:100%;padding:6px;overflow-y:auto;overflow-x:hidden;box-sizing:border-box}
 .inventoryItem{
     width:100%;display:flex;justify-content:space-between;gap:8px;
     padding:9px 7px;margin-bottom:2px;border-radius:7px;
-    text-align:left;cursor:pointer;font:inherit;
+    border:1px solid transparent;background:var(--panel);color:#e7edf4;
+    text-align:left;cursor:pointer;font:inherit;font-size:14px;
 }
-.inventoryItem small{color:#8c98a9}
+.inventoryItem:hover,.inventoryItem.quest-native-hover{background:var(--hover)}
+.inventoryItem.selected{background:var(--selected);border-color:var(--accent)}
+.inventoryItem small{color:var(--muted)}
 
 #overlayError{
     position:fixed;left:50%;top:5vh;transform:translateX(-50%);
@@ -249,7 +309,13 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
   <div id="questWindow" class="interfaceWindow collapsed" data-category="interactive"><div id="questLayout">
    <section id="questSidebar"><div id="questList"></div></section>
    <section id="eventPanel"><div id="dialog" class="panelInner"><div id="dialogSpeaker"></div><div id="dialogText"></div></div></section>
-   <section id="responsePanel"><div class="panelInner"><div class="panelTitle">Ответы</div><div id="dialogOptions"></div></div></section>
+   <section id="responsePanel">
+    <div class="responseInner">
+     <div class="panelTitle">Ответы</div>
+     <div id="dialogOptions"></div>
+     <div id="actionBar"></div>
+    </div>
+   </section>
    <section id="imagePanel"><img id="dialogImage" alt=""></section>
    <section id="servicePanel"><div class="panelInner"><div class="panelTitle">Служебная информация</div><div id="dialogService"></div></div></section>
   </div></div>
@@ -278,7 +344,7 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 })();
 </script>
 <script>
-window.__questHtmlDiagBuild='QHTML-CONTENT-SELECT-R24-2026-09-20';
+window.__questHtmlDiagBuild='QHTML-UISTYLE-R25-2026-09-20';
 window.__questBootstrapErrors=[];
 window.addEventListener('error',function(e){
     try{
@@ -297,6 +363,6 @@ window.addEventListener('unhandledrejection',function(e){
     }catch(_){}
 },true);
 </script>
-<script src="js/quests_ui.js?v=1.0.40.94"></script>
+<script src="js/quests_ui.js?v=1.0.40.95"></script>
 </body>
 </html>
