@@ -88,7 +88,11 @@ function applyMapOverrides() {
         icon: p.icon || undefined,
         opacity: (p.opacity === undefined || p.opacity === null) ? 1 : Number(p.opacity),
         layer: (p.layer === undefined || p.layer === null) ? 100 : Number(p.layer),
-        displayOnMap: p.display_on_map === undefined ? true : !!p.display_on_map,
+        // v1.0.41: точка по умолчанию СКРЫТА. Показывается только если категория
+        // явно разрешила это в meta.json (display_on_map: true) либо её включил
+        // квестовый слой. Раньше значение по умолчанию было true, из-за чего при
+        // старте на миникарте и в AR на мгновение проступали все точки карты.
+        displayOnMap: p.display_on_map === true,
         hidden: !!p.hidden
     })).filter(p => !p.hidden && (p.x || p.z));
 

@@ -869,6 +869,7 @@ namespace ETS2_Assist_GUI.Quests
                     ["enabled"]=enabled,
                     ["close"]=option.Close,
                     ["irreversible"]=option.Irreversible,
+                    ["simple"]=option.Simple,
                     ["requirements"]=requirementText,
                     ["requirementsMet"]=enabled,
                     ["reason"]=enabled?"":"Условие не выполнено"

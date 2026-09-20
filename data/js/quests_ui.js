@@ -33,7 +33,7 @@ var lastToggleAt=0;
    не восстанавливается, игрок сам выбирает интерактив слева. */
 var EmptyHint='Выберите задание слева (доступные интерактивы) или активное справа.';
 var $=function(id){return document.getElementById(id)};
-var QUEST_UI_DIAG_BUILD='QCONTENT-SELRETAIN-R28-2026-09-20';
+var QUEST_UI_DIAG_BUILD='QCONTENT-PALETTE-R29-2026-09-20';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 
 /* ================================================================ ДИАГНОСТИКА ВВОДА
@@ -391,7 +391,7 @@ function updateRawInputDiagnostics(msg){
     if(!rawInputDiagEl)return;
     rawInputDiagEl.style.display='block';
     rawInputDiagEl.innerHTML=[
-        '<strong>SOFT CURSOR R28 1.0.40.98</strong>',
+        '<strong>SOFT CURSOR R29 1.0.40.99</strong>',
         'status: '+(msg.registered?'REGISTERED':'REGISTER FAILED')+' / '+(msg.softCursorActive?'ACTIVE':'INACTIVE'),
         'packets: '+(msg.packets??0),
         'last dx: '+rawInputFmt(msg.dx)+'   dy: '+rawInputFmt(msg.dy),
@@ -900,8 +900,19 @@ function renderDialogue(node){
     baseServiceHtml=node.serviceText?'<div class="serviceBlock">'+esc(node.serviceText)+'</div>':'';
     /* Служебное поле переписываем только при смене узла или отсутствии выбора:
        иначе затёрли бы допинфу выделенного ответа. */
-    if(!sameNode&&service&&selectedOptionIndex<0)service.innerHTML=baseServiceHtml;
-    if(img){if(node.image){img.src=node.image;img.style.display='block'}else{img.removeAttribute('src');img.style.display='none'}}
+    if(!sameNode&&service&&selectedOptionIndex<0){service.innerHTML=baseServiceHtml;staggerServiceBlocks(service)}
+    if(img){
+        /* Картинка появляется фейдом с зумом из 90% размера (класс .shown),
+           а не рывком через display. */
+        if(node.image){
+            var sameImg=img.getAttribute('src')===node.image;
+            img.src=node.image;
+            img.classList.add('shown');
+            if(!sameImg){img.classList.remove('shown');void img.offsetWidth;img.classList.add('shown')}
+        }else{
+            img.removeAttribute('src');img.classList.remove('shown');img.style.display='none';
+        }
+    }
     if(opts)renderOptionList();
     renderActionBar();
 }
@@ -911,23 +922,38 @@ function renderOptionList(){
     var opts=$('dialogOptions');if(!opts)return;
     var items=cardOptionItems();
     var optionsKey=JSON.stringify(items.map(function(it){
-        return[it.talk===true,it.text,it.serviceText||'',it.requirements||'',it.enabled===false,it.reason||'',it.irreversible===true,it.continuation===true];
+        return[it.talk===true,it.back===true,it.text,it.serviceText||'',it.requirements||'',it.enabled===false,it.reason||'',it.irreversible===true,it.continuation===true,it.node&&it.node.simple===true];
     }));
     if(optionsKey===lastOptionsKey)return;
     lastOptionsKey=optionsKey;
     opts.innerHTML=items.map(function(o,i){return cardOptionHtml(o,i)}).join('');
+    /* Ответы проявляются последовательно друг за другом: фейд-ин с небольшим
+       движением снизу вверх. */
+    opts.querySelectorAll('.dialogOption').forEach(function(btn,i){
+        btn.style.animation='uiFadeInUp 170ms cubic-bezier(.22,.8,.2,1) both';
+        btn.style.animationDelay=(i*45)+'ms';
+    });
     bindCardOptions(items);
 }
 
 /* Текст-предупреждение для невозвратного ответа. */
 var IrreversibleWarning='Невозвратный ответ. Выбирайте осознанно, у вас не будет возможности начать диалог заново и выбрать другой ответ. Это может повлиять на сюжет и вашу репутацию.';
+/* Служебные блоки проявляются последовательно: каждый следующий с задержкой.
+   Доппанель должна появляться пункт за пунктом, а не целиком рывком. */
+function staggerServiceBlocks(root){
+    var host=root||$('dialogService');if(!host)return;
+    host.querySelectorAll('.serviceBlock,.questRewardTitle,.rewardLine').forEach(function(el,i){
+        el.style.animation='uiFadeInUp 170ms cubic-bezier(.22,.8,.2,1) both';
+        el.style.animationDelay=(i*55)+'ms';
+    });
+}
 /* При выборе ответа под картинкой показываем его служебную информацию:
    прибавки характеристик, требования и причину недоступности. Для невозвратного
    ответа в конце добавляем звёздочку, дефис и предупреждение курсивом.
    Если ответ снят, возвращаем служебный текст текущей реплики НПЦ. */
 function renderOptionService(o){
     var service=$('dialogService');if(!service)return;
-    if(!o){service.innerHTML=baseServiceHtml;return}
+    if(!o){service.innerHTML=baseServiceHtml;staggerServiceBlocks(service);return}
     var parts=[];
     if(o.serviceText)parts.push(esc(o.serviceText));
     if(o.requirements)parts.push(esc(o.requirements));
@@ -939,6 +965,7 @@ function renderOptionService(o){
             +' — <em>'+esc(IrreversibleWarning)+'</em></div>';
     }
     service.innerHTML=html||baseServiceHtml;
+    staggerServiceBlocks(service);
 }
 
 function setActionButton(btn,label,cls){
@@ -962,11 +989,16 @@ function renderActionBar(){
        «Подтвердить»: «Поговорить» оно инициирует событие, остальные ответы
        уходят на сервер. */
     if(selectedOptionIndex>=0){
-        var okBtn=document.createElement('button');
-        okBtn.type='button';okBtn.className='actionBtn actionPrimary primary';
-        setActionButton(okBtn,'Подтвердить','actionPrimary primary');
-        okBtn.onclick=function(){applyCardOption();};
-        bar.appendChild(okBtn);
+        var sel=cardOptionItems()[selectedOptionIndex];
+        /* Подтверждение нужно только для категории «с подтверждением»:
+           простая кнопка сработала сразу и здесь уже не окажется. */
+        if(sel&&!isSimpleItem(sel)){
+            var okBtn=document.createElement('button');
+            okBtn.type='button';okBtn.className='actionBtn actionPrimary primary';
+            setActionButton(okBtn,'Подтвердить','actionPrimary primary');
+            okBtn.onclick=function(){applyCardOption();};
+            bar.appendChild(okBtn);
+        }
     }
     /* «Назад» доступна всегда: шаг назад в диалоге или снятие выделения. */
     if(currentQuest){
@@ -1030,6 +1062,9 @@ function cardOptionItems(){
        не нужна. Показываем его, только если у квеста есть входной диалог. */
     var q=currentQuest?questById(currentQuest):null;
     if(!dialogActive&&q&&q.talk!==false)items.push({talk:true,text:talkText(),continuation:talkContinuation});
+    /* «Назад» в карточке дублирует кнопку нижней панели — но это простая
+       кнопка, срабатывает сразу. */
+    if(!dialogActive&&currentQuest)items.push({back:true,text:'Назад'});
     var node=currentDialogueNode;
     (node&&node.options||[]).forEach(function(o,i){
         items.push({talk:false,index:i,node:o,text:o.text,serviceText:o.serviceText,
@@ -1037,9 +1072,23 @@ function cardOptionItems(){
     });
     return items;
 }
+/* Категории кнопок. Простая (simple) срабатывает сразу и выделением не
+   помечается — она не может быть «выбрана». С подтверждением — сначала
+   выделяется, показывает допинфу и требует «Подтвердить». */
+function isSimpleItem(item){
+    if(!item)return false;
+    if(item.talk)return true;
+    if(item.back)return true;
+    return !!(item.node&&item.node.simple===true);
+}
 function cardOptionHtml(item,pos){
+    var simple=isSimpleItem(item);
+    if(item.back){
+        return'<button class="dialogOption simple backOption" data-idx="'+pos+'" type="button">'
+            +'<span class="optionText">Назад</span></button>';
+    }
     if(item.talk){
-        return'<button class="dialogOption talkOption'+(item.continuation?' continuation':'')+'" data-idx="'+pos+'" type="button">'
+        return'<button class="dialogOption simple talkOption'+(item.continuation?' continuation':'')+'" data-idx="'+pos+'" type="button">'
             +'<span class="optionText">'+esc(item.text)+'</span></button>';
     }
     var o=item.node;
@@ -1048,7 +1097,7 @@ function cardOptionHtml(item,pos){
     var reason=o.enabled===false?'<small class="optionReason">'+esc(o.reason||'Требование не выполнено')+'</small>':'';
     /* Невозвратный ответ помечается оранжевой звёздочкой перед текстом. */
     var star=o.irreversible===true?'<span class="irreversibleStar" aria-hidden="true">\u2605</span>':'';
-    return'<button class="dialogOption'+(o.irreversible===true?' irreversible':'')+'" data-idx="'+pos+'" type="button" '
+    return'<button class="dialogOption'+(simple?' simple':'')+(o.irreversible===true?' irreversible':'')+'" data-idx="'+pos+'" type="button" '
         +(o.enabled===false?'disabled':'')+'><span class="optionText">'+star+esc(o.text)+'</span>'+svc+req+reason+'</button>';
 }
 function bindCardOptions(items){
@@ -1056,9 +1105,21 @@ function bindCardOptions(items){
     opts.querySelectorAll('.dialogOption').forEach(function(btn){
         btn.onclick=function(){
             if(btn.disabled)return;
-            selectCardOption(Number(btn.dataset.idx),items);
+            var pos=Number(btn.dataset.idx);
+            /* Простая кнопка срабатывает сразу, без выделения и подтверждения. */
+            if(isSimpleItem((items||[])[pos])){applySimpleOption(pos,items);return}
+            selectCardOption(pos,items);
         };
     });
+}
+/* Простая кнопка: сразу выполняет своё действие. */
+function applySimpleOption(pos,items){
+    var item=(items||cardOptionItems())[pos];
+    if(!item)return;
+    selectedOptionIndex=-1;lastActionKey='';
+    if(item.back){goBack();return}
+    if(item.talk){startDialogue();return}
+    if(item.node&&item.node.simple===true){sendCardOption(item);return}
 }
 /* Клик по ответу только выделяет его. Применение — по «Подтвердить». */
 function selectCardOption(pos,items){
@@ -1078,6 +1139,11 @@ function selectCardOption(pos,items){
 }
 /* Применение выбранного ответа: «Поговорить» инициирует событие, обычный ответ
    уходит на сервер. */
+function sendCardOption(item){
+    if(!item)return;
+    sendCriticalQuestCommand({command:'quest_dialog_option',questId:currentQuest,
+        interaction:currentInteraction,index:item.index});
+}
 function applyCardOption(){
     if(selectedOptionIndex<0)return;
     var items=cardOptionItems(),item=items[selectedOptionIndex];
@@ -1088,8 +1154,7 @@ function applyCardOption(){
     renderActionBar();
     if(!item)return;
     if(item.talk){startDialogue();return}
-    sendCriticalQuestCommand({command:'quest_dialog_option',questId:currentQuest,
-        interaction:currentInteraction,index:item.index});
+    sendCardOption(item);
 }
 function renderInteractions(){
     var el=$('interactionList');if(!el||!model)return;
@@ -1318,7 +1383,7 @@ function showQuestDetail(id){
     if(text)text.innerHTML='<span class="dialogTextRole">'+esc(q.description||'')+'</span>';
     baseServiceHtml=(q.stepDescription?'<div class="serviceBlock">'+esc(q.stepDescription)+'</div>':'')+rewardsHtml(q.rewards);
     if(service)service.innerHTML=baseServiceHtml;
-    if(img){img.removeAttribute('src');img.style.display='none'}
+    if(img){img.removeAttribute('src');img.classList.remove('shown');img.style.display='none'}
     if(opts)renderOptionList();
     lastDialogueKey='';lastOptionsKey='';lastQuestsKey='';
     renderQuests();renderInventory();renderActionBar();
@@ -1326,7 +1391,7 @@ function showQuestDetail(id){
 function clearDialogue(){
     dialogActive=false;selectedOptionIndex=-1;lastActionKey='';currentDialogueNode=null;lastDialogueNodeKey='';
     var s=$('dialogSpeaker'),t=$('dialogText'),svc=$('dialogService'),o=$('dialogOptions'),i=$('dialogImage');
-    if(s)s.textContent='';if(t){t.classList.remove('fading');t.textContent=EmptyHint}if(svc)svc.innerHTML='';if(o)o.innerHTML='';if(i){i.removeAttribute('src');i.style.display='none'}
+    if(s)s.textContent='';if(t){t.classList.remove('fading');t.textContent=EmptyHint}if(svc)svc.innerHTML='';if(o)o.innerHTML='';if(i){i.removeAttribute('src');i.classList.remove('shown');i.style.display='none'}
 }
 function sendCriticalQuestCommand(payload){
     var sharedSent=false;
@@ -1358,8 +1423,9 @@ function renderQuestSelectionFallback(qid){
         if(q.stepDescription)parts.push(q.stepDescription);
         baseServiceHtml=(parts.length?'<div class="serviceBlock">'+esc(parts.join(' · '))+'</div>':'')+rewardsHtml(q.rewards);
         service.innerHTML=baseServiceHtml;
+        staggerServiceBlocks(service);
     }
-    if(img){img.removeAttribute('src');img.style.display='none'}
+    if(img){img.removeAttribute('src');img.classList.remove('shown');img.style.display='none'}
     if(opts)renderOptionList();
     renderActionBar();
     qdLog('[SELECTION-FALLBACK] qid='+qid+' quest card rendered (talk answer in option list)');
@@ -1682,22 +1748,22 @@ window.onEts2Command=function(d){
        и не должны сворачивать окно. */
     if(app)app.addEventListener('click',function(e){
         if(!pagePaused||activeInterface==='none')return;
-        var t=e.target,insideManagedTarget=false;
+        var t=e.target,managed=false;
         try{
-            insideManagedTarget=!!(t&&t.closest&&t.closest(
-                '#questWindow,#inventoryWindow,#questTab,#inventoryTab'
+            /* Клик по варианту ответа — это выбор/действие внутри окна, а не
+               клик по прозрачной области. Раньше здесь была только проверка
+               .questItem, поэтому подтверждение «Поговорить» сворачивало окно. */
+            managed=!!(t&&t.closest&&t.closest(
+                '#questWindow,#inventoryWindow,#questTab,#inventoryTab,#actionBar,.questItem,.dialogOption'
             ));
         }catch(_){}
-        if(!insideManagedTarget){
-            try{ if(t&&t.closest&&t.closest('.questItem')) return; }catch(_){}
-            collapseWindow();
-        }
+        if(!managed)collapseWindow();
     });
     if(tab)tab.addEventListener('transitionend',function(){syncTabVisibility();if(pagePaused)syncInput(false);publishInteractiveBounds()});
     if(itab)itab.addEventListener('transitionend',function(){syncTabVisibility();if(pagePaused)syncInput(false);publishInteractiveBounds()});
     window.addEventListener('resize',function(){if(collapsed)syncInput(false);publishInteractiveBounds()});
     var style=document.createElement('style');
-    style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}.#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px}.questSectionTitle{padding:8px 10px 5px;color:var(--accent);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:var(--muted);font-size:13px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid var(--accent);background:rgba(229,147,16,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:var(--accent);font-weight:700;font-size:14px}.rewardLine{padding:3px 0;font-weight:600;font-size:14px}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}#questApp button{box-sizing:border-box;border:1px solid transparent;background:var(--panel);color:#e7edf4;font-family:var(--font-ui);transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease}#questApp button:hover,#questApp button.quest-native-hover{border-color:transparent;background:var(--hover)}#questApp button:disabled{opacity:.38;cursor:not-allowed}#questApp #questTab,#questApp #inventoryTab{border-left:0;border-color:transparent;background:var(--panel)}#questApp #questTab:hover,#questApp #inventoryTab:hover,#questApp #questTab.quest-native-hover,#questApp #inventoryTab.quest-native-hover{border-color:transparent;border-left:0;background:var(--hover)}#questApp .questItem.selected,#questApp .inventoryItem.selected,#questApp .sideItem.selected{border-color:var(--accent);background:var(--selected)}#questApp .dialogOption.selected{border-color:var(--accent);background:var(--selected);box-shadow:0 0 0 1px var(--accent)}#questApp .dialogOption:disabled{opacity:.38;cursor:not-allowed}.optionReason{font-size:13px;color:var(--muted);font-weight:400}.dialogTextRole{font-family:var(--font-ui)}.dialogTextService{font-family:var(--font-ui);color:var(--muted);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:var(--font-ui);color:var(--accent);font-size:13px}.optionRequirements{font-family:var(--font-ui);color:var(--muted);font-size:13px}.irreversibleStar{color:var(--accent);margin-right:6px;font-size:13px}.dialogOption.irreversible .optionText{font-weight:600}.irreversibleNote{color:var(--muted);font-size:13px;line-height:1.4}.irreversibleNote em{font-style:italic}.irreversibleNote .irreversibleStar{margin-right:2px}.optionRequirements.unmet{color:var(--muted);opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:14px}';
+    style.textContent='#interactionList .sideItem{position:relative;padding-left:9px;padding-right:52px}.#interactionList .sideMain{display:inline-block;vertical-align:middle;max-width:145px}.sideDist{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px}.questSectionTitle{padding:8px 10px 5px;color:var(--accent);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}.questItem em{display:block;margin-top:5px;color:var(--muted);font-size:13px;font-style:normal;line-height:1.35}.questStepDetail{margin-top:12px;padding:10px;border-left:2px solid var(--accent);background:rgba(250,176,3,.05);color:#b9c2ce}.questRewardTitle{margin-top:18px;margin-bottom:5px;color:var(--accent);font-weight:700;font-size:14px}.rewardLine{padding:3px 0;font-weight:600;font-size:14px}.dialogOption{display:flex;flex-direction:column;gap:4px;align-items:flex-start}#questApp button{box-sizing:border-box;border:1px solid transparent;background:var(--panel);color:#e7edf4;font-family:var(--font-ui);transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease}#questApp button:hover,#questApp button.quest-native-hover{border-color:transparent;background:var(--hover)}#questApp button:disabled{opacity:.38;cursor:not-allowed}#questApp #questTab,#questApp #inventoryTab{border-left:0;border-color:transparent;background:var(--panel)}#questApp #questTab:hover,#questApp #inventoryTab:hover,#questApp #questTab.quest-native-hover,#questApp #inventoryTab.quest-native-hover{border-color:transparent;border-left:0;background:var(--hover)}#questApp .questItem.selected,#questApp .inventoryItem.selected,#questApp .sideItem.selected{border-color:var(--accent);background:var(--selected)}#questApp .dialogOption.selected{border-color:var(--accent);background:var(--selected);box-shadow:0 0 0 1px var(--accent)}#questApp .dialogOption:disabled{opacity:.38;cursor:not-allowed}.optionReason{font-size:13px;color:var(--muted);font-weight:400}.dialogTextRole{font-family:var(--font-ui)}.dialogTextService{font-family:var(--font-ui);color:var(--muted);font-size:14px;margin-top:8px}.dialogTextService:before{content:""}.optionService{font-family:var(--font-ui);color:var(--accent);font-size:13px}.optionRequirements{font-family:var(--font-ui);color:var(--muted);font-size:13px}.irreversibleStar{color:var(--accent);margin-right:6px;font-size:13px}.dialogOption.irreversible .optionText{font-weight:600}.irreversibleNote{color:var(--muted);font-size:13px;line-height:1.4}.irreversibleNote em{font-style:italic}.irreversibleNote .irreversibleStar{margin-right:2px}.optionRequirements.unmet{color:var(--muted);opacity:.75}#dialogText.fading{opacity:0;transition:opacity 150ms ease}#dialogText{transition:opacity 150ms ease}.questWindow .panelTitle{font-size:14px}';
     document.head.appendChild(style);
 })();
 

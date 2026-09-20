@@ -3,24 +3,57 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ETS2 Assist — интерактив R28 1.0.40.98</title>
+<title>ETS2 Assist — интерактив R29 1.0.40.99</title>
 <script src="js/debug_show.js"></script>
 <script src="js/ui_category.js"></script>
 <style>
 /* Оформление повторяет интерфейс игры: тот же шрифт, оранжевый акцент и
-   серые панели. Тёмный фон окна совпадает с игровым и не меняется. */
+   серые панели. Тёмный фон окна совпадает с игровым и не меняется.
+   Редактор карт имеет собственную палитру и здесь не затрагивается. */
 :root{
   --font-ui:'Open Sans','Helvetica Neue',Arial,sans-serif;
-  --accent:#e59310;
-  --muted:#9e9e9e;
+  /* Основной акцентный оранжевый. */
+  --accent:#fab003;
+  /* Второстепенный оранжевый: подсветка активных/выбранных кнопок. */
+  --accent-2:#b4810c;
+  /* Приглушённые варианты основной схемы. */
+  --muted-white:#cccccc;
+  --muted-accent:#8a6321;
+  /* Второстепенный серый для текста. */
+  --muted:#a6a6a6;
+  /* Панели: фон кликабельных меню, ховер, выбранный элемент. */
   --panel:#262626;
   --hover:#181f23;
   --selected:#4b5a66;
   --scroll-thumb:#4b5a66;
   --scroll-thumb-hover:#5d7080;
+  /* Спеццвета для особых случаев. */
+  --blue:#12abe5;
+  --red:#cf0c0c;
+  --lime:#11fb06;
+  --nav-orange:#ffc64c;
+  --dark-green:#008234;
   font-family:var(--font-ui);color:#e7edf4;background:transparent;user-select:none
 }
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:var(--font-ui)}
+
+/* ------------------------------------------------------------------ АНИМАЦИИ
+   Правило интерфейса: ничто не появляется и не исчезает рывком. Минимум 100 мс
+   фейда, если у элемента нет собственной анимации (сворачивание окна, набор
+   текста). Все интерполяции плавные (ease / cubic-bezier), без cut-переходов. */
+@keyframes uiFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes uiFadeOut{from{opacity:1}to{opacity:0}}
+/* Появление снизу вверх с фейдом — для последовательных элементов списков. */
+@keyframes uiFadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* Фейд с зумом из 90% размера — для изображений. */
+@keyframes uiFadeZoom{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+.uiFadeIn{animation:uiFadeIn 140ms ease both}
+.uiFadeOut{animation:uiFadeOut 100ms ease both}
+.uiFadeInUp{animation:uiFadeInUp 170ms cubic-bezier(.22,.8,.2,1) both}
+.uiFadeZoom{animation:uiFadeZoom 220ms cubic-bezier(.22,.8,.2,1) both}
+@media(prefers-reduced-motion:reduce){
+  .uiFadeIn,.uiFadeOut,.uiFadeInUp,.uiFadeZoom{animation-duration:1ms}
+}
 
 /* Тёмно-серые скроллбары. Вертикальные — автоматически при переполнении,
    горизонтальные исключены полностью. */
@@ -163,7 +196,8 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 .responseInner{height:100%;display:flex;flex-direction:column;padding:6px;box-sizing:border-box;min-height:0}
 .responseInner #dialogOptions{flex:1 1 auto;min-height:0}
 
-/* Ответы: выбор подсвечивается, применение — только по кнопке «Подтвердить». */
+/* Ответы: выбор подсвечивается, применение — только по кнопке «Подтвердить».
+   Появление — последовательный фейд снизу вверх (задержка задаётся инлайном). */
 .dialogOption{
     padding:9px;
     border:1px solid transparent;
@@ -172,8 +206,12 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
     transition:background-color 50ms ease,border-color 50ms ease,box-shadow 50ms ease,color 50ms ease;
 }
 .dialogOption:hover,.dialogOption.quest-native-hover{background:var(--hover)}
+/* Выбранный ответ подсвечивается второстепенным оранжевым с обводкой акцентом. */
 .dialogOption.selected{background:var(--selected);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .dialogOption:disabled{opacity:.38;cursor:not-allowed}
+/* Простая кнопка срабатывает сразу и выделением не помечается. */
+.dialogOption.simple{background:var(--panel)}
+.dialogOption.simple:hover,.dialogOption.simple.quest-native-hover{background:var(--hover)}
 .optionText{display:block;font-size:14px}
 .optionRequirements,.optionService,.optionReason{display:block;font-size:13px;font-weight:400;margin-top:4px}
 .optionService{color:var(--accent)}
@@ -181,8 +219,7 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 
 /* Невозвратный ответ: оранжевая звёздочка перед текстом и предупреждение
    курсивом в блоке допинформации. */
-.irreversibleStar{color:var(--accent);margin-right:6px;font-size:13px}
-.dialogOption.irreversible .optionText{font-weight:600}
+.irreversibleStar{color:var(--accent);margin-right:6px;font-size:13px}.dialogOption.irreversible .optionText{font-weight:600}
 .irreversibleNote{color:var(--muted);font-size:13px;line-height:1.4}
 .irreversibleNote em{font-style:italic}
 .irreversibleNote .irreversibleStar{margin-right:2px}
@@ -193,6 +230,8 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
     padding:8px 6px 6px;border-top:1px solid rgba(255,255,255,.12);
     flex:0 0 auto;
 }
+/* Кнопки панели тоже появляются фейдом, а не рывком. */
+#actionBar .actionBtn{animation:uiFadeIn 140ms ease both}
 /* «Назад» всегда у правого края и не переносится — у неё личное место.
    «Подтвердить» расширяется до неё, но не перекрывает. */
 .actionBack{flex:0 0 120px;max-width:120px}
@@ -206,7 +245,7 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 .actionBtn:hover,.actionBtn.quest-native-hover{background:var(--hover)}
 /* Подтвердить — акцентная кнопка. */
 .actionBtn.primary{background:var(--accent);color:#1b1b1b;font-weight:600}
-.actionBtn.primary:hover,.actionBtn.primary.quest-native-hover{background:#f0a52a}
+.actionBtn.primary:hover,.actionBtn.primary.quest-native-hover{background:var(--accent-2)}
 /* Текст кнопки переносится максимум на две строки. */
 .actionBtn span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
 /* Вариант инициации события «Поговорить» и его пометка «(продолжить)». */
@@ -217,9 +256,13 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
     width:100%;height:100%;margin:0;object-fit:cover;
     border-radius:8px;background:rgba(0,0,0,1);display:none;
 }
-.serviceBlock{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:14px}
-.questRewardTitle{margin-top:9px;margin-bottom:4px;color:var(--accent);font-weight:700;font-size:14px}
-.rewardLine{padding:3px 0;font-size:14px}
+/* Картинка события: фейд с зумом из размера на 10% меньше финального. */
+#dialogImage.shown{display:block;animation:uiFadeZoom 220ms cubic-bezier(.22,.8,.2,1) both}
+.serviceBlock{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:14px;
+    animation:uiFadeInUp 170ms cubic-bezier(.22,.8,.2,1) both}
+.questRewardTitle{margin-top:9px;margin-bottom:4px;color:var(--accent);font-weight:700;font-size:14px;
+    animation:uiFadeInUp 170ms cubic-bezier(.22,.8,.2,1) both}
+.rewardLine{padding:3px 0;font-size:14px;animation:uiFadeInUp 170ms cubic-bezier(.22,.8,.2,1) both}
 .rewardService{color:var(--muted);font-size:13px;font-weight:400}
 
 /* Bookmarks use the SAME enter/exit motion as interface windows.
@@ -253,8 +296,8 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 }
 #questTab.beacon,#inventoryTab.beacon{animation:bookmarkBeaconPulse 700ms ease-in-out 2}
 @keyframes bookmarkBeaconPulse{
-    0%,100%{box-shadow:0 0 2px rgba(229,147,16,.15)}
-    50%{box-shadow:0 0 22px rgba(229,147,16,.95)}
+    0%,100%{box-shadow:0 0 2px rgba(250,176,3,.15)}
+    50%{box-shadow:0 0 22px rgba(250,176,3,.95)}
 }
 .questTabText,.inventoryTabText{writing-mode:vertical-rl}
 .questTabHint,.inventoryTabHint{
@@ -276,7 +319,7 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
     border-radius:50%;
     background:var(--accent);
     color:var(--accent);
-    box-shadow:0 0 2px rgba(229,147,16,.15);
+    box-shadow:0 0 2px rgba(250,176,3,.15);
     animation:bookmarkBeaconPulse 700ms ease-in-out 2;
     will-change:box-shadow,transform;
 }
@@ -355,7 +398,7 @@ html.ets2-cat-game #miniLogo{visibility:visible!important;opacity:0!important}
 })();
 </script>
 <script>
-window.__questHtmlDiagBuild='QHTML-SELRETAIN-R28-2026-09-20';
+window.__questHtmlDiagBuild='QHTML-PALETTE-R29-2026-09-20';
 window.__questBootstrapErrors=[];
 window.addEventListener('error',function(e){
     try{
@@ -374,6 +417,6 @@ window.addEventListener('unhandledrejection',function(e){
     }catch(_){}
 },true);
 </script>
-<script src="js/quests_ui.js?v=1.0.40.98"></script>
+<script src="js/quests_ui.js?v=1.0.40.99"></script>
 </body>
 </html>

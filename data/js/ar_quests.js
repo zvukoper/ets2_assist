@@ -9,6 +9,10 @@
         canvas=document.createElement('canvas');
         canvas.id='questArCanvas';
         canvas.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:240';
+        /* По умолчанию слой пуст и невидим: он проявляется только когда квестовый
+           интерфейс явно попросит показать метки. */
+        canvas.style.opacity='0';
+        canvas.style.transition='opacity 180ms ease';
         document.body.appendChild(canvas);
         ctx=canvas.getContext('2d');
         resize();
@@ -385,14 +389,13 @@
         requestAnimationFrame(draw);
     }
 
+    /* Метки AR появляются и исчезают плавно: фейдим СВОЙ canvas, а не весь
+       документ. Раньше здесь ставилась прозрачность на documentElement/body,
+       из-за чего пропадал весь слой AR, а метки квестов мигали рывком. */
     function applyPauseFade(paused){
-        var value=paused?'0':'1';
-        try{
-            document.documentElement.style.setProperty('transition','opacity 150ms linear','important');
-            document.body.style.setProperty('transition','opacity 150ms linear','important');
-            document.documentElement.style.setProperty('opacity',value,'important');
-            document.body.style.setProperty('opacity',value,'important');
-        }catch(e){}
+        if(!canvas)return;
+        canvas.style.transition='opacity 180ms ease';
+        canvas.style.opacity=paused?'0':'1';
     }
     function connectQuest(){
         try{

@@ -1743,8 +1743,8 @@ RegisterHotKeyChecked(
         // ============================================================
         private void ApplyDarkTheme()
         {
-            Color back = Color.FromArgb(43, 43, 43);
-            Color fore = Color.FromArgb(232, 232, 232);
+            Color back = UiPalette.WindowBackground;
+            Color fore = UiPalette.TextPrimary;
             this.BackColor = back;
             this.ForeColor = fore;
             foreach (Control c in this.Controls) SetControlTheme(c, back, fore);
@@ -1753,11 +1753,32 @@ RegisterHotKeyChecked(
             // свой (тёмный) — поэтому после темы явно возвращаем светлый текст.
             if (devModeChk != null)
             {
-                devModeChk.ForeColor = Color.FromArgb(166, 166, 166);
-                if (devModeHost != null) devModeHost.ForeColor = Color.FromArgb(166, 166, 166);
+                devModeChk.ForeColor = UiPalette.TextMuted;
+                if (devModeHost != null) devModeHost.ForeColor = UiPalette.TextMuted;
             }
             // v39: после применения темы восстановить свечение тоггл-кнопок.
             UpdateStartButton();
+            // v1.0.41: единый стиль кнопок основной формы (скругление + палитра).
+            ApplyButtonStyleRecursive(this);
+        }
+
+        /// <summary>
+        /// Привести все обычные кнопки формы к единому стилю: скруглённые углы и
+        /// палитра приложения. Тоггл-кнопки (Start/Stop/карта/AR2) красятся
+        /// отдельно, но скругление им тоже нужно.
+        /// </summary>
+        private void ApplyButtonStyleRecursive(Control root)
+        {
+            foreach (Control c in root.Controls)
+            {
+                if (c is Button b)
+                {
+                    bool toggle = b.Tag is string t && t == "Toggle";
+                    if (!toggle) UiPalette.StyleButton(b, UiPalette.Panel, UiPalette.TextPrimary);
+                    else UiPalette.ApplyRoundedRegion(b);
+                }
+                ApplyButtonStyleRecursive(c);
+            }
         }
 
         private static void SetControlTheme(Control c, Color back, Color fore)
@@ -1772,14 +1793,14 @@ RegisterHotKeyChecked(
                 case Button _:
                 case GroupBox _:
                 case Panel _:
-                    c.BackColor = Color.FromArgb(60, 60, 60);
+                    c.BackColor = UiPalette.Panel;
                     c.ForeColor = fore;
                     break;
                 case TextBox _:
                 case RichTextBox _:
                 case ListBox _:
                 case ComboBox _:
-                    c.BackColor = Color.FromArgb(30, 30, 30);
+                    c.BackColor = UiPalette.InputBackground;
                     c.ForeColor = fore;
                     break;
                 default:
@@ -3998,7 +4019,7 @@ RegisterHotKeyChecked(
             if (btnLaunchAR == null || btnLaunchAR.IsDisposed) return;
             bool on = IsAr1Running;
             btnLaunchAR.Text = !on ? "Запустить AR" : (_arLayerVisible ? "AR (Web) — ON" : "AR (Web) — OFF");
-            btnLaunchAR.BackColor = on && _arLayerVisible ? Color.Lime : DefaultButtonColor();
+            btnLaunchAR.BackColor = on && _arLayerVisible ? UiPalette.AccentSecondary : DefaultButtonColor();
         }
 
         private void LaunchArOverlay()
@@ -5930,11 +5951,11 @@ RegisterHotKeyChecked(
             }
             var color = kind switch
             {
-                ConsoleColorKind.Error     => System.Drawing.Color.FromArgb(255, 90, 90),   // красный
-                ConsoleColorKind.Warning   => System.Drawing.Color.FromArgb(255, 165, 0),   // оранжевый
-                ConsoleColorKind.Confirm   => System.Drawing.Color.FromArgb(50, 255, 50),   // lime
-                ConsoleColorKind.Data      => System.Drawing.Color.FromArgb(0, 255, 255),   // cyan
-                _                          => System.Drawing.Color.LightGray
+                ConsoleColorKind.Error     => UiPalette.SpecialRed,     // красный
+                ConsoleColorKind.Warning   => UiPalette.Accent,         // акцентный оранжевый
+                ConsoleColorKind.Confirm   => UiPalette.SpecialLime,    // салатовый
+                ConsoleColorKind.Data      => UiPalette.SpecialBlue,    // особый синий
+                _                          => UiPalette.TextMuted
             };
             logConsole.SelectionStart = logConsole.TextLength;
             logConsole.SelectionLength = 0;
@@ -6015,7 +6036,7 @@ RegisterHotKeyChecked(
             if (procManager.IsRunning)
             {
                 btnStart.Text = lang.Get("btn_stop") ?? "Stop";
-                btnStart.BackColor = Color.Lime;   // v39: запущено → Lime (без красного)
+                btnStart.BackColor = UiPalette.AccentSecondary;   // v39: запущено → второстепенный оранжевый (без красного)
             }
             else
             {
@@ -6028,7 +6049,7 @@ RegisterHotKeyChecked(
         }
 
         // v39: цвет кнопки по умолчанию (тёмная тема).
-        private Color DefaultButtonColor() => Color.FromArgb(60, 60, 60);
+        private Color DefaultButtonColor() => UiPalette.Panel;
 
         // v39: тоггл AR v2.0 (D3D) — Lime при запущенном оверлее.
         internal bool IsAr2Running => _arV2Window != null && _arV2Window.IsRunning;
@@ -6038,14 +6059,14 @@ RegisterHotKeyChecked(
             if (btnAr2 == null) return;
             bool on = IsAr2Running;
             btnAr2.Text = on ? "AR v2.0 (D3D) — ON" : "AR v2.0 (D3D)";
-            btnAr2.BackColor = on ? Color.Lime : DefaultButtonColor();
+            btnAr2.BackColor = on ? UiPalette.AccentSecondary : DefaultButtonColor();
         }
 
         // v39: тоггл «показать карту» — Lime при включённом режиме «всегда».
         private void SyncShowMapButton()
         {
             if (btnShowMap == null) return;
-            btnShowMap.BackColor = _minimapAutoLogic ? Color.Lime : DefaultButtonColor();
+            btnShowMap.BackColor = _minimapAutoLogic ? UiPalette.AccentSecondary : DefaultButtonColor();
         }
 
         // v39: пока система не запущена, функциональные кнопки левой части

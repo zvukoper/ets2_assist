@@ -22,11 +22,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     display:flex;align-items:center;gap:12px;
     padding:12px 18px;border-radius:4px;
     background:rgba(38,38,38,.92);
-    border-bottom:3px solid #e59310;
+    border-bottom:3px solid #fab003;
     box-shadow:0 6px 22px rgba(0,0,0,.5);
-    color:#e8edf4;opacity:0;transform:translateY(0);transition:opacity 150ms ease-out;pointer-events:none
+    color:#e8edf4;opacity:0;transform:translateY(8px);pointer-events:none;
+    transition:opacity 150ms ease,transform 170ms cubic-bezier(.22,.8,.2,1)
 }
-.note.show{opacity:1}
+.note.show{opacity:1;transform:none}
 .noteIcon{
     flex:0 0 34px;width:34px;height:34px;align-self:center;
     display:flex;align-items:center;justify-content:center;
@@ -34,9 +35,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 /* Иконка квестового уведомления — метка-восклицание. */
 .noteIcon img{width:34px;height:34px;object-fit:contain;display:block}
 .noteBody{min-width:0;flex:1 1 auto}
-.noteTitle{font-size:14px;font-weight:700;color:#e59310;margin-bottom:4px;white-space:pre-wrap}
+.noteTitle{font-size:14px;font-weight:700;color:#fab003;margin-bottom:4px;white-space:pre-wrap}
 .noteText{font-size:14px;line-height:1.4;white-space:pre-wrap;color:#e8edf4}
-.note.reputation .noteTitle,.note.reward .noteTitle{color:#e59310}
+.note.reputation .noteTitle,.note.reward .noteTitle{color:#fab003}
 .note.noicon{padding-left:18px}
 @media(max-width:1000px){.slot{width:min(620px,72vw)}.note{width:min(620px,72vw);min-width:0}.noteTitle{font-size:13px}.noteText{font-size:13px}}
 </style>
